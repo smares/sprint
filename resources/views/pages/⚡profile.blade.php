@@ -6,6 +6,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 new #[Title('Profil')] class extends Component
@@ -24,8 +25,15 @@ new #[Title('Profil')] class extends Component
 
     public bool $digest = true;
 
+    #[Url(as: 'tab', except: 'profil')]
+    public string $tab = 'profil';
+
     public function mount(): void
     {
+        if (! in_array($this->tab, ['profil', 'sicherheit', 'api'], true)) {
+            $this->tab = 'profil';
+        }
+
         $this->name = auth()->user()->name;
         $this->email = auth()->user()->email;
         $this->digest = auth()->user()->digest_enabled;
@@ -87,40 +95,55 @@ new #[Title('Profil')] class extends Component
 };
 ?>
 
-<div class="max-w-xl space-y-10">
+<div class="max-w-xl space-y-6">
     <div>
         <flux:heading size="xl">Profil</flux:heading>
-        <flux:text class="mt-1">Dein Name und deine E-Mail-Adresse erscheinen bei Zuweisungen, Kommentaren und in Benachrichtigungen.</flux:text>
+        <flux:text class="mt-1">Dein Konto, seine Sicherheit und der Zugang für KI-Agenten.</flux:text>
     </div>
 
-    <form wire:submit="saveProfile" class="space-y-4">
-        <flux:input wire:model="name" label="Name" autocomplete="name" />
-        <flux:input wire:model="email" type="email" label="E-Mail" autocomplete="email" />
-        @if (\Illuminate\Support\Str::lower($email) !== \Illuminate\Support\Str::lower(auth()->user()->email))
-            <flux:input wire:model="emailPassword" type="password" label="Passwort zur Bestätigung" description="Zum Ändern der E-Mail-Adresse brauchst du dein aktuelles Passwort." autocomplete="current-password" />
-        @endif
-        <flux:button type="submit" variant="primary">Speichern</flux:button>
-    </form>
+    <flux:tab.group>
+        <flux:tabs wire:model="tab" scrollable>
+            <flux:tab name="profil" icon="user">Profil</flux:tab>
+            <flux:tab name="sicherheit" icon="shield-check">Sicherheit</flux:tab>
+            <flux:tab name="api" icon="key">API-Zugang</flux:tab>
+        </flux:tabs>
 
-    <flux:separator />
+        <flux:tab.panel name="profil" class="space-y-8">
+            <div>
+                <flux:heading size="lg">Persönliche Angaben</flux:heading>
+                <flux:text class="mt-1">Dein Name und deine E-Mail-Adresse erscheinen bei Zuweisungen, Kommentaren und in Benachrichtigungen.</flux:text>
+            </div>
 
-    <flux:switch wire:model.live="digest" label="Tageszusammenfassung per E-Mail" description="Werktags am Morgen eine Mail mit deinen überfälligen und bald fälligen Aufgaben, nur wenn es etwas zu berichten gibt." />
+            <form wire:submit="saveProfile" class="space-y-4">
+                <flux:input wire:model="name" label="Name" autocomplete="name" />
+                <flux:input wire:model="email" type="email" label="E-Mail" autocomplete="email" />
+                @if (\Illuminate\Support\Str::lower($email) !== \Illuminate\Support\Str::lower(auth()->user()->email))
+                    <flux:input wire:model="emailPassword" type="password" label="Passwort zur Bestätigung" description="Zum Ändern der E-Mail-Adresse brauchst du dein aktuelles Passwort." autocomplete="current-password" />
+                @endif
+                <flux:button type="submit" variant="primary">Speichern</flux:button>
+            </form>
 
-    <flux:separator />
+            <flux:separator />
 
-    <form wire:submit="changePassword" class="space-y-4">
-        <flux:heading size="lg">Passwort ändern</flux:heading>
-        <flux:input wire:model="currentPassword" type="password" label="Aktuelles Passwort" autocomplete="current-password" />
-        <flux:input wire:model="newPassword" type="password" label="Neues Passwort" description="Mindestens 8 Zeichen." autocomplete="new-password" />
-        <flux:input wire:model="newPasswordConfirmation" type="password" label="Neues Passwort wiederholen" autocomplete="new-password" />
-        <flux:button type="submit">Passwort ändern</flux:button>
-    </form>
+            <flux:switch wire:model.live="digest" label="Tageszusammenfassung per E-Mail" description="Werktags am Morgen eine Mail mit deinen überfälligen und bald fälligen Aufgaben, nur wenn es etwas zu berichten gibt." />
+        </flux:tab.panel>
 
-    <flux:separator />
+        <flux:tab.panel name="sicherheit" class="space-y-8">
+            <form wire:submit="changePassword" class="space-y-4">
+                <flux:heading size="lg">Passwort ändern</flux:heading>
+                <flux:input wire:model="currentPassword" type="password" label="Aktuelles Passwort" autocomplete="current-password" />
+                <flux:input wire:model="newPassword" type="password" label="Neues Passwort" description="Mindestens 8 Zeichen." autocomplete="new-password" />
+                <flux:input wire:model="newPasswordConfirmation" type="password" label="Neues Passwort wiederholen" autocomplete="new-password" />
+                <flux:button type="submit">Passwort ändern</flux:button>
+            </form>
 
-    <livewire:security />
+            <flux:separator />
 
-    <flux:separator />
+            <livewire:security />
+        </flux:tab.panel>
 
-    <livewire:api-tokens />
+        <flux:tab.panel name="api">
+            <livewire:api-tokens />
+        </flux:tab.panel>
+    </flux:tab.group>
 </div>

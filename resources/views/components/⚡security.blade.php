@@ -157,11 +157,6 @@ new class extends Component
 @php($user = auth()->user())
 
 <div class="space-y-8">
-    <div>
-        <flux:heading size="lg">Sicherheit</flux:heading>
-        <flux:text class="mt-1">Schütze dein Konto zusätzlich mit einem zweiten Faktor oder melde dich ganz ohne Passwort mit einem Passkey an (Fingerabdruck, Gesicht, Sicherheitsschlüssel oder Gerätesperre).</flux:text>
-    </div>
-
     @unless ($this->confirmed)
         <form wire:submit="confirmPassword" class="space-y-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
             <flux:input wire:model="password" type="password" label="Passwort bestätigen" description="Zum Ändern der Sicherheitseinstellungen brauchen wir kurz dein Passwort." autocomplete="current-password" />
@@ -171,7 +166,7 @@ new class extends Component
 
     <div class="space-y-4">
         <div class="flex items-center gap-3">
-            <flux:heading>Zwei-Faktor-Anmeldung</flux:heading>
+            <flux:heading size="lg">Zwei-Faktor-Anmeldung</flux:heading>
             @if ($user->hasEnabledTwoFactorAuthentication())
                 <flux:badge color="green" size="sm">An</flux:badge>
             @elseif ($user->two_factor_secret)
@@ -226,7 +221,8 @@ new class extends Component
     <flux:separator />
 
     <div class="space-y-4">
-        <flux:heading>Passkeys</flux:heading>
+        <flux:heading size="lg">Passkeys</flux:heading>
+        <flux:text>Melde dich ohne Passwort an: mit Fingerabdruck, Gesicht, Sicherheitsschlüssel oder Gerätesperre. Ein Passkey ersetzt Passwort und zweiten Faktor.</flux:text>
 
         @if ($this->passkeys->isNotEmpty())
             <div class="divide-y divide-zinc-200 rounded-lg border border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">

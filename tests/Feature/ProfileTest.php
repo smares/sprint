@@ -102,4 +102,14 @@ class ProfileTest extends TestCase
 
         $this->assertSame('Fremd', $other->fresh()->name);
     }
+
+    public function test_the_page_is_split_into_tabs_and_remembers_the_tab_in_the_address(): void
+    {
+        $this->get(route('profile'))->assertOk()->assertSee('API-Zugang')->assertSee('Persönliche Angaben');
+
+        Livewire::withQueryParams(['tab' => 'sicherheit'])->test('pages::profile')->assertSet('tab', 'sicherheit');
+        Livewire::withQueryParams(['tab' => 'api'])->test('pages::profile')->assertSet('tab', 'api');
+        Livewire::withQueryParams(['tab' => 'unsinn'])->test('pages::profile')->assertSet('tab', 'profil');
+        Livewire::test('pages::profile')->assertSet('tab', 'profil');
+    }
 }

@@ -8,9 +8,11 @@
         'timeline' => ['Zeitleiste', 'chart-bar', 'projects.timeline'],
     ] as $key => [$label, $icon, $route])
         @if ($key === $active)
-            <flux:button :icon="$icon" disabled aria-label="{{ $label }}"><span class="max-sm:sr-only">{{ $label }}</span></flux:button>
+            <flux:button :icon="$icon" square disabled aria-label="{{ $label }}" class="sm:hidden" />
+            <flux:button :icon="$icon" disabled class="max-sm:hidden">{{ $label }}</flux:button>
         @else
-            <flux:button :icon="$icon" href="{{ route($route, $project) }}" wire:navigate aria-label="{{ $label }}"><span class="max-sm:sr-only">{{ $label }}</span></flux:button>
+            <flux:button :icon="$icon" square href="{{ route($route, $project) }}" wire:navigate aria-label="{{ $label }}" class="sm:hidden" />
+            <flux:button :icon="$icon" href="{{ route($route, $project) }}" wire:navigate class="max-sm:hidden">{{ $label }}</flux:button>
         @endif
     @endforeach
 </flux:button.group>

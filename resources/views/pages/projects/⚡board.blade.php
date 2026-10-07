@@ -6,6 +6,7 @@ use App\Models\TaskStatus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 new class extends Component
@@ -20,6 +21,12 @@ new class extends Component
     public function hydrate(): void
     {
         Gate::authorize('view', $this->project);
+    }
+
+    #[On('statuses-changed')]
+    public function statusesChanged(): void
+    {
+        unset($this->statuses, $this->columns);
     }
 
     #[Computed]
@@ -65,7 +72,7 @@ new class extends Component
     #[Computed]
     public function statuses()
     {
-        return $this->project->statuses;
+        return $this->project->statuses()->get();
     }
 
     /**
@@ -121,7 +128,7 @@ new class extends Component
         <x-project-views :project="$project" active="board" />
 
             @if ($this->canManage)
-                <flux:button icon="cog-6-tooth" href="{{ route('projects.statuses', $project) }}" wire:navigate>Status</flux:button>
+                <livewire:project-statuses :project="$project" />
                 <flux:button icon="adjustments-horizontal" href="{{ route('projects.fields', $project) }}" wire:navigate>Felder</flux:button>
                 <flux:button icon="users" href="{{ route('projects.members', $project) }}" wire:navigate>Mitglieder</flux:button>
             @endif

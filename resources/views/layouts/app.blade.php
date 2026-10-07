@@ -25,11 +25,17 @@
 
                 <flux:spacer />
 
-                <form action="{{ route('search') }}" method="GET" class="me-2 hidden sm:block" role="search">
-                    <flux:input name="q" type="search" size="sm" icon="magnifying-glass" placeholder="Suchen …" aria-label="Suchen" />
-                </form>
+                <flux:modal.trigger name="command-palette" shortcut="cmd.k">
+                    <flux:input as="button" size="sm" icon="magnifying-glass" placeholder="Suchen oder springen …" kbd="⌘K" class="me-2 hidden w-64 sm:block" aria-label="Befehlspalette öffnen" />
+                </flux:modal.trigger>
 
-                <flux:button href="{{ route('search') }}" wire:navigate variant="ghost" icon="magnifying-glass" aria-label="Suchen" class="sm:hidden" />
+                <flux:modal.trigger name="command-palette">
+                    <flux:button variant="ghost" icon="magnifying-glass" aria-label="Suchen" class="sm:hidden" />
+                </flux:modal.trigger>
+
+                <flux:modal.trigger name="command-palette" shortcut="ctrl.k">
+                    <span class="hidden"></span>
+                </flux:modal.trigger>
 
                 <livewire:notification-bell />
 
@@ -69,6 +75,10 @@
                     @endcan
                 </flux:navlist>
             </flux:sidebar>
+        @endauth
+
+        @auth
+            <livewire:command-palette />
         @endauth
 
         <flux:main container>

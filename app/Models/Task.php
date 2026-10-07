@@ -35,6 +35,11 @@ class Task extends Model
         return $this->belongsTo(User::class, 'assignee_id');
     }
 
+    public function collaborators(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'task_collaborators');
+    }
+
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'creator_id');

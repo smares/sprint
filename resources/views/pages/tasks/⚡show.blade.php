@@ -33,6 +33,9 @@ new class extends Component
     public string $newTag = '';
 
     /** @var list<string> */
+    public array $collaboratorIds = [];
+
+    /** @var list<string> */
     public array $blockerIds = [];
 
     /** @var list<string> */
@@ -46,6 +49,7 @@ new class extends Component
         $this->assigneeId = (string) ($this->task->assignee_id ?? '');
         $this->dueDate = $this->task->due_date?->format('Y-m-d') ?? '';
         $this->tagIds = $this->task->tags->pluck('id')->map(fn ($id) => (string) $id)->all();
+        $this->collaboratorIds = $this->task->collaborators()->pluck('users.id')->map(fn ($id) => (string) $id)->all();
         $this->blockerIds = $this->task->blockers()->pluck('tasks.id')->map(fn ($id) => (string) $id)->all();
         $this->blockingIds = $this->task->blocking()->pluck('tasks.id')->map(fn ($id) => (string) $id)->all();
     }
@@ -105,6 +109,8 @@ new class extends Component
             'dueDate' => ['nullable', 'date'],
             'tagIds' => ['array'],
             'tagIds.*' => ['integer', Rule::exists('tags', 'id')->where('project_id', $this->task->project_id)],
+            'collaboratorIds' => ['array'],
+            'collaboratorIds.*' => ['integer', 'exists:users,id'],
             'blockerIds' => ['array'],
             'blockerIds.*' => ['integer', Rule::exists('tasks', 'id')->where('project_id', $this->task->project_id)->whereNot('id', $this->task->getKey())],
             'blockingIds' => ['array'],
@@ -137,6 +143,9 @@ new class extends Component
         ]);
 
         $this->task->tags()->sync($validated['tagIds']);
+        $this->task->collaborators()->sync(
+            array_values(array_diff($validated['collaboratorIds'], [(string) $validated['assigneeId']]))
+        );
 
         Flux::toast(variant: 'success', text: 'Gespeichert.');
     }
@@ -194,6 +203,12 @@ new class extends Component
             </flux:select>
             <flux:date-picker wire:model="dueDate" label="Fällig am" locale="de-DE" clearable />
         </div>
+
+        <flux:pillbox wire:model="collaboratorIds" multiple searchable label="Beteiligte" placeholder="Weitere Personen wählen …">
+            @foreach ($this->users as $user)
+                <flux:pillbox.option wire:key="collaborator-{{ $user->id }}" value="{{ $user->id }}">{{ $user->name }}</flux:pillbox.option>
+            @endforeach
+        </flux:pillbox>
 
         <flux:pillbox wire:model="tagIds" multiple label="Tags" placeholder="Tags wählen …">
             @foreach ($this->projectTags as $tag)

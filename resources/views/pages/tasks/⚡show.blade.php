@@ -32,6 +32,11 @@ new class extends Component
 
     public string $newTag = '';
 
+    public string $parentId = '';
+
+    /** @var array<int|string, string> */
+    public array $newSubtaskTitles = [];
+
     /** @var list<string> */
     public array $collaboratorIds = [];
 
@@ -48,10 +53,113 @@ new class extends Component
         $this->status = $this->task->status->value;
         $this->assigneeId = (string) ($this->task->assignee_id ?? '');
         $this->dueDate = $this->task->due_date?->format('Y-m-d') ?? '';
+        $this->parentId = (string) ($this->task->parent_id ?? '');
         $this->tagIds = $this->task->tags->pluck('id')->map(fn ($id) => (string) $id)->all();
         $this->collaboratorIds = $this->task->collaborators()->pluck('users.id')->map(fn ($id) => (string) $id)->all();
         $this->blockerIds = $this->task->blockers()->pluck('tasks.id')->map(fn ($id) => (string) $id)->all();
         $this->blockingIds = $this->task->blocking()->pluck('tasks.id')->map(fn ($id) => (string) $id)->all();
+    }
+
+    #[Computed]
+    public function projectTasks()
+    {
+        return $this->task->project->tasks()
+            ->with('assignee')
+            ->orderBy('position')
+            ->orderBy('id')
+            ->get();
+    }
+
+    #[Computed]
+    public function childrenMap()
+    {
+        return $this->projectTasks->groupBy(fn ($task) => $task->parent_id ?? 0);
+    }
+
+    /**
+     * @return list<int>
+     */
+    #[Computed]
+    public function descendantIds(): array
+    {
+        $ids = [];
+        $queue = [$this->task->getKey()];
+
+        while ($queue !== []) {
+            $current = array_shift($queue);
+
+            foreach ($this->childrenMap->get($current, []) as $child) {
+                $ids[] = $child->id;
+                $queue[] = $child->id;
+            }
+        }
+
+        return $ids;
+    }
+
+    /**
+     * @return list<Task>
+     */
+    #[Computed]
+    public function ancestors(): array
+    {
+        $byId = $this->projectTasks->keyBy('id');
+        $chain = [];
+        $current = $byId->get($this->task->parent_id);
+
+        while ($current !== null) {
+            array_unshift($chain, $current);
+            $current = $byId->get($current->parent_id);
+        }
+
+        return $chain;
+    }
+
+    /**
+     * @return array{done: int, total: int}|null
+     */
+    #[Computed]
+    public function progress(): ?array
+    {
+        return $this->task->project->subtaskProgress()[$this->task->getKey()] ?? null;
+    }
+
+    #[Computed]
+    public function possibleParents()
+    {
+        $excluded = [$this->task->getKey(), ...$this->descendantIds];
+
+        return $this->projectTasks->reject(fn ($task) => in_array($task->id, $excluded, true));
+    }
+
+    public function addSubtask(int $parentId): void
+    {
+        abort_unless(in_array($parentId, [$this->task->getKey(), ...$this->descendantIds], true), 404);
+
+        $this->validate([
+            "newSubtaskTitles.$parentId" => ['required', 'string', 'max:255'],
+        ], attributes: ["newSubtaskTitles.$parentId" => 'Titel']);
+
+        $this->task->project->tasks()->create([
+            'parent_id' => $parentId,
+            'title' => trim($this->newSubtaskTitles[$parentId]),
+            'creator_id' => auth()->id(),
+            'position' => ($this->task->project->tasks()->where('parent_id', $parentId)->max('position') ?? -1) + 1,
+        ]);
+
+        unset($this->newSubtaskTitles[$parentId], $this->projectTasks, $this->childrenMap, $this->progress);
+    }
+
+    public function toggleSubtask(int $subtaskId): void
+    {
+        abort_unless(in_array($subtaskId, $this->descendantIds, true), 404);
+
+        $subtask = $this->task->project->tasks()->findOrFail($subtaskId);
+        $subtask->update([
+            'status' => $subtask->status === TaskStatus::Done ? TaskStatus::Todo : TaskStatus::Done,
+        ]);
+
+        unset($this->projectTasks, $this->childrenMap, $this->progress);
     }
 
     #[Computed]
@@ -109,6 +217,7 @@ new class extends Component
             'dueDate' => ['nullable', 'date'],
             'tagIds' => ['array'],
             'tagIds.*' => ['integer', Rule::exists('tags', 'id')->where('project_id', $this->task->project_id)],
+            'parentId' => ['nullable', Rule::in($this->possibleParents->pluck('id')->map(fn ($id) => (string) $id)->all())],
             'collaboratorIds' => ['array'],
             'collaboratorIds.*' => ['integer', 'exists:users,id'],
             'blockerIds' => ['array'],
@@ -134,10 +243,16 @@ new class extends Component
             }
         });
 
+        $parentChanged = ($validated['parentId'] ?: null) !== $this->task->parent_id;
+
         $this->task->update([
             'title' => $validated['title'],
             'description' => $validated['description'] ?: null,
             'status' => $validated['status'],
+            'parent_id' => $validated['parentId'] ?: null,
+            'position' => $parentChanged
+                ? ($this->task->project->tasks()->where('parent_id', $validated['parentId'] ?: null)->max('position') ?? -1) + 1
+                : $this->task->position,
             'assignee_id' => $validated['assigneeId'] ?: null,
             'due_date' => $validated['dueDate'] ?: null,
         ]);
@@ -182,6 +297,9 @@ new class extends Component
     <flux:breadcrumbs class="mb-4">
         <flux:breadcrumbs.item href="{{ route('projects.index') }}" wire:navigate>Projekte</flux:breadcrumbs.item>
         <flux:breadcrumbs.item href="{{ route('projects.show', $task->project_id) }}" wire:navigate>{{ $task->project->name }}</flux:breadcrumbs.item>
+        @foreach ($this->ancestors as $ancestor)
+            <flux:breadcrumbs.item href="{{ route('tasks.show', $ancestor) }}" wire:navigate>{{ $ancestor->title }}</flux:breadcrumbs.item>
+        @endforeach
         <flux:breadcrumbs.item>Aufgabe</flux:breadcrumbs.item>
     </flux:breadcrumbs>
 
@@ -203,6 +321,13 @@ new class extends Component
             </flux:select>
             <flux:date-picker wire:model="dueDate" label="Fällig am" locale="de-DE" clearable />
         </div>
+
+        <flux:select variant="listbox" wire:model="parentId" label="Übergeordnete Aufgabe">
+            <flux:select.option value="">Keine</flux:select.option>
+            @foreach ($this->possibleParents as $candidate)
+                <flux:select.option value="{{ $candidate->id }}">{{ $candidate->title }}</flux:select.option>
+            @endforeach
+        </flux:select>
 
         <flux:pillbox wire:model="collaboratorIds" multiple searchable label="Beteiligte" placeholder="Weitere Personen wählen …">
             @foreach ($this->users as $user)
@@ -249,6 +374,28 @@ new class extends Component
 
     <flux:separator class="my-8" />
 
+    <flux:heading size="lg" class="mb-2">Subtasks</flux:heading>
+
+    @if ($this->progress)
+        <div class="mb-4 max-w-sm">
+            <flux:text size="sm" class="mb-1">{{ $this->progress['done'] }} von {{ $this->progress['total'] }} erledigt</flux:text>
+            <flux:progress :value="intdiv($this->progress['done'] * 100, $this->progress['total'])" />
+        </div>
+    @endif
+
+    @php($rootChildren = $this->childrenMap->get($task->id, collect()))
+    @if ($rootChildren->isNotEmpty())
+        <x-task-subtree :tasks="$rootChildren" :children-map="$this->childrenMap" />
+    @endif
+
+    <form wire:submit="addSubtask({{ $task->id }})" class="mt-3 flex items-end gap-2">
+        <flux:input wire:model="newSubtaskTitles.{{ $task->id }}" label="Neue Subtask" placeholder="Titel …" class="max-w-sm" />
+        <flux:button type="submit" icon="plus">Hinzufügen</flux:button>
+    </form>
+    @error('newSubtaskTitles.'.$task->id) <flux:text class="mt-1 text-red-500">{{ $message }}</flux:text> @enderror
+
+    <flux:separator class="my-8" />
+
     <flux:heading size="lg" class="mb-4">Kommentare</flux:heading>
 
     <div class="space-y-4">
@@ -270,7 +417,7 @@ new class extends Component
     <flux:modal name="delete-task" class="min-w-[22rem]">
         <div class="space-y-6">
             <flux:heading size="lg">Aufgabe löschen?</flux:heading>
-            <flux:text>Die Aufgabe und alle Kommentare werden unwiderruflich gelöscht.</flux:text>
+            <flux:text>Die Aufgabe @if (count($this->descendantIds) > 0) mit {{ count($this->descendantIds) }} Subtasks @endif und alle Kommentare werden unwiderruflich gelöscht.</flux:text>
             <div class="flex gap-2">
                 <flux:spacer />
                 <flux:modal.close><flux:button variant="ghost">Abbrechen</flux:button></flux:modal.close>

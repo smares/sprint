@@ -34,6 +34,7 @@ new class extends Component
     public function tasks()
     {
         return $this->project->tasks()
+            ->whereNull('parent_id')
             ->with(['assignee', 'collaborators', 'tags', 'blockers'])
             ->when($this->statusFilter === 'open', fn ($q) => $q->where('status', '!=', TaskStatus::Done))
             ->when(TaskStatus::tryFrom($this->statusFilter), fn ($q, $status) => $q->where('status', $status))
@@ -50,6 +51,15 @@ new class extends Component
     public function tagOptions()
     {
         return $this->project->tags()->orderBy('name')->get();
+    }
+
+    /**
+     * @return array<int, array{done: int, total: int}>
+     */
+    #[Computed]
+    public function progress(): array
+    {
+        return $this->project->subtaskProgress();
     }
 
     #[Computed]
@@ -82,7 +92,7 @@ new class extends Component
 
     public function toggleDone(int $taskId): void
     {
-        $task = $this->project->tasks()->findOrFail($taskId);
+        $task = $this->project->tasks()->whereNull('parent_id')->findOrFail($taskId);
 
         $task->update([
             'status' => $task->status === TaskStatus::Done ? TaskStatus::Todo : TaskStatus::Done,
@@ -172,6 +182,9 @@ new class extends Component
                             <a href="{{ route('tasks.show', $task) }}" wire:navigate class="font-medium hover:underline">{{ $task->title }}</a>
                             @if ($task->isBlocked())
                                 <flux:icon.lock-closed variant="micro" class="ms-1 inline text-amber-500" title="Blockiert" />
+                            @endif
+                            @if ($progress = $this->progress[$task->id] ?? null)
+                                <flux:badge size="sm" icon="list-bullet" class="ms-1">{{ $progress['done'] }}/{{ $progress['total'] }}</flux:badge>
                             @endif
                             @foreach ($task->tags as $tag)
                                 <flux:badge size="sm" :color="$tag->color" class="ms-1">{{ $tag->name }}</flux:badge>

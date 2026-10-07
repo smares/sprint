@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['project_id', 'assignee_id', 'creator_id', 'title', 'description', 'status', 'position', 'due_date'])]
+#[Fillable(['project_id', 'parent_id', 'assignee_id', 'creator_id', 'title', 'description', 'status', 'position', 'due_date'])]
 class Task extends Model
 {
     /** @use HasFactory<TaskFactory> */
@@ -28,6 +28,16 @@ class Task extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
+    }
+
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'parent_id');
+    }
+
+    public function children(): HasMany
+    {
+        return $this->hasMany(self::class, 'parent_id')->orderBy('position')->orderBy('id');
     }
 
     public function assignee(): BelongsTo

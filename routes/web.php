@@ -1,12 +1,15 @@
 <?php
 
 use App\Http\Controllers\AttachmentController;
+use App\Http\Controllers\HealthController;
 use App\Http\Controllers\ProjectExportController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Laravel\Passkeys\Http\Controllers\PasskeyLoginController;
 use Laravel\Passkeys\Http\Controllers\PasskeyRegistrationController;
+
+Route::get('/health', HealthController::class)->middleware('throttle:60,1')->name('health');
 
 Route::livewire('/login', 'pages::login')->name('login')->middleware('guest');
 

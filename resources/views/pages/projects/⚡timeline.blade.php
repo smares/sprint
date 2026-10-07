@@ -115,7 +115,7 @@ new class extends Component
         <flux:breadcrumbs.item>{{ $project->name }}</flux:breadcrumbs.item>
     </flux:breadcrumbs>
 
-    <div class="mb-6 flex items-center justify-between">
+    <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <flux:heading size="xl">{{ $project->name }}</flux:heading>
         <x-project-views :project="$project" active="timeline" />
     </div>

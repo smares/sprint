@@ -78,7 +78,7 @@ new #[Title('Posteingang')] class extends Component
 ?>
 
 <div class="max-w-3xl">
-    <div class="mb-6 flex items-center justify-between">
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
         <flux:heading size="xl">Posteingang</flux:heading>
         @if (auth()->user()->unreadNotifications()->exists())
             <flux:button size="sm" icon="check" wire:click="markAllRead">Alle als gelesen markieren</flux:button>

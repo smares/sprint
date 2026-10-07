@@ -684,11 +684,11 @@ new class extends Component
                     <flux:select.option value="{{ $user->id }}">{{ $user->name }}</flux:select.option>
                 @endforeach
             </flux:select>
-            <flux:date-picker wire:model="dueDate" label="Fällig am" locale="de-DE" clearable />
+            <flux:date-picker wire:model="dueDate" label="Fällig am" locale="de-DE" placeholder="Datum wählen" clearable />
         </div>
 
         <div class="grid gap-4 sm:grid-cols-3">
-            <flux:date-picker wire:model="startDate" label="Beginnt am" locale="de-DE" clearable />
+            <flux:date-picker wire:model="startDate" label="Beginnt am" locale="de-DE" placeholder="Datum wählen" clearable />
         </div>
 
         <div class="space-y-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
@@ -707,7 +707,7 @@ new class extends Component
                             <flux:select.option value="{{ $mode->value }}">{{ $mode->label() }}</flux:select.option>
                         @endforeach
                     </flux:select>
-                    <flux:date-picker wire:model="repeatUntil" label="Bis" locale="de-DE" clearable />
+                    <flux:date-picker wire:model="repeatUntil" label="Bis" locale="de-DE" placeholder="Datum wählen" clearable />
                 @endif
             </div>
             @if ($repeatUnit !== '')
@@ -730,7 +730,7 @@ new class extends Component
                             <flux:input wire:key="field-{{ $field->id }}" wire:model="fieldValues.{{ $field->id }}" type="number" step="any" :label="$field->name" />
                             @break
                         @case(\App\CustomFieldType::Date)
-                            <flux:date-picker wire:key="field-{{ $field->id }}" wire:model="fieldValues.{{ $field->id }}" :label="$field->name" locale="de-DE" clearable />
+                            <flux:date-picker wire:key="field-{{ $field->id }}" wire:model="fieldValues.{{ $field->id }}" :label="$field->name" locale="de-DE" placeholder="Datum wählen" clearable />
                             @break
                         @default
                             <flux:input wire:key="field-{{ $field->id }}" wire:model="fieldValues.{{ $field->id }}" :label="$field->name" />

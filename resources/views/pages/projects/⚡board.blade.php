@@ -122,16 +122,18 @@ new class extends Component
         <flux:breadcrumbs.item>{{ $project->name }}</flux:breadcrumbs.item>
     </flux:breadcrumbs>
 
-    <div class="mb-6 flex items-center justify-between">
+    <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <flux:heading size="xl">{{ $project->name }}</flux:heading>
 
-        <x-project-views :project="$project" active="board" />
+        <div class="flex flex-wrap items-center gap-2">
+            <x-project-views :project="$project" active="board" />
 
             @if ($this->canManage)
                 <livewire:project-statuses :project="$project" />
                 <flux:button icon="adjustments-horizontal" href="{{ route('projects.fields', $project) }}" wire:navigate>Felder</flux:button>
                 <flux:button icon="users" href="{{ route('projects.members', $project) }}" wire:navigate>Mitglieder</flux:button>
             @endif
+        </div>
     </div>
 
     <flux:kanban class="items-start overflow-x-auto pb-4">

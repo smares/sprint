@@ -372,7 +372,7 @@ class Task extends Model
             ->filter()
             ->unique('id')
             ->reject(fn (User $user) => $muted->contains($user->id) || $user->id === $except?->id)
-            ->filter(fn (User $user) => $this->project->canBeViewedBy($user))
+            ->filter(fn (User $user) => $user->isActive() && $this->project->canBeViewedBy($user))
             ->values();
     }
 
@@ -387,7 +387,7 @@ class Task extends Model
     {
         $muted = $this->notificationMutes()->pluck('users.id');
 
-        return User::whereIn('id', collect($userIds)->all())->get()
+        return User::whereIn('id', collect($userIds)->all())->active()->get()
             ->reject(fn (User $user) => $muted->contains($user->id) || $user->id === $except?->id)
             ->filter(fn (User $user) => $this->project->canBeViewedBy($user))
             ->values();

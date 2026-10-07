@@ -416,7 +416,7 @@ new class extends Component
     public function mentionOptions(): array
     {
         return [
-            'users' => $this->users->map(fn ($user) => ['id' => $user->id, 'name' => $user->name])->values()->all(),
+            'users' => $this->users->filter(fn ($user) => $user->isActive())->map(fn ($user) => ['id' => $user->id, 'name' => $user->name])->values()->all(),
             'tasks' => $this->projectTasks
                 ->reject(fn ($task) => $task->is_section)
                 ->sortByDesc('id')
@@ -470,7 +470,13 @@ new class extends Component
     #[Computed]
     public function users()
     {
-        return $this->task->project->eligibleUsers()->orderBy('name')->get(['id', 'name']);
+        $ids = $this->task->project->eligibleUsers()->pluck('users.id')
+            ->merge($this->task->collaborators()->pluck('users.id'))
+            ->push($this->task->assignee_id)
+            ->filter()
+            ->unique();
+
+        return User::whereIn('id', $ids)->orderBy('name')->get(['id', 'name', 'deactivated_at']);
     }
 
     public function save(): void
@@ -721,7 +727,7 @@ new class extends Component
             <flux:select variant="listbox" wire:model="assigneeId" label="Zuständig">
                 <flux:select.option value="">Niemand</flux:select.option>
                 @foreach ($this->users as $user)
-                    <flux:select.option value="{{ $user->id }}">{{ $user->name }}</flux:select.option>
+                    <flux:select.option value="{{ $user->id }}">{{ $user->name }}{{ $user->isActive() ? '' : ' (deaktiviert)' }}</flux:select.option>
                 @endforeach
             </flux:select>
             <flux:date-picker wire:model="dueDate" label="Fällig am" locale="de-DE" placeholder="Datum wählen" clearable />
@@ -788,7 +794,7 @@ new class extends Component
 
         <flux:pillbox wire:model="collaboratorIds" multiple searchable label="Beteiligte" placeholder="Weitere Personen wählen …">
             @foreach ($this->users as $user)
-                <flux:pillbox.option wire:key="collaborator-{{ $user->id }}" value="{{ $user->id }}">{{ $user->name }}</flux:pillbox.option>
+                <flux:pillbox.option wire:key="collaborator-{{ $user->id }}" value="{{ $user->id }}">{{ $user->name }}{{ $user->isActive() ? '' : ' (deaktiviert)' }}</flux:pillbox.option>
             @endforeach
         </flux:pillbox>
 

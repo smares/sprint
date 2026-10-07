@@ -42,7 +42,7 @@ new #[Title('Teams')] class extends Component
     #[Computed]
     public function users()
     {
-        return User::query()->orderBy('name')->get(['id', 'name', 'email']);
+        return User::query()->active()->orderBy('name')->get(['id', 'name', 'email']);
     }
 
     private function fillNames(): void

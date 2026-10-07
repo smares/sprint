@@ -19,6 +19,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
 
 #[Fillable(['project_id', 'parent_id', 'is_section', 'assignee_id', 'creator_id', 'title', 'description', 'status_id', 'position', 'start_date', 'due_date', 'repeat_unit', 'repeat_interval', 'repeat_mode', 'repeat_until'])]
 class Task extends Model
@@ -36,6 +37,10 @@ class Task extends Model
             if (! $task->is_section) {
                 $task->logActivity('created');
             }
+        });
+
+        static::deleting(function (self $task) {
+            $task->deleteAttachmentFiles();
         });
 
         static::updated(function (self $task) {
@@ -264,6 +269,27 @@ class Task extends Model
     public function comments(): HasMany
     {
         return $this->hasMany(Comment::class);
+    }
+
+    /**
+     * Remove the stored files of this task and all its subtasks; the rows go with the task itself.
+     */
+    private function deleteAttachmentFiles(): void
+    {
+        $ids = [$this->getKey()];
+        $frontier = $ids;
+
+        while ($frontier !== []) {
+            $frontier = self::whereIn('parent_id', $frontier)->pluck('id')->all();
+            $ids = [...$ids, ...$frontier];
+        }
+
+        Storage::disk(Attachment::DISK)->delete(Attachment::whereIn('task_id', $ids)->pluck('path')->all());
+    }
+
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(Attachment::class);
     }
 
     public function tags(): BelongsToMany

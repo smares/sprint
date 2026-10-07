@@ -10,6 +10,7 @@ Gebaut mit Laravel 13, Livewire 4 und [Flux UI Pro](https://fluxui.dev). Die Obe
 - **Projekte und Aufgaben** mit Titel, Beschreibung, zuständiger Person, Fälligkeit und Status
 - **Startdatum und Fälligkeit** an jeder Aufgabe (beides optional); dazu ein **Kalender** (Monatsansicht) und eine **Zeitleiste** (Balken über sechs Wochen) pro Projekt, Aufgaben ohne Startdatum erscheinen am Fälligkeitstag
 - **Wiederkehrende Aufgaben**: täglich, wöchentlich, monatlich oder jährlich (alle n Einheiten), wahlweise nach Plan oder nach Erledigung, optional mit Enddatum; beim Erledigen entsteht automatisch die nächste Aufgabe samt Unteraufgaben, Tags, Beteiligten und Feldwerten
+- **Anhänge**: beliebig viele Dateien pro Aufgabe (bis 20 MB je Datei), nur für Projektmitglieder abrufbar; Bilder erscheinen als Vorschau, alles andere wird als Download ausgeliefert
 - **Liste und Kanban-Board** pro Projekt, mit Filtern (Status, Person, Tag) und Sortierung per Klick auf die Spaltenköpfe
 - **Manuelle Reihenfolge** per Drag & Drop; Liste und Board teilen eine Reihenfolge
 - **Eigene Status pro Projekt** mit Name, Farbe, Reihenfolge und „gilt als erledigt“-Markierung (unter *Status* im Projekt)
@@ -110,6 +111,7 @@ GitHub Actions führt die Tests auf PHP 8.3, 8.4 und 8.5 aus (`.github/workflows
 - Die Datenbank wird über die Variablen `DB_*` in `.env` gewählt (SQLite, MySQL, PostgreSQL)
 - E-Mails brauchen einen Mailer: `MAIL_MAILER` und die übrigen `MAIL_*`-Variablen in `.env` (lokal reicht `log`, dann landen die Mails in `storage/logs`); `MAIL_FROM_ADDRESS` und `MAIL_FROM_NAME` bestimmen den Absender. Versendet wird über die Queue, ohne laufenden Worker kommt nichts an
 - Sitzungen, Cache und Queue nutzen standardmäßig die Datenbank (`SESSION_DRIVER`, `CACHE_STORE`, `QUEUE_CONNECTION`); für die Queue läuft im Betrieb ein Worker: `php artisan queue:work`
+- Anhänge liegen privat auf der Disk `local` (`storage/app/private`) und müssen mit gesichert werden; für große Dateien müssen `upload_max_filesize` und `post_max_size` in der PHP-Konfiguration (und ggf. das Limit des Webservers) mindestens 20 MB erlauben
 - Nach jedem Update: `composer install --no-dev --optimize-autoloader`, `php artisan migrate --force`, `npm ci --ignore-scripts && npm run build`
 - Vor Migrationen, die bestehende Daten umbauen, ein Datenbank-Backup ziehen
 - Beim Einführen der Rollen werden alle bestehenden Benutzer Verwalter aller bestehenden Projekte (alles bleibt wie bisher erreichbar); danach per `php artisan user:admin <E-Mail>` Administratoren bestimmen und Mitgliedschaften in den Projekten anpassen

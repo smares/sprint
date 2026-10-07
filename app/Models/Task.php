@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -28,12 +29,19 @@ class Task extends Model
             $task->status_id ??= $task->project->defaultStatus()->id;
         });
 
+        static::created(function (self $task) {
+            if (! $task->is_section) {
+                $task->logActivity('created');
+            }
+        });
+
         static::updated(function (self $task) {
             if ($task->is_section) {
                 return;
             }
 
             $actor = auth()->user();
+            $task->logChanges();
 
             if ($task->wasChanged('status_id')) {
                 $old = TaskStatus::find($task->getOriginal('status_id'));
@@ -210,6 +218,68 @@ class Task extends Model
         return User::whereIn('id', collect($userIds)->all())->get()
             ->reject(fn (User $user) => $muted->contains($user->id) || $user->id === $except?->id)
             ->values();
+    }
+
+    public function activities(): HasMany
+    {
+        return $this->hasMany(TaskActivity::class);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function logActivity(string $type, array $data = []): void
+    {
+        $this->activities()->create([
+            'user_id' => auth()->id(),
+            'type' => $type,
+            'data' => $data === [] ? null : $data,
+        ]);
+    }
+
+    /**
+     * Record what the last save changed on the task itself.
+     */
+    private function logChanges(): void
+    {
+        $date = fn (mixed $value) => $value === null ? '–' : Carbon::parse($value)->format('d.m.Y');
+        $userName = fn (mixed $id) => $id === null ? '–' : (User::find($id)?->name ?? '–');
+
+        if ($this->wasChanged('status_id')) {
+            $this->logActivity('status_changed', [
+                'from' => TaskStatus::find($this->getOriginal('status_id'))?->name ?? '–',
+                'to' => $this->status->name,
+            ]);
+        }
+
+        if ($this->wasChanged('assignee_id')) {
+            $this->logActivity('assignee_changed', [
+                'from' => $userName($this->getOriginal('assignee_id')),
+                'to' => $userName($this->assignee_id),
+            ]);
+        }
+
+        if ($this->wasChanged('due_date')) {
+            $this->logActivity('due_date_changed', [
+                'from' => $date($this->getOriginal('due_date')),
+                'to' => $date($this->due_date),
+            ]);
+        }
+
+        if ($this->wasChanged('title')) {
+            $this->logActivity('title_changed', ['from' => $this->getOriginal('title'), 'to' => $this->title]);
+        }
+
+        if ($this->wasChanged('description')) {
+            $this->logActivity('description_changed');
+        }
+
+        if ($this->wasChanged('parent_id')) {
+            $this->logActivity('parent_changed', [
+                'from' => self::find($this->getOriginal('parent_id'))?->title,
+                'to' => $this->parent?->title,
+            ]);
+        }
     }
 
     public function isBlocked(): bool

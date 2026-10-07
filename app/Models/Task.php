@@ -10,8 +10,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
-#[Fillable(['project_id', 'parent_id', 'assignee_id', 'creator_id', 'title', 'description', 'status', 'position', 'due_date'])]
+#[Fillable(['project_id', 'parent_id', 'is_section', 'assignee_id', 'creator_id', 'title', 'description', 'status', 'position', 'due_date'])]
 class Task extends Model
 {
     /** @use HasFactory<TaskFactory> */
@@ -22,6 +23,7 @@ class Task extends Model
         return [
             'status' => TaskStatus::class,
             'due_date' => 'date',
+            'is_section' => 'boolean',
         ];
     }
 
@@ -79,6 +81,24 @@ class Task extends Model
     public function blocking(): BelongsToMany
     {
         return $this->belongsToMany(self::class, 'task_dependencies', 'blocker_id', 'blocked_id');
+    }
+
+    /**
+     * Put the given task at the position among this task's children and make it one of them.
+     */
+    public function placeChild(self $child, int $position): void
+    {
+        DB::transaction(function () use ($child, $position) {
+            $orderedIds = $this->children()->whereKeyNot($child->getKey())->pluck('id')->all();
+
+            array_splice($orderedIds, max(0, min($position, count($orderedIds))), 0, [$child->getKey()]);
+
+            $child->update(['parent_id' => $this->getKey()]);
+
+            foreach ($orderedIds as $index => $id) {
+                self::whereKey($id)->update(['position' => $index]);
+            }
+        });
     }
 
     public function isBlocked(): bool

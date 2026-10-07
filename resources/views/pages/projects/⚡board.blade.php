@@ -47,22 +47,16 @@ new class extends Component
         $task = $this->project->tasks()->whereNull('parent_id')->findOrFail($taskId);
 
         DB::transaction(function () use ($task, $status, $position) {
-            $orderedIds = $this->project->tasks()
+            $task->update(['status' => $status]);
+
+            $this->project->placeRootTask($task, $this->project->tasks()
                 ->whereNull('parent_id')
                 ->where('status', $status)
                 ->whereKeyNot($task->getKey())
                 ->orderBy('position')
                 ->orderBy('id')
                 ->pluck('id')
-                ->all();
-
-            array_splice($orderedIds, max(0, min($position, count($orderedIds))), 0, [$task->getKey()]);
-
-            $task->update(['status' => $status]);
-
-            foreach ($orderedIds as $index => $id) {
-                $this->project->tasks()->whereKey($id)->update(['position' => $index]);
-            }
+                ->all(), $position);
         });
 
         unset($this->columns);

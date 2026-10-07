@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\HealthController;
+use App\Http\Controllers\ProjectExportController;
 use App\Locale;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -63,6 +64,7 @@ Route::middleware('auth')->group(function () {
         Route::livewire('/teams', 'pages::admin.teams')->name('admin.teams');
     });
 
+    Route::get('/projects/{project}/export', ProjectExportController::class)->name('projects.export');
     Route::get('/attachments/{attachment}', AttachmentController::class)->name('attachments.show');
 
     Route::livewire('/tasks/mine', 'pages::tasks.mine')->name('tasks.mine');

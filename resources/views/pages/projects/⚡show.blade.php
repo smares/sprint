@@ -81,6 +81,15 @@ new class extends Component
         unset($this->statuses, $this->tagOptions);
     }
 
+    /**
+     * Tasks were imported from a CSV file in the import window.
+     */
+    #[On('tasks-imported')]
+    public function tasksImported(): void
+    {
+        unset($this->tasks, $this->totalTasks, $this->progress, $this->tagOptions);
+    }
+
     #[Computed]
     public function canManage(): bool
     {
@@ -551,7 +560,24 @@ new class extends Component
         @if ($this->activeFilters->isNotEmpty())
             <flux:button size="sm" variant="ghost" wire:click="resetFilters">Zurücksetzen</flux:button>
         @endif
+
+        <flux:dropdown align="end" class="ms-auto">
+            <flux:button icon="ellipsis-horizontal" aria-label="Weitere Aktionen" />
+
+            <flux:menu>
+                <flux:menu.item icon="arrow-down-tray" href="{{ route('projects.export', $project) }}">Als CSV exportieren</flux:menu.item>
+                <flux:menu.item icon="arrow-down-tray" href="{{ route('projects.export', [$project, 'delimiter' => 'semicolon']) }}">Als CSV für Excel exportieren</flux:menu.item>
+                @if ($this->canEdit)
+                    <flux:menu.separator />
+                    <flux:menu.item icon="arrow-up-tray" x-on:click="$flux.modal('project-import').show()">CSV importieren …</flux:menu.item>
+                @endif
+            </flux:menu>
+        </flux:dropdown>
     </div>
+
+    @if ($this->canEdit)
+        <livewire:project-import :project="$project" />
+    @endif
 
     <flux:modal name="saved-filters" class="w-full max-w-md">
         <div class="space-y-5">

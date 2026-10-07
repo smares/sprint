@@ -22,10 +22,20 @@ new #[Title('Profil')] class extends Component
 
     public string $newPasswordConfirmation = '';
 
+    public bool $digest = true;
+
     public function mount(): void
     {
         $this->name = auth()->user()->name;
         $this->email = auth()->user()->email;
+        $this->digest = auth()->user()->digest_enabled;
+    }
+
+    public function updatedDigest(bool $value): void
+    {
+        auth()->user()->update(['digest_enabled' => $value]);
+
+        Flux::toast(variant: 'success', text: $value ? 'Tageszusammenfassung eingeschaltet.' : 'Tageszusammenfassung ausgeschaltet.');
     }
 
     public function saveProfile(): void
@@ -91,6 +101,10 @@ new #[Title('Profil')] class extends Component
         @endif
         <flux:button type="submit" variant="primary">Speichern</flux:button>
     </form>
+
+    <flux:separator />
+
+    <flux:switch wire:model.live="digest" label="Tageszusammenfassung per E-Mail" description="Werktags am Morgen eine Mail mit deinen überfälligen und bald fälligen Aufgaben, nur wenn es etwas zu berichten gibt." />
 
     <flux:separator />
 

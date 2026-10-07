@@ -14,12 +14,17 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
-#[Fillable(['name', 'email', 'password', 'is_admin', 'deactivated_at'])]
+#[Fillable(['name', 'email', 'password', 'is_admin', 'deactivated_at', 'digest_enabled'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
+
+    /**
+     * @var array<string, mixed>
+     */
+    protected $attributes = ['digest_enabled' => true];
 
     /**
      * Get the attributes that should be cast.
@@ -33,6 +38,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_admin' => 'boolean',
             'deactivated_at' => 'datetime',
+            'digest_enabled' => 'boolean',
         ];
     }
 

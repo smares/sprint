@@ -195,16 +195,21 @@ class Task extends Model
 
         $every = $interval === 1
             ? match ($this->repeat_unit) {
-                RepeatUnit::Day => 'täglich',
-                RepeatUnit::Week => 'wöchentlich',
-                RepeatUnit::Month => 'monatlich',
-                RepeatUnit::Year => 'jährlich',
+                RepeatUnit::Day => __('daily'),
+                RepeatUnit::Week => __('weekly'),
+                RepeatUnit::Month => __('monthly'),
+                RepeatUnit::Year => __('yearly'),
             }
-        : "alle {$interval} ".$this->repeat_unit->label();
+        : match ($this->repeat_unit) {
+            RepeatUnit::Day => __('every :interval days', ['interval' => $interval]),
+            RepeatUnit::Week => __('every :interval weeks', ['interval' => $interval]),
+            RepeatUnit::Month => __('every :interval months', ['interval' => $interval]),
+            RepeatUnit::Year => __('every :interval years', ['interval' => $interval]),
+        };
 
         return $every
-            .($this->repeat_mode === RepeatMode::Completion ? ' (nach Erledigung)' : '')
-            .($this->repeat_until ? ' bis '.$this->repeat_until->format('d.m.Y') : '');
+            .($this->repeat_mode === RepeatMode::Completion ? ' ('.__('after completion').')' : '')
+            .($this->repeat_until ? ' '.__('until :date', ['date' => $this->repeat_until->isoFormat('L')]) : '');
     }
 
     /**
@@ -249,7 +254,7 @@ class Task extends Model
             'repeat_until' => $this->repeat_until,
         ], $offset);
 
-        $this->logActivity('recurrence_created', ['to' => $next->format('d.m.Y')]);
+        $this->logActivity('recurrence_created', ['to' => $next->isoFormat('L')]);
 
         return $copy;
     }

@@ -14,10 +14,10 @@ enum RepeatUnit: string
     public function label(): string
     {
         return match ($this) {
-            self::Day => 'Tage',
-            self::Week => 'Wochen',
-            self::Month => 'Monate',
-            self::Year => 'Jahre',
+            self::Day => __('Days'),
+            self::Week => __('Weeks'),
+            self::Month => __('Months'),
+            self::Year => __('Years'),
         };
     }
 

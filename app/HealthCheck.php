@@ -78,7 +78,7 @@ class HealthCheck
             $disk->put('.health', (string) now()->timestamp);
             $disk->delete('.health');
 
-            return $this->result(self::OK, 'storage/app/private ist beschreibbar');
+            return $this->result(self::OK, __('storage/app/private is writable'));
         } catch (Throwable $e) {
             return $this->result(self::FAIL, $e->getMessage());
         }
@@ -95,7 +95,7 @@ class HealthCheck
 
             return Cache::get($key) === 'ok'
                 ? $this->result(self::OK, config('cache.default'))
-                : $this->result(self::FAIL, 'Der Cache behält keine Werte.');
+                : $this->result(self::FAIL, __('The cache does not keep values.'));
         } catch (Throwable $e) {
             return $this->result(self::FAIL, $e->getMessage());
         }
@@ -111,18 +111,18 @@ class HealthCheck
         try {
             $last = Cache::get(self::SCHEDULER_HEARTBEAT);
         } catch (Throwable) {
-            return $this->result(self::WARN, 'Herzschlag nicht lesbar.');
+            return $this->result(self::WARN, __('Heartbeat not readable.'));
         }
 
         if ($last === null) {
-            return $this->result(self::WARN, 'Der Scheduler ist noch nie gelaufen; es fehlt der Cron-Eintrag, der jede Minute `php artisan schedule:run` startet.');
+            return $this->result(self::WARN, __('The scheduler has never run; the cron entry that starts `php artisan schedule:run` every minute is missing.'));
         }
 
         $minutes = (int) floor((now()->timestamp - (int) $last) / 60);
 
         return $minutes >= self::STALE_MINUTES
-            ? $this->result(self::WARN, "Der Scheduler ist zuletzt vor {$minutes} Minuten gelaufen.")
-            : $this->result(self::OK, 'zuletzt '.($minutes === 0 ? 'gerade eben' : "vor {$minutes} Min."));
+            ? $this->result(self::WARN, __('The scheduler last ran :minutes minutes ago.', ['minutes' => $minutes]))
+            : $this->result(self::OK, $minutes === 0 ? __('last ran just now') : __('last ran :minutes min. ago', ['minutes' => $minutes]));
     }
 
     /**
@@ -135,7 +135,7 @@ class HealthCheck
         $connection = config('queue.default');
 
         if (config("queue.connections.{$connection}.driver") !== 'database') {
-            return $this->result(self::OK, "{$connection} (nicht geprüft)");
+            return $this->result(self::OK, __(':connection (not checked)', ['connection' => $connection]));
         }
 
         try {
@@ -150,9 +150,9 @@ class HealthCheck
         }
 
         return match (true) {
-            $waiting > 0 => $this->result(self::WARN, "{$waiting} Jobs warten seit über ".self::STALE_MINUTES.' Minuten; läuft `php artisan queue:work`?'),
-            $failed > 0 => $this->result(self::WARN, "{$failed} fehlgeschlagene Jobs, siehe `php artisan queue:failed`."),
-            default => $this->result(self::OK, 'kein Rückstand'),
+            $waiting > 0 => $this->result(self::WARN, __(':waiting jobs have been waiting for more than :minutes minutes; is `php artisan queue:work` running?', ['waiting' => $waiting, 'minutes' => self::STALE_MINUTES])),
+            $failed > 0 => $this->result(self::WARN, __(':failed failed jobs, see `php artisan queue:failed`.', ['failed' => $failed])),
+            default => $this->result(self::OK, __('no backlog')),
         };
     }
 

@@ -105,7 +105,7 @@ new class extends Component
         $validated = $this->validate([
             'newUserId' => ['required', Rule::in($this->candidates->pluck('id')->map(fn ($id) => (string) $id)->all())],
             'newRole' => ['required', Rule::enum(ProjectRole::class)],
-        ], attributes: ['newUserId' => 'Person', 'newRole' => 'Rolle']);
+        ], attributes: ['newUserId' => __('Person'), 'newRole' => __('Role')]);
 
         $this->project->setRole(User::findOrFail($validated['newUserId']), ProjectRole::from($validated['newRole']));
 
@@ -122,7 +122,7 @@ new class extends Component
             $this->roles[$userId] = $member->pivot->role;
 
             if ($role !== null) {
-                Flux::toast(variant: 'danger', text: 'Ein Projekt braucht mindestens ein Mitglied, das es verwalten darf.');
+                Flux::toast(variant: 'danger', text: __('A project needs at least one member who can manage it.'));
             }
 
             return;
@@ -137,7 +137,7 @@ new class extends Component
         $member = $this->project->members()->where('users.id', $userId)->firstOrFail();
 
         if ($member->pivot->role === ProjectRole::Admin->value && ! $this->keepsAManager(exceptUserId: $member->id)) {
-            Flux::toast(variant: 'danger', text: 'Ein Projekt braucht mindestens ein Mitglied, das es verwalten darf.');
+            Flux::toast(variant: 'danger', text: __('A project needs at least one member who can manage it.'));
 
             return;
         }
@@ -151,7 +151,7 @@ new class extends Component
         $validated = $this->validate([
             'newTeamId' => ['required', Rule::in($this->teamCandidates->pluck('id')->map(fn ($id) => (string) $id)->all())],
             'newTeamRole' => ['required', Rule::enum(ProjectRole::class)],
-        ], attributes: ['newTeamId' => 'Team', 'newTeamRole' => 'Rolle']);
+        ], attributes: ['newTeamId' => __('Team'), 'newTeamRole' => __('Role')]);
 
         $this->project->setTeamRole(Team::findOrFail($validated['newTeamId']), ProjectRole::from($validated['newTeamRole']));
 
@@ -168,7 +168,7 @@ new class extends Component
             $this->teamRoles[$teamId] = $team->pivot->role;
 
             if ($role !== null) {
-                Flux::toast(variant: 'danger', text: 'Ein Projekt braucht mindestens ein Mitglied, das es verwalten darf.');
+                Flux::toast(variant: 'danger', text: __('A project needs at least one member who can manage it.'));
             }
 
             return;
@@ -183,7 +183,7 @@ new class extends Component
         $team = $this->project->teams()->where('teams.id', $teamId)->firstOrFail();
 
         if ($team->pivot->role === ProjectRole::Admin->value && ! $this->keepsAManager(exceptTeamId: $team->id)) {
-            Flux::toast(variant: 'danger', text: 'Ein Projekt braucht mindestens ein Mitglied, das es verwalten darf.');
+            Flux::toast(variant: 'danger', text: __('A project needs at least one member who can manage it.'));
 
             return;
         }
@@ -194,56 +194,56 @@ new class extends Component
 
     public function rendering($view): void
     {
-        $view->title('Mitglieder – '.$this->project->name);
+        $view->title(__('Members – :project', ['project' => $this->project->name]));
     }
 };
 ?>
 
 <div class="max-w-2xl">
     <flux:breadcrumbs class="mb-4">
-        <flux:breadcrumbs.item href="{{ route('projects.index') }}" wire:navigate>Projekte</flux:breadcrumbs.item>
+        <flux:breadcrumbs.item href="{{ route('projects.index') }}" wire:navigate>{{ __('Projects') }}</flux:breadcrumbs.item>
         <flux:breadcrumbs.item href="{{ route('projects.show', $project) }}" wire:navigate>{{ $project->name }}</flux:breadcrumbs.item>
-        <flux:breadcrumbs.item>Mitglieder</flux:breadcrumbs.item>
+        <flux:breadcrumbs.item>{{ __('Members') }}</flux:breadcrumbs.item>
     </flux:breadcrumbs>
 
-    <flux:heading size="xl" class="mb-1">Mitglieder</flux:heading>
-    <flux:text class="mb-6">Nur Mitglieder sehen dieses Projekt. <strong>Ansehen</strong> darf lesen, <strong>Bearbeiten</strong> darf Aufgaben ändern und kommentieren, <strong>Verwalten</strong> darf zusätzlich Mitglieder und Status ändern. Administratoren der Anwendung haben immer Zugriff.</flux:text>
+    <flux:heading size="xl" class="mb-1">{{ __('Members') }}</flux:heading>
+    <flux:text class="mb-6">{!! __('Only members can see this project. <strong>View</strong> can read, <strong>Edit</strong> can change and comment on tasks, <strong>Manage</strong> can also change members and statuses. Application administrators always have access.') !!}</flux:text>
 
     <ul class="space-y-2">
         @foreach ($this->members as $member)
             <li wire:key="member-{{ $member->id }}" class="flex items-center gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
                 <flux:avatar size="sm" :name="$member->name" />
                 <div class="min-w-0 flex-1">
-                    <flux:heading class="truncate">{{ $member->name }} @unless ($member->isActive()) <flux:badge size="sm" color="zinc">Deaktiviert</flux:badge> @endunless</flux:heading>
+                    <flux:heading class="truncate">{{ $member->name }} @unless ($member->isActive()) <flux:badge size="sm" color="zinc">{{ __('Deactivated') }}</flux:badge> @endunless</flux:heading>
                     <flux:text size="sm" class="truncate">{{ $member->email }}</flux:text>
                 </div>
-                <flux:select size="sm" variant="listbox" wire:model.live="roles.{{ $member->id }}" aria-label="Rolle" class="max-w-36">
+                <flux:select size="sm" variant="listbox" wire:model.live="roles.{{ $member->id }}" aria-label="{{ __('Role') }}" class="max-w-36">
                     @foreach (ProjectRole::cases() as $role)
                         <flux:select.option value="{{ $role->value }}">{{ $role->label() }}</flux:select.option>
                     @endforeach
                 </flux:select>
-                <flux:button size="xs" variant="ghost" icon="x-mark" wire:click="remove({{ $member->id }})" aria-label="Entfernen" />
+                <flux:button size="xs" variant="ghost" icon="x-mark" wire:click="remove({{ $member->id }})" aria-label="{{ __('Remove') }}" />
             </li>
         @endforeach
     </ul>
 
     <form wire:submit="add" class="mt-6 flex items-end gap-2">
-        <flux:select variant="listbox" searchable wire:model="newUserId" label="Person hinzufügen" placeholder="Person wählen …" class="min-w-0 flex-1">
+        <flux:select variant="listbox" searchable wire:model="newUserId" :label="__('Add person')" placeholder="{{ __('Choose person …') }}" class="min-w-0 flex-1">
             @foreach ($this->candidates as $candidate)
                 <flux:select.option value="{{ $candidate->id }}">{{ $candidate->name }} ({{ $candidate->email }})</flux:select.option>
             @endforeach
         </flux:select>
-        <flux:select variant="listbox" wire:model="newRole" label="Rolle" class="max-w-36">
+        <flux:select variant="listbox" wire:model="newRole" :label="__('Role')" class="max-w-36">
             @foreach (ProjectRole::cases() as $role)
                 <flux:select.option value="{{ $role->value }}">{{ $role->label() }}</flux:select.option>
             @endforeach
         </flux:select>
-        <flux:button type="submit" icon="plus">Hinzufügen</flux:button>
+        <flux:button type="submit" icon="plus">{{ __('Add') }}</flux:button>
     </form>
     @error('newUserId') <flux:text class="mt-1 text-red-500">{{ $message }}</flux:text> @enderror
 
-    <flux:heading size="lg" class="mb-1 mt-10">Teams</flux:heading>
-    <flux:text class="mb-4">Alle Personen eines Teams bekommen die hier gewählte Rolle. Wer zusätzlich direkt Mitglied ist, behält die höhere Rolle.</flux:text>
+    <flux:heading size="lg" class="mb-1 mt-10">{{ __('Teams') }}</flux:heading>
+    <flux:text class="mb-4">{{ __('Everyone in a team gets the role chosen here. Anyone who is also a direct member keeps the higher role.') }}</flux:text>
 
     <ul class="space-y-2">
         @forelse ($this->teams as $team)
@@ -251,33 +251,33 @@ new class extends Component
                 <flux:icon.user-group class="shrink-0 text-zinc-400" />
                 <div class="min-w-0 flex-1">
                     <flux:heading class="truncate">{{ $team->name }}</flux:heading>
-                    <flux:text size="sm">{{ $team->users_count }} {{ $team->users_count === 1 ? 'Person' : 'Personen' }}</flux:text>
+                    <flux:text size="sm">{{ trans_choice('{0} :count people|{1} :count person|[2,*] :count people', $team->users_count) }}</flux:text>
                 </div>
-                <flux:select size="sm" variant="listbox" wire:model.live="teamRoles.{{ $team->id }}" aria-label="Rolle" class="max-w-36">
+                <flux:select size="sm" variant="listbox" wire:model.live="teamRoles.{{ $team->id }}" aria-label="{{ __('Role') }}" class="max-w-36">
                     @foreach (ProjectRole::cases() as $role)
                         <flux:select.option value="{{ $role->value }}">{{ $role->label() }}</flux:select.option>
                     @endforeach
                 </flux:select>
-                <flux:button size="xs" variant="ghost" icon="x-mark" wire:click="removeTeam({{ $team->id }})" aria-label="Team entfernen" />
+                <flux:button size="xs" variant="ghost" icon="x-mark" wire:click="removeTeam({{ $team->id }})" aria-label="{{ __('Remove team') }}" />
             </li>
         @empty
-            <flux:text>Noch kein Team hat Zugriff.</flux:text>
+            <flux:text>{{ __('No team has access yet.') }}</flux:text>
         @endforelse
     </ul>
 
     @if ($this->teamCandidates->isNotEmpty())
         <form wire:submit="addTeam" class="mt-4 flex items-end gap-2">
-            <flux:select variant="listbox" wire:model="newTeamId" label="Team hinzufügen" placeholder="Team wählen …" class="min-w-0 flex-1">
+            <flux:select variant="listbox" wire:model="newTeamId" :label="__('Add team')" placeholder="{{ __('Choose team …') }}" class="min-w-0 flex-1">
                 @foreach ($this->teamCandidates as $candidate)
                     <flux:select.option value="{{ $candidate->id }}">{{ $candidate->name }}</flux:select.option>
                 @endforeach
             </flux:select>
-            <flux:select variant="listbox" wire:model="newTeamRole" label="Rolle" class="max-w-36">
+            <flux:select variant="listbox" wire:model="newTeamRole" :label="__('Role')" class="max-w-36">
                 @foreach (ProjectRole::cases() as $role)
                     <flux:select.option value="{{ $role->value }}">{{ $role->label() }}</flux:select.option>
                 @endforeach
             </flux:select>
-            <flux:button type="submit" icon="plus">Hinzufügen</flux:button>
+            <flux:button type="submit" icon="plus">{{ __('Add') }}</flux:button>
         </form>
         @error('newTeamId') <flux:text class="mt-1 text-red-500">{{ $message }}</flux:text> @enderror
     @endif

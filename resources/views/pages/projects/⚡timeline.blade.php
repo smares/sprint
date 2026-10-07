@@ -132,14 +132,14 @@ new class extends Component
 
     public function rendering($view): void
     {
-        $view->title('Zeitleiste – '.$this->project->name);
+        $view->title(__('Timeline – :project', ['project' => $this->project->name]));
     }
 };
 ?>
 
 <div>
     <flux:breadcrumbs class="mb-4">
-        <flux:breadcrumbs.item href="{{ route('projects.index') }}" wire:navigate>Projekte</flux:breadcrumbs.item>
+        <flux:breadcrumbs.item href="{{ route('projects.index') }}" wire:navigate>{{ __('Projects') }}</flux:breadcrumbs.item>
         <flux:breadcrumbs.item>{{ $project->name }}</flux:breadcrumbs.item>
     </flux:breadcrumbs>
 
@@ -149,10 +149,10 @@ new class extends Component
     </div>
 
     <div class="mb-4 flex items-center gap-2">
-        <flux:button icon="chevron-left" wire:click="earlier" aria-label="Früher" />
-        <flux:button icon="chevron-right" wire:click="later" aria-label="Später" />
-        <flux:button wire:click="today">Heute</flux:button>
-        <flux:text class="ms-2">{{ $this->start->format('d.m.Y') }} – {{ $this->end->format('d.m.Y') }}</flux:text>
+        <flux:button icon="chevron-left" wire:click="earlier" aria-label="{{ __('Earlier') }}" />
+        <flux:button icon="chevron-right" wire:click="later" aria-label="{{ __('Later') }}" />
+        <flux:button wire:click="today">{{ __('Today') }}</flux:button>
+        <flux:text class="ms-2">{{ $this->start->isoFormat('L') }} – {{ $this->end->isoFormat('L') }}</flux:text>
     </div>
 
     @php($days = collect(range(0, $this::DAYS - 1))->map(fn ($offset) => $this->start->copy()->addDays($offset)))
@@ -161,7 +161,7 @@ new class extends Component
     <div class="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
         <div class="min-w-max">
             <div class="flex border-b border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
-                <div class="sticky start-0 z-10 w-56 shrink-0 border-e border-zinc-200 bg-zinc-50 p-2 text-sm font-medium dark:border-zinc-700 dark:bg-zinc-900">Aufgabe</div>
+                <div class="sticky start-0 z-10 w-56 shrink-0 border-e border-zinc-200 bg-zinc-50 p-2 text-sm font-medium dark:border-zinc-700 dark:bg-zinc-900">{{ __('Task') }}</div>
                 <div class="grid" style="grid-template-columns: repeat({{ $days->count() }}, 2rem)">
                     @foreach ($days as $day)
                         <div wire:key="head-{{ $day->toDateString() }}" @class([
@@ -170,7 +170,7 @@ new class extends Component
                             'font-bold text-blue-600' => $day->isToday(),
                         ])>
                             @if ($day->day === 1 || $loop->first)
-                                <div class="whitespace-nowrap font-semibold">{{ $day->copy()->locale('de')->translatedFormat('M') }}</div>
+                                <div class="whitespace-nowrap font-semibold">{{ $day->isoFormat('MMM') }}</div>
                             @else
                                 <div>&nbsp;</div>
                             @endif
@@ -186,7 +186,7 @@ new class extends Component
                     <div class="sticky start-0 z-10 flex w-56 shrink-0 items-center gap-1 border-e border-zinc-200 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-800">
                         <a href="{{ route('tasks.show', $task) }}" wire:navigate @class(['truncate text-sm hover:underline', 'line-through text-zinc-400' => $task->isDone()])>{{ $task->title }}</a>
                         @if ($task->isBlocked())
-                            <flux:icon.lock-closed variant="micro" class="shrink-0 text-amber-500" title="Blockiert" />
+                            <flux:icon.lock-closed variant="micro" class="shrink-0 text-amber-500" title="{{ __('Blocked') }}" />
                         @endif
                     </div>
                     <div class="relative grid items-center" data-days="{{ $days->count() }}" style="grid-template-columns: repeat({{ $days->count() }}, 2rem)">
@@ -195,7 +195,7 @@ new class extends Component
                         @endif
                         @php($clippedStart = $task->spanStart()->startOfDay() < $this->start)
                         @php($clippedEnd = $task->spanEnd()->startOfDay() > $this->end->copy()->startOfDay())
-                        <a href="{{ route('tasks.show', $task) }}" wire:navigate title="{{ $task->title }}: {{ $task->spanStart()->format('d.m.') }} – {{ $task->spanEnd()->format('d.m.Y') }}"
+                        <a href="{{ route('tasks.show', $task) }}" wire:navigate title="{{ $task->title }}: {{ $task->spanStart()->isoFormat(__('MM/DD')) }} – {{ $task->spanEnd()->isoFormat('L') }}"
                            @if ($this->canEdit)
                                draggable="false"
                                x-data="timelineBar({{ $task->id }})"
@@ -219,7 +219,7 @@ new class extends Component
                     </div>
                 </div>
             @empty
-                <div class="p-6"><flux:text>In diesen Wochen gibt es keine Aufgaben mit Datum.</flux:text></div>
+                <div class="p-6"><flux:text>{{ __('There are no tasks with dates in these weeks.') }}</flux:text></div>
             @endforelse
         </div>
     </div>
@@ -227,10 +227,10 @@ new class extends Component
     @if ($this->outside['dated'] > 0 || $this->outside['undated'] > 0)
         <flux:text class="mt-4">
             @if ($this->outside['dated'] > 0)
-                {{ $this->outside['dated'] }} {{ $this->outside['dated'] === 1 ? 'Aufgabe liegt' : 'Aufgaben liegen' }} außerhalb dieser Wochen.
+                {{ trans_choice('{1} :count task is outside these weeks.|[2,*] :count tasks are outside these weeks.', $this->outside['dated']) }}
             @endif
             @if ($this->outside['undated'] > 0)
-                {{ $this->outside['undated'] }} {{ $this->outside['undated'] === 1 ? 'Aufgabe hat' : 'Aufgaben haben' }} kein Datum.
+                {{ trans_choice('{1} :count task has no date.|[2,*] :count tasks have no date.', $this->outside['undated']) }}
             @endif
         </flux:text>
     @endif

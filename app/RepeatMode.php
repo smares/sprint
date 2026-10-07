@@ -13,8 +13,8 @@ enum RepeatMode: string
     public function label(): string
     {
         return match ($this) {
-            self::Schedule => 'nach Plan',
-            self::Completion => 'nach Erledigung',
+            self::Schedule => __('on schedule'),
+            self::Completion => __('after completion'),
         };
     }
 }

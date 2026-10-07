@@ -128,14 +128,14 @@ new class extends Component
 
     public function rendering($view): void
     {
-        $view->title('Kalender – '.$this->project->name);
+        $view->title(__('Calendar – :project', ['project' => $this->project->name]));
     }
 };
 ?>
 
 <div>
     <flux:breadcrumbs class="mb-4">
-        <flux:breadcrumbs.item href="{{ route('projects.index') }}" wire:navigate>Projekte</flux:breadcrumbs.item>
+        <flux:breadcrumbs.item href="{{ route('projects.index') }}" wire:navigate>{{ __('Projects') }}</flux:breadcrumbs.item>
         <flux:breadcrumbs.item>{{ $project->name }}</flux:breadcrumbs.item>
     </flux:breadcrumbs>
 
@@ -145,17 +145,17 @@ new class extends Component
     </div>
 
     <div class="mb-4 flex items-center gap-2">
-        <flux:button icon="chevron-left" wire:click="previousMonth" aria-label="Voriger Monat" />
-        <flux:button icon="chevron-right" wire:click="nextMonth" aria-label="Nächster Monat" />
-        <flux:button wire:click="today">Heute</flux:button>
-        <flux:heading size="lg" class="ms-2">{{ $this->monthStart->copy()->locale('de')->translatedFormat('F Y') }}</flux:heading>
+        <flux:button icon="chevron-left" wire:click="previousMonth" aria-label="{{ __('Previous month') }}" />
+        <flux:button icon="chevron-right" wire:click="nextMonth" aria-label="{{ __('Next month') }}" />
+        <flux:button wire:click="today">{{ __('Today') }}</flux:button>
+        <flux:heading size="lg" class="ms-2">{{ $this->monthStart->isoFormat('MMMM YYYY') }}</flux:heading>
     </div>
 
     <div class="overflow-x-auto">
         <div class="grid min-w-[56rem] grid-cols-7 border-s border-t border-zinc-200 dark:border-zinc-700">
             @foreach ($this->weeks[0] as $weekday)
                 <div class="border-e border-b border-zinc-200 bg-zinc-50 p-2 text-sm font-medium dark:border-zinc-700 dark:bg-zinc-900">
-                    {{ $weekday['date']->copy()->locale('de')->isoFormat('dd') }}
+                    {{ $weekday['date']->isoFormat('dd') }}
                 </div>
             @endforeach
 
@@ -189,7 +189,7 @@ new class extends Component
                         @endforeach
 
                         @if ($day['tasks']->count() > 3)
-                            <flux:text size="sm" class="px-1">+ {{ $day['tasks']->count() - 3 }} weitere</flux:text>
+                            <flux:text size="sm" class="px-1">{{ __('+ :count more', ['count' => $day['tasks']->count() - 3]) }}</flux:text>
                         @endif
                     </div>
                 @endforeach
@@ -198,6 +198,6 @@ new class extends Component
     </div>
 
     @if ($this->undated > 0)
-        <flux:text class="mt-4">{{ $this->undated }} {{ $this->undated === 1 ? 'Aufgabe hat' : 'Aufgaben haben' }} kein Datum und {{ $this->undated === 1 ? 'erscheint' : 'erscheinen' }} deshalb nicht im Kalender.</flux:text>
+        <flux:text class="mt-4">{{ trans_choice('{1} :count task has no date and therefore does not appear in the calendar.|[2,*] :count tasks have no date and therefore do not appear in the calendar.', $this->undated) }}</flux:text>
     @endif
 </div>

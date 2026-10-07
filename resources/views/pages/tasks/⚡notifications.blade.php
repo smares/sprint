@@ -2,10 +2,9 @@
 
 use App\Models\Task;
 use App\Models\User;
-use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Title('Benachrichtigungen')] class extends Component
+new class extends Component
 {
     public Task $task;
 
@@ -29,17 +28,22 @@ new #[Title('Benachrichtigungen')] class extends Component
         $this->task->setMutedBy($this->user, false);
         $this->muted = false;
     }
+
+    public function rendering($view): void
+    {
+        $view->title(__('Notifications'));
+    }
 };
 ?>
 
 <div class="mx-auto max-w-md space-y-4 pt-12">
-    <flux:heading size="xl">Benachrichtigungen</flux:heading>
+    <flux:heading size="xl">{{ __('Notifications') }}</flux:heading>
 
     @if ($muted)
-        <flux:callout variant="success" icon="bell-slash" heading="Abbestellt" text="Du bekommst keine E-Mails mehr zu „{{ $task->title }}“." />
-        <flux:button wire:click="unmute" icon="bell">Wieder aktivieren</flux:button>
+        <flux:callout variant="success" icon="bell-slash" :heading="__('Unsubscribed')" :text="__('You will no longer receive emails about “:task”.', ['task' => $task->title])" />
+        <flux:button wire:click="unmute" icon="bell">{{ __('Reactivate') }}</flux:button>
     @else
-        <flux:text>Möchtest du keine E-Mails mehr zu „{{ $task->title }}“ ({{ $task->project->name }}) bekommen, {{ $user->name }}?</flux:text>
-        <flux:button wire:click="mute" icon="bell-slash" variant="primary">Für diese Aufgabe abbestellen</flux:button>
+        <flux:text>{{ __('Do you want to stop receiving emails about “:task” (:project), :name?', ['task' => $task->title, 'project' => $task->project->name, 'name' => $user->name]) }}</flux:text>
+        <flux:button wire:click="mute" icon="bell-slash" variant="primary">{{ __('Unsubscribe from this task') }}</flux:button>
     @endif
 </div>

@@ -24,12 +24,12 @@ class CustomField extends Model
     public static function priorityDefaults(): array
     {
         return [
-            'name' => 'Priorität',
+            'name' => __('Priority'),
             'options' => [
-                ['name' => 'Niedrig', 'color' => '#0ea5e9'],
-                ['name' => 'Mittel', 'color' => '#f59e0b'],
-                ['name' => 'Hoch', 'color' => '#f97316'],
-                ['name' => 'Dringend', 'color' => '#ef4444'],
+                ['name' => __('Low'), 'color' => '#0ea5e9'],
+                ['name' => __('Medium'), 'color' => '#f59e0b'],
+                ['name' => __('High'), 'color' => '#f97316'],
+                ['name' => __('Urgent'), 'color' => '#ef4444'],
             ],
         ];
     }

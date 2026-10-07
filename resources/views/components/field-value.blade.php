@@ -5,7 +5,7 @@
     $option = $fieldValue?->option_id ? $field->options->firstWhere('id', $fieldValue->option_id) : null;
     $text = match (true) {
         $fieldValue === null || $fieldValue->value === null => null,
-        $field->type === \App\CustomFieldType::Date => \Illuminate\Support\Carbon::parse($fieldValue->value)->format('d.m.Y'),
+        $field->type === \App\CustomFieldType::Date => \Illuminate\Support\Carbon::parse($fieldValue->value)->isoFormat('L'),
         default => $fieldValue->value,
     };
 @endphp

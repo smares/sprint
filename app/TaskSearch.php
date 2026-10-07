@@ -214,18 +214,18 @@ class TaskSearch
         }
 
         if ($contains($task->description)) {
-            return ['label' => 'Beschreibung', 'text' => $excerpt($task->description)];
+            return ['label' => __('Description'), 'text' => $excerpt($task->description)];
         }
 
         foreach ($task->comments as $comment) {
             if ($contains($comment->body)) {
-                return ['label' => 'Kommentar', 'text' => $excerpt($comment->body)];
+                return ['label' => __('Comment'), 'text' => $excerpt($comment->body)];
             }
         }
 
         foreach ($task->attachments as $attachment) {
             if ($contains($attachment->name)) {
-                return ['label' => 'Anhang', 'text' => $attachment->name];
+                return ['label' => __('Attachment'), 'text' => $attachment->name];
             }
         }
 

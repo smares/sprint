@@ -12,10 +12,10 @@ enum CustomFieldType: string
     public function label(): string
     {
         return match ($this) {
-            self::Select => 'Auswahl',
-            self::Text => 'Text',
-            self::Number => 'Zahl',
-            self::Date => 'Datum',
+            self::Select => __('Selection'),
+            self::Text => __('Text'),
+            self::Number => __('Number'),
+            self::Date => __('Date'),
         };
     }
 }

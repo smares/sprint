@@ -107,7 +107,7 @@ trait EditsTasksInBulk
         unset($this->selectedIds);
 
         if ($this->totalTasks > self::MAX_SELECTION) {
-            Flux::toast(variant: 'warning', text: 'Es werden höchstens '.self::MAX_SELECTION.' Aufgaben auf einmal ausgewählt.');
+            Flux::toast(variant: 'warning', text: __('At most :count tasks are selected at once.', ['count' => self::MAX_SELECTION]));
         }
     }
 
@@ -121,7 +121,7 @@ trait EditsTasksInBulk
         $ids = $this->selectedIds;
 
         if ($ids === []) {
-            throw ValidationException::withMessages(['selected' => 'Wähle zuerst Aufgaben aus.']);
+            throw ValidationException::withMessages(['selected' => __('Select tasks first.')]);
         }
 
         return $this->project->tasks()->whereNull('parent_id')->where('is_section', false)->whereKey($ids)->get();
@@ -148,7 +148,7 @@ trait EditsTasksInBulk
             }
         });
 
-        $this->finishBulk($tasks->count() === 1 ? 'Eine Aufgabe erledigt.' : $tasks->count().' Aufgaben erledigt.');
+        $this->finishBulk(trans_choice('{1} One task completed.|[0,*] :count tasks completed.', $tasks->count()));
     }
 
     public function applyBulkChanges(): void
@@ -164,12 +164,12 @@ trait EditsTasksInBulk
             'bulkAddTags.*' => ['integer', Rule::exists('tags', 'id')->where('project_id', $this->project->getKey())],
             'bulkRemoveTags' => ['array'],
             'bulkRemoveTags.*' => ['integer', Rule::exists('tags', 'id')->where('project_id', $this->project->getKey())],
-        ], attributes: ['bulkStatus' => 'Status', 'bulkAssignee' => 'Zuständig', 'bulkDueDate' => 'Fälligkeit']);
+        ], attributes: ['bulkStatus' => __('Status'), 'bulkAssignee' => __('Assignee'), 'bulkDueDate' => __('Due date')]);
 
         $due = $validated['bulkClearDueDate'] ? false : ($validated['bulkDueDate'] ?: null);
 
         if (($validated['bulkStatus'] ?? '') === '' && ($validated['bulkAssignee'] ?? '') === '' && $due === null && $validated['bulkAddTags'] === [] && $validated['bulkRemoveTags'] === []) {
-            throw ValidationException::withMessages(['bulkStatus' => 'Wähle mindestens eine Änderung aus.']);
+            throw ValidationException::withMessages(['bulkStatus' => __('Select at least one change.')]);
         }
 
         $tasks = $this->selectedTasks();
@@ -205,7 +205,7 @@ trait EditsTasksInBulk
             }
         }));
 
-        $this->finishBulk($tasks->count() === 1 ? 'Eine Aufgabe geändert.' : $tasks->count().' Aufgaben geändert.');
+        $this->finishBulk(trans_choice('{1} One task changed.|[0,*] :count tasks changed.', $tasks->count()));
     }
 
     /**
@@ -243,6 +243,6 @@ trait EditsTasksInBulk
             $this->openTaskId = '';
         }
 
-        $this->finishBulk($tasks->count() === 1 ? 'Eine Aufgabe gelöscht.' : $tasks->count().' Aufgaben gelöscht.');
+        $this->finishBulk(trans_choice('{1} One task deleted.|[0,*] :count tasks deleted.', $tasks->count()));
     }
 }

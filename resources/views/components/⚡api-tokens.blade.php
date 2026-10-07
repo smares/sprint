@@ -25,7 +25,7 @@ new class extends Component
         $validated = $this->validate([
             'name' => ['required', 'string', 'max:100'],
             'expiry' => ['required', 'in:30,90,365,never'],
-        ], attributes: ['name' => 'Name', 'expiry' => 'Gültigkeit']);
+        ], attributes: ['name' => __('Name'), 'expiry' => __('Validity')]);
 
         abort_unless(auth()->user()->isActive(), 403);
 
@@ -49,42 +49,42 @@ new class extends Component
         auth()->user()->tokens()->whereKey($tokenId)->delete();
 
         unset($this->tokens);
-        Flux::toast(variant: 'success', text: 'Token widerrufen.');
+        Flux::toast(variant: 'success', text: __('Token revoked.'));
     }
 };
 ?>
 
 <div class="space-y-4">
     <div>
-        <flux:heading size="lg">API-Zugang für KI-Agenten</flux:heading>
-        <flux:text class="mt-1">Mit einem Token können Agenten wie Claude Code über MCP Aufgaben lesen, anlegen und ändern – mit genau deinen Rechten und unter deinem Namen. Löschen ist nicht möglich.</flux:text>
+        <flux:heading size="lg">{{ __('API access for AI agents') }}</flux:heading>
+        <flux:text class="mt-1">{{ __('With a token, agents such as Claude Code can read, create and change tasks via MCP – with exactly your permissions and under your name. Deleting is not possible.') }}</flux:text>
     </div>
 
     @if ($createdToken)
         <flux:callout variant="success" icon="key" x-data="{ copied: false }">
-            <flux:callout.heading>Token erstellt – jetzt kopieren</flux:callout.heading>
+            <flux:callout.heading>{{ __('Token created – copy it now') }}</flux:callout.heading>
             <flux:callout.text>
-                Er wird nur dieses eine Mal angezeigt.
+                {{ __('It is only shown this one time.') }}
                 <code class="mt-2 block break-all rounded bg-zinc-100 p-2 text-xs dark:bg-zinc-800">{{ $createdToken }}</code>
                 <code class="mt-2 block break-all rounded bg-zinc-100 p-2 text-xs dark:bg-zinc-800">claude mcp add --transport http sprint {{ url('/mcp') }} --header "Authorization: Bearer {{ $createdToken }}"</code>
             </flux:callout.text>
             <x-slot name="actions">
-                <flux:button size="sm" x-on:click="navigator.clipboard.writeText(@js($createdToken)); copied = true" x-text="copied ? 'Kopiert' : 'Token kopieren'">Token kopieren</flux:button>
-                <flux:button size="sm" variant="ghost" wire:click="dismissToken">Fertig</flux:button>
+                <flux:button size="sm" x-on:click="navigator.clipboard.writeText(@js($createdToken)); copied = true" x-text="copied ? @js(__('Copied')) : @js(__('Copy token'))">{{ __('Copy token') }}</flux:button>
+                <flux:button size="sm" variant="ghost" wire:click="dismissToken">{{ __('Finish') }}</flux:button>
             </x-slot>
         </flux:callout>
     @endif
 
     <form wire:submit="create" class="space-y-4">
-        <flux:input wire:model="name" label="Name des Tokens" placeholder="z. B. Claude Code auf dem Laptop" />
-        <flux:select wire:model="expiry" label="Gültigkeit">
-            <flux:select.option value="30">30 Tage</flux:select.option>
-            <flux:select.option value="90">90 Tage</flux:select.option>
-            <flux:select.option value="365">1 Jahr</flux:select.option>
-            <flux:select.option value="never">Unbegrenzt</flux:select.option>
+        <flux:input wire:model="name" :label="__('Token name')" placeholder="{{ __('e.g. Claude Code on the laptop') }}" />
+        <flux:select wire:model="expiry" :label="__('Validity')">
+            <flux:select.option value="30">{{ __('30 days') }}</flux:select.option>
+            <flux:select.option value="90">{{ __('90 days') }}</flux:select.option>
+            <flux:select.option value="365">{{ __('1 year') }}</flux:select.option>
+            <flux:select.option value="never">{{ __('Unlimited') }}</flux:select.option>
         </flux:select>
-        <flux:switch wire:model="readOnly" label="Nur lesen" description="Der Agent kann Aufgaben ansehen, aber nichts anlegen oder ändern." />
-        <flux:button type="submit">Token erstellen</flux:button>
+        <flux:switch wire:model="readOnly" :label="__('Read only')" :description="__('The agent can view tasks but not create or change anything.')" />
+        <flux:button type="submit">{{ __('Create token') }}</flux:button>
     </form>
 
     @if ($this->tokens->isNotEmpty())
@@ -94,12 +94,12 @@ new class extends Component
                     <div class="min-w-0">
                         <div class="truncate font-medium">{{ $token->name }}</div>
                         <flux:text size="sm">
-                            {{ $token->can('write') ? 'Lesen und schreiben' : 'Nur lesen' }}
-                            · {{ $token->last_used_at ? 'zuletzt benutzt '.$token->last_used_at->diffForHumans() : 'noch nie benutzt' }}
-                            · {{ $token->expires_at ? ($token->expires_at->isPast() ? 'abgelaufen' : 'gültig bis '.$token->expires_at->format('d.m.Y')) : 'unbegrenzt gültig' }}
+                            {{ $token->can('write') ? __('Read and write') : __('Read only') }}
+                            · {{ $token->last_used_at ? __('last used :time', ['time' => $token->last_used_at->diffForHumans()]) : __('never used') }}
+                            · {{ $token->expires_at ? ($token->expires_at->isPast() ? __('expired') : __('valid until :date', ['date' => $token->expires_at->isoFormat('L')])) : __('valid indefinitely') }}
                         </flux:text>
                     </div>
-                    <flux:button size="sm" variant="ghost" icon="trash" wire:click="revoke({{ $token->id }})" wire:confirm="Token „{{ $token->name }}“ widerrufen? Agenten damit verlieren sofort den Zugriff." aria-label="Token widerrufen" />
+                    <flux:button size="sm" variant="ghost" icon="trash" wire:click="revoke({{ $token->id }})" wire:confirm="{{ __('Revoke token “:name”? Agents using it lose access immediately.', ['name' => $token->name]) }}" aria-label="{{ __('Revoke token') }}" />
                 </div>
             @endforeach
         </div>

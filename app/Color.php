@@ -16,18 +16,18 @@ class Color
      * @var list<array{0: string, 1: string}>
      */
     public const SWATCHES = [
-        ['#71717a', 'Grau'],
-        ['#ef4444', 'Rot'],
+        ['#71717a', 'Gray'],
+        ['#ef4444', 'Red'],
         ['#f97316', 'Orange'],
-        ['#f59e0b', 'Bernstein'],
-        ['#84cc16', 'Limette'],
-        ['#22c55e', 'Grün'],
-        ['#14b8a6', 'Türkis'],
-        ['#0ea5e9', 'Himmelblau'],
-        ['#3b82f6', 'Blau'],
+        ['#f59e0b', 'Amber'],
+        ['#84cc16', 'Lime'],
+        ['#22c55e', 'Green'],
+        ['#14b8a6', 'Turquoise'],
+        ['#0ea5e9', 'Sky blue'],
+        ['#3b82f6', 'Blue'],
         ['#6366f1', 'Indigo'],
-        ['#a855f7', 'Violett'],
-        ['#ec4899', 'Rosa'],
+        ['#a855f7', 'Violet'],
+        ['#ec4899', 'Pink'],
     ];
 
     /**

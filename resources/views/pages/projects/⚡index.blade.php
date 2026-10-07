@@ -4,10 +4,9 @@ use App\Models\Project;
 use App\ProjectRole;
 use Flux\Flux;
 use Livewire\Attributes\Computed;
-use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Title('Projekte')] class extends Component
+new class extends Component
 {
     public string $name = '';
 
@@ -55,20 +54,25 @@ new #[Title('Projekte')] class extends Component
 
         $this->redirectRoute('projects.show', $project, navigate: true);
     }
+
+    public function rendering($view): void
+    {
+        $view->title(__('Projects'));
+    }
 };
 ?>
 
 <div>
     <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <flux:heading size="xl">Projekte</flux:heading>
+        <flux:heading size="xl">{{ __('Projects') }}</flux:heading>
 
         <flux:modal.trigger name="create-project">
-            <flux:button variant="primary" icon="plus">Neues Projekt</flux:button>
+            <flux:button variant="primary" icon="plus">{{ __('New project') }}</flux:button>
         </flux:modal.trigger>
     </div>
 
     @if ($this->projects->isEmpty())
-        <flux:callout icon="folder-open" heading="Noch keine Projekte" text="Lege das erste Projekt an, um Aufgaben zu verwalten." />
+        <flux:callout icon="folder-open" :heading="__('No projects yet')" :text="__('Create your first project to start managing tasks.')" />
     @else
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             @foreach ($this->projects as $project)
@@ -77,8 +81,8 @@ new #[Title('Projekte')] class extends Component
                         <flux:heading size="lg">{{ $project->name }}</flux:heading>
                         <flux:text class="mt-1 line-clamp-2">{{ $project->description }}</flux:text>
                         <div class="mt-4 flex gap-2">
-                            <flux:badge color="blue">{{ $project->open_tasks_count }} offen</flux:badge>
-                            <flux:badge>{{ $project->tasks_count }} gesamt</flux:badge>
+                            <flux:badge color="blue">{{ __(':count open', ['count' => $project->open_tasks_count]) }}</flux:badge>
+                            <flux:badge>{{ __(':count total', ['count' => $project->tasks_count]) }}</flux:badge>
                         </div>
                     </flux:card>
                 </a>
@@ -88,12 +92,12 @@ new #[Title('Projekte')] class extends Component
 
     @if ($this->archivedProjects->isNotEmpty())
         <details class="mt-10">
-            <summary class="cursor-pointer text-sm font-medium text-zinc-500 dark:text-zinc-400">Archivierte Projekte ({{ $this->archivedProjects->count() }})</summary>
+            <summary class="cursor-pointer text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ __('Archived projects (:count)', ['count' => $this->archivedProjects->count()]) }}</summary>
             <ul class="mt-3 space-y-1">
                 @foreach ($this->archivedProjects as $archived)
                     <li wire:key="archived-{{ $archived->id }}">
                         <a href="{{ route('projects.show', $archived) }}" wire:navigate class="hover:underline">{{ $archived->name }}</a>
-                        <flux:text size="sm" class="ms-2 inline">archiviert am {{ $archived->archived_at->format('d.m.Y') }}</flux:text>
+                        <flux:text size="sm" class="ms-2 inline">{{ __('archived on :date', ['date' => $archived->archived_at->isoFormat('L')]) }}</flux:text>
                     </li>
                 @endforeach
             </ul>
@@ -102,12 +106,12 @@ new #[Title('Projekte')] class extends Component
 
     <flux:modal name="create-project" class="md:w-96">
         <form wire:submit="create" class="space-y-6">
-            <flux:heading size="lg">Neues Projekt</flux:heading>
-            <flux:input wire:model="name" label="Name" autofocus />
-            <flux:textarea wire:model="description" label="Beschreibung" rows="3" />
+            <flux:heading size="lg">{{ __('New project') }}</flux:heading>
+            <flux:input wire:model="name" :label="__('Name')" autofocus />
+            <flux:textarea wire:model="description" :label="__('Description')" rows="3" />
             <div class="flex">
                 <flux:spacer />
-                <flux:button type="submit" variant="primary">Anlegen</flux:button>
+                <flux:button type="submit" variant="primary">{{ __('Create') }}</flux:button>
             </div>
         </form>
     </flux:modal>

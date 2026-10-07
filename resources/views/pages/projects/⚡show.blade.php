@@ -359,6 +359,9 @@ new class extends Component
                             @if ($task->isBlocked())
                                 <flux:icon.lock-closed variant="micro" class="ms-1 inline text-amber-500" title="Blockiert" />
                             @endif
+                            @if ($task->isRecurring())
+                                <flux:icon.arrow-path variant="micro" class="ms-1 inline text-zinc-400" title="Wiederholt sich {{ $task->recurrenceLabel() }}" />
+                            @endif
                             @if ($progress = $this->progress[$task->id] ?? null)
                                 <flux:badge size="sm" icon="list-bullet" class="ms-1">{{ $progress['done'] }}/{{ $progress['total'] }}</flux:badge>
                             @endif

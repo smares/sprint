@@ -3,6 +3,8 @@
 use App\CustomFieldType;
 use App\Markdown;
 use App\Models\CustomField;
+use App\RepeatMode;
+use App\RepeatUnit;
 use App\Models\Tag;
 use App\Models\Task;
 use App\Models\User;
@@ -29,6 +31,14 @@ new class extends Component
     public string $dueDate = '';
 
     public string $startDate = '';
+
+    public string $repeatUnit = '';
+
+    public string $repeatInterval = '1';
+
+    public string $repeatMode = 'schedule';
+
+    public string $repeatUntil = '';
 
     /** @var array<int|string, string|null> */
     public array $fieldValues = [];
@@ -85,6 +95,10 @@ new class extends Component
         $this->assigneeId = (string) ($this->task->assignee_id ?? '');
         $this->dueDate = $this->task->due_date?->format('Y-m-d') ?? '';
         $this->startDate = $this->task->start_date?->format('Y-m-d') ?? '';
+        $this->repeatUnit = $this->task->repeat_unit?->value ?? '';
+        $this->repeatInterval = (string) ($this->task->repeat_interval ?? 1);
+        $this->repeatMode = $this->task->repeat_mode?->value ?? RepeatMode::Schedule->value;
+        $this->repeatUntil = $this->task->repeat_until?->format('Y-m-d') ?? '';
         $this->fieldValues = $this->task->fieldValues
             ->mapWithKeys(fn ($value) => [$value->custom_field_id => (string) ($value->option_id ?? $value->value)])
             ->all();
@@ -447,6 +461,10 @@ new class extends Component
             'assigneeId' => ['nullable', Rule::in($this->users->pluck('id')->map(fn ($id) => (string) $id)->all())],
             'dueDate' => ['nullable', 'date'],
             'startDate' => ['nullable', 'date', 'before_or_equal:dueDate'],
+            'repeatUnit' => ['nullable', Rule::enum(RepeatUnit::class)],
+            'repeatInterval' => ['required', 'integer', 'min:1', 'max:365'],
+            'repeatMode' => ['required', Rule::enum(RepeatMode::class)],
+            'repeatUntil' => ['nullable', 'date', 'after_or_equal:dueDate'],
             ...$this->fieldRules(),
             'tagIds' => ['array'],
             'tagIds.*' => ['integer', Rule::exists('tags', 'id')->where('project_id', $this->task->project_id)],
@@ -458,6 +476,12 @@ new class extends Component
             'blockingIds' => ['array'],
             'blockingIds.*' => ['integer', Rule::exists('tasks', 'id')->where('project_id', $this->task->project_id)->whereNot('id', $this->task->getKey())],
         ]);
+
+        if ($validated['repeatUnit'] !== '' && $validated['repeatUnit'] !== null && ($validated['dueDate'] ?? '') === '') {
+            throw ValidationException::withMessages([
+                'dueDate' => 'Für eine wiederkehrende Aufgabe braucht es eine Fälligkeit.',
+            ]);
+        }
 
         if (array_intersect($validated['blockerIds'], $validated['blockingIds']) !== []) {
             throw ValidationException::withMessages([
@@ -491,6 +515,10 @@ new class extends Component
             'assignee_id' => $validated['assigneeId'] ?: null,
             'due_date' => $validated['dueDate'] ?: null,
             'start_date' => $validated['startDate'] ?: null,
+            'repeat_unit' => $validated['repeatUnit'] ?: null,
+            'repeat_interval' => (int) $validated['repeatInterval'],
+            'repeat_mode' => $validated['repeatMode'],
+            'repeat_until' => ($validated['repeatUnit'] ?: null) ? ($validated['repeatUntil'] ?: null) : null,
         ]);
 
         $this->saveFieldValues($validated['fieldValues'] ?? []);
@@ -610,6 +638,30 @@ new class extends Component
 
         <div class="grid gap-4 sm:grid-cols-3">
             <flux:date-picker wire:model="startDate" label="Beginnt am" locale="de-DE" clearable />
+        </div>
+
+        <div class="space-y-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
+            <flux:heading>Wiederholung</flux:heading>
+            <div class="grid gap-4 sm:grid-cols-4">
+                <flux:select variant="listbox" wire:model.live="repeatUnit" label="Wiederholen" placeholder="Nie">
+                    <flux:select.option value="">Nie</flux:select.option>
+                    @foreach (\App\RepeatUnit::cases() as $unit)
+                        <flux:select.option value="{{ $unit->value }}">{{ $unit->label() }}</flux:select.option>
+                    @endforeach
+                </flux:select>
+                @if ($repeatUnit !== '')
+                    <flux:input wire:model="repeatInterval" type="number" min="1" max="365" label="Alle" />
+                    <flux:select variant="listbox" wire:model="repeatMode" label="Berechnet">
+                        @foreach (\App\RepeatMode::cases() as $mode)
+                            <flux:select.option value="{{ $mode->value }}">{{ $mode->label() }}</flux:select.option>
+                        @endforeach
+                    </flux:select>
+                    <flux:date-picker wire:model="repeatUntil" label="Bis" locale="de-DE" clearable />
+                @endif
+            </div>
+            @if ($repeatUnit !== '')
+                <flux:text size="sm">Sobald du die Aufgabe erledigst, entsteht die nächste (mit Zuständigen, Tags, Feldern und Subtasks). <em>Nach Plan</em> rechnet ab dem Fälligkeitsdatum, <em>nach Erledigung</em> ab dem Tag, an dem du sie erledigst. Voraussetzung ist eine Fälligkeit.</flux:text>
+            @endif
         </div>
 
         @if ($this->customFields->isNotEmpty())

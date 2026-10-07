@@ -5,6 +5,7 @@ use App\CustomFieldType;
 use App\Models\CustomField;
 use App\Models\CustomFieldValue;
 use App\Models\Project;
+use App\Models\SavedFilter;
 use App\Models\Task;
 use App\Models\TaskStatus;
 use Flux\Flux;
@@ -318,6 +319,97 @@ new class extends Component
         };
     }
 
+    public string $saveName = '';
+
+    public bool $saveShared = false;
+
+    /**
+     * Saved views: the shared ones and the person's own.
+     */
+    #[Computed]
+    public function savedFilters()
+    {
+        return $this->project->savedFilters()->visibleTo(auth()->user())->orderBy('name')->get();
+    }
+
+    /**
+     * @return array{status: string, assignee: string, tag: string, fields: array<int|string, string>, sort: string, direction: string}
+     */
+    private function currentFilters(): array
+    {
+        return [
+            'status' => $this->statusFilter,
+            'assignee' => $this->assigneeFilter,
+            'tag' => $this->tagFilter,
+            'fields' => array_filter($this->fieldFilters, fn ($option) => $option !== '' && $option !== null),
+            'sort' => $this->sortBy,
+            'direction' => $this->sortDirection,
+        ];
+    }
+
+    public function saveCurrentFilter(): void
+    {
+        $validated = $this->validate(['saveName' => ['required', 'string', 'max:80']], attributes: ['saveName' => 'Name']);
+
+        $shared = $this->saveShared && Gate::allows('manage', $this->project);
+
+        $this->project->savedFilters()->updateOrCreate(
+            ['user_id' => $shared ? null : auth()->id(), 'name' => trim($validated['saveName'])],
+            ['filters' => $this->currentFilters()],
+        );
+
+        $this->reset('saveName', 'saveShared');
+        unset($this->savedFilters);
+        Flux::toast(variant: 'success', text: 'Ansicht gespeichert.');
+    }
+
+    /**
+     * Apply a saved view; entries that no longer exist (deleted tags, statuses, people) are skipped.
+     */
+    public function applyFilter(int $filterId): void
+    {
+        $saved = $this->project->savedFilters()->visibleTo(auth()->user())->findOrFail($filterId);
+        $filters = $saved->filters;
+
+        $status = (string) ($filters['status'] ?? 'open');
+        $this->statusFilter = in_array($status, ['open', 'all'], true) || ($this->statuses->contains('id', (int) $status) && ctype_digit($status)) ? $status : 'open';
+
+        $assignee = (string) ($filters['assignee'] ?? '');
+        $this->assigneeFilter = $assignee === 'me' || ($assignee !== '' && ctype_digit($assignee) && $this->users->contains('id', (int) $assignee)) ? $assignee : '';
+
+        $tag = (string) ($filters['tag'] ?? '');
+        $this->tagFilter = $tag !== '' && ctype_digit($tag) && $this->tagOptions->contains('id', (int) $tag) ? $tag : '';
+
+        $this->fieldFilters = [];
+
+        foreach ((array) ($filters['fields'] ?? []) as $fieldId => $optionId) {
+            $field = $this->filterableFields->firstWhere('id', (int) $fieldId);
+
+            if ($field !== null && $field->options->contains('id', (int) $optionId)) {
+                $this->fieldFilters[$field->id] = (string) $optionId;
+            }
+        }
+
+        $sort = (string) ($filters['sort'] ?? '');
+        $validSort = in_array($sort, ['due', 'title', 'status'], true) || (str_starts_with($sort, 'field:') && $this->customFields->contains('id', (int) substr($sort, 6)));
+        $this->sortBy = $validSort ? $sort : '';
+        $this->sortDirection = ($filters['direction'] ?? 'asc') === 'desc' ? 'desc' : 'asc';
+
+        $this->limit = self::PAGE_SIZE;
+        unset($this->tasks, $this->totalTasks, $this->activeFilters);
+        Flux::modal('saved-filters')->close();
+    }
+
+    public function deleteFilter(int $filterId): void
+    {
+        $saved = $this->project->savedFilters()->visibleTo(auth()->user())->findOrFail($filterId);
+
+        abort_unless(! $saved->isShared() || Gate::allows('manage', $this->project), 403);
+
+        $saved->delete();
+        unset($this->savedFilters);
+    }
+
     public function resetFilters(): void
     {
         $this->statusFilter = 'open';
@@ -429,6 +521,10 @@ new class extends Component
             </flux:button>
         </flux:modal.trigger>
 
+        <flux:modal.trigger name="saved-filters">
+            <flux:button icon="bookmark">Ansichten @if ($this->savedFilters->isNotEmpty()) <flux:badge size="sm" inset="top bottom">{{ $this->savedFilters->count() }}</flux:badge> @endif</flux:button>
+        </flux:modal.trigger>
+
         <flux:badge size="sm" color="zinc">{{ $this->statusFilterLabel }}</flux:badge>
 
         @foreach ($this->activeFilters as $filter)
@@ -442,6 +538,43 @@ new class extends Component
             <flux:button size="sm" variant="ghost" wire:click="resetFilters">Zurücksetzen</flux:button>
         @endif
     </div>
+
+    <flux:modal name="saved-filters" class="w-full max-w-md">
+        <div class="space-y-5">
+            <div>
+                <flux:heading size="lg">Gespeicherte Ansichten</flux:heading>
+                <flux:text class="mt-1">Eine Ansicht merkt sich Filter und Sortierung der Liste.</flux:text>
+            </div>
+
+            @forelse ($this->savedFilters as $saved)
+                <div wire:key="saved-{{ $saved->id }}" class="flex items-center gap-2">
+                    <flux:button variant="subtle" class="min-w-0 flex-1 justify-start" wire:click="applyFilter({{ $saved->id }})">
+                        <span class="truncate">{{ $saved->name }}</span>
+                    </flux:button>
+                    @if ($saved->isShared())
+                        <flux:badge size="sm" color="blue">Geteilt</flux:badge>
+                    @endif
+                    @if (! $saved->isShared() || $this->canManage)
+                        <flux:button size="xs" variant="ghost" icon="trash" wire:click="deleteFilter({{ $saved->id }})" wire:confirm="Ansicht „{{ $saved->name }}“ löschen?" aria-label="Ansicht löschen" />
+                    @endif
+                </div>
+            @empty
+                <flux:text>Noch keine Ansichten gespeichert.</flux:text>
+            @endforelse
+
+            <flux:separator />
+
+            <form wire:submit="saveCurrentFilter" class="space-y-3">
+                <flux:input wire:model="saveName" label="Aktuelle Filter speichern als" placeholder="z. B. Meine offenen Aufgaben" />
+                @if ($this->canManage)
+                    <flux:checkbox wire:model="saveShared" label="Für alle im Projekt sichtbar" />
+                @endif
+                <div class="flex justify-end">
+                    <flux:button type="submit" variant="primary" icon="bookmark">Speichern</flux:button>
+                </div>
+            </form>
+        </div>
+    </flux:modal>
 
     <flux:modal name="filters" class="w-full max-w-md">
         <div class="space-y-5">

@@ -3,6 +3,7 @@
 namespace App;
 
 use App\Notifications\TaskCommented;
+use App\Notifications\TasksStatusChanged;
 use App\Notifications\TaskStatusChanged;
 use App\Notifications\UserMentioned;
 use Illuminate\Notifications\DatabaseNotification;
@@ -21,6 +22,7 @@ class InboxText
             isset($data['summary']) => $data['summary'],
             $notification->type === TaskCommented::class => TaskCommented::sentence($data),
             $notification->type === TaskStatusChanged::class => TaskStatusChanged::sentence($data),
+            $notification->type === TasksStatusChanged::class => TasksStatusChanged::sentence($data),
             $notification->type === UserMentioned::class => UserMentioned::sentence($data),
             default => '',
         };

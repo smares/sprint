@@ -106,4 +106,4 @@ GitHub Actions führt die Tests auf PHP 8.3, 8.4 und 8.5 aus (`.github/workflows
 
 ## Lizenz
 
-Für Sprint selbst ist noch keine Lizenz festgelegt. Flux UI Pro ist ein kommerzielles Produkt und braucht eine eigene Lizenz.
+Sprint ist proprietäre Software, alle Rechte vorbehalten (siehe [LICENSE](LICENSE)). Flux UI Pro ist ein kommerzielles Produkt und braucht eine eigene Lizenz.

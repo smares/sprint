@@ -115,4 +115,8 @@ new #[Title('Profil')] class extends Component
         <flux:input wire:model="newPasswordConfirmation" type="password" label="Neues Passwort wiederholen" autocomplete="new-password" />
         <flux:button type="submit">Passwort ändern</flux:button>
     </form>
+
+    <flux:separator />
+
+    <livewire:api-tokens />
 </div>

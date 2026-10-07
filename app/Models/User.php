@@ -13,13 +13,14 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable(['name', 'email', 'password', 'is_admin', 'deactivated_at', 'digest_enabled'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable;
 
     /**
      * @var array<string, mixed>
@@ -71,6 +72,7 @@ class User extends Authenticatable
     public function deactivate(): void
     {
         $this->forceFill(['deactivated_at' => now(), 'remember_token' => null])->save();
+        $this->tokens()->delete();
 
         if (config('session.driver') === 'database') {
             DB::table(config('session.table', 'sessions'))->where('user_id', $this->getKey())->delete();

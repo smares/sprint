@@ -2,6 +2,7 @@
 
 use App\CustomFieldType;
 use App\Markdown;
+use App\Models\Attachment;
 use App\Models\CustomField;
 use App\RepeatMode;
 use App\RepeatUnit;
@@ -15,9 +16,12 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 new class extends Component
 {
+    use WithFileUploads;
+
     public Task $task;
 
     public string $title = '';
@@ -44,6 +48,9 @@ new class extends Component
     public array $fieldValues = [];
 
     public string $comment = '';
+
+    /** @var list<\Livewire\Features\SupportFileUploads\TemporaryUploadedFile> */
+    public array $uploads = [];
 
     /** @var list<string> */
     public array $tagIds = [];
@@ -586,6 +593,50 @@ new class extends Component
         unset($this->activityFeed);
     }
 
+    #[Computed]
+    public function attachments()
+    {
+        return $this->task->attachments()->with('user')->orderBy('id')->get();
+    }
+
+    public function updatedUploads(): void
+    {
+        $this->authorizeEdit();
+
+        $this->validate(['uploads' => ['array', 'max:20'], 'uploads.*' => ['file', 'max:'.Attachment::MAX_KILOBYTES]], [], ['uploads.*' => 'Datei']);
+
+        $names = [];
+
+        foreach ($this->uploads as $upload) {
+            $name = $upload->getClientOriginalName();
+
+            $this->task->attachments()->create([
+                'user_id' => auth()->id(),
+                'name' => $name,
+                'path' => $upload->store("attachments/{$this->task->project_id}/{$this->task->id}", Attachment::DISK),
+                'mime_type' => $upload->getMimeType(),
+                'size' => $upload->getSize(),
+            ]);
+
+            $names[] = $name;
+        }
+
+        $this->reset('uploads');
+        $this->task->logActivity('attachments_added', ['names' => $names]);
+        unset($this->attachments, $this->activityFeed);
+    }
+
+    public function deleteAttachment(int $attachmentId): void
+    {
+        $this->authorizeEdit();
+
+        $attachment = $this->task->attachments()->findOrFail($attachmentId);
+        $attachment->delete();
+
+        $this->task->logActivity('attachments_removed', ['names' => [$attachment->name]]);
+        unset($this->attachments, $this->activityFeed);
+    }
+
     public function delete(): void
     {
         $this->authorizeEdit();
@@ -771,6 +822,42 @@ new class extends Component
 
     <flux:separator class="my-8" />
 
+    <flux:heading size="lg" class="mb-2">Anhänge</flux:heading>
+
+    <ul class="space-y-2">
+        @foreach ($this->attachments as $attachment)
+            <li wire:key="attachment-{{ $attachment->id }}" class="flex items-center gap-3">
+                @if ($attachment->isInlineImage())
+                    <img src="{{ route('attachments.show', [$attachment, 'inline' => 1]) }}" alt="" class="size-10 rounded object-cover" loading="lazy">
+                @else
+                    <flux:icon.paper-clip class="size-5 text-zinc-400" />
+                @endif
+                <div class="min-w-0 flex-1">
+                    <a href="{{ route('attachments.show', $attachment) }}" class="block truncate font-medium hover:underline">{{ $attachment->name }}</a>
+                    <flux:text size="sm">{{ $attachment->humanSize() }} · {{ $attachment->user?->name ?? 'Jemand' }} · {{ $attachment->created_at->format('d.m.Y H:i') }}</flux:text>
+                </div>
+                @if ($this->canEdit)
+                    <flux:button size="sm" variant="ghost" icon="trash" inset wire:click="deleteAttachment({{ $attachment->id }})" wire:confirm="Anhang „{{ $attachment->name }}“ löschen?" aria-label="Anhang löschen" />
+                @endif
+            </li>
+        @endforeach
+    </ul>
+
+    @if ($this->attachments->isEmpty())
+        <flux:text>Noch keine Anhänge.</flux:text>
+    @endif
+
+    @if ($this->canEdit)
+        <div class="mt-3">
+            <flux:input type="file" wire:model="uploads" multiple label="Dateien hinzufügen" description="Bis zu {{ intdiv(\App\Models\Attachment::MAX_KILOBYTES, 1024) }} MB pro Datei." />
+            <div wire:loading wire:target="uploads"><flux:text size="sm">Wird hochgeladen …</flux:text></div>
+            @error('uploads') <flux:text class="mt-1 text-red-500">{{ $message }}</flux:text> @enderror
+            @error('uploads.*') <flux:text class="mt-1 text-red-500">{{ $message }}</flux:text> @enderror
+        </div>
+    @endif
+
+    <flux:separator class="my-8" />
+
     <flux:heading size="lg" class="mb-4">Aktivität und Kommentare</flux:heading>
 
     <div class="space-y-3">
@@ -802,7 +889,7 @@ new class extends Component
     <flux:modal name="delete-task" class="min-w-[22rem]">
         <div class="space-y-6">
             <flux:heading size="lg">Aufgabe löschen?</flux:heading>
-            <flux:text>Die Aufgabe @if (count($this->descendantIds) - count($this->sectionIds) > 0) mit {{ count($this->descendantIds) - count($this->sectionIds) }} Subtasks @endif und alle Kommentare werden unwiderruflich gelöscht.</flux:text>
+            <flux:text>Die Aufgabe @if (count($this->descendantIds) - count($this->sectionIds) > 0) mit {{ count($this->descendantIds) - count($this->sectionIds) }} Subtasks @endif sowie alle Kommentare und Anhänge werden unwiderruflich gelöscht.</flux:text>
             <div class="flex gap-2">
                 <flux:spacer />
                 <flux:modal.close><flux:button variant="ghost">Abbrechen</flux:button></flux:modal.close>

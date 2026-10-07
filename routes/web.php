@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AttachmentController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -33,6 +34,8 @@ Route::middleware('auth')->group(function () {
         Route::livewire('/users', 'pages::admin.users')->name('admin.users');
         Route::livewire('/teams', 'pages::admin.teams')->name('admin.teams');
     });
+
+    Route::get('/attachments/{attachment}', AttachmentController::class)->name('attachments.show');
 
     Route::livewire('/tasks/mine', 'pages::tasks.mine')->name('tasks.mine');
     Route::livewire('/tasks/{task}', 'pages::tasks.show')->name('tasks.show');

@@ -118,5 +118,9 @@ new #[Title('Profil')] class extends Component
 
     <flux:separator />
 
+    <livewire:security />
+
+    <flux:separator />
+
     <livewire:api-tokens />
 </div>

@@ -1,3 +1,7 @@
+import { Passkeys } from '@laravel/passkeys'
+
+window.Passkeys = Passkeys
+
 const registerMentionable = () => {
     window.Alpine.data('mentionable', (options) => ({
         open: false,

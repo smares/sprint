@@ -9,6 +9,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Fortify\Fortify;
+use Laravel\Passkeys\Passkeys;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -18,6 +20,8 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(TaskSearch::class);
+
+        Fortify::ignoreRoutes();
     }
 
     /**
@@ -26,6 +30,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Gate::define('administer', fn (User $user) => $user->is_admin);
+
+        Passkeys::authorizeLoginUsing(fn (Request $request, User $user) => $user->isActive());
 
         RateLimiter::for('mcp', fn (Request $request) => Limit::perMinute(120)->by($request->user()?->currentAccessToken()?->getKey() ?? $request->ip()));
     }

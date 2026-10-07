@@ -1,5 +1,6 @@
 <?php
 
+use App\Markdown;
 use App\Models\Tag;
 use App\Models\Task;
 use App\Models\User;
@@ -256,6 +257,29 @@ new class extends Component
         $this->resetSubtaskCaches();
     }
 
+    /**
+     * @return array{users: list<array{id: int, name: string}>, tasks: list<array{id: int, title: string}>}
+     */
+    #[Computed]
+    public function mentionOptions(): array
+    {
+        return [
+            'users' => $this->users->map(fn ($user) => ['id' => $user->id, 'name' => $user->name])->values()->all(),
+            'tasks' => $this->projectTasks
+                ->reject(fn ($task) => $task->is_section)
+                ->sortByDesc('id')
+                ->take(500)
+                ->map(fn ($task) => ['id' => $task->id, 'title' => $task->title])
+                ->values()
+                ->all(),
+        ];
+    }
+
+    public function previewMarkdown(string $text): string
+    {
+        return (string) Markdown::render(mb_substr($text, 0, 10000));
+    }
+
     #[Computed]
     public function otherTasks()
     {
@@ -399,7 +423,7 @@ new class extends Component
 
     <form wire:submit="save" class="space-y-6">
         <flux:input wire:model="title" label="Titel" />
-        <flux:textarea wire:model="description" label="Beschreibung" rows="5" />
+        <x-markdown-editor wire:model="description" label="Beschreibung" :rows="5" :mentions="$this->mentionOptions" />
 
         <div class="grid gap-4 sm:grid-cols-3">
             <flux:select variant="listbox" wire:model="statusId" label="Status">
@@ -497,7 +521,7 @@ new class extends Component
         @forelse ($this->comments as $comment)
             <flux:card wire:key="comment-{{ $comment->id }}" class="space-y-1">
                 <flux:text class="text-sm"><strong>{{ $comment->user->name }}</strong> · {{ $comment->created_at->format('d.m.Y H:i') }}</flux:text>
-                <flux:text class="whitespace-pre-line">{{ $comment->body }}</flux:text>
+                <x-markdown :text="$comment->body" />
             </flux:card>
         @empty
             <flux:text>Noch keine Kommentare.</flux:text>
@@ -505,7 +529,7 @@ new class extends Component
     </div>
 
     <form wire:submit="addComment" class="mt-6 space-y-3">
-        <flux:textarea wire:model="comment" placeholder="Kommentar schreiben …" rows="3" />
+        <x-markdown-editor wire:model="comment" placeholder="Kommentar schreiben … (Markdown, @ für Erwähnungen)" :rows="3" :mentions="$this->mentionOptions" />
         <flux:button type="submit">Kommentieren</flux:button>
     </form>
 

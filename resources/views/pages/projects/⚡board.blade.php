@@ -18,7 +18,7 @@ new class extends Component
     public function columns(): array
     {
         $tasks = $this->project->tasks()
-            ->with('assignee')
+            ->with(['assignee', 'tags'])
             ->orderBy('position')
             ->orderBy('id')
             ->get()
@@ -93,6 +93,14 @@ new class extends Component
                     @foreach ($this->columns[$status->value] as $task)
                         <flux:kanban.card wire:key="task-{{ $task->id }}" wire:sort:item="{{ $task->id }}">
                             <a href="{{ route('tasks.show', $task) }}" wire:navigate class="font-medium hover:underline">{{ $task->title }}</a>
+
+                            @if ($task->tags->isNotEmpty())
+                                <div class="mt-2 flex flex-wrap gap-1">
+                                    @foreach ($task->tags as $tag)
+                                        <flux:badge size="sm" :color="$tag->color">{{ $tag->name }}</flux:badge>
+                                    @endforeach
+                                </div>
+                            @endif
 
                             <div class="mt-2 flex items-center justify-between gap-2">
                                 <flux:text size="sm">{{ $task->assignee?->name ?? 'Niemand' }}</flux:text>

@@ -1,9 +1,11 @@
 <?php
 
+use App\Models\Tag;
 use App\Models\Task;
 use App\Models\User;
 use App\TaskStatus;
 use Flux\Flux;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -23,6 +25,11 @@ new class extends Component
 
     public string $comment = '';
 
+    /** @var list<string> */
+    public array $tagIds = [];
+
+    public string $newTag = '';
+
     public function mount(): void
     {
         $this->title = $this->task->title;
@@ -30,6 +37,31 @@ new class extends Component
         $this->status = $this->task->status->value;
         $this->assigneeId = (string) ($this->task->assignee_id ?? '');
         $this->dueDate = $this->task->due_date?->format('Y-m-d') ?? '';
+        $this->tagIds = $this->task->tags->pluck('id')->map(fn ($id) => (string) $id)->all();
+    }
+
+    #[Computed]
+    public function projectTags()
+    {
+        return $this->task->project->tags()->orderBy('name')->get();
+    }
+
+    public function createTag(): void
+    {
+        $validated = $this->validate([
+            'newTag' => ['required', 'string', 'max:50'],
+        ]);
+
+        $project = $this->task->project;
+        $name = trim($validated['newTag']);
+
+        $tag = $project->tags()->firstOrCreate(['name' => $name], [
+            'color' => Tag::COLORS[$project->tags()->count() % count(Tag::COLORS)],
+        ]);
+
+        $this->tagIds = array_values(array_unique([...$this->tagIds, (string) $tag->id]));
+        $this->reset('newTag');
+        unset($this->projectTags);
     }
 
     #[Computed]
@@ -52,6 +84,8 @@ new class extends Component
             'status' => ['required', 'in:'.implode(',', array_column(TaskStatus::cases(), 'value'))],
             'assigneeId' => ['nullable', 'exists:users,id'],
             'dueDate' => ['nullable', 'date'],
+            'tagIds' => ['array'],
+            'tagIds.*' => ['integer', Rule::exists('tags', 'id')->where('project_id', $this->task->project_id)],
         ]);
 
         $this->task->update([
@@ -61,6 +95,8 @@ new class extends Component
             'assignee_id' => $validated['assigneeId'] ?: null,
             'due_date' => $validated['dueDate'] ?: null,
         ]);
+
+        $this->task->tags()->sync($validated['tagIds']);
 
         Flux::toast(variant: 'success', text: 'Gespeichert.');
     }
@@ -119,6 +155,12 @@ new class extends Component
             <flux:date-picker wire:model="dueDate" label="Fällig am" locale="de-DE" clearable />
         </div>
 
+        <flux:pillbox wire:model="tagIds" multiple label="Tags" placeholder="Tags wählen …">
+            @foreach ($this->projectTags as $tag)
+                <flux:pillbox.option wire:key="tag-{{ $tag->id }}" value="{{ $tag->id }}">{{ $tag->name }}</flux:pillbox.option>
+            @endforeach
+        </flux:pillbox>
+
         <div class="flex gap-3">
             <flux:button type="submit" variant="primary">Speichern</flux:button>
             <flux:spacer />
@@ -126,6 +168,11 @@ new class extends Component
                 <flux:button variant="danger" icon="trash">Löschen</flux:button>
             </flux:modal.trigger>
         </div>
+    </form>
+
+    <form wire:submit="createTag" class="mt-4 flex items-end gap-2">
+        <flux:input wire:model="newTag" label="Neuer Tag" placeholder="z. B. Bug" class="max-w-xs" />
+        <flux:button type="submit" icon="plus">Anlegen</flux:button>
     </form>
 
     <flux:separator class="my-8" />

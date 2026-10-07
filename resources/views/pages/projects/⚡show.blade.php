@@ -19,6 +19,9 @@ new class extends Component
     #[Url(as: 'assignee')]
     public string $assigneeFilter = '';
 
+    #[Url(as: 'tag')]
+    public string $tagFilter = '';
+
     public string $title = '';
 
     public string $description = '';
@@ -31,15 +34,22 @@ new class extends Component
     public function tasks()
     {
         return $this->project->tasks()
-            ->with('assignee')
+            ->with(['assignee', 'tags'])
             ->when($this->statusFilter === 'open', fn ($q) => $q->where('status', '!=', TaskStatus::Done))
             ->when(TaskStatus::tryFrom($this->statusFilter), fn ($q, $status) => $q->where('status', $status))
             ->when($this->assigneeFilter === 'me', fn ($q) => $q->where('assignee_id', auth()->id()))
             ->when(ctype_digit($this->assigneeFilter), fn ($q) => $q->where('assignee_id', (int) $this->assigneeFilter))
+            ->when(ctype_digit($this->tagFilter), fn ($q) => $q->whereHas('tags', fn ($tags) => $tags->whereKey((int) $this->tagFilter)))
             ->orderByRaw('due_date is null')
             ->orderBy('due_date')
             ->orderBy('id')
             ->get();
+    }
+
+    #[Computed]
+    public function tagOptions()
+    {
+        return $this->project->tags()->orderBy('name')->get();
     }
 
     #[Computed]
@@ -130,6 +140,15 @@ new class extends Component
                 <flux:select.option value="{{ $user->id }}">{{ $user->name }}</flux:select.option>
             @endforeach
         </flux:select>
+
+        @if ($this->tagOptions->isNotEmpty())
+            <flux:select variant="listbox" wire:model.live="tagFilter" class="max-w-48">
+                <flux:select.option value="">Alle Tags</flux:select.option>
+                @foreach ($this->tagOptions as $tag)
+                    <flux:select.option value="{{ $tag->id }}">{{ $tag->name }}</flux:select.option>
+                @endforeach
+            </flux:select>
+        @endif
     </div>
 
     @if ($this->tasks->isEmpty())
@@ -151,6 +170,9 @@ new class extends Component
                         </flux:table.cell>
                         <flux:table.cell>
                             <a href="{{ route('tasks.show', $task) }}" wire:navigate class="font-medium hover:underline">{{ $task->title }}</a>
+                            @foreach ($task->tags as $tag)
+                                <flux:badge size="sm" :color="$tag->color" class="ms-1">{{ $tag->name }}</flux:badge>
+                            @endforeach
                         </flux:table.cell>
                         <flux:table.cell>
                             <flux:badge size="sm" :color="$task->status->color()">{{ $task->status->label() }}</flux:badge>

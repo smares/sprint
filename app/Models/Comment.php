@@ -24,6 +24,24 @@ class Comment extends Model
         static::saved(fn (self $comment) => app(TaskSearch::class)->index($comment->task_id));
         static::deleted(fn (self $comment) => app(TaskSearch::class)->index($comment->task_id));
 
+        static::updated(function (self $comment) {
+            if (! $comment->wasChanged('body')) {
+                return;
+            }
+
+            $comment->loadMissing('task', 'user');
+
+            $added = array_diff(
+                Markdown::mentionedUserIds($comment->body),
+                Markdown::mentionedUserIds($comment->getOriginal('body')),
+            );
+
+            Notification::send(
+                $comment->task->usersToMention($added, $comment->user),
+                new UserMentioned($comment->task, 'comment', $comment->body, $comment->user?->name),
+            );
+        });
+
         static::created(function (self $comment) {
             $comment->loadMissing('task', 'user');
 
@@ -39,6 +57,14 @@ class Comment extends Model
                 new UserMentioned($comment->task, 'comment', $comment->body, $comment->user?->name),
             );
         });
+    }
+
+    /**
+     * Whether the comment was changed after it was written.
+     */
+    public function wasEdited(): bool
+    {
+        return $this->updated_at !== null && $this->updated_at->gt($this->created_at->copy()->addSeconds(1));
     }
 
     public function task(): BelongsTo

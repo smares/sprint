@@ -91,6 +91,12 @@ new class extends Component
         return Gate::allows('edit', $this->task->project);
     }
 
+    #[Computed]
+    public function canManage(): bool
+    {
+        return Gate::allows('manage', $this->task->project);
+    }
+
     private function authorizeEdit(): void
     {
         Gate::authorize('edit', $this->task->project);
@@ -617,6 +623,67 @@ new class extends Component
         unset($this->activityFeed);
     }
 
+    public ?int $editingCommentId = null;
+
+    public string $editingBody = '';
+
+    private function commentOrFail(int $commentId): \App\Models\Comment
+    {
+        return $this->task->comments()->findOrFail($commentId);
+    }
+
+    /**
+     * Only the author changes the words; the author and project admins may delete a comment.
+     */
+    public function startEditComment(int $commentId): void
+    {
+        $comment = $this->commentOrFail($commentId);
+
+        abort_unless($comment->user_id === auth()->id() && $this->canEdit, 403);
+
+        $this->editingCommentId = $comment->id;
+        $this->editingBody = $comment->body;
+    }
+
+    public function cancelEditComment(): void
+    {
+        $this->reset('editingCommentId', 'editingBody');
+    }
+
+    public function saveComment(): void
+    {
+        $this->authorizeEdit();
+
+        $comment = $this->commentOrFail((int) $this->editingCommentId);
+
+        abort_unless($comment->user_id === auth()->id(), 403);
+
+        $validated = $this->validate(['editingBody' => ['required', 'string', 'max:5000']], attributes: ['editingBody' => 'Kommentar']);
+
+        $comment->update(['body' => $validated['editingBody']]);
+
+        $this->reset('editingCommentId', 'editingBody');
+        unset($this->activityFeed);
+    }
+
+    public function deleteComment(int $commentId): void
+    {
+        $comment = $this->commentOrFail($commentId);
+
+        abort_unless(
+            ($comment->user_id === auth()->id() && $this->canEdit) || Gate::allows('manage', $this->task->project),
+            403,
+        );
+
+        $comment->delete();
+
+        if ($this->editingCommentId === $commentId) {
+            $this->reset('editingCommentId', 'editingBody');
+        }
+
+        unset($this->activityFeed);
+    }
+
     #[Computed]
     public function attachments()
     {
@@ -916,8 +983,28 @@ new class extends Component
             @if ($entry['comment'])
                 @php($comment = $entry['comment'])
                 <flux:card wire:key="comment-{{ $comment->id }}" class="space-y-1">
-                    <flux:text class="text-sm"><strong>{{ $comment->user->name }}</strong> · {{ $comment->created_at->format('d.m.Y H:i') }}</flux:text>
-                    <x-markdown :text="$comment->body" />
+                    <div class="flex items-center gap-2">
+                        <flux:text class="min-w-0 flex-1 text-sm"><strong>{{ $comment->user->name }}</strong> · {{ $comment->created_at->format('d.m.Y H:i') }}@if ($comment->wasEdited()) · bearbeitet @endif</flux:text>
+                        @if ($comment->user_id === auth()->id() && $this->canEdit && $editingCommentId !== $comment->id)
+                            <flux:button size="xs" variant="ghost" icon="pencil-square" wire:click="startEditComment({{ $comment->id }})" aria-label="Kommentar bearbeiten" />
+                        @endif
+                        @if (($comment->user_id === auth()->id() && $this->canEdit) || $this->canManage)
+                            <flux:button size="xs" variant="ghost" icon="trash" wire:click="deleteComment({{ $comment->id }})" wire:confirm="Kommentar löschen?" aria-label="Kommentar löschen" />
+                        @endif
+                    </div>
+
+                    @if ($editingCommentId === $comment->id)
+                        <form wire:submit="saveComment" class="space-y-2">
+                            <x-markdown-editor wire:model="editingBody" :rows="3" :mentions="$this->mentionOptions" />
+                            @error('editingBody') <flux:text class="text-red-500">{{ $message }}</flux:text> @enderror
+                            <div class="flex gap-2">
+                                <flux:button size="sm" type="submit" variant="primary">Speichern</flux:button>
+                                <flux:button size="sm" type="button" variant="ghost" wire:click="cancelEditComment">Abbrechen</flux:button>
+                            </div>
+                        </form>
+                    @else
+                        <x-markdown :text="$comment->body" />
+                    @endif
                 </flux:card>
             @else
                 @php($activity = $entry['activity'])

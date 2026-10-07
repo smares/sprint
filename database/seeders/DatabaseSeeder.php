@@ -5,7 +5,6 @@ namespace Database\Seeders;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
-use App\TaskStatus;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -27,7 +26,7 @@ class DatabaseSeeder extends Seeder
             Task::factory(5)->for($project)->create([
                 'creator_id' => $users->first()->id,
                 'assignee_id' => fn () => $users->random()->id,
-                'status' => fn () => fake()->randomElement(TaskStatus::cases()),
+                'status_id' => fn () => $project->statuses->random()->id,
                 'due_date' => fn () => fake()->optional(0.7)->dateTimeBetween('-3 days', '+3 weeks'),
             ]);
         });

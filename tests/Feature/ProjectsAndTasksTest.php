@@ -6,7 +6,6 @@ use App\Models\Comment;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
-use App\TaskStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -70,7 +69,7 @@ class ProjectsAndTasksTest extends TestCase
         $this->assertSame($assignee->id, $task->assignee_id);
         $this->assertSame($this->user->id, $task->creator_id);
         $this->assertSame('2026-12-24', $task->due_date->toDateString());
-        $this->assertSame(TaskStatus::Todo, $task->status);
+        $this->assertSame($project->defaultStatus()->id, $task->status_id);
     }
 
     public function test_task_without_optional_fields_stores_nulls(): void
@@ -94,10 +93,10 @@ class ProjectsAndTasksTest extends TestCase
 
         $component = Livewire::test('pages::projects.show', ['project' => $task->project])
             ->call('toggleDone', $task->id);
-        $this->assertSame(TaskStatus::Done, $task->fresh()->status);
+        $this->assertSame($task->project->doneStatus()->id, $task->fresh()->status_id);
 
         $component->call('toggleDone', $task->id);
-        $this->assertSame(TaskStatus::Todo, $task->fresh()->status);
+        $this->assertSame($task->project->defaultStatus()->id, $task->fresh()->status_id);
     }
 
     public function test_toggle_done_cannot_touch_tasks_of_other_projects(): void
@@ -109,14 +108,14 @@ class ProjectsAndTasksTest extends TestCase
             ->call('toggleDone', $other->id)
             ->assertNotFound();
 
-        $this->assertSame(TaskStatus::Todo, $other->fresh()->status);
+        $this->assertSame($other->project->defaultStatus()->id, $other->fresh()->status_id);
     }
 
     public function test_task_list_filters_by_status_and_assignee(): void
     {
         $project = Project::factory()->create();
         Task::factory()->for($project)->create(['title' => 'Offene Aufgabe']);
-        Task::factory()->for($project)->create(['title' => 'Fertige Aufgabe', 'status' => TaskStatus::Done]);
+        Task::factory()->for($project)->done()->create(['title' => 'Fertige Aufgabe']);
         Task::factory()->for($project)->create(['title' => 'Meine Aufgabe', 'assignee_id' => $this->user->id]);
 
         Livewire::test('pages::projects.show', ['project' => $project])
@@ -124,7 +123,7 @@ class ProjectsAndTasksTest extends TestCase
             ->assertDontSee('Fertige Aufgabe')
             ->set('statusFilter', 'all')
             ->assertSee('Fertige Aufgabe')
-            ->set('statusFilter', 'done')
+            ->set('statusFilter', (string) $project->doneStatus()->id)
             ->assertSee('Fertige Aufgabe')
             ->assertDontSee('Offene Aufgabe')
             ->set('statusFilter', 'all')
@@ -140,7 +139,7 @@ class ProjectsAndTasksTest extends TestCase
 
         Livewire::test('pages::tasks.show', ['task' => $task])
             ->set('title', 'Neuer Titel')
-            ->set('status', 'in_progress')
+            ->set('statusId', (string) $task->project->statuses[1]->id)
             ->set('assigneeId', (string) $assignee->id)
             ->set('dueDate', '2026-11-01')
             ->call('save')
@@ -148,7 +147,7 @@ class ProjectsAndTasksTest extends TestCase
 
         $task->refresh();
         $this->assertSame('Neuer Titel', $task->title);
-        $this->assertSame(TaskStatus::InProgress, $task->status);
+        $this->assertSame($task->project->statuses[1]->id, $task->status_id);
         $this->assertSame($assignee->id, $task->assignee_id);
         $this->assertSame('2026-11-01', $task->due_date->toDateString());
     }
@@ -158,9 +157,9 @@ class ProjectsAndTasksTest extends TestCase
         $task = Task::factory()->create();
 
         Livewire::test('pages::tasks.show', ['task' => $task])
-            ->set('status', 'bogus')
+            ->set('statusId', (string) Task::factory()->create()->status_id)
             ->call('save')
-            ->assertHasErrors('status');
+            ->assertHasErrors('statusId');
     }
 
     public function test_comment_can_be_added(): void
@@ -202,7 +201,7 @@ class ProjectsAndTasksTest extends TestCase
     public function test_my_tasks_shows_only_open_tasks_assigned_to_me(): void
     {
         Task::factory()->create(['title' => 'Für mich', 'assignee_id' => $this->user->id]);
-        Task::factory()->create(['title' => 'Schon erledigt', 'assignee_id' => $this->user->id, 'status' => TaskStatus::Done]);
+        Task::factory()->done()->create(['title' => 'Schon erledigt', 'assignee_id' => $this->user->id]);
         Task::factory()->create(['title' => 'Für andere', 'assignee_id' => User::factory()]);
 
         $this->get('/tasks/mine')
@@ -216,7 +215,7 @@ class ProjectsAndTasksTest extends TestCase
     {
         $this->assertTrue(Task::factory()->make(['due_date' => now()->subDay()])->isOverdue());
         $this->assertFalse(Task::factory()->make(['due_date' => now()])->isOverdue());
-        $this->assertFalse(Task::factory()->make(['due_date' => now()->subDay(), 'status' => TaskStatus::Done])->isOverdue());
+        $this->assertFalse(Task::factory()->done()->make(['due_date' => now()->subDay()])->isOverdue());
         $this->assertFalse(Task::factory()->make(['due_date' => null])->isOverdue());
     }
 }

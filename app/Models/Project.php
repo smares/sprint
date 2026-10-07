@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\TaskStatus;
 use Database\Factories\ProjectFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -16,9 +15,37 @@ class Project extends Model
     /** @use HasFactory<ProjectFactory> */
     use HasFactory;
 
+    protected static function booted(): void
+    {
+        static::created(function (self $project) {
+            $project->statuses()->createMany(TaskStatus::defaults());
+        });
+    }
+
     protected function casts(): array
     {
         return ['archived_at' => 'datetime'];
+    }
+
+    public function statuses(): HasMany
+    {
+        return $this->hasMany(TaskStatus::class)->orderBy('position')->orderBy('id');
+    }
+
+    /**
+     * The status new tasks start with: the first one that does not count as done.
+     */
+    public function defaultStatus(): TaskStatus
+    {
+        return $this->statuses()->where('is_done', false)->firstOrFail();
+    }
+
+    /**
+     * The status a task gets when it is marked as done.
+     */
+    public function doneStatus(): TaskStatus
+    {
+        return $this->statuses()->where('is_done', true)->firstOrFail();
     }
 
     public function tags(): HasMany
@@ -33,7 +60,7 @@ class Project extends Model
      */
     public function subtaskProgress(): array
     {
-        $tasks = $this->tasks()->where('is_section', false)->get(['id', 'parent_id', 'status']);
+        $tasks = $this->tasks()->where('is_section', false)->with('status:id,is_done')->get(['id', 'parent_id', 'status_id']);
         $childrenByParent = $tasks->groupBy('parent_id');
         $progress = [];
 
@@ -44,7 +71,7 @@ class Project extends Model
             foreach ($childrenByParent->get($id, []) as $child) {
                 [$childDone, $childTotal] = $count($child->id);
                 $total += 1 + $childTotal;
-                $done += ($child->status === TaskStatus::Done ? 1 : 0) + $childDone;
+                $done += ($child->isDone() ? 1 : 0) + $childDone;
             }
 
             if ($total > 0) {

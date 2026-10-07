@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
-use App\TaskStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -159,9 +158,9 @@ class TaskSortingTest extends TestCase
 
     public function test_manual_order_is_shared_between_list_and_board(): void
     {
-        $a = $this->task(['position' => 0, 'status' => TaskStatus::Todo]);
-        $b = $this->task(['position' => 1, 'status' => TaskStatus::InProgress]);
-        $c = $this->task(['position' => 2, 'status' => TaskStatus::Todo]);
+        $a = $this->task(['position' => 0]);
+        $b = $this->task(['position' => 1, 'status_id' => $this->project->statuses[1]->id]);
+        $c = $this->task(['position' => 2]);
 
         Livewire::test('pages::projects.show', ['project' => $this->project])
             ->call('moveTask', $c->id, 0);
@@ -169,7 +168,7 @@ class TaskSortingTest extends TestCase
         $this->assertSame([$c->id, $a->id, $b->id], $this->project->tasks()->orderBy('position')->pluck('id')->all());
 
         $todoOrder = Livewire::test('pages::projects.board', ['project' => $this->project])
-            ->instance()->columns['todo']->pluck('id')->all();
+            ->instance()->columns[$this->project->statuses[0]->id]->pluck('id')->all();
 
         $this->assertSame([$c->id, $a->id], $todoOrder);
     }

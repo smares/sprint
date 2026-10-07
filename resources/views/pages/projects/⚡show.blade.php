@@ -3,7 +3,7 @@
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
-use App\TaskStatus;
+use App\Models\TaskStatus;
 use Flux\Flux;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Url;
@@ -41,18 +41,24 @@ new class extends Component
     {
         return $this->project->tasks()
             ->whereNull('parent_id')
-            ->with(['assignee', 'collaborators', 'tags', 'blockers'])
-            ->when($this->statusFilter === 'open', fn ($q) => $q->where('status', '!=', TaskStatus::Done))
-            ->when(TaskStatus::tryFrom($this->statusFilter), fn ($q, $status) => $q->where('status', $status))
+            ->with(['assignee', 'collaborators', 'tags', 'status', 'blockers.status'])
+            ->when($this->statusFilter === 'open', fn ($q) => $q->whereHas('status', fn ($status) => $status->where('is_done', false)))
+            ->when(ctype_digit($this->statusFilter), fn ($q) => $q->where('status_id', (int) $this->statusFilter))
             ->when($this->assigneeFilter === 'me', fn ($q) => $q->where('assignee_id', auth()->id()))
             ->when(ctype_digit($this->assigneeFilter), fn ($q) => $q->where('assignee_id', (int) $this->assigneeFilter))
             ->when(ctype_digit($this->tagFilter), fn ($q) => $q->whereHas('tags', fn ($tags) => $tags->whereKey((int) $this->tagFilter)))
             ->when($this->sortBy === 'due', fn ($q) => $q->orderByRaw('due_date is null')->orderBy('due_date', $this->sortDirection))
             ->when($this->sortBy === 'title', fn ($q) => $q->orderBy('title', $this->sortDirection))
-            ->when($this->sortBy === 'status', fn ($q) => $q->orderBy('status', $this->sortDirection))
+            ->when($this->sortBy === 'status', fn ($q) => $q->orderBy(TaskStatus::select('position')->whereColumn('task_statuses.id', 'tasks.status_id'), $this->sortDirection))
             ->orderBy('position')
             ->orderBy('id')
             ->get();
+    }
+
+    #[Computed]
+    public function statuses()
+    {
+        return $this->project->statuses;
     }
 
     #[Computed]
@@ -138,9 +144,7 @@ new class extends Component
     {
         $task = $this->project->tasks()->whereNull('parent_id')->findOrFail($taskId);
 
-        $task->update([
-            'status' => $task->status === TaskStatus::Done ? TaskStatus::Todo : TaskStatus::Done,
-        ]);
+        $task->toggleDone();
 
         unset($this->tasks);
     }
@@ -172,6 +176,8 @@ new class extends Component
                 <flux:button icon="view-columns" href="{{ route('projects.board', $project) }}" wire:navigate>Board</flux:button>
             </flux:button.group>
 
+            <flux:button icon="cog-6-tooth" href="{{ route('projects.statuses', $project) }}" wire:navigate>Status</flux:button>
+
             <flux:modal.trigger name="create-task">
                 <flux:button variant="primary" icon="plus">Neue Aufgabe</flux:button>
             </flux:modal.trigger>
@@ -182,8 +188,8 @@ new class extends Component
         <flux:select variant="listbox" wire:model.live="statusFilter" class="max-w-40">
             <flux:select.option value="open">Offen</flux:select.option>
             <flux:select.option value="all">Alle</flux:select.option>
-            @foreach (TaskStatus::cases() as $status)
-                <flux:select.option value="{{ $status->value }}">{{ $status->label() }}</flux:select.option>
+            @foreach ($this->statuses as $status)
+                <flux:select.option value="{{ $status->id }}">{{ $status->name }}</flux:select.option>
             @endforeach
         </flux:select>
 
@@ -220,7 +226,7 @@ new class extends Component
                 @foreach ($this->tasks as $task)
                     <flux:table.row wire:key="task-{{ $task->id }}" :wire:sort:item="$sortBy === '' ? $task->id : null">
                         <flux:table.cell>
-                            <flux:checkbox :checked="$task->status === TaskStatus::Done" wire:click="toggleDone({{ $task->id }})" />
+                            <flux:checkbox :checked="$task->isDone()" wire:click="toggleDone({{ $task->id }})" />
                         </flux:table.cell>
                         <flux:table.cell>
                             <a href="{{ route('tasks.show', $task) }}" wire:navigate class="font-medium hover:underline">{{ $task->title }}</a>
@@ -235,7 +241,7 @@ new class extends Component
                             @endforeach
                         </flux:table.cell>
                         <flux:table.cell>
-                            <flux:badge size="sm" :color="$task->status->color()">{{ $task->status->label() }}</flux:badge>
+                            <flux:badge size="sm" :color="$task->status->color">{{ $task->status->name }}</flux:badge>
                         </flux:table.cell>
                         <flux:table.cell>
                             {{ $task->assignee?->name ?? '–' }}

@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
-use App\TaskStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -48,12 +47,12 @@ class TaskDependenciesTest extends TestCase
     public function test_task_is_blocked_only_while_a_blocker_is_open(): void
     {
         $task = $this->task();
-        $blocker = $this->task(['status' => TaskStatus::InProgress]);
+        $blocker = $this->task(['status_id' => $this->project->statuses[1]->id]);
         $task->blockers()->attach($blocker);
 
         $this->assertTrue($task->isBlocked());
 
-        $blocker->update(['status' => TaskStatus::Done]);
+        $blocker->update(['status_id' => $this->project->doneStatus()->id]);
 
         $this->assertFalse($task->fresh()->isBlocked());
     }

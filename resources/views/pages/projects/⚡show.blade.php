@@ -286,6 +286,7 @@ new class extends Component
 
             @if ($this->canManage)
                 <flux:button icon="cog-6-tooth" href="{{ route('projects.statuses', $project) }}" wire:navigate>Status</flux:button>
+                <flux:button icon="tag" href="{{ route('projects.tags', $project) }}" wire:navigate>Tags</flux:button>
                 <flux:button icon="adjustments-horizontal" href="{{ route('projects.fields', $project) }}" wire:navigate>Felder</flux:button>
                 <flux:button icon="users" href="{{ route('projects.members', $project) }}" wire:navigate>Mitglieder</flux:button>
             @endif

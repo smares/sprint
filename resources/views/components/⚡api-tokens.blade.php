@@ -70,7 +70,7 @@ new class extends Component
             </flux:callout.text>
             <x-slot name="actions">
                 <flux:button size="sm" x-on:click="navigator.clipboard.writeText(@js($createdToken)); copied = true" x-text="copied ? @js(__('Copied')) : @js(__('Copy token'))">{{ __('Copy token') }}</flux:button>
-                <flux:button size="sm" variant="ghost" wire:click="dismissToken">{{ __('Done') }}</flux:button>
+                <flux:button size="sm" variant="ghost" wire:click="dismissToken">{{ __('Finish') }}</flux:button>
             </x-slot>
         </flux:callout>
     @endif

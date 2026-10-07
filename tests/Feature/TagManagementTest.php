@@ -39,7 +39,7 @@ class TagManagementTest extends TestCase
         $this->project->setRole($manager, ProjectRole::Admin);
         Tag::factory()->for($this->project)->create(['name' => 'Dringend']);
 
-        $this->actingAs($editor)->get(route('projects.show', $this->project))->assertOk()->assertDontSee('project-tags', false)->assertDontSee('Neues Tag');
+        $this->actingAs($editor)->get(route('projects.show', $this->project))->assertOk()->assertDontSee('project-tags', false)->assertDontSee('Neuer Tag');
         Livewire::test('project-tags', ['project' => $this->project])->assertForbidden();
 
         $this->actingAs($manager)->get(route('projects.show', $this->project))->assertOk()->assertSee('project-tags', false)->assertSee('Dringend');

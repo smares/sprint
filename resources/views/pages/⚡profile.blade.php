@@ -94,7 +94,7 @@ new class extends Component
         ], attributes: [
             'currentPassword' => __('Current password'),
             'newPassword' => __('New password'),
-            'newPasswordConfirmation' => __('Confirmation'),
+            'newPasswordConfirmation' => __('Password confirmation'),
         ]);
 
         if (! Hash::check($this->currentPassword, $user->password)) {

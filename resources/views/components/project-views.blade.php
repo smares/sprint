@@ -5,7 +5,7 @@
         'list' => ['Liste', 'list-bullet', 'projects.show'],
         'board' => ['Board', 'view-columns', 'projects.board'],
         'calendar' => ['Kalender', 'calendar-days', 'projects.calendar'],
-        'timeline' => ['Zeitleiste', 'chart-bar', 'projects.timeline'],
+        'timeline' => ['Zeitleiste', 'arrow-turn-down-right', 'projects.timeline'],
     ] as $key => [$label, $icon, $route])
         @if ($key === $active)
             <flux:button :icon="$icon" square disabled aria-label="{{ $label }}" class="sm:hidden" />

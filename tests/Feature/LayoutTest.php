@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Blade;
 use Tests\TestCase;
 
 class LayoutTest extends TestCase
@@ -56,5 +57,28 @@ class LayoutTest extends TestCase
     public function test_guests_get_no_navigation(): void
     {
         $this->get(route('login'))->assertOk()->assertDontSee('data-flux-sidebar-toggle', false)->assertDontSee('Darstellung');
+    }
+
+    public function test_the_timeline_switcher_uses_the_turn_arrow_icon(): void
+    {
+        $project = Project::factory()->create();
+        $html = $this->actingAs(User::factory()->admin()->create())->get(route('projects.board', $project))->getContent();
+
+        $this->assertStringContainsString('aria-label="Zeitleiste"', $html);
+
+        $pathOf = function (string $icon) use ($html): bool {
+            foreach (['micro', 'mini', 'outline'] as $variant) {
+                preg_match('/<path[^>]*d="([^"]+)"/', Blade::render('<flux:icon.'.$icon.' variant="'.$variant.'" />'), $matches);
+
+                if (isset($matches[1]) && str_contains($html, 'd="'.$matches[1].'"')) {
+                    return true;
+                }
+            }
+
+            return false;
+        };
+
+        $this->assertTrue($pathOf('arrow-turn-down-right'));
+        $this->assertFalse($pathOf('chart-bar'));
     }
 }

@@ -107,9 +107,10 @@ class ProfileTest extends TestCase
     {
         $this->get(route('profile'))->assertOk()->assertSee('API-Zugang')->assertSee('Persönliche Angaben');
 
-        Livewire::withQueryParams(['tab' => 'sicherheit'])->test('pages::profile')->assertSet('tab', 'sicherheit');
+        Livewire::withQueryParams(['tab' => 'security'])->test('pages::profile')->assertSet('tab', 'security');
         Livewire::withQueryParams(['tab' => 'api'])->test('pages::profile')->assertSet('tab', 'api');
-        Livewire::withQueryParams(['tab' => 'unsinn'])->test('pages::profile')->assertSet('tab', 'profil');
-        Livewire::test('pages::profile')->assertSet('tab', 'profil');
+        Livewire::withQueryParams(['tab' => 'unsinn'])->test('pages::profile')->assertSet('tab', 'profile');
+        Livewire::withQueryParams(['tab' => 'sicherheit'])->test('pages::profile')->assertSet('tab', 'profile');
+        Livewire::test('pages::profile')->assertSet('tab', 'profile');
     }
 }

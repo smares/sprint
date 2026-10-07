@@ -1,18 +1,31 @@
 @props(['project', 'active'])
 
-<flux:button.group>
-    @foreach ([
+@php
+    $views = [
         'list' => ['Liste', 'list-bullet', 'projects.show'],
         'board' => ['Board', 'view-columns', 'projects.board'],
         'calendar' => ['Kalender', 'calendar-days', 'projects.calendar'],
         'timeline' => ['Zeitleiste', 'arrow-turn-down-right', 'projects.timeline'],
-    ] as $key => [$label, $icon, $route])
+    ];
+@endphp
+
+{{-- Two separate groups, because the button group rounds only its first and last child. --}}
+<flux:button.group class="sm:hidden">
+    @foreach ($views as $key => [$label, $icon, $route])
         @if ($key === $active)
-            <flux:button :icon="$icon" square disabled aria-label="{{ $label }}" class="sm:hidden" />
-            <flux:button :icon="$icon" disabled class="max-sm:hidden">{{ $label }}</flux:button>
+            <flux:button :icon="$icon" square disabled aria-label="{{ $label }}" />
         @else
-            <flux:button :icon="$icon" square href="{{ route($route, $project) }}" wire:navigate aria-label="{{ $label }}" class="sm:hidden" />
-            <flux:button :icon="$icon" href="{{ route($route, $project) }}" wire:navigate class="max-sm:hidden">{{ $label }}</flux:button>
+            <flux:button :icon="$icon" square href="{{ route($route, $project) }}" wire:navigate aria-label="{{ $label }}" />
+        @endif
+    @endforeach
+</flux:button.group>
+
+<flux:button.group class="max-sm:hidden">
+    @foreach ($views as $key => [$label, $icon, $route])
+        @if ($key === $active)
+            <flux:button :icon="$icon" disabled>{{ $label }}</flux:button>
+        @else
+            <flux:button :icon="$icon" href="{{ route($route, $project) }}" wire:navigate>{{ $label }}</flux:button>
         @endif
     @endforeach
 </flux:button.group>

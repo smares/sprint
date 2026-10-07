@@ -1,9 +1,12 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/laravel",
+    "name": "smares/sprint",
     "type": "project",
-    "description": "Sprint – Aufgabenverwaltung für Teams.",
-    "keywords": ["laravel", "framework"],
+    "description": "Sprint – Aufgabenverwaltung für Teams: Projekte, Aufgaben, Kanban-Board, Kalender und Zeitleiste.",
+    "keywords": ["sprint", "aufgabenverwaltung", "projektmanagement", "task-management", "kanban", "team", "laravel", "livewire"],
+    "authors": [
+        {"name": "Sebastian Mares"}
+    ],
     "license": "proprietary",
     "require": {
         "php": "^8.3",

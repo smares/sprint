@@ -29,6 +29,34 @@ new class extends Component
     }
 
     #[Computed]
+    public function canEdit(): bool
+    {
+        return Gate::allows('edit', $this->project);
+    }
+
+    /**
+     * A bar was dragged: moved as a whole, or one of its edges stretched or shrunk.
+     *
+     * @param  'move'|'start'|'end'  $mode
+     */
+    public function reschedule(int|string $taskId, string $mode, int $days): void
+    {
+        Gate::authorize('edit', $this->project);
+
+        abort_unless(in_array($mode, ['move', 'start', 'end'], true), 422);
+
+        $task = $this->project->tasks()->whereNull('parent_id')->where('is_section', false)->findOrFail($taskId);
+
+        if ($days === 0 || abs($days) > 3650) {
+            return;
+        }
+
+        $mode === 'move' ? $task->shiftDates($days) : $task->resizeSpan($mode, $days);
+
+        unset($this->rows);
+    }
+
+    #[Computed]
     public function start(): Carbon
     {
         $parsed = preg_match('/^\d{4}-\d{2}-\d{2}$/', $this->from) ? Carbon::make($this->from) : null;
@@ -161,13 +189,33 @@ new class extends Component
                             <flux:icon.lock-closed variant="micro" class="shrink-0 text-amber-500" title="Blockiert" />
                         @endif
                     </div>
-                    <div class="relative grid items-center" style="grid-template-columns: repeat({{ $days->count() }}, 2rem)">
+                    <div class="relative grid items-center" data-days="{{ $days->count() }}" style="grid-template-columns: repeat({{ $days->count() }}, 2rem)">
                         @if ($todayColumn)
                             <div class="pointer-events-none absolute inset-y-0 w-px bg-blue-400" style="inset-inline-start: {{ ($todayColumn - 1) * 2 + 1 }}rem"></div>
                         @endif
+                        @php($clippedStart = $task->spanStart()->startOfDay() < $this->start)
+                        @php($clippedEnd = $task->spanEnd()->startOfDay() > $this->end->copy()->startOfDay())
                         <a href="{{ route('tasks.show', $task) }}" wire:navigate title="{{ $task->title }}: {{ $task->spanStart()->format('d.m.') }} – {{ $task->spanEnd()->format('d.m.Y') }}"
-                           class="my-1.5 block h-5 truncate rounded px-1 text-xs leading-5 {{ $task->isDone() ? 'opacity-50' : '' }}"
-                           style="grid-column: {{ $row['first'] }} / {{ $row['last'] + 1 }}; grid-row: 1; background-color: {{ $task->status->color }}; color: {{ \App\Color::textOn($task->status->color) }}">{{ $row['last'] - $row['first'] >= 2 ? $task->title : '' }}</a>
+                           @if ($this->canEdit)
+                               draggable="false"
+                               x-data="timelineBar({{ $task->id }})"
+                               x-on:pointerdown="begin($event, 'move')"
+                               x-on:pointermove="move($event)"
+                               x-on:pointerup="finish()"
+                               x-on:pointercancel="cancel()"
+                               x-on:click.capture="suppressClick($event)"
+                           @endif
+                           class="relative my-1.5 block h-5 truncate rounded px-1 text-xs leading-5 {{ $task->isDone() ? 'opacity-50' : '' }} {{ $this->canEdit ? 'cursor-grab touch-none select-none' : '' }}"
+                           style="grid-column: {{ $row['first'] }} / {{ $row['last'] + 1 }}; grid-row: 1; background-color: {{ $task->status->color }}; color: {{ \App\Color::textOn($task->status->color) }}">{{ $row['last'] - $row['first'] >= 2 ? $task->title : '' }}
+                            @if ($this->canEdit)
+                                @unless ($clippedStart)
+                                    <span class="absolute inset-y-0 start-0 w-1.5 cursor-ew-resize" aria-hidden="true" x-on:pointerdown.stop="begin($event, 'start')"></span>
+                                @endunless
+                                @unless ($clippedEnd)
+                                    <span class="absolute inset-y-0 end-0 w-1.5 cursor-ew-resize" aria-hidden="true" x-on:pointerdown.stop="begin($event, 'end')"></span>
+                                @endunless
+                            @endif
+                        </a>
                     </div>
                 </div>
             @empty

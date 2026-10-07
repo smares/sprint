@@ -17,7 +17,7 @@ class ProjectBoardTest extends TestCase
     {
         parent::setUp();
 
-        $this->actingAs(User::factory()->create());
+        $this->actingAs(User::factory()->admin()->create());
     }
 
     public function test_board_shows_tasks_in_their_status_columns(): void

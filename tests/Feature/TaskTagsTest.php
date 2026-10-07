@@ -18,7 +18,7 @@ class TaskTagsTest extends TestCase
     {
         parent::setUp();
 
-        $this->actingAs(User::factory()->create());
+        $this->actingAs(User::factory()->admin()->create());
     }
 
     public function test_tag_can_be_created_from_the_task_page_and_is_selected(): void

@@ -21,7 +21,7 @@ class MarkdownMentionsTest extends TestCase
     {
         parent::setUp();
 
-        $this->user = User::factory()->create();
+        $this->user = User::factory()->admin()->create();
         $this->actingAs($this->user);
     }
 
@@ -82,7 +82,7 @@ class MarkdownMentionsTest extends TestCase
 
     public function test_user_mention_shows_the_current_name(): void
     {
-        $person = User::factory()->create(['name' => 'Anna Beispiel']);
+        $person = User::factory()->admin()->create(['name' => 'Anna Beispiel']);
 
         $html = (string) Markdown::render("Hallo @[Alter Name]({$this->mention('user', $person->id)}) bitte prüfen");
 
@@ -112,7 +112,7 @@ class MarkdownMentionsTest extends TestCase
 
     public function test_mention_names_are_escaped(): void
     {
-        $person = User::factory()->create(['name' => '<b>Evil</b> "Name"']);
+        $person = User::factory()->admin()->create(['name' => '<b>Evil</b> "Name"']);
         $task = Task::factory()->create(['title' => '<script>x</script>']);
 
         $html = (string) Markdown::render("@[x](user:{$person->id}) @[y](task:{$task->id})");
@@ -124,8 +124,8 @@ class MarkdownMentionsTest extends TestCase
 
     public function test_several_mentions_and_formatting_combine(): void
     {
-        $first = User::factory()->create(['name' => 'Anna']);
-        $second = User::factory()->create(['name' => 'Ben']);
+        $first = User::factory()->admin()->create(['name' => 'Anna']);
+        $second = User::factory()->admin()->create(['name' => 'Ben']);
 
         $html = (string) Markdown::render("**@[a](user:{$first->id})** und *@[b](user:{$second->id})*");
 
@@ -148,7 +148,7 @@ class MarkdownMentionsTest extends TestCase
     public function test_description_is_saved_as_raw_markdown(): void
     {
         $task = Task::factory()->create();
-        $person = User::factory()->create();
+        $person = User::factory()->admin()->create();
         $text = "**wichtig** für @[x](user:{$person->id})";
 
         Livewire::test('pages::tasks.show', ['task' => $task])
@@ -162,7 +162,7 @@ class MarkdownMentionsTest extends TestCase
     public function test_comments_are_rendered_as_markdown_with_mentions(): void
     {
         $task = Task::factory()->create();
-        $person = User::factory()->create(['name' => 'Clara Test']);
+        $person = User::factory()->admin()->create(['name' => 'Clara Test']);
         Comment::factory()->for($task)->create([
             'user_id' => $this->user->id,
             'body' => "Das ist **wichtig**, @[x](user:{$person->id})!",
@@ -181,7 +181,7 @@ class MarkdownMentionsTest extends TestCase
         Task::factory()->for($project)->create(['title' => 'Nachbaraufgabe']);
         Task::factory()->for($project)->create(['title' => 'Überschrift', 'is_section' => true]);
         Task::factory()->create(['title' => 'Fremdes Projekt']);
-        User::factory()->create(['name' => 'Ben Muster']);
+        User::factory()->admin()->create(['name' => 'Ben Muster']);
 
         $options = Livewire::test('pages::tasks.show', ['task' => $task])->instance()->mentionOptions;
 

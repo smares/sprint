@@ -2,9 +2,9 @@
 
 use App\Models\Project;
 use App\Models\Task;
-use App\Models\User;
 use App\Models\TaskStatus;
 use Flux\Flux;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -29,6 +29,28 @@ new class extends Component
     public string $sortDirection = 'asc';
 
     public string $title = '';
+
+    public function mount(): void
+    {
+        Gate::authorize('view', $this->project);
+    }
+
+    public function hydrate(): void
+    {
+        Gate::authorize('view', $this->project);
+    }
+
+    #[Computed]
+    public function canEdit(): bool
+    {
+        return Gate::allows('edit', $this->project);
+    }
+
+    #[Computed]
+    public function canManage(): bool
+    {
+        return Gate::allows('manage', $this->project);
+    }
 
     public string $description = '';
 
@@ -79,11 +101,13 @@ new class extends Component
     #[Computed]
     public function users()
     {
-        return User::query()->orderBy('name')->get(['id', 'name']);
+        return $this->project->eligibleUsers()->orderBy('name')->get(['id', 'name']);
     }
 
     public function createTask(): void
     {
+        Gate::authorize('edit', $this->project);
+
         $validated = $this->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:10000'],
@@ -127,6 +151,8 @@ new class extends Component
 
     public function moveTask(int|string $taskId, int $position): void
     {
+        Gate::authorize('edit', $this->project);
+
         abort_unless($this->sortBy === '', 422);
 
         $task = $this->project->tasks()->whereNull('parent_id')->findOrFail($taskId);
@@ -142,6 +168,8 @@ new class extends Component
 
     public function toggleDone(int $taskId): void
     {
+        Gate::authorize('edit', $this->project);
+
         $task = $this->project->tasks()->whereNull('parent_id')->findOrFail($taskId);
 
         $task->toggleDone();
@@ -176,11 +204,16 @@ new class extends Component
                 <flux:button icon="view-columns" href="{{ route('projects.board', $project) }}" wire:navigate>Board</flux:button>
             </flux:button.group>
 
-            <flux:button icon="cog-6-tooth" href="{{ route('projects.statuses', $project) }}" wire:navigate>Status</flux:button>
+            @if ($this->canManage)
+                <flux:button icon="cog-6-tooth" href="{{ route('projects.statuses', $project) }}" wire:navigate>Status</flux:button>
+                <flux:button icon="users" href="{{ route('projects.members', $project) }}" wire:navigate>Mitglieder</flux:button>
+            @endif
 
-            <flux:modal.trigger name="create-task">
-                <flux:button variant="primary" icon="plus">Neue Aufgabe</flux:button>
-            </flux:modal.trigger>
+            @if ($this->canEdit)
+                <flux:modal.trigger name="create-task">
+                    <flux:button variant="primary" icon="plus">Neue Aufgabe</flux:button>
+                </flux:modal.trigger>
+            @endif
         </div>
     </div>
 
@@ -222,11 +255,11 @@ new class extends Component
                 <flux:table.column>Zuständig</flux:table.column>
                 <flux:table.column sortable :sorted="$sortBy === 'due'" :direction="$sortDirection" wire:click="sort('due')">Fällig</flux:table.column>
             </flux:table.columns>
-            <flux:table.rows :wire:sort="$sortBy === '' ? 'moveTask' : null">
+            <flux:table.rows :wire:sort="$sortBy === '' && $this->canEdit ? 'moveTask' : null">
                 @foreach ($this->tasks as $task)
-                    <flux:table.row wire:key="task-{{ $task->id }}" :wire:sort:item="$sortBy === '' ? $task->id : null">
+                    <flux:table.row wire:key="task-{{ $task->id }}" :wire:sort:item="$sortBy === '' && $this->canEdit ? $task->id : null">
                         <flux:table.cell>
-                            <flux:checkbox :checked="$task->isDone()" wire:click="toggleDone({{ $task->id }})" />
+                            <flux:checkbox :checked="$task->isDone()" :disabled="! $this->canEdit" wire:click="toggleDone({{ $task->id }})" />
                         </flux:table.cell>
                         <flux:table.cell>
                             <a href="{{ route('tasks.show', $task) }}" wire:navigate class="font-medium hover:underline">{{ $task->title }}</a>
@@ -262,22 +295,24 @@ new class extends Component
         </flux:table>
     @endif
 
-    <flux:modal name="create-task" class="md:w-[28rem]">
-        <form wire:submit="createTask" class="space-y-6">
-            <flux:heading size="lg">Neue Aufgabe</flux:heading>
-            <flux:input wire:model="title" label="Titel" autofocus />
-            <flux:textarea wire:model="description" label="Beschreibung" rows="3" />
-            <flux:select variant="listbox" wire:model="assigneeId" label="Zuständig">
-                <flux:select.option value="">Niemand</flux:select.option>
-                @foreach ($this->users as $user)
-                    <flux:select.option value="{{ $user->id }}">{{ $user->name }}</flux:select.option>
-                @endforeach
-            </flux:select>
-            <flux:date-picker wire:model="dueDate" label="Fällig am" locale="de-DE" clearable />
-            <div class="flex">
-                <flux:spacer />
-                <flux:button type="submit" variant="primary">Anlegen</flux:button>
-            </div>
-        </form>
-    </flux:modal>
+    @if ($this->canEdit)
+        <flux:modal name="create-task" class="md:w-[28rem]">
+            <form wire:submit="createTask" class="space-y-6">
+                <flux:heading size="lg">Neue Aufgabe</flux:heading>
+                <flux:input wire:model="title" label="Titel" autofocus />
+                <flux:textarea wire:model="description" label="Beschreibung" rows="3" />
+                <flux:select variant="listbox" wire:model="assigneeId" label="Zuständig">
+                    <flux:select.option value="">Niemand</flux:select.option>
+                    @foreach ($this->users as $user)
+                        <flux:select.option value="{{ $user->id }}">{{ $user->name }}</flux:select.option>
+                    @endforeach
+                </flux:select>
+                <flux:date-picker wire:model="dueDate" label="Fällig am" locale="de-DE" clearable />
+                <div class="flex">
+                    <flux:spacer />
+                    <flux:button type="submit" variant="primary">Anlegen</flux:button>
+                </div>
+            </form>
+        </flux:modal>
+    @endif
 </div>

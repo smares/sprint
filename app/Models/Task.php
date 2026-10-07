@@ -201,6 +201,7 @@ class Task extends Model
             ->filter()
             ->unique('id')
             ->reject(fn (User $user) => $muted->contains($user->id) || $user->id === $except?->id)
+            ->filter(fn (User $user) => $this->project->canBeViewedBy($user))
             ->values();
     }
 
@@ -217,6 +218,7 @@ class Task extends Model
 
         return User::whereIn('id', collect($userIds)->all())->get()
             ->reject(fn (User $user) => $muted->contains($user->id) || $user->id === $except?->id)
+            ->filter(fn (User $user) => $this->project->canBeViewedBy($user))
             ->values();
     }
 

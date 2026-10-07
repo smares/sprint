@@ -20,7 +20,7 @@ class ProjectsAndTasksTest extends TestCase
     {
         parent::setUp();
 
-        $this->user = User::factory()->create();
+        $this->user = User::factory()->admin()->create();
         $this->actingAs($this->user);
     }
 
@@ -55,7 +55,7 @@ class ProjectsAndTasksTest extends TestCase
     public function test_task_can_be_created_in_a_project(): void
     {
         $project = Project::factory()->create();
-        $assignee = User::factory()->create();
+        $assignee = User::factory()->admin()->create();
 
         Livewire::test('pages::projects.show', ['project' => $project])
             ->set('title', 'Angebot schreiben')
@@ -135,7 +135,7 @@ class ProjectsAndTasksTest extends TestCase
     public function test_task_can_be_edited(): void
     {
         $task = Task::factory()->create();
-        $assignee = User::factory()->create();
+        $assignee = User::factory()->admin()->create();
 
         Livewire::test('pages::tasks.show', ['task' => $task])
             ->set('title', 'Neuer Titel')
@@ -202,7 +202,7 @@ class ProjectsAndTasksTest extends TestCase
     {
         Task::factory()->create(['title' => 'Für mich', 'assignee_id' => $this->user->id]);
         Task::factory()->done()->create(['title' => 'Schon erledigt', 'assignee_id' => $this->user->id]);
-        Task::factory()->create(['title' => 'Für andere', 'assignee_id' => User::factory()]);
+        Task::factory()->create(['title' => 'Für andere', 'assignee_id' => User::factory()->admin()]);
 
         $this->get('/tasks/mine')
             ->assertOk()

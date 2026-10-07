@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Project;
+use App\ProjectRole;
 use Flux\Flux;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
@@ -16,6 +17,7 @@ new #[Title('Projekte')] class extends Component
     public function projects()
     {
         return Project::query()
+            ->visibleTo(auth()->user())
             ->whereNull('archived_at')
             ->withCount([
                 'tasks',
@@ -33,6 +35,7 @@ new #[Title('Projekte')] class extends Component
         ]);
 
         $project = Project::create($validated);
+        $project->setRole(auth()->user(), ProjectRole::Admin);
 
         $this->reset('name', 'description');
         Flux::modal('create-project')->close();

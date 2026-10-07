@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
+use App\ProjectRole;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -19,10 +20,13 @@ class DatabaseSeeder extends Seeder
                 'name' => $name,
                 'email' => str($name)->before(' ')->lower().'@example.com',
                 'password' => 'password',
+                'is_admin' => $name === 'Anna Beispiel',
             ])
         );
 
         Project::factory(2)->create()->each(function (Project $project) use ($users) {
+            $users->each(fn (User $user) => $project->setRole($user, $user->is_admin ? ProjectRole::Admin : ProjectRole::Editor));
+
             Task::factory(5)->for($project)->create([
                 'creator_id' => $users->first()->id,
                 'assignee_id' => fn () => $users->random()->id,

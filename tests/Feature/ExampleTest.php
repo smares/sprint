@@ -17,7 +17,7 @@ class ExampleTest extends TestCase
 
     public function test_authenticated_users_are_redirected_from_root_to_projects(): void
     {
-        $this->actingAs(User::factory()->create())
+        $this->actingAs(User::factory()->admin()->create())
             ->get('/')
             ->assertRedirect('/projects');
     }

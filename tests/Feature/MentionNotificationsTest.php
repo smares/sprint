@@ -29,9 +29,9 @@ class MentionNotificationsTest extends TestCase
     {
         parent::setUp();
 
-        $this->actor = User::factory()->create(['name' => 'Anna Autorin']);
-        $this->assignee = User::factory()->create();
-        $this->outsider = User::factory()->create(['name' => 'Olaf Außenstehend']);
+        $this->actor = User::factory()->admin()->create(['name' => 'Anna Autorin']);
+        $this->assignee = User::factory()->admin()->create();
+        $this->outsider = User::factory()->admin()->create(['name' => 'Olaf Außenstehend']);
 
         $this->task = Task::factory()->create(['assignee_id' => $this->assignee->id, 'title' => 'Release planen']);
 

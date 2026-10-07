@@ -3,6 +3,8 @@
 namespace Database\Factories;
 
 use App\Models\Project;
+use App\Models\User;
+use App\ProjectRole;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -10,6 +12,11 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class ProjectFactory extends Factory
 {
+    public function withMember(User $user, ProjectRole $role = ProjectRole::Editor): static
+    {
+        return $this->afterCreating(fn (Project $project) => $project->setRole($user, $role));
+    }
+
     public function definition(): array
     {
         return [

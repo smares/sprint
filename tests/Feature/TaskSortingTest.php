@@ -19,7 +19,7 @@ class TaskSortingTest extends TestCase
     {
         parent::setUp();
 
-        $this->actingAs(User::factory()->create());
+        $this->actingAs(User::factory()->admin()->create());
         $this->project = Project::factory()->create();
     }
 

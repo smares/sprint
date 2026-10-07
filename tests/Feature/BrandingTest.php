@@ -20,7 +20,7 @@ class BrandingTest extends TestCase
     {
         $project = Project::factory()->create(['name' => 'Website']);
 
-        $this->actingAs(User::factory()->create())
+        $this->actingAs(User::factory()->admin()->create())
             ->get(route('projects.show', $project))
             ->assertOk()
             ->assertSee('<title>Website – Sprint</title>', false);

@@ -47,6 +47,9 @@ class TaskActivity extends Model
             'assignee_changed' => "hat die Zuständigkeit von {$from} auf {$to} geändert",
             'due_date_changed' => "hat die Fälligkeit von {$from} auf {$to} geändert",
             'start_date_changed' => "hat den Beginn von {$from} auf {$to} geändert",
+            'recurrence_changed' => ($data['to'] ?? '–') === '–' ? 'hat die Wiederholung entfernt' : "hat die Wiederholung auf „{$to}“ gesetzt",
+            'recurrence_created' => "hat die nächste Wiederholung für den {$to} angelegt",
+            'recurrence_ended' => 'hat die Wiederholung beendet (Enddatum erreicht)',
             'title_changed' => "hat den Titel von „{$from}“ in „{$to}“ geändert",
             'description_changed' => 'hat die Beschreibung geändert',
             'parent_changed' => ($data['to'] ?? null) === null

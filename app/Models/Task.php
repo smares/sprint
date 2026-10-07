@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Markdown;
 use App\Notifications\TaskStatusChanged;
 use App\Notifications\UserMentioned;
+use App\RepeatMode;
+use App\RepeatUnit;
 use Database\Factories\TaskFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -18,7 +20,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 
-#[Fillable(['project_id', 'parent_id', 'is_section', 'assignee_id', 'creator_id', 'title', 'description', 'status_id', 'position', 'start_date', 'due_date'])]
+#[Fillable(['project_id', 'parent_id', 'is_section', 'assignee_id', 'creator_id', 'title', 'description', 'status_id', 'position', 'start_date', 'due_date', 'repeat_unit', 'repeat_interval', 'repeat_mode', 'repeat_until'])]
 class Task extends Model
 {
     /** @use HasFactory<TaskFactory> */
@@ -42,6 +44,11 @@ class Task extends Model
             }
 
             $actor = auth()->user();
+
+            if ($task->wasChanged('status_id')) {
+                $task->unsetRelation('status');
+            }
+
             $task->logChanges();
 
             if ($task->wasChanged('status_id')) {
@@ -51,6 +58,10 @@ class Task extends Model
                     $task->usersToNotify($actor),
                     new TaskStatusChanged($task, $old?->name ?? '–', $task->status->name, $actor?->name),
                 );
+            }
+
+            if ($task->wasChanged('status_id') && $task->isDone() && $task->repeat_unit !== null) {
+                $task->spawnNextOccurrence();
             }
 
             if ($task->wasChanged('description')) {
@@ -72,6 +83,9 @@ class Task extends Model
         return [
             'due_date' => 'date',
             'start_date' => 'date',
+            'repeat_unit' => RepeatUnit::class,
+            'repeat_mode' => RepeatMode::class,
+            'repeat_until' => 'date',
             'is_section' => 'boolean',
         ];
     }
@@ -99,6 +113,127 @@ class Task extends Model
         $this->update([
             'status_id' => $this->isDone() ? $this->project->defaultStatus()->id : $this->project->doneStatus()->id,
         ]);
+    }
+
+    public function isRecurring(): bool
+    {
+        return $this->repeat_unit !== null;
+    }
+
+    /**
+     * The repeat rule in words, e.g. "alle 2 Wochen (nach Erledigung) bis 31.12.2026".
+     */
+    public function recurrenceLabel(): ?string
+    {
+        if ($this->repeat_unit === null) {
+            return null;
+        }
+
+        $interval = max(1, (int) $this->repeat_interval);
+
+        $every = $interval === 1
+            ? match ($this->repeat_unit) {
+                RepeatUnit::Day => 'täglich',
+                RepeatUnit::Week => 'wöchentlich',
+                RepeatUnit::Month => 'monatlich',
+                RepeatUnit::Year => 'jährlich',
+            }
+        : "alle {$interval} ".$this->repeat_unit->label();
+
+        return $every
+            .($this->repeat_mode === RepeatMode::Completion ? ' (nach Erledigung)' : '')
+            .($this->repeat_until ? ' bis '.$this->repeat_until->format('d.m.Y') : '');
+    }
+
+    /**
+     * Create the next task of a repeating series once this one is finished. The rule moves on to the new
+     * task, so finishing, reopening and finishing this one again does not create a second copy.
+     */
+    public function spawnNextOccurrence(): ?self
+    {
+        $unit = $this->repeat_unit;
+        $due = $this->due_date;
+
+        if ($unit === null || $due === null || $this->is_section) {
+            return null;
+        }
+
+        $interval = max(1, (int) $this->repeat_interval);
+        $today = now()->startOfDay();
+        $next = $this->repeat_mode === RepeatMode::Completion
+            ? $unit->addTo($today, $interval)
+            : $unit->addTo($due->copy()->startOfDay(), $interval);
+
+        for ($guard = 0; $this->repeat_mode === RepeatMode::Schedule && $next < $today && $guard < 1000; $guard++) {
+            $next = $unit->addTo($next, $interval);
+        }
+
+        $this->updateQuietly(['repeat_unit' => null]);
+
+        if ($this->repeat_until !== null && $next->startOfDay() > $this->repeat_until->copy()->startOfDay()) {
+            $this->logActivity('recurrence_ended');
+
+            return null;
+        }
+
+        $offset = (int) $due->copy()->startOfDay()->diffInDays($next, false);
+
+        $copy = DB::transaction(function () use ($next, $offset, $unit) {
+            $copy = self::create([
+                'project_id' => $this->project_id,
+                'parent_id' => $this->parent_id,
+                'assignee_id' => $this->assignee_id,
+                'creator_id' => auth()->id() ?? $this->creator_id,
+                'title' => $this->title,
+                'description' => $this->description,
+                'status_id' => $this->project->defaultStatus()->id,
+                'position' => $this->position ?? 0,
+                'due_date' => $next,
+                'start_date' => $this->start_date?->copy()->addDays($offset),
+                'repeat_unit' => $unit,
+                'repeat_interval' => $this->repeat_interval,
+                'repeat_mode' => $this->repeat_mode,
+                'repeat_until' => $this->repeat_until,
+            ]);
+
+            $copy->tags()->sync($this->tags()->pluck('tags.id')->all());
+            $copy->collaborators()->sync($this->collaborators()->pluck('users.id')->all());
+
+            foreach ($this->fieldValues()->get() as $value) {
+                $copy->fieldValues()->create($value->only(['custom_field_id', 'option_id', 'value']));
+            }
+
+            $this->copyChildrenTo($copy, $offset);
+
+            return $copy;
+        });
+
+        $this->logActivity('recurrence_created', ['to' => $next->format('d.m.Y')]);
+
+        return $copy;
+    }
+
+    /**
+     * Copy the subtasks and headings below this task (open again, dates moved along) below the new task.
+     */
+    private function copyChildrenTo(self $copy, int $offset): void
+    {
+        foreach ($this->children()->get() as $child) {
+            $new = self::create([
+                'project_id' => $child->project_id,
+                'parent_id' => $copy->id,
+                'is_section' => $child->is_section,
+                'assignee_id' => $child->assignee_id,
+                'creator_id' => $copy->creator_id,
+                'title' => $child->title,
+                'description' => $child->description,
+                'position' => $child->position ?? 0,
+                'due_date' => $child->due_date?->copy()->addDays($offset),
+                'start_date' => $child->start_date?->copy()->addDays($offset),
+            ]);
+
+            $child->copyChildrenTo($new, $offset);
+        }
     }
 
     public function parent(): BelongsTo
@@ -280,6 +415,10 @@ class Task extends Model
                 'from' => $date($this->getOriginal('start_date')),
                 'to' => $date($this->start_date),
             ]);
+        }
+
+        if ($this->wasChanged(['repeat_unit', 'repeat_interval', 'repeat_mode', 'repeat_until'])) {
+            $this->logActivity('recurrence_changed', ['to' => $this->recurrenceLabel() ?? '–']);
         }
 
         if ($this->wasChanged('title')) {

@@ -16,8 +16,8 @@
             @php($children = $childrenMap->get($subtask->id, collect()))
             <li wire:key="subtask-{{ $subtask->id }}" wire:sort:item="{{ $subtask->id }}">
                 <div class="flex items-center gap-3">
-                    <flux:checkbox :checked="$subtask->status === \App\TaskStatus::Done" wire:click="toggleSubtask({{ $subtask->id }})" />
-                    <a href="{{ route('tasks.show', $subtask) }}" wire:navigate @class(['hover:underline', 'line-through text-zinc-400' => $subtask->status === \App\TaskStatus::Done])>{{ $subtask->title }}</a>
+                    <flux:checkbox :checked="$subtask->isDone()" wire:click="toggleSubtask({{ $subtask->id }})" />
+                    <a href="{{ route('tasks.show', $subtask) }}" wire:navigate @class(['hover:underline', 'line-through text-zinc-400' => $subtask->isDone()])>{{ $subtask->title }}</a>
                     @if ($subtask->assignee)
                         <flux:text size="sm">{{ $subtask->assignee->name }}</flux:text>
                     @endif

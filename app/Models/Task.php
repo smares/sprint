@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\TaskStatus;
 use Database\Factories\TaskFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -12,16 +11,22 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
 
-#[Fillable(['project_id', 'parent_id', 'is_section', 'assignee_id', 'creator_id', 'title', 'description', 'status', 'position', 'due_date'])]
+#[Fillable(['project_id', 'parent_id', 'is_section', 'assignee_id', 'creator_id', 'title', 'description', 'status_id', 'position', 'due_date'])]
 class Task extends Model
 {
     /** @use HasFactory<TaskFactory> */
     use HasFactory;
 
+    protected static function booted(): void
+    {
+        static::creating(function (self $task) {
+            $task->status_id ??= $task->project->defaultStatus()->id;
+        });
+    }
+
     protected function casts(): array
     {
         return [
-            'status' => TaskStatus::class,
             'due_date' => 'date',
             'is_section' => 'boolean',
         ];
@@ -30,6 +35,26 @@ class Task extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
+    }
+
+    public function status(): BelongsTo
+    {
+        return $this->belongsTo(TaskStatus::class, 'status_id');
+    }
+
+    public function isDone(): bool
+    {
+        return (bool) $this->status?->is_done;
+    }
+
+    /**
+     * Switch between the project's done status and its default open status.
+     */
+    public function toggleDone(): void
+    {
+        $this->update([
+            'status_id' => $this->isDone() ? $this->project->defaultStatus()->id : $this->project->doneStatus()->id,
+        ]);
     }
 
     public function parent(): BelongsTo
@@ -104,10 +129,10 @@ class Task extends Model
     public function isBlocked(): bool
     {
         if ($this->relationLoaded('blockers')) {
-            return $this->blockers->contains(fn (self $blocker) => $blocker->status !== TaskStatus::Done);
+            return $this->blockers->contains(fn (self $blocker) => ! $blocker->isDone());
         }
 
-        return $this->blockers()->where('status', '!=', TaskStatus::Done)->exists();
+        return $this->blockers()->whereHas('status', fn ($status) => $status->where('is_done', false))->exists();
     }
 
     /**
@@ -139,7 +164,7 @@ class Task extends Model
     public function isOverdue(): bool
     {
         return $this->due_date !== null
-            && $this->status !== TaskStatus::Done
+            && ! $this->isDone()
             && $this->due_date->isPast()
             && ! $this->due_date->isToday();
     }

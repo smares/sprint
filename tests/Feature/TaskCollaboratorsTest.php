@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\Task;
 use App\Models\User;
-use App\TaskStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -74,7 +73,7 @@ class TaskCollaboratorsTest extends TestCase
     public function test_my_tasks_includes_open_tasks_where_i_am_a_collaborator(): void
     {
         Task::factory()->create(['title' => 'Ich bin beteiligt'])->collaborators()->attach($this->user);
-        Task::factory()->create(['title' => 'Beteiligt aber erledigt', 'status' => TaskStatus::Done])->collaborators()->attach($this->user);
+        Task::factory()->done()->create(['title' => 'Beteiligt aber erledigt'])->collaborators()->attach($this->user);
         Task::factory()->create(['title' => 'Nicht meine']);
 
         $this->get(route('tasks.mine'))

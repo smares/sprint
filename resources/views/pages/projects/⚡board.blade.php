@@ -2,7 +2,7 @@
 
 use App\Models\Project;
 use App\Models\Task;
-use App\TaskStatus;
+use App\Models\TaskStatus;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -12,22 +12,28 @@ new class extends Component
     public Project $project;
 
     /**
-     * @return array<string, \Illuminate\Support\Collection<int, Task>>
+     * @return array<int, \Illuminate\Support\Collection<int, Task>>
      */
     #[Computed]
     public function columns(): array
     {
         $tasks = $this->project->tasks()
             ->whereNull('parent_id')
-            ->with(['assignee', 'collaborators', 'tags', 'blockers'])
+            ->with(['assignee', 'collaborators', 'tags', 'status', 'blockers.status'])
             ->orderBy('position')
             ->orderBy('id')
             ->get()
-            ->groupBy(fn (Task $task) => $task->status->value);
+            ->groupBy('status_id');
 
-        return collect(TaskStatus::cases())
-            ->mapWithKeys(fn (TaskStatus $status) => [$status->value => $tasks->get($status->value, collect())])
+        return $this->statuses
+            ->mapWithKeys(fn (TaskStatus $status) => [$status->id => $tasks->get($status->id, collect())])
             ->all();
+    }
+
+    #[Computed]
+    public function statuses()
+    {
+        return $this->project->statuses;
     }
 
     /**
@@ -41,17 +47,17 @@ new class extends Component
 
     public function moveTask(int|string $taskId, int $position, string $group): void
     {
-        $status = TaskStatus::tryFrom($group);
+        $status = ctype_digit($group) ? $this->project->statuses()->find((int) $group) : null;
         abort_if($status === null, 422);
 
         $task = $this->project->tasks()->whereNull('parent_id')->findOrFail($taskId);
 
         DB::transaction(function () use ($task, $status, $position) {
-            $task->update(['status' => $status]);
+            $task->update(['status_id' => $status->id]);
 
             $this->project->placeRootTask($task, $this->project->tasks()
                 ->whereNull('parent_id')
-                ->where('status', $status)
+                ->where('status_id', $status->id)
                 ->whereKeyNot($task->getKey())
                 ->orderBy('position')
                 ->orderBy('id')
@@ -82,20 +88,22 @@ new class extends Component
             <flux:button icon="list-bullet" href="{{ route('projects.show', $project) }}" wire:navigate>Liste</flux:button>
             <flux:button icon="view-columns" disabled>Board</flux:button>
         </flux:button.group>
+
+            <flux:button icon="cog-6-tooth" href="{{ route('projects.statuses', $project) }}" wire:navigate>Status</flux:button>
     </div>
 
     <flux:kanban class="items-start overflow-x-auto pb-4">
-        @foreach (TaskStatus::cases() as $status)
-            <flux:kanban.column wire:key="column-{{ $status->value }}" class="shrink-0">
-                <flux:kanban.column.header :heading="$status->label()" :count="$this->columns[$status->value]->count()" />
+        @foreach ($this->statuses as $status)
+            <flux:kanban.column wire:key="column-{{ $status->id }}" class="shrink-0">
+                <flux:kanban.column.header :heading="$status->name" :count="$this->columns[$status->id]->count()" />
 
                 <flux:kanban.column.cards
                     class="min-h-16"
                     wire:sort="moveTask"
                     wire:sort:group="tasks"
-                    wire:sort:group-id="{{ $status->value }}"
+                    wire:sort:group-id="{{ $status->id }}"
                 >
-                    @foreach ($this->columns[$status->value] as $task)
+                    @foreach ($this->columns[$status->id] as $task)
                         <flux:kanban.card wire:key="task-{{ $task->id }}" wire:sort:item="{{ $task->id }}">
                             <a href="{{ route('tasks.show', $task) }}" wire:navigate class="font-medium hover:underline">{{ $task->title }}</a>
                             @if ($task->isBlocked())

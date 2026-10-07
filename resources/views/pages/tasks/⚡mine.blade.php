@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\Task;
-use App\TaskStatus;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -12,12 +11,12 @@ new #[Title('Meine Aufgaben')] class extends Component
     public function tasks()
     {
         return Task::query()
-            ->with(['project', 'parent'])
+            ->with(['project', 'parent', 'status'])
             ->where(fn ($query) => $query
                 ->where('assignee_id', auth()->id())
                 ->orWhereHas('collaborators', fn ($collaborators) => $collaborators->whereKey(auth()->id()))
             )
-            ->where('status', '!=', TaskStatus::Done)
+            ->whereHas('status', fn ($status) => $status->where('is_done', false))
             ->orderByRaw('due_date is null')
             ->orderBy('due_date')
             ->orderBy('id')
@@ -50,7 +49,7 @@ new #[Title('Meine Aufgaben')] class extends Component
                         </flux:table.cell>
                         <flux:table.cell>{{ $task->project->name }}</flux:table.cell>
                         <flux:table.cell>
-                            <flux:badge size="sm" :color="$task->status->color()">{{ $task->status->label() }}</flux:badge>
+                            <flux:badge size="sm" :color="$task->status->color">{{ $task->status->name }}</flux:badge>
                         </flux:table.cell>
                         <flux:table.cell>
                             @if ($task->due_date)

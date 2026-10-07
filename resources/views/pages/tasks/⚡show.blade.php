@@ -3,7 +3,6 @@
 use App\Models\Tag;
 use App\Models\Task;
 use App\Models\User;
-use App\TaskStatus;
 use Flux\Flux;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -19,7 +18,7 @@ new class extends Component
 
     public string $description = '';
 
-    public string $status = '';
+    public string $statusId = '';
 
     public string $assigneeId = '';
 
@@ -53,7 +52,7 @@ new class extends Component
     {
         $this->title = $this->task->title;
         $this->description = $this->task->description ?? '';
-        $this->status = $this->task->status->value;
+        $this->statusId = (string) $this->task->status_id;
         $this->assigneeId = (string) ($this->task->assignee_id ?? '');
         $this->dueDate = $this->task->due_date?->format('Y-m-d') ?? '';
         $this->parentId = (string) ($this->task->parent_id ?? '');
@@ -71,7 +70,7 @@ new class extends Component
     public function projectTasks()
     {
         return $this->task->project->tasks()
-            ->with('assignee')
+            ->with(['assignee', 'status'])
             ->orderBy('position')
             ->orderBy('id')
             ->get();
@@ -201,10 +200,7 @@ new class extends Component
     {
         abort_unless(in_array($subtaskId, $this->descendantIds, true) && ! in_array($subtaskId, $this->sectionIds, true), 404);
 
-        $subtask = $this->task->project->tasks()->findOrFail($subtaskId);
-        $subtask->update([
-            'status' => $subtask->status === TaskStatus::Done ? TaskStatus::Todo : TaskStatus::Done,
-        ]);
+        $this->task->project->tasks()->findOrFail($subtaskId)->toggleDone();
 
         $this->resetSubtaskCaches();
     }
@@ -310,7 +306,7 @@ new class extends Component
         $validated = $this->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:10000'],
-            'status' => ['required', 'in:'.implode(',', array_column(TaskStatus::cases(), 'value'))],
+            'statusId' => ['required', Rule::in($this->task->project->statuses->pluck('id')->map(fn ($id) => (string) $id)->all())],
             'assigneeId' => ['nullable', 'exists:users,id'],
             'dueDate' => ['nullable', 'date'],
             'tagIds' => ['array'],
@@ -346,7 +342,7 @@ new class extends Component
         $this->task->update([
             'title' => $validated['title'],
             'description' => $validated['description'] ?: null,
-            'status' => $validated['status'],
+            'status_id' => $validated['statusId'],
             'parent_id' => $validated['parentId'] ?: null,
             'position' => $parentChanged
                 ? ($this->task->project->tasks()->where('parent_id', $validated['parentId'] ?: null)->max('position') ?? -1) + 1
@@ -406,9 +402,9 @@ new class extends Component
         <flux:textarea wire:model="description" label="Beschreibung" rows="5" />
 
         <div class="grid gap-4 sm:grid-cols-3">
-            <flux:select variant="listbox" wire:model="status" label="Status">
-                @foreach (TaskStatus::cases() as $case)
-                    <flux:select.option value="{{ $case->value }}">{{ $case->label() }}</flux:select.option>
+            <flux:select variant="listbox" wire:model="statusId" label="Status">
+                @foreach ($task->project->statuses as $status)
+                    <flux:select.option value="{{ $status->id }}">{{ $status->name }}</flux:select.option>
                 @endforeach
             </flux:select>
             <flux:select variant="listbox" wire:model="assigneeId" label="Zuständig">

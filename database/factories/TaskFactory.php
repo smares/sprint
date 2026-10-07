@@ -5,7 +5,6 @@ namespace Database\Factories;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
-use App\TaskStatus;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -13,6 +12,16 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class TaskFactory extends Factory
 {
+    public function done(): static
+    {
+        return $this->afterMaking(fn (Task $task) => $task->status_id = $task->project->doneStatus()->id);
+    }
+
+    public function inProgress(): static
+    {
+        return $this->afterMaking(fn (Task $task) => $task->status_id = $task->project->statuses()->skip(1)->firstOrFail()->id);
+    }
+
     public function definition(): array
     {
         return [
@@ -21,7 +30,6 @@ class TaskFactory extends Factory
             'assignee_id' => null,
             'title' => fake()->sentence(4),
             'description' => fake()->optional()->paragraph(),
-            'status' => TaskStatus::Todo,
             'due_date' => null,
         ];
     }

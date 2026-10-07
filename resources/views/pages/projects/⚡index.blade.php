@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\Project;
-use App\TaskStatus;
 use Flux\Flux;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
@@ -20,7 +19,7 @@ new #[Title('Projekte')] class extends Component
             ->whereNull('archived_at')
             ->withCount([
                 'tasks',
-                'tasks as open_tasks_count' => fn ($query) => $query->where('status', '!=', TaskStatus::Done),
+                'tasks as open_tasks_count' => fn ($query) => $query->whereHas('status', fn ($status) => $status->where('is_done', false)),
             ])
             ->orderBy('name')
             ->get();

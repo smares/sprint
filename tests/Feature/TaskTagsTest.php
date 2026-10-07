@@ -47,6 +47,24 @@ class TaskTagsTest extends TestCase
         $this->assertSame(1, Tag::where('name', 'Bug')->count());
     }
 
+    public function test_same_tag_name_can_exist_in_different_projects(): void
+    {
+        $first = Task::factory()->create();
+        $second = Task::factory()->create();
+
+        foreach ([$first, $second] as $task) {
+            Livewire::test('pages::tasks.show', ['task' => $task])
+                ->set('newTag', 'foo')
+                ->call('createTag')
+                ->assertHasNoErrors();
+        }
+
+        $tags = Tag::where('name', 'foo')->get();
+        $this->assertCount(2, $tags);
+        $this->assertNotEquals($tags[0]->id, $tags[1]->id);
+        $this->assertNotEquals($tags[0]->project_id, $tags[1]->project_id);
+    }
+
     public function test_tags_are_saved_with_the_task(): void
     {
         $task = Task::factory()->create();

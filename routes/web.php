@@ -14,6 +14,10 @@ Route::post('/logout', function (Request $request) {
     return redirect()->route('login');
 })->middleware('auth')->name('logout');
 
+Route::livewire('/tasks/{task}/notifications/{user}', 'pages::tasks.notifications')
+    ->name('tasks.notifications')
+    ->middleware('signed');
+
 Route::middleware('auth')->group(function () {
     Route::redirect('/', '/projects');
 

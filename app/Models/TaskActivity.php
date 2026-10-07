@@ -58,6 +58,7 @@ class TaskActivity extends Model
             'blockers_added' => "hat {$names} als Blocker hinzugefügt",
             'blockers_removed' => "hat {$names} als Blocker entfernt",
             'blocking_added' => "blockiert jetzt {$names}",
+            'field_changed' => 'hat '.($data['name'] ?? 'ein Feld')." von „{$from}“ auf „{$to}“ geändert",
             'blocking_removed' => "blockiert {$names} nicht mehr",
             default => $this->type,
         };

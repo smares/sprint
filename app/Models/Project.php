@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\CustomFieldType;
 use App\ProjectRole;
 use Database\Factories\ProjectFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -22,6 +23,18 @@ class Project extends Model
     {
         static::created(function (self $project) {
             $project->statuses()->createMany(TaskStatus::defaults());
+
+            $priority = CustomField::priorityDefaults();
+            $field = $project->customFields()->create([
+                'name' => $priority['name'],
+                'type' => CustomFieldType::Select,
+                'position' => 0,
+            ]);
+            $field->options()->createMany(array_map(
+                fn (array $option, int $position) => $option + ['position' => $position],
+                $priority['options'],
+                array_keys($priority['options']),
+            ));
         });
     }
 
@@ -108,6 +121,11 @@ class Project extends Model
                 ->orWhereHas('projects', fn (Builder $projects) => $projects->whereKey($this->getKey()))
                 ->orWhereHas('teams.projects', fn (Builder $projects) => $projects->whereKey($this->getKey()))
             );
+    }
+
+    public function customFields(): HasMany
+    {
+        return $this->hasMany(CustomField::class)->orderBy('position')->orderBy('id');
     }
 
     public function statuses(): HasMany

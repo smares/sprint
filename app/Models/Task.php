@@ -222,6 +222,11 @@ class Task extends Model
             ->values();
     }
 
+    public function fieldValues(): HasMany
+    {
+        return $this->hasMany(CustomFieldValue::class);
+    }
+
     public function activities(): HasMany
     {
         return $this->hasMany(TaskActivity::class);

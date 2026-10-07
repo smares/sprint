@@ -96,7 +96,7 @@ new #[Title('Posteingang')] class extends Component
                     <div class="min-w-0 flex-1">
                         @if ($task)
                             <button type="button" wire:click="open('{{ $notification->id }}')" class="block truncate text-start font-medium hover:underline">{{ $task->title }}</button>
-                            <flux:text size="sm">{{ $notification->data['summary'] ?? '' }} · {{ $task->project->name }} · {{ $notification->created_at->diffForHumans() }}</flux:text>
+                            <flux:text size="sm">{{ \App\InboxText::sentence($notification) }} · {{ $task->project->name }} · {{ $notification->created_at->diffForHumans() }}</flux:text>
                         @else
                             <flux:text class="italic">Aufgabe nicht mehr verfügbar</flux:text>
                             <flux:text size="sm">{{ $notification->created_at->diffForHumans() }}</flux:text>

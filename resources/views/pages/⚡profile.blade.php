@@ -1,5 +1,6 @@
 <?php
 
+use App\Locale;
 use Flux\Flux;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -25,6 +26,8 @@ new #[Title('Profil')] class extends Component
 
     public bool $digest = true;
 
+    public string $locale = '';
+
     #[Url(as: 'tab', except: 'profile')]
     public string $tab = 'profile';
 
@@ -37,6 +40,18 @@ new #[Title('Profil')] class extends Component
         $this->name = auth()->user()->name;
         $this->email = auth()->user()->email;
         $this->digest = auth()->user()->digest_enabled;
+        $this->locale = auth()->user()->preferredLocale();
+    }
+
+    public function updatedLocale(string $value): void
+    {
+        $this->validate(['locale' => ['required', Rule::in(Locale::codes())]]);
+
+        auth()->user()->update(['locale' => $value]);
+        session()->put('locale', $value);
+        Locale::apply($value);
+
+        $this->redirectRoute('profile', navigate: true);
     }
 
     public function updatedDigest(bool $value): void
@@ -122,6 +137,14 @@ new #[Title('Profil')] class extends Component
                 @endif
                 <flux:button type="submit" variant="primary">Speichern</flux:button>
             </form>
+
+            <flux:separator />
+
+            <flux:select variant="listbox" wire:model.live="locale" label="Sprache" description="Oberfläche und E-Mails erscheinen in dieser Sprache.">
+                @foreach (\App\Locale::available() as $code => $name)
+                    <flux:select.option value="{{ $code }}">{{ $name }}</flux:select.option>
+                @endforeach
+            </flux:select>
 
             <flux:separator />
 

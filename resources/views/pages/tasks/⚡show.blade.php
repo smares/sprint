@@ -728,6 +728,26 @@ new class extends Component
         unset($this->attachments, $this->activityFeed);
     }
 
+    public function duplicate(): void
+    {
+        $this->authorizeEdit();
+
+        abort_if($this->task->is_section, 404);
+
+        $copy = $this->task->duplicate();
+        unset($this->activityFeed);
+
+        if ($this->panel) {
+            $this->dispatch('task-changed');
+            $this->dispatch('open-task', id: $copy->id);
+
+            return;
+        }
+
+        Flux::toast(variant: 'success', text: 'Aufgabe dupliziert.');
+        $this->redirectRoute('tasks.show', $copy, navigate: true);
+    }
+
     public function delete(): void
     {
         $this->authorizeEdit();
@@ -897,6 +917,7 @@ new class extends Component
         @if ($this->canEdit)
             <div class="flex gap-3">
                 <flux:button type="submit" variant="primary">Speichern</flux:button>
+                <flux:button type="button" icon="document-duplicate" wire:click="duplicate">Duplizieren</flux:button>
                 <flux:spacer />
                 <flux:modal.trigger name="delete-task">
                     <flux:button variant="danger" icon="trash">Löschen</flux:button>

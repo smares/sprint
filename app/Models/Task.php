@@ -21,6 +21,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 #[Fillable(['project_id', 'parent_id', 'is_section', 'assignee_id', 'creator_id', 'title', 'description', 'status_id', 'position', 'start_date', 'due_date', 'repeat_unit', 'repeat_interval', 'repeat_mode', 'repeat_until'])]
 class Task extends Model
@@ -191,8 +192,43 @@ class Task extends Model
 
         $offset = (int) $due->copy()->startOfDay()->diffInDays($next, false);
 
-        $copy = DB::transaction(function () use ($next, $offset, $unit) {
-            $copy = self::create([
+        $copy = $this->makeCopy([
+            'due_date' => $next,
+            'start_date' => $this->start_date?->copy()->addDays($offset),
+            'repeat_unit' => $unit,
+            'repeat_interval' => $this->repeat_interval,
+            'repeat_mode' => $this->repeat_mode,
+            'repeat_until' => $this->repeat_until,
+        ], $offset);
+
+        $this->logActivity('recurrence_created', ['to' => $next->format('d.m.Y')]);
+
+        return $copy;
+    }
+
+    /**
+     * Copy this task with its subtasks, tags, collaborators and field values, open again and without the
+     * recurrence rule. Comments, attachments and dependencies stay with the original.
+     */
+    public function duplicate(): self
+    {
+        $copy = $this->makeCopy([
+            'title' => Str::limit($this->title, 247, '').' (Kopie)',
+        ]);
+
+        $this->logActivity('duplicated');
+
+        return $copy;
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes  What differs from the original.
+     * @param  int  $offset  Days by which the dates of the subtasks move.
+     */
+    private function makeCopy(array $attributes, int $offset = 0): self
+    {
+        return DB::transaction(function () use ($attributes, $offset) {
+            $copy = self::create($attributes + [
                 'project_id' => $this->project_id,
                 'parent_id' => $this->parent_id,
                 'assignee_id' => $this->assignee_id,
@@ -201,12 +237,8 @@ class Task extends Model
                 'description' => $this->description,
                 'status_id' => $this->project->defaultStatus()->id,
                 'position' => $this->position ?? 0,
-                'due_date' => $next,
-                'start_date' => $this->start_date?->copy()->addDays($offset),
-                'repeat_unit' => $unit,
-                'repeat_interval' => $this->repeat_interval,
-                'repeat_mode' => $this->repeat_mode,
-                'repeat_until' => $this->repeat_until,
+                'due_date' => $this->due_date,
+                'start_date' => $this->start_date,
             ]);
 
             $copy->tags()->sync($this->tags()->pluck('tags.id')->all());
@@ -220,10 +252,6 @@ class Task extends Model
 
             return $copy;
         });
-
-        $this->logActivity('recurrence_created', ['to' => $next->format('d.m.Y')]);
-
-        return $copy;
     }
 
     /**

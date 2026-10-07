@@ -105,18 +105,18 @@ new class extends Component
         <flux:textarea wire:model="description" label="Beschreibung" rows="5" />
 
         <div class="grid gap-4 sm:grid-cols-3">
-            <flux:select wire:model="status" label="Status">
+            <flux:select variant="listbox" wire:model="status" label="Status">
                 @foreach (TaskStatus::cases() as $case)
                     <flux:select.option value="{{ $case->value }}">{{ $case->label() }}</flux:select.option>
                 @endforeach
             </flux:select>
-            <flux:select wire:model="assigneeId" label="Zuständig">
+            <flux:select variant="listbox" wire:model="assigneeId" label="Zuständig">
                 <flux:select.option value="">Niemand</flux:select.option>
                 @foreach ($this->users as $user)
                     <flux:select.option value="{{ $user->id }}">{{ $user->name }}</flux:select.option>
                 @endforeach
             </flux:select>
-            <flux:input wire:model="dueDate" type="date" label="Fällig am" />
+            <flux:date-picker wire:model="dueDate" label="Fällig am" locale="de-DE" clearable />
         </div>
 
         <div class="flex gap-3">

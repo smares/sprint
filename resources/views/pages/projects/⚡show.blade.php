@@ -108,7 +108,7 @@ new class extends Component
     </div>
 
     <div class="mb-4 flex gap-3">
-        <flux:select wire:model.live="statusFilter" class="max-w-40">
+        <flux:select variant="listbox" wire:model.live="statusFilter" class="max-w-40">
             <flux:select.option value="open">Offen</flux:select.option>
             <flux:select.option value="all">Alle</flux:select.option>
             @foreach (TaskStatus::cases() as $status)
@@ -116,7 +116,7 @@ new class extends Component
             @endforeach
         </flux:select>
 
-        <flux:select wire:model.live="assigneeFilter" class="max-w-48">
+        <flux:select variant="listbox" wire:model.live="assigneeFilter" class="max-w-48">
             <flux:select.option value="">Alle Personen</flux:select.option>
             <flux:select.option value="me">Nur meine</flux:select.option>
             @foreach ($this->users as $user)
@@ -167,13 +167,13 @@ new class extends Component
             <flux:heading size="lg">Neue Aufgabe</flux:heading>
             <flux:input wire:model="title" label="Titel" autofocus />
             <flux:textarea wire:model="description" label="Beschreibung" rows="3" />
-            <flux:select wire:model="assigneeId" label="Zuständig">
+            <flux:select variant="listbox" wire:model="assigneeId" label="Zuständig">
                 <flux:select.option value="">Niemand</flux:select.option>
                 @foreach ($this->users as $user)
                     <flux:select.option value="{{ $user->id }}">{{ $user->name }}</flux:select.option>
                 @endforeach
             </flux:select>
-            <flux:input wire:model="dueDate" type="date" label="Fällig am" />
+            <flux:date-picker wire:model="dueDate" label="Fällig am" locale="de-DE" clearable />
             <div class="flex">
                 <flux:spacer />
                 <flux:button type="submit" variant="primary">Anlegen</flux:button>

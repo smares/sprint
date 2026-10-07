@@ -327,12 +327,6 @@ new class extends Component
         return User::query()->orderBy('name')->get(['id', 'name']);
     }
 
-    #[Computed]
-    public function comments()
-    {
-        return $this->task->comments()->with('user')->oldest()->get();
-    }
-
     public function save(): void
     {
         $validated = $this->validate([
@@ -358,15 +352,17 @@ new class extends Component
             ]);
         }
 
-        DB::transaction(function () use ($validated) {
-            $this->task->blockers()->sync($validated['blockerIds']);
-            $this->task->blocking()->sync($validated['blockingIds']);
+        $dependencyChanges = DB::transaction(function () use ($validated) {
+            $blockers = $this->task->blockers()->sync($validated['blockerIds']);
+            $blocking = $this->task->blocking()->sync($validated['blockingIds']);
 
             if ($this->task->hasDependencyCycle()) {
                 throw ValidationException::withMessages([
                     'blockingIds' => 'Diese Abhängigkeiten würden einen Kreis bilden.',
                 ]);
             }
+
+            return ['blockers' => $blockers, 'blocking' => $blocking];
         });
 
         $parentChanged = ($validated['parentId'] ?: null) !== $this->task->parent_id;
@@ -383,12 +379,52 @@ new class extends Component
             'due_date' => $validated['dueDate'] ?: null,
         ]);
 
-        $this->task->tags()->sync($validated['tagIds']);
-        $this->task->collaborators()->sync(
+        $tagChanges = $this->task->tags()->sync($validated['tagIds']);
+        $collaboratorChanges = $this->task->collaborators()->sync(
             array_values(array_diff($validated['collaboratorIds'], [(string) $validated['assigneeId']]))
         );
 
+        $this->logSyncChanges('tags', $tagChanges, Tag::class, 'name');
+        $this->logSyncChanges('collaborators', $collaboratorChanges, User::class, 'name');
+        $this->logSyncChanges('blockers', $dependencyChanges['blockers'], Task::class, 'title');
+        $this->logSyncChanges('blocking', $dependencyChanges['blocking'], Task::class, 'title');
+        unset($this->activityFeed);
+
         Flux::toast(variant: 'success', text: 'Gespeichert.');
+    }
+
+    /**
+     * @param  array{attached: array<int, int|string>, detached: array<int, int|string>, updated: array<int, int|string>}  $changes
+     * @param  class-string<\Illuminate\Database\Eloquent\Model>  $model
+     */
+    private function logSyncChanges(string $kind, array $changes, string $model, string $nameColumn): void
+    {
+        foreach (['attached' => 'added', 'detached' => 'removed'] as $key => $suffix) {
+            if ($changes[$key] === []) {
+                continue;
+            }
+
+            $this->task->logActivity("{$kind}_{$suffix}", [
+                'names' => $model::whereIn('id', $changes[$key])->orderBy($nameColumn)->pluck($nameColumn)->all(),
+            ]);
+        }
+    }
+
+    /**
+     * Comments and recorded changes, oldest first.
+     *
+     * @return \Illuminate\Support\Collection<int, array{at: \Illuminate\Support\Carbon, comment: ?\App\Models\Comment, activity: ?\App\Models\TaskActivity}>
+     */
+    #[Computed]
+    public function activityFeed()
+    {
+        $comments = $this->task->comments()->with('user')->get()
+            ->map(fn ($comment) => ['at' => $comment->created_at, 'comment' => $comment, 'activity' => null]);
+
+        $activities = $this->task->activities()->with('user')->get()
+            ->map(fn ($activity) => ['at' => $activity->created_at, 'comment' => null, 'activity' => $activity]);
+
+        return $comments->concat($activities)->sortBy('at')->values();
     }
 
     public function addComment(): void
@@ -401,7 +437,7 @@ new class extends Component
         ]);
 
         $this->reset('comment');
-        unset($this->comments);
+        unset($this->activityFeed);
     }
 
     public function delete(): void
@@ -525,16 +561,24 @@ new class extends Component
 
     <flux:separator class="my-8" />
 
-    <flux:heading size="lg" class="mb-4">Kommentare</flux:heading>
+    <flux:heading size="lg" class="mb-4">Aktivität und Kommentare</flux:heading>
 
-    <div class="space-y-4">
-        @forelse ($this->comments as $comment)
-            <flux:card wire:key="comment-{{ $comment->id }}" class="space-y-1">
-                <flux:text class="text-sm"><strong>{{ $comment->user->name }}</strong> · {{ $comment->created_at->format('d.m.Y H:i') }}</flux:text>
-                <x-markdown :text="$comment->body" />
-            </flux:card>
+    <div class="space-y-3">
+        @forelse ($this->activityFeed as $entry)
+            @if ($entry['comment'])
+                @php($comment = $entry['comment'])
+                <flux:card wire:key="comment-{{ $comment->id }}" class="space-y-1">
+                    <flux:text class="text-sm"><strong>{{ $comment->user->name }}</strong> · {{ $comment->created_at->format('d.m.Y H:i') }}</flux:text>
+                    <x-markdown :text="$comment->body" />
+                </flux:card>
+            @else
+                @php($activity = $entry['activity'])
+                <flux:text wire:key="activity-{{ $activity->id }}" size="sm" class="px-1">
+                    <strong>{{ $activity->user?->name ?? 'Jemand' }}</strong> {{ $activity->sentence() }} · {{ $activity->created_at->format('d.m.Y H:i') }}
+                </flux:text>
+            @endif
         @empty
-            <flux:text>Noch keine Kommentare.</flux:text>
+            <flux:text>Noch keine Aktivität.</flux:text>
         @endforelse
     </div>
 

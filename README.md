@@ -14,6 +14,7 @@ Gebaut mit Laravel 13, Livewire 4 und [Flux UI Pro](https://fluxui.dev). Die Obe
 - **Tags pro Projekt** (derselbe Name darf in mehreren Projekten existieren)
 - **Abhängigkeiten** („blockiert“ / „blockiert von“) nur als Markierung, ohne Sperre; Zyklen werden abgelehnt
 - **Beteiligte** (mehrere Personen) zusätzlich zur zuständigen Person; *Meine Aufgaben* enthält auch Aufgaben, an denen man beteiligt ist
+- **Aktivitätsverlauf** an jeder Aufgabe: wer wann Status, Zuständige, Fälligkeit, Titel, Beschreibung, Tags, Beteiligte oder Abhängigkeiten geändert hat, zusammen mit den Kommentaren in einer Zeitleiste
 - **Kommentare** mit Markdown (GitHub-Variante: Tabellen, Durchgestrichen, Aufgabenlisten, automatische Links)
 - **Markdown** auch in der Beschreibung, mit Vorschau
 - **`@`-Erwähnungen** von Personen und Aufgaben: ein `@` tippen, aus dem Fenster wählen; angezeigt wird immer der aktuelle Name bzw. Titel

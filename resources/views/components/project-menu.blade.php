@@ -5,6 +5,8 @@
     <flux:button icon="cog-6-tooth" aria-label="Projekt einrichten" />
 
     <flux:menu>
+        <flux:menu.item icon="pencil-square" x-on:click="$flux.modal('project-settings').show()">Einstellungen</flux:menu.item>
+        <flux:menu.separator />
         <flux:menu.item icon="queue-list" x-on:click="$flux.modal('project-statuses').show()">Status</flux:menu.item>
         <flux:menu.item icon="tag" x-on:click="$flux.modal('project-tags').show()">Tags</flux:menu.item>
         <flux:menu.separator />
@@ -13,5 +15,6 @@
     </flux:menu>
 </flux:dropdown>
 
+<livewire:project-settings :project="$project" />
 <livewire:project-statuses :project="$project" />
 <livewire:project-tags :project="$project" />

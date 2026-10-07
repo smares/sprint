@@ -27,6 +27,19 @@ new #[Title('Projekte')] class extends Component
             ->get();
     }
 
+    /**
+     * Archived projects the person can still open (read-only).
+     */
+    #[Computed]
+    public function archivedProjects()
+    {
+        return Project::query()
+            ->visibleTo(auth()->user())
+            ->whereNotNull('archived_at')
+            ->orderBy('name')
+            ->get(['id', 'name', 'archived_at']);
+    }
+
     public function create(): void
     {
         $validated = $this->validate([
@@ -71,6 +84,20 @@ new #[Title('Projekte')] class extends Component
                 </a>
             @endforeach
         </div>
+    @endif
+
+    @if ($this->archivedProjects->isNotEmpty())
+        <details class="mt-10">
+            <summary class="cursor-pointer text-sm font-medium text-zinc-500 dark:text-zinc-400">Archivierte Projekte ({{ $this->archivedProjects->count() }})</summary>
+            <ul class="mt-3 space-y-1">
+                @foreach ($this->archivedProjects as $archived)
+                    <li wire:key="archived-{{ $archived->id }}">
+                        <a href="{{ route('projects.show', $archived) }}" wire:navigate class="hover:underline">{{ $archived->name }}</a>
+                        <flux:text size="sm" class="ms-2 inline">archiviert am {{ $archived->archived_at->format('d.m.Y') }}</flux:text>
+                    </li>
+                @endforeach
+            </ul>
+        </details>
     @endif
 
     <flux:modal name="create-project" class="md:w-96">

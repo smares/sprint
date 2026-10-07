@@ -17,10 +17,14 @@ class ProjectPolicy
     }
 
     /**
-     * Change tasks, comments, tags and the order of things.
+     * Change tasks, comments, tags and the order of things; archived projects are read-only.
      */
     public function edit(User $user, Project $project): bool
     {
+        if ($project->archived_at !== null) {
+            return false;
+        }
+
         return $project->roleFor($user)?->atLeast(ProjectRole::Editor) ?? false;
     }
 

@@ -705,7 +705,11 @@ new class extends Component
     @endif
 
     @unless ($this->canEdit)
-        <flux:callout class="mb-4" icon="eye" heading="Nur ansehen" text="In diesem Projekt darfst du Aufgaben lesen, aber nicht ändern." />
+        @if ($task->project->archived_at)
+            <flux:callout class="mb-4" icon="archive-box" heading="Archiviert" text="Dieses Projekt ist archiviert und nur noch lesbar." />
+        @else
+            <flux:callout class="mb-4" icon="eye" heading="Nur ansehen" text="In diesem Projekt darfst du Aufgaben lesen, aber nicht ändern." />
+        @endif
     @endunless
 
     <form wire:submit="save" class="space-y-6">

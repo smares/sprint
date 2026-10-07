@@ -30,6 +30,12 @@ new class extends Component
     }
 
     #[Computed]
+    public function confirmedUntil()
+    {
+        return now()->setTimestamp((int) session('auth.password_confirmed_at', 0) + (int) config('auth.password_timeout', 10800));
+    }
+
+    #[Computed]
     public function passkeys()
     {
         return auth()->user()->passkeys()->latest()->get();
@@ -54,7 +60,7 @@ new class extends Component
         RateLimiter::clear($throttleKey);
         session(['auth.password_confirmed_at' => time()]);
         $this->reset('password');
-        unset($this->confirmed);
+        unset($this->confirmed, $this->confirmedUntil);
     }
 
     private function requireConfirmed(): void
@@ -157,16 +163,40 @@ new class extends Component
 @php($user = auth()->user())
 
 <div class="space-y-8">
-    @unless ($this->confirmed)
-        <form wire:submit="confirmPassword" class="space-y-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
-            <flux:input wire:model="password" type="password" label="Passwort bestätigen" description="Zum Ändern der Sicherheitseinstellungen brauchen wir kurz dein Passwort." autocomplete="current-password" />
-            <flux:button type="submit">Bestätigen</flux:button>
-        </form>
-    @endunless
+    <div class="space-y-3">
+        <div>
+            <flux:heading size="lg">Zusätzliche Absicherung</flux:heading>
+            <flux:text class="mt-1">Zwei-Faktor-Anmeldung und Passkeys schützen dein Konto über das Passwort hinaus. Änderungen daran sind durch dein Passwort geschützt.</flux:text>
+        </div>
+
+        @if ($this->confirmed)
+            <div class="flex items-center gap-3 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-900 dark:bg-green-950/40 dark:text-green-200">
+                <flux:icon.lock-open variant="mini" class="shrink-0" />
+                <span>Freigeschaltet bis {{ $this->confirmedUntil->format('H:i') }} Uhr – so lange kannst du die Einstellungen unten ändern.</span>
+            </div>
+        @else
+            <form wire:submit="confirmPassword" class="space-y-3 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800/50">
+                <div class="flex items-start gap-3">
+                    <flux:icon.lock-closed variant="mini" class="mt-0.5 shrink-0 text-zinc-500" />
+                    <div>
+                        <flux:heading>Zum Ändern Passwort bestätigen</flux:heading>
+                        <flux:text size="sm" class="mt-1">Das gilt für Zwei-Faktor-Anmeldung und Passkeys und schaltet beides für {{ round(config('auth.password_timeout', 10800) / 3600) }} Stunden frei.</flux:text>
+                    </div>
+                </div>
+                <div class="flex items-start gap-2">
+                    <div class="min-w-0 flex-1">
+                        <flux:input wire:model="password" type="password" placeholder="Aktuelles Passwort" aria-label="Aktuelles Passwort" autocomplete="current-password" />
+                    </div>
+                    <flux:button type="submit" variant="primary">Freischalten</flux:button>
+                </div>
+                <flux:error name="password" />
+            </form>
+        @endif
+    </div>
 
     <div class="space-y-4">
         <div class="flex items-center gap-3">
-            <flux:heading size="lg">Zwei-Faktor-Anmeldung</flux:heading>
+            <flux:heading>Zwei-Faktor-Anmeldung</flux:heading>
             @if ($user->hasEnabledTwoFactorAuthentication())
                 <flux:badge color="green" size="sm">An</flux:badge>
             @elseif ($user->two_factor_secret)
@@ -221,7 +251,7 @@ new class extends Component
     <flux:separator />
 
     <div class="space-y-4">
-        <flux:heading size="lg">Passkeys</flux:heading>
+        <flux:heading>Passkeys</flux:heading>
         <flux:text>Melde dich ohne Passwort an: mit Fingerabdruck, Gesicht, Sicherheitsschlüssel oder Gerätesperre. Ein Passkey ersetzt Passwort und zweiten Faktor.</flux:text>
 
         @if ($this->passkeys->isNotEmpty())

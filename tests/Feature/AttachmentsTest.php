@@ -178,5 +178,7 @@ class AttachmentsTest extends TestCase
         $attachment = Attachment::factory()->for($this->task)->create(['size' => 1_572_864]);
 
         $this->assertSame('1.5 MB', $attachment->humanSize());
+        $this->assertSame('10 B', Attachment::factory()->make(['size' => 10])->humanSize());
+        $this->assertSame('293 KB', Attachment::factory()->make(['size' => 300000])->humanSize());
     }
 }

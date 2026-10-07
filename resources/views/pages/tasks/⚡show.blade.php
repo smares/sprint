@@ -889,8 +889,9 @@ new class extends Component
 
     @if ($this->canEdit)
         <div class="mt-3">
-            <flux:input type="file" wire:model="uploads" multiple label="Dateien hinzufügen" description="Bis zu {{ intdiv(\App\Models\Attachment::MAX_KILOBYTES, 1024) }} MB pro Datei." />
-            <div wire:loading wire:target="uploads"><flux:text size="sm">Wird hochgeladen …</flux:text></div>
+            <flux:file-upload wire:model="uploads" multiple>
+                <flux:file-upload.dropzone heading="Dateien hierher ziehen oder klicken" text="Bis zu {{ intdiv(\App\Models\Attachment::MAX_KILOBYTES, 1024) }} MB pro Datei" with-progress inline />
+            </flux:file-upload>
             @error('uploads') <flux:text class="mt-1 text-red-500">{{ $message }}</flux:text> @enderror
             @error('uploads.*') <flux:text class="mt-1 text-red-500">{{ $message }}</flux:text> @enderror
         </div>

@@ -7,6 +7,7 @@ use App\Notifications\TaskStatusChanged;
 use App\Notifications\UserMentioned;
 use Database\Factories\TaskFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,7 +18,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 
-#[Fillable(['project_id', 'parent_id', 'is_section', 'assignee_id', 'creator_id', 'title', 'description', 'status_id', 'position', 'due_date'])]
+#[Fillable(['project_id', 'parent_id', 'is_section', 'assignee_id', 'creator_id', 'title', 'description', 'status_id', 'position', 'start_date', 'due_date'])]
 class Task extends Model
 {
     /** @use HasFactory<TaskFactory> */
@@ -70,6 +71,7 @@ class Task extends Model
     {
         return [
             'due_date' => 'date',
+            'start_date' => 'date',
             'is_section' => 'boolean',
         ];
     }
@@ -273,6 +275,13 @@ class Task extends Model
             ]);
         }
 
+        if ($this->wasChanged('start_date')) {
+            $this->logActivity('start_date_changed', [
+                'from' => $date($this->getOriginal('start_date')),
+                'to' => $date($this->start_date),
+            ]);
+        }
+
         if ($this->wasChanged('title')) {
             $this->logActivity('title_changed', ['from' => $this->getOriginal('title'), 'to' => $this->title]);
         }
@@ -322,6 +331,31 @@ class Task extends Model
         }
 
         return false;
+    }
+
+    /**
+     * First day of the task's time span; tasks with only a due date last a single day.
+     */
+    public function spanStart(): ?Carbon
+    {
+        return $this->start_date ?? $this->due_date;
+    }
+
+    /**
+     * Last day of the task's time span.
+     */
+    public function spanEnd(): ?Carbon
+    {
+        return $this->due_date ?? $this->start_date;
+    }
+
+    /**
+     * Tasks whose time span touches the given days.
+     */
+    public function scopeOverlapping(Builder $query, Carbon $from, Carbon $to): void
+    {
+        $query->whereRaw('coalesce(tasks.start_date, tasks.due_date) <= ?', [$to->copy()->endOfDay()->toDateTimeString()])
+            ->whereRaw('coalesce(tasks.due_date, tasks.start_date) >= ?', [$from->copy()->startOfDay()->toDateTimeString()]);
     }
 
     public function isOverdue(): bool

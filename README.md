@@ -8,6 +8,7 @@ Gebaut mit Laravel 13, Livewire 4 und [Flux UI Pro](https://fluxui.dev). Die Obe
 
 - **Rollen und Rechte:** Projekte sehen nur ihre Mitglieder. Pro Projekt gibt es die Rollen *Ansehen*, *Bearbeiten* und *Verwalten* (Mitglieder und Status); **Teams** geben einer ganzen Gruppe auf einmal Zugriff (die höchste Rolle aus direkter Mitgliedschaft und Teams gilt); Administratoren der Anwendung haben überall Zugriff und legen unter *Benutzer* neue Personen an, verwalten Administratoren und unter *Teams* die Gruppen. Zuständige, Beteiligte, Erwähnungen und E-Mails gibt es nur für Personen, die das Projekt sehen dürfen
 - **Projekte und Aufgaben** mit Titel, Beschreibung, zuständiger Person, Fälligkeit und Status
+- **Startdatum und Fälligkeit** an jeder Aufgabe (beides optional); dazu ein **Kalender** (Monatsansicht) und eine **Zeitleiste** (Balken über sechs Wochen) pro Projekt, Aufgaben ohne Startdatum erscheinen am Fälligkeitstag
 - **Liste und Kanban-Board** pro Projekt, mit Filtern (Status, Person, Tag) und Sortierung per Klick auf die Spaltenköpfe
 - **Manuelle Reihenfolge** per Drag & Drop; Liste und Board teilen eine Reihenfolge
 - **Eigene Status pro Projekt** mit Name, Farbe, Reihenfolge und „gilt als erledigt“-Markierung (unter *Status* im Projekt)

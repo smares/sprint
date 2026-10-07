@@ -66,6 +66,8 @@ new class extends Component
 
     public string $dueDate = '';
 
+    public string $startDate = '';
+
     #[Computed]
     public function tasks()
     {
@@ -190,6 +192,7 @@ new class extends Component
             'description' => ['nullable', 'string', 'max:10000'],
             'assigneeId' => ['nullable', 'exists:users,id'],
             'dueDate' => ['nullable', 'date'],
+            'startDate' => ['nullable', 'date', 'before_or_equal:dueDate'],
         ]);
 
         $this->project->tasks()->create([
@@ -197,11 +200,12 @@ new class extends Component
             'description' => $validated['description'] ?: null,
             'assignee_id' => $validated['assigneeId'] ?: null,
             'due_date' => $validated['dueDate'] ?: null,
+            'start_date' => $validated['startDate'] ?: null,
             'creator_id' => auth()->id(),
             'position' => $this->project->nextRootPosition(),
         ]);
 
-        $this->reset('title', 'description', 'assigneeId', 'dueDate');
+        $this->reset('title', 'description', 'assigneeId', 'dueDate', 'startDate');
         unset($this->tasks);
         Flux::modal('create-task')->close();
     }
@@ -278,10 +282,7 @@ new class extends Component
         </div>
 
         <div class="flex items-center gap-3">
-            <flux:button.group>
-                <flux:button icon="list-bullet" disabled>Liste</flux:button>
-                <flux:button icon="view-columns" href="{{ route('projects.board', $project) }}" wire:navigate>Board</flux:button>
-            </flux:button.group>
+            <x-project-views :project="$project" active="list" />
 
             @if ($this->canManage)
                 <flux:button icon="cog-6-tooth" href="{{ route('projects.statuses', $project) }}" wire:navigate>Status</flux:button>
@@ -404,7 +405,10 @@ new class extends Component
                         <flux:select.option value="{{ $user->id }}">{{ $user->name }}</flux:select.option>
                     @endforeach
                 </flux:select>
-                <flux:date-picker wire:model="dueDate" label="Fällig am" locale="de-DE" clearable />
+                <div class="grid grid-cols-2 gap-4">
+                    <flux:date-picker wire:model="startDate" label="Beginnt am" locale="de-DE" clearable />
+                    <flux:date-picker wire:model="dueDate" label="Fällig am" locale="de-DE" clearable />
+                </div>
                 <div class="flex">
                     <flux:spacer />
                     <flux:button type="submit" variant="primary">Anlegen</flux:button>

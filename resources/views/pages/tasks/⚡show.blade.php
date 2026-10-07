@@ -28,6 +28,8 @@ new class extends Component
 
     public string $dueDate = '';
 
+    public string $startDate = '';
+
     /** @var array<int|string, string|null> */
     public array $fieldValues = [];
 
@@ -82,6 +84,7 @@ new class extends Component
         $this->statusId = (string) $this->task->status_id;
         $this->assigneeId = (string) ($this->task->assignee_id ?? '');
         $this->dueDate = $this->task->due_date?->format('Y-m-d') ?? '';
+        $this->startDate = $this->task->start_date?->format('Y-m-d') ?? '';
         $this->fieldValues = $this->task->fieldValues
             ->mapWithKeys(fn ($value) => [$value->custom_field_id => (string) ($value->option_id ?? $value->value)])
             ->all();
@@ -443,6 +446,7 @@ new class extends Component
             'statusId' => ['required', Rule::in($this->task->project->statuses->pluck('id')->map(fn ($id) => (string) $id)->all())],
             'assigneeId' => ['nullable', Rule::in($this->users->pluck('id')->map(fn ($id) => (string) $id)->all())],
             'dueDate' => ['nullable', 'date'],
+            'startDate' => ['nullable', 'date', 'before_or_equal:dueDate'],
             ...$this->fieldRules(),
             'tagIds' => ['array'],
             'tagIds.*' => ['integer', Rule::exists('tags', 'id')->where('project_id', $this->task->project_id)],
@@ -486,6 +490,7 @@ new class extends Component
                 : $this->task->position,
             'assignee_id' => $validated['assigneeId'] ?: null,
             'due_date' => $validated['dueDate'] ?: null,
+            'start_date' => $validated['startDate'] ?: null,
         ]);
 
         $this->saveFieldValues($validated['fieldValues'] ?? []);
@@ -601,6 +606,10 @@ new class extends Component
                 @endforeach
             </flux:select>
             <flux:date-picker wire:model="dueDate" label="Fällig am" locale="de-DE" clearable />
+        </div>
+
+        <div class="grid gap-4 sm:grid-cols-3">
+            <flux:date-picker wire:model="startDate" label="Beginnt am" locale="de-DE" clearable />
         </div>
 
         @if ($this->customFields->isNotEmpty())

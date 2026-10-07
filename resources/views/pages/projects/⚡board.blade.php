@@ -118,10 +118,7 @@ new class extends Component
     <div class="mb-6 flex items-center justify-between">
         <flux:heading size="xl">{{ $project->name }}</flux:heading>
 
-        <flux:button.group>
-            <flux:button icon="list-bullet" href="{{ route('projects.show', $project) }}" wire:navigate>Liste</flux:button>
-            <flux:button icon="view-columns" disabled>Board</flux:button>
-        </flux:button.group>
+        <x-project-views :project="$project" active="board" />
 
             @if ($this->canManage)
                 <flux:button icon="cog-6-tooth" href="{{ route('projects.statuses', $project) }}" wire:navigate>Status</flux:button>

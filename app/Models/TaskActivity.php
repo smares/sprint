@@ -46,6 +46,7 @@ class TaskActivity extends Model
             'status_changed' => "hat den Status von „{$from}“ auf „{$to}“ geändert",
             'assignee_changed' => "hat die Zuständigkeit von {$from} auf {$to} geändert",
             'due_date_changed' => "hat die Fälligkeit von {$from} auf {$to} geändert",
+            'start_date_changed' => "hat den Beginn von {$from} auf {$to} geändert",
             'title_changed' => "hat den Titel von „{$from}“ in „{$to}“ geändert",
             'description_changed' => 'hat die Beschreibung geändert',
             'parent_changed' => ($data['to'] ?? null) === null

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AttachmentController;
+use App\Http\Controllers\ProjectExportController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -49,6 +50,7 @@ Route::middleware('auth')->group(function () {
         Route::livewire('/teams', 'pages::admin.teams')->name('admin.teams');
     });
 
+    Route::get('/projects/{project}/export', ProjectExportController::class)->name('projects.export');
     Route::get('/attachments/{attachment}', AttachmentController::class)->name('attachments.show');
 
     Route::livewire('/tasks/mine', 'pages::tasks.mine')->name('tasks.mine');

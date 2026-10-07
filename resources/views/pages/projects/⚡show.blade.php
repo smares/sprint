@@ -1,5 +1,6 @@
 <?php
 
+use App\Concerns\OpensTaskPanel;
 use App\CustomFieldType;
 use App\Models\CustomField;
 use App\Models\CustomFieldValue;
@@ -16,6 +17,8 @@ use Livewire\Component;
 
 new class extends Component
 {
+    use OpensTaskPanel;
+
     public Project $project;
 
     #[Url(as: 'status')]
@@ -341,13 +344,13 @@ new class extends Component
 };
 ?>
 
-<div>
+<div @class(['lg:pe-[39rem]' => $this->panelTask])>
     <flux:breadcrumbs class="mb-4">
         <flux:breadcrumbs.item href="{{ route('projects.index') }}" wire:navigate>Projekte</flux:breadcrumbs.item>
         <flux:breadcrumbs.item>{{ $project->name }}</flux:breadcrumbs.item>
     </flux:breadcrumbs>
 
-    <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <div @class(['mb-6 flex flex-col gap-4', 'lg:flex-row lg:items-center lg:justify-between' => ! $this->panelTask])>
         <div>
             <flux:heading size="xl">{{ $project->name }}</flux:heading>
             @if ($project->description)
@@ -449,10 +452,10 @@ new class extends Component
                 <flux:table.column class="w-10"></flux:table.column>
                 <flux:table.column sortable :sorted="$sortBy === 'title'" :direction="$sortDirection" wire:click="sort('title')">Aufgabe</flux:table.column>
                 <flux:table.column sortable :sorted="$sortBy === 'status'" :direction="$sortDirection" wire:click="sort('status')">Status</flux:table.column>
-                <flux:table.column class="max-md:hidden">Zuständig</flux:table.column>
+                <flux:table.column class="{{ $this->panelTask ? 'hidden' : 'max-md:hidden' }}">Zuständig</flux:table.column>
                 <flux:table.column sortable :sorted="$sortBy === 'due'" :direction="$sortDirection" wire:click="sort('due')">Fällig</flux:table.column>
                 @foreach ($this->listFields as $field)
-                    <flux:table.column wire:key="column-{{ $field->id }}" class="max-md:hidden" sortable :sorted="$sortBy === 'field:'.$field->id" :direction="$sortDirection" wire:click="sort('field:{{ $field->id }}')">{{ $field->name }}</flux:table.column>
+                    <flux:table.column wire:key="column-{{ $field->id }}" class="{{ $this->panelTask ? 'hidden' : 'max-md:hidden' }}" sortable :sorted="$sortBy === 'field:'.$field->id" :direction="$sortDirection" wire:click="sort('field:{{ $field->id }}')">{{ $field->name }}</flux:table.column>
                 @endforeach
             </flux:table.columns>
             <flux:table.rows :wire:sort="$sortBy === '' && $this->canEdit ? 'moveTask' : null">
@@ -462,7 +465,7 @@ new class extends Component
                             <flux:checkbox :checked="$task->isDone()" :disabled="! $this->canEdit" wire:click="toggleDone({{ $task->id }})" />
                         </flux:table.cell>
                         <flux:table.cell class="min-w-44 whitespace-normal">
-                            <a href="{{ route('tasks.show', $task) }}" wire:navigate class="font-medium hover:underline">{{ $task->title }}</a>
+                            <a href="{{ route('tasks.show', $task) }}" x-on:click="if ($event.metaKey || $event.ctrlKey || $event.shiftKey || $event.button !== 0) return; $event.preventDefault(); $wire.openTask({{ $task->id }})" @class(['font-medium hover:underline', 'text-blue-600 dark:text-blue-400' => (string) $task->id === $openTaskId])>{{ $task->title }}</a>
                             @if ($task->isBlocked())
                                 <flux:icon.lock-closed variant="micro" class="ms-1 inline text-amber-500" title="Blockiert" />
                             @endif
@@ -479,7 +482,7 @@ new class extends Component
                         <flux:table.cell>
                             <x-color-badge size="sm" :color="$task->status->color">{{ $task->status->name }}</x-color-badge>
                         </flux:table.cell>
-                        <flux:table.cell class="max-md:hidden">
+                        <flux:table.cell class="{{ $this->panelTask ? 'hidden' : 'max-md:hidden' }}">
                             {{ $task->assignee?->name ?? '–' }}
                             @if ($task->collaborators->isNotEmpty())
                                 <flux:text size="sm" class="block" title="{{ $task->collaborators->pluck('name')->join(', ') }}">+ {{ $task->collaborators->count() }} {{ $task->collaborators->count() === 1 ? 'Beteiligte:r' : 'Beteiligte' }}</flux:text>
@@ -493,7 +496,7 @@ new class extends Component
                             @endif
                         </flux:table.cell>
                         @foreach ($this->listFields as $field)
-                            <flux:table.cell wire:key="cell-{{ $task->id }}-{{ $field->id }}" class="max-md:hidden">
+                            <flux:table.cell wire:key="cell-{{ $task->id }}-{{ $field->id }}" class="{{ $this->panelTask ? 'hidden' : 'max-md:hidden' }}">
                                 <x-field-value :task="$task" :field="$field" />
                             </flux:table.cell>
                         @endforeach
@@ -527,4 +530,6 @@ new class extends Component
             </form>
         </flux:modal>
     @endif
+
+    <x-task-panel :task="$this->panelTask" />
 </div>

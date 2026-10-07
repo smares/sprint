@@ -1,4 +1,4 @@
-@props(['tasks', 'childrenMap', 'parentId', 'depth' => 0, 'canEdit' => false])
+@props(['tasks', 'childrenMap', 'parentId', 'depth' => 0, 'canEdit' => false, 'panel' => false])
 
 <ul
     {!! $canEdit ? 'wire:sort="moveSubtask" wire:sort:group="subtasks"' : '' !!}
@@ -20,14 +20,18 @@
             <li wire:key="subtask-{{ $subtask->id }}" wire:sort:item="{{ $subtask->id }}">
                 <div class="flex items-center gap-3">
                     <flux:checkbox :checked="$subtask->isDone()" :disabled="! $canEdit" wire:click="toggleSubtask({{ $subtask->id }})" />
-                    <a href="{{ route('tasks.show', $subtask) }}" wire:navigate @class(['hover:underline', 'line-through text-zinc-400' => $subtask->isDone()])>{{ $subtask->title }}</a>
+                    @if ($panel)
+                        <button type="button" x-on:click="$dispatch('open-task', { id: {{ $subtask->id }} })" @class(['text-start hover:underline', 'line-through text-zinc-400' => $subtask->isDone()])>{{ $subtask->title }}</button>
+                    @else
+                        <a href="{{ route('tasks.show', $subtask) }}" wire:navigate @class(['hover:underline', 'line-through text-zinc-400' => $subtask->isDone()])>{{ $subtask->title }}</a>
+                    @endif
                     @if ($subtask->assignee)
                         <flux:text size="sm">{{ $subtask->assignee->name }}</flux:text>
                     @endif
                 </div>
 
                 @if ($children->isNotEmpty())
-                    <x-task-subtree :tasks="$children" :children-map="$childrenMap" :parent-id="$subtask->id" :depth="$depth + 1" :can-edit="$canEdit" />
+                    <x-task-subtree :tasks="$children" :children-map="$childrenMap" :parent-id="$subtask->id" :depth="$depth + 1" :can-edit="$canEdit" :panel="$panel" />
                 @endif
 
                 @if ($canEdit)

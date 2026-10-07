@@ -1,5 +1,6 @@
 <?php
 
+use App\Color;
 use App\Models\Project;
 use App\Models\TaskStatus;
 use Flux\Flux;
@@ -133,7 +134,7 @@ new class extends Component
     {
         $status = $this->statusOrFail($id);
 
-        if (! in_array($value, TaskStatus::COLORS, true)) {
+        if (! Color::isHex($value)) {
             $this->colors[$id] = $status->color;
 
             return;
@@ -232,13 +233,9 @@ new class extends Component
                     <li wire:key="status-{{ $status->id }}" wire:sort:item="{{ $status->id }}" class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
                         <div class="flex items-center gap-3">
                             <flux:icon.bars-2 variant="micro" class="shrink-0 text-zinc-400" />
-                            <flux:badge size="sm" :color="$status->color" class="shrink-0" title="Aufgaben mit diesem Status">{{ $status->tasks_count }}</flux:badge>
+                            <x-color-badge size="sm" :color="$status->color" class="shrink-0" title="Aufgaben mit diesem Status">{{ $status->tasks_count }}</x-color-badge>
                             <flux:input size="sm" wire:model.blur="names.{{ $status->id }}" aria-label="Name" class="min-w-0 flex-1" />
-                            <flux:select size="sm" variant="listbox" wire:model.live="colors.{{ $status->id }}" aria-label="Farbe" class="max-w-28">
-                                @foreach (\App\Models\TaskStatus::COLORS as $color)
-                                    <flux:select.option value="{{ $color }}">{{ $color }}</flux:select.option>
-                                @endforeach
-                            </flux:select>
+                            <flux:color-picker type="button" size="sm" with-confirmation :swatches="\App\Color::SWATCHES" wire:model.live="colors.{{ $status->id }}" aria-label="Farbe" />
                             <flux:checkbox wire:model.live="done.{{ $status->id }}" label="Erledigt" />
                             <flux:button size="xs" variant="ghost" icon="trash" wire:click="confirmDelete({{ $status->id }})" aria-label="Status löschen" />
                         </div>

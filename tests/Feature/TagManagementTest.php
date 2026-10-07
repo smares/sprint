@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Color;
 use App\Models\Project;
 use App\Models\Tag;
 use App\Models\Task;
@@ -63,7 +64,7 @@ class TagManagementTest extends TestCase
         foreach ([
             fn ($page) => $page->set('newName', 'Neu')->call('add'),
             fn ($page) => $page->set("names.{$tag->id}", 'Umbenannt'),
-            fn ($page) => $page->set("colors.{$tag->id}", 'sky'),
+            fn ($page) => $page->set("colors.{$tag->id}", '#0ea5e9'),
             fn ($page) => $page->call('confirmDelete', $tag->id)->call('delete'),
         ] as $change) {
             $page = $this->page();
@@ -115,7 +116,7 @@ class TagManagementTest extends TestCase
 
         $tag = $this->project->tags()->firstOrFail();
         $this->assertSame('Neu', $tag->name);
-        $this->assertContains($tag->color, Tag::COLORS);
+        $this->assertContains($tag->color, Color::hexes());
     }
 
     public function test_names_must_be_unique_within_the_project_ignoring_case_but_not_across_projects(): void
@@ -155,15 +156,33 @@ class TagManagementTest extends TestCase
         $this->assertSame('Eins', $tag->fresh()->name);
     }
 
-    public function test_the_color_can_be_changed_to_known_colors_only(): void
+    public function test_the_color_can_be_picked_freely_as_hex(): void
     {
-        $tag = Tag::factory()->for($this->project)->create(['color' => 'red']);
+        $tag = Tag::factory()->for($this->project)->create(['color' => '#ef4444']);
 
-        $this->page()->set("colors.{$tag->id}", 'purple');
-        $this->assertSame('purple', $tag->fresh()->color);
+        $this->page()->set("colors.{$tag->id}", '#A1B2C3');
 
-        $this->page()->set("colors.{$tag->id}", 'neon')->assertSet("colors.{$tag->id}", 'purple');
-        $this->assertSame('purple', $tag->fresh()->color);
+        $this->assertSame('#a1b2c3', $tag->fresh()->color);
+    }
+
+    public function test_invalid_colors_are_rejected_and_the_old_one_comes_back(): void
+    {
+        $tag = Tag::factory()->for($this->project)->create(['color' => '#a855f7']);
+
+        foreach (['neon', 'purple', '#fff', '#12345g', 'red; background: url(x)', ''] as $invalid) {
+            $this->page()->set("colors.{$tag->id}", $invalid)->assertSet("colors.{$tag->id}", '#a855f7');
+        }
+
+        $this->assertSame('#a855f7', $tag->fresh()->color);
+    }
+
+    public function test_old_color_names_are_still_understood(): void
+    {
+        $tag = Tag::factory()->for($this->project)->create();
+        \DB::table('tags')->where('id', $tag->id)->update(['color' => 'purple']);
+
+        $this->assertSame('#a855f7', $tag->fresh()->color);
+        $this->page()->assertSet("colors.{$tag->id}", '#a855f7');
     }
 
     public function test_deleting_removes_the_tag_from_all_tasks(): void

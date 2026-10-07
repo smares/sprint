@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\ColorCast;
 use Database\Factories\TagFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -15,10 +16,10 @@ class Tag extends Model
     /** @use HasFactory<TagFactory> */
     use HasFactory;
 
-    /**
-     * @var list<string>
-     */
-    public const COLORS = ['red', 'orange', 'amber', 'lime', 'teal', 'sky', 'indigo', 'purple', 'pink', 'zinc'];
+    protected function casts(): array
+    {
+        return ['color' => ColorCast::class];
+    }
 
     public function project(): BelongsTo
     {

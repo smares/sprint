@@ -101,7 +101,7 @@ new #[Title('Suche')] class extends Component
                     <li wire:key="result-{{ $task->id }}" class="py-3">
                         <div class="flex items-center gap-2">
                             <a href="{{ route('tasks.show', $task) }}" wire:navigate class="font-medium hover:underline">{{ $task->title }}</a>
-                            <flux:badge size="sm" :color="$task->status->color">{{ $task->status->name }}</flux:badge>
+                            <x-color-badge size="sm" :color="$task->status->color">{{ $task->status->name }}</x-color-badge>
                         </div>
                         <flux:text size="sm">
                             {{ $task->project->name }}@if ($task->parent) · in {{ $task->parent->title }}@endif

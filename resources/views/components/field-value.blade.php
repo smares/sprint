@@ -11,7 +11,7 @@
 @endphp
 
 @if ($option)
-    <flux:badge size="sm" :color="$option->color">{{ $withName ? $field->name.': ' : '' }}{{ $option->name }}</flux:badge>
+    <x-color-badge size="sm" :color="$option->color">{{ $withName ? $field->name.': ' : '' }}{{ $option->name }}</x-color-badge>
 @elseif ($text !== null)
     <flux:text size="sm" class="inline">{{ $withName ? $field->name.': ' : '' }}{{ $text }}</flux:text>
 @elseif ($showEmpty)

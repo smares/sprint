@@ -166,21 +166,8 @@ new class extends Component
                             <div class="pointer-events-none absolute inset-y-0 w-px bg-blue-400" style="inset-inline-start: {{ ($todayColumn - 1) * 2 + 1 }}rem"></div>
                         @endif
                         <a href="{{ route('tasks.show', $task) }}" wire:navigate title="{{ $task->title }}: {{ $task->spanStart()->format('d.m.') }} – {{ $task->spanEnd()->format('d.m.Y') }}"
-                           class="my-1.5 block h-5 truncate rounded px-1 text-xs leading-5 text-white {{ match ($task->status->color) {
-                               'red' => 'bg-red-500',
-                               'orange' => 'bg-orange-500',
-                               'amber' => 'bg-amber-500',
-                               'lime' => 'bg-lime-600',
-                               'green' => 'bg-green-600',
-                               'teal' => 'bg-teal-600',
-                               'sky' => 'bg-sky-500',
-                               'blue' => 'bg-blue-600',
-                               'indigo' => 'bg-indigo-600',
-                               'purple' => 'bg-purple-600',
-                               'pink' => 'bg-pink-500',
-                               default => 'bg-zinc-500',
-                           } }} {{ $task->isDone() ? 'opacity-50' : '' }}"
-                           style="grid-column: {{ $row['first'] }} / {{ $row['last'] + 1 }}; grid-row: 1">{{ $row['last'] - $row['first'] >= 2 ? $task->title : '' }}</a>
+                           class="my-1.5 block h-5 truncate rounded px-1 text-xs leading-5 {{ $task->isDone() ? 'opacity-50' : '' }}"
+                           style="grid-column: {{ $row['first'] }} / {{ $row['last'] + 1 }}; grid-row: 1; background-color: {{ $task->status->color }}; color: {{ \App\Color::textOn($task->status->color) }}">{{ $row['last'] - $row['first'] >= 2 ? $task->title : '' }}</a>
                     </div>
                 </div>
             @empty

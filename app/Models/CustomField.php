@@ -26,10 +26,10 @@ class CustomField extends Model
         return [
             'name' => 'Priorität',
             'options' => [
-                ['name' => 'Niedrig', 'color' => 'sky'],
-                ['name' => 'Mittel', 'color' => 'amber'],
-                ['name' => 'Hoch', 'color' => 'orange'],
-                ['name' => 'Dringend', 'color' => 'red'],
+                ['name' => 'Niedrig', 'color' => '#0ea5e9'],
+                ['name' => 'Mittel', 'color' => '#f59e0b'],
+                ['name' => 'Hoch', 'color' => '#f97316'],
+                ['name' => 'Dringend', 'color' => '#ef4444'],
             ],
         ];
     }

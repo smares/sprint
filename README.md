@@ -14,10 +14,10 @@ Gebaut mit Laravel 13, Livewire 4 und [Flux UI Pro](https://fluxui.dev). Die Obe
 - **Globale Suche** (Suchfeld in der Kopfzeile): durchsucht Titel, Beschreibung, Kommentare und Anhangsnamen aller Projekte, die man sehen darf; alle Wörter müssen vorkommen, Wortanfänge genügen; Filter nach Projekt, offen/erledigt und „nur meine". Auf SQLite mit FTS5 gibt es einen Volltextindex (nach Relevanz sortiert, Umlaute egal), sonst eine LIKE-Suche
 - **Liste und Kanban-Board** pro Projekt, mit Filtern (Status, Person, Tag) und Sortierung per Klick auf die Spaltenköpfe
 - **Manuelle Reihenfolge** per Drag & Drop; Liste und Board teilen eine Reihenfolge
-- **Eigene Status pro Projekt** mit Name, Farbe, Reihenfolge und „gilt als erledigt“-Markierung (Fenster *Status* an Liste und Board, per Ziehen sortierbar)
+- **Eigene Status pro Projekt** mit Name, frei wählbarer Farbe (Farbwähler mit Farbfeldern und Hex-Eingabe), Reihenfolge und „gilt als erledigt“-Markierung (Fenster *Status* an Liste und Board, per Ziehen sortierbar)
 - **Subtasks in beliebiger Tiefe** mit Fortschritt, Zwischenüberschriften und Drag & Drop; der Fortschritt zeigt nur an und erledigt die Hauptaufgabe nicht automatisch
 - **Eigene Felder pro Projekt** (Auswahl, Text, Zahl, Datum), jedes Projekt startet mit einem Auswahlfeld *Priorität* (Niedrig, Mittel, Hoch, Dringend); Felder, Optionen mit Farbe und Reihenfolge verwalten Projekt-Verwalter unter *Felder*, Werte trägst du an der Aufgabe ein und siehst sie im Verlauf; in der Liste erscheinen die Felder als Spalten (sortierbar, Auswahlfelder auch als Filter) und auf den Board-Karten als Badges
-- **Tags pro Projekt** (derselbe Name darf in mehreren Projekten existieren); Projekt-Admins verwalten sie in einem Fenster direkt an der Projektliste: umbenennen, umfärben, löschen oder beim Löschen auf ein anderes Tag zusammenführen
+- **Tags pro Projekt** (derselbe Name darf in mehreren Projekten existieren); Projekt-Admins verwalten sie in einem Fenster direkt an der Projektliste: umbenennen, per Farbwähler umfärben, löschen oder beim Löschen auf ein anderes Tag zusammenführen
 - **Abhängigkeiten** („blockiert“ / „blockiert von“) nur als Markierung, ohne Sperre; Zyklen werden abgelehnt
 - **Beteiligte** (mehrere Personen) zusätzlich zur zuständigen Person; *Meine Aufgaben* enthält auch Aufgaben, an denen man beteiligt ist
 - **Aktivitätsverlauf** an jeder Aufgabe: wer wann Status, Zuständige, Fälligkeit, Titel, Beschreibung, Tags, Beteiligte oder Abhängigkeiten geändert hat, zusammen mit den Kommentaren in einer Zeitleiste

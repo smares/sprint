@@ -146,20 +146,8 @@ new class extends Component
 
                         @foreach ($day['tasks']->take(3) as $task)
                             <a wire:key="chip-{{ $day['date']->toDateString() }}-{{ $task->id }}" href="{{ route('tasks.show', $task) }}" wire:navigate
-                               class="block truncate rounded px-1.5 py-0.5 text-xs hover:underline {{ match ($task->status->color) {
-                                   'red' => 'bg-red-100 text-red-900 dark:bg-red-900/40 dark:text-red-100',
-                                   'orange' => 'bg-orange-100 text-orange-900 dark:bg-orange-900/40 dark:text-orange-100',
-                                   'amber' => 'bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100',
-                                   'lime' => 'bg-lime-100 text-lime-900 dark:bg-lime-900/40 dark:text-lime-100',
-                                   'green' => 'bg-green-100 text-green-900 dark:bg-green-900/40 dark:text-green-100',
-                                   'teal' => 'bg-teal-100 text-teal-900 dark:bg-teal-900/40 dark:text-teal-100',
-                                   'sky' => 'bg-sky-100 text-sky-900 dark:bg-sky-900/40 dark:text-sky-100',
-                                   'blue' => 'bg-blue-100 text-blue-900 dark:bg-blue-900/40 dark:text-blue-100',
-                                   'indigo' => 'bg-indigo-100 text-indigo-900 dark:bg-indigo-900/40 dark:text-indigo-100',
-                                   'purple' => 'bg-purple-100 text-purple-900 dark:bg-purple-900/40 dark:text-purple-100',
-                                   'pink' => 'bg-pink-100 text-pink-900 dark:bg-pink-900/40 dark:text-pink-100',
-                                   default => 'bg-zinc-100 text-zinc-900 dark:bg-zinc-700 dark:text-zinc-100',
-                               } }} {{ $task->isDone() ? 'line-through opacity-60' : '' }}">{{ $task->title }}</a>
+                               style="--badge: {{ $task->status->color }}"
+                               class="color-chip block truncate rounded px-1.5 py-0.5 text-xs hover:underline {{ $task->isDone() ? 'line-through opacity-60' : '' }}">{{ $task->title }}</a>
                         @endforeach
 
                         @if ($day['tasks']->count() > 3)

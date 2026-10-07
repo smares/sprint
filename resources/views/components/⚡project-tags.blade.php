@@ -1,5 +1,6 @@
 <?php
 
+use App\Color;
 use App\Models\Project;
 use App\Models\Tag;
 use Flux\Flux;
@@ -107,7 +108,7 @@ new class extends Component
 
         $this->project->tags()->create([
             'name' => $name,
-            'color' => Tag::COLORS[$this->project->tags()->count() % count(Tag::COLORS)],
+            'color' => Color::next($this->project->tags()->count()),
         ]);
 
         $this->reset('newName');
@@ -140,7 +141,7 @@ new class extends Component
     {
         $tag = $this->tagOrFail($id);
 
-        if (! in_array($value, Tag::COLORS, true)) {
+        if (! Color::isHex($value)) {
             $this->colors[$id] = $tag->color;
 
             return;
@@ -201,13 +202,9 @@ new class extends Component
                     @foreach ($this->tags as $tag)
                         <li wire:key="tag-{{ $tag->id }}" class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
                             <div class="flex items-center gap-3">
-                                <flux:badge size="sm" :color="$tag->color" class="shrink-0" title="Aufgaben mit diesem Tag">{{ $tag->tasks_count }}</flux:badge>
+                                <x-color-badge size="sm" :color="$tag->color" class="shrink-0" title="Aufgaben mit diesem Tag">{{ $tag->tasks_count }}</x-color-badge>
                                 <flux:input size="sm" wire:model.blur="names.{{ $tag->id }}" aria-label="Name" class="min-w-0 flex-1" />
-                                <flux:select size="sm" variant="listbox" wire:model.live="colors.{{ $tag->id }}" aria-label="Farbe" class="max-w-28">
-                                    @foreach (\App\Models\Tag::COLORS as $color)
-                                        <flux:select.option value="{{ $color }}">{{ $color }}</flux:select.option>
-                                    @endforeach
-                                </flux:select>
+                                <flux:color-picker type="button" size="sm" with-confirmation :swatches="\App\Color::SWATCHES" wire:model.live="colors.{{ $tag->id }}" aria-label="Farbe" />
                                 <flux:button size="xs" variant="ghost" icon="trash" wire:click="confirmDelete({{ $tag->id }})" aria-label="Tag löschen" />
                             </div>
 

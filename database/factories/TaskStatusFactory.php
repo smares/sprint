@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Color;
 use App\Models\Project;
 use App\Models\TaskStatus;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -21,7 +22,7 @@ class TaskStatusFactory extends Factory
         return [
             'project_id' => Project::factory(),
             'name' => fake()->unique()->word(),
-            'color' => fake()->randomElement(TaskStatus::COLORS),
+            'color' => fake()->randomElement(Color::hexes()),
             'position' => 10,
             'is_done' => false,
         ];

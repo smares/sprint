@@ -51,6 +51,7 @@ class TaskActivity extends Model
             'recurrence_created' => "hat die nächste Wiederholung für den {$to} angelegt",
             'attachments_added' => "hat {$names} angehängt",
             'attachments_removed' => "hat den Anhang {$names} entfernt",
+            'duplicated' => 'hat die Aufgabe dupliziert',
             'recurrence_ended' => 'hat die Wiederholung beendet (Enddatum erreicht)',
             'title_changed' => "hat den Titel von „{$from}“ in „{$to}“ geändert",
             'description_changed' => 'hat die Beschreibung geändert',

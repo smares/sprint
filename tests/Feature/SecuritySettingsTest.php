@@ -55,10 +55,10 @@ class SecuritySettingsTest extends TestCase
 
     public function test_confirming_the_password_unlocks_the_controls(): void
     {
-        $page = Livewire::test('security')->assertDontSee('Einrichten')->assertSee('Zum Ändern Passwort bestätigen')->assertDontSee('Freigeschaltet bis');
+        $page = Livewire::test('security')->assertDontSee('Einrichten')->assertSee('Gesperrt – Passwort bestätigen')->assertDontSee('Freigeschaltet bis');
 
         $page->set('password', 'falsch')->call('confirmPassword')->assertHasErrors('password')->assertDontSee('Einrichten');
-        $page->set('password', 'geheim123')->call('confirmPassword')->assertHasNoErrors()->assertSee('Einrichten')->assertSee('Freigeschaltet bis')->assertDontSee('Zum Ändern Passwort bestätigen');
+        $page->set('password', 'geheim123')->call('confirmPassword')->assertHasNoErrors()->assertSee('Einrichten')->assertSee('Freigeschaltet bis')->assertDontSee('Gesperrt – Passwort bestätigen');
         $this->assertNotNull(session('auth.password_confirmed_at'));
     }
 

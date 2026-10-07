@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\ProjectRole;
 use Database\Factories\ProjectFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
 
@@ -25,6 +28,63 @@ class Project extends Model
     protected function casts(): array
     {
         return ['archived_at' => 'datetime'];
+    }
+
+    public function members(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'project_members')->withPivot('role')->withTimestamps()->orderBy('users.name');
+    }
+
+    /**
+     * What the person may do here: app admins manage every project, everybody else needs a membership.
+     */
+    public function roleFor(?User $user): ?ProjectRole
+    {
+        if ($user === null) {
+            return null;
+        }
+
+        if ($user->is_admin) {
+            return ProjectRole::Admin;
+        }
+
+        $role = $this->members()->whereKey($user->getKey())->first()?->pivot->role;
+
+        return $role === null ? null : ProjectRole::from($role);
+    }
+
+    public function canBeViewedBy(?User $user): bool
+    {
+        return $this->roleFor($user) !== null;
+    }
+
+    public function setRole(User $user, ProjectRole $role): void
+    {
+        $this->members()->syncWithoutDetaching([$user->getKey() => ['role' => $role->value]]);
+    }
+
+    /**
+     * Projects the person may open.
+     */
+    public function scopeVisibleTo(Builder $query, User $user): void
+    {
+        if ($user->is_admin) {
+            return;
+        }
+
+        $query->whereHas('members', fn (Builder $members) => $members->whereKey($user->getKey()));
+    }
+
+    /**
+     * People who can be assigned, mentioned or made collaborators: members and application admins.
+     */
+    public function eligibleUsers(): Builder
+    {
+        return User::query()
+            ->where(fn (Builder $users) => $users
+                ->where('is_admin', true)
+                ->orWhereHas('projects', fn (Builder $projects) => $projects->whereKey($this->getKey()))
+            );
     }
 
     public function statuses(): HasMany

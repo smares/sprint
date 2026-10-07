@@ -6,6 +6,7 @@ Gebaut mit Laravel 13, Livewire 4 und [Flux UI Pro](https://fluxui.dev). Die Obe
 
 ## Funktionen
 
+- **Rollen und Rechte:** Projekte sehen nur ihre Mitglieder. Pro Projekt gibt es die Rollen *Ansehen*, *Bearbeiten* und *Verwalten* (Mitglieder und Status); Administratoren der Anwendung haben überall Zugriff. Zuständige, Beteiligte, Erwähnungen und E-Mails gibt es nur für Personen, die das Projekt sehen dürfen
 - **Projekte und Aufgaben** mit Titel, Beschreibung, zuständiger Person, Fälligkeit und Status
 - **Liste und Kanban-Board** pro Projekt, mit Filtern (Status, Person, Tag) und Sortierung per Klick auf die Spaltenköpfe
 - **Manuelle Reihenfolge** per Drag & Drop; Liste und Board teilen eine Reihenfolge
@@ -20,7 +21,7 @@ Gebaut mit Laravel 13, Livewire 4 und [Flux UI Pro](https://fluxui.dev). Die Obe
 - **`@`-Erwähnungen** von Personen und Aufgaben: ein `@` tippen, aus dem Fenster wählen; angezeigt wird immer der aktuelle Name bzw. Titel
 - **E-Mail-Benachrichtigungen** an zuständige und beteiligte Personen bei neuen Kommentaren und Statuswechseln sowie an erwähnte Personen (auch ohne Beteiligung, einmal pro neuer Erwähnung); pro Aufgabe abbestellbar (Schalter auf der Aufgabenseite oder signierter Link in der Mail, auch ohne Login)
 
-Es gibt keine öffentliche Registrierung, Benutzer legt ein Administrator per Kommando an (siehe unten).
+Es gibt keine öffentliche Registrierung, Benutzer legt ein Administrator per Kommando an (siehe unten). Wer ein Projekt anlegt, verwaltet es und kann dort weitere Mitglieder hinzufügen.
 
 ## Voraussetzungen
 
@@ -55,7 +56,11 @@ Den ersten Benutzer legst du so an:
 php artisan user:create "Anna Beispiel" anna@example.com --password=geheim
 ```
 
-Ohne `--password` erzeugt das Kommando ein Passwort und gibt es aus.
+Ohne `--password` erzeugt das Kommando ein Passwort und gibt es aus. Mit `--admin` wird die Person Administrator der ganzen Anwendung; bestehende Benutzer machst du so dazu (oder mit `--revoke` wieder zum normalen Benutzer):
+
+```bash
+php artisan user:admin anna@example.com
+```
 
 Für lokale Demo-Daten (nur Entwicklung):
 
@@ -63,7 +68,7 @@ Für lokale Demo-Daten (nur Entwicklung):
 php artisan db:seed
 ```
 
-Das legt drei Benutzer (`anna@`, `ben@`, `clara@example.com`, Passwort `password`) sowie zwei Projekte mit Aufgaben an.
+Das legt drei Benutzer (`anna@`, `ben@`, `clara@example.com`, Passwort `password`; Anna ist Administratorin) sowie zwei Projekte mit Aufgaben an, in denen alle drei Mitglieder sind.
 
 ## Entwicklung
 
@@ -104,6 +109,7 @@ GitHub Actions führt die Tests auf PHP 8.3, 8.4 und 8.5 aus (`.github/workflows
 - Sitzungen, Cache und Queue nutzen standardmäßig die Datenbank (`SESSION_DRIVER`, `CACHE_STORE`, `QUEUE_CONNECTION`); für die Queue läuft im Betrieb ein Worker: `php artisan queue:work`
 - Nach jedem Update: `composer install --no-dev --optimize-autoloader`, `php artisan migrate --force`, `npm ci --ignore-scripts && npm run build`
 - Vor Migrationen, die bestehende Daten umbauen, ein Datenbank-Backup ziehen
+- Beim Einführen der Rollen werden alle bestehenden Benutzer Verwalter aller bestehenden Projekte (alles bleibt wie bisher erreichbar); danach per `php artisan user:admin <E-Mail>` Administratoren bestimmen und Mitgliedschaften in den Projekten anpassen
 
 ## Lizenz
 

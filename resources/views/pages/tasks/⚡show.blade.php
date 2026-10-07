@@ -6,6 +6,7 @@ use App\Models\Task;
 use App\Models\User;
 use Flux\Flux;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
@@ -51,8 +52,26 @@ new class extends Component
     /** @var list<string> */
     public array $blockingIds = [];
 
+    public function hydrate(): void
+    {
+        Gate::authorize('view', $this->task->project);
+    }
+
+    #[Computed]
+    public function canEdit(): bool
+    {
+        return Gate::allows('edit', $this->task->project);
+    }
+
+    private function authorizeEdit(): void
+    {
+        Gate::authorize('edit', $this->task->project);
+    }
+
     public function mount(): void
     {
+        Gate::authorize('view', $this->task->project);
+
         $this->title = $this->task->title;
         $this->description = $this->task->description ?? '';
         $this->statusId = (string) $this->task->status_id;
@@ -173,11 +192,15 @@ new class extends Component
 
     public function addSubtask(int $parentId): void
     {
+        $this->authorizeEdit();
+
         $this->createChild($parentId, isSection: false);
     }
 
     public function addSection(int $parentId): void
     {
+        $this->authorizeEdit();
+
         $this->createChild($parentId, isSection: true);
     }
 
@@ -207,6 +230,8 @@ new class extends Component
 
     public function toggleSubtask(int $subtaskId): void
     {
+        $this->authorizeEdit();
+
         abort_unless(in_array($subtaskId, $this->descendantIds, true) && ! in_array($subtaskId, $this->sectionIds, true), 404);
 
         $this->task->project->tasks()->findOrFail($subtaskId)->toggleDone();
@@ -216,6 +241,8 @@ new class extends Component
 
     public function updatedSectionTitles(string $value, string $sectionId): void
     {
+        $this->authorizeEdit();
+
         abort_unless(in_array((int) $sectionId, $this->sectionIds, true) && in_array((int) $sectionId, $this->descendantIds, true), 404);
 
         $title = trim($value);
@@ -232,6 +259,8 @@ new class extends Component
 
     public function deleteSection(int $sectionId): void
     {
+        $this->authorizeEdit();
+
         abort_unless(in_array($sectionId, $this->sectionIds, true) && in_array($sectionId, $this->descendantIds, true), 404);
 
         $this->task->project->tasks()->whereKey($sectionId)->delete();
@@ -241,6 +270,8 @@ new class extends Component
 
     public function moveSubtask(int|string $itemId, int $position, int|string $parentId): void
     {
+        $this->authorizeEdit();
+
         $itemId = (int) $itemId;
         $parentId = (int) $parentId;
 
@@ -305,6 +336,8 @@ new class extends Component
 
     public function createTag(): void
     {
+        $this->authorizeEdit();
+
         $validated = $this->validate([
             'newTag' => ['required', 'string', 'max:50'],
         ]);
@@ -324,22 +357,24 @@ new class extends Component
     #[Computed]
     public function users()
     {
-        return User::query()->orderBy('name')->get(['id', 'name']);
+        return $this->task->project->eligibleUsers()->orderBy('name')->get(['id', 'name']);
     }
 
     public function save(): void
     {
+        $this->authorizeEdit();
+
         $validated = $this->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:10000'],
             'statusId' => ['required', Rule::in($this->task->project->statuses->pluck('id')->map(fn ($id) => (string) $id)->all())],
-            'assigneeId' => ['nullable', 'exists:users,id'],
+            'assigneeId' => ['nullable', Rule::in($this->users->pluck('id')->map(fn ($id) => (string) $id)->all())],
             'dueDate' => ['nullable', 'date'],
             'tagIds' => ['array'],
             'tagIds.*' => ['integer', Rule::exists('tags', 'id')->where('project_id', $this->task->project_id)],
             'parentId' => ['nullable', Rule::in($this->possibleParents->pluck('id')->map(fn ($id) => (string) $id)->all())],
             'collaboratorIds' => ['array'],
-            'collaboratorIds.*' => ['integer', 'exists:users,id'],
+            'collaboratorIds.*' => ['integer', Rule::in($this->users->pluck('id')->all())],
             'blockerIds' => ['array'],
             'blockerIds.*' => ['integer', Rule::exists('tasks', 'id')->where('project_id', $this->task->project_id)->whereNot('id', $this->task->getKey())],
             'blockingIds' => ['array'],
@@ -429,6 +464,8 @@ new class extends Component
 
     public function addComment(): void
     {
+        $this->authorizeEdit();
+
         $validated = $this->validate(['comment' => ['required', 'string', 'max:5000']]);
 
         $this->task->comments()->create([
@@ -442,6 +479,8 @@ new class extends Component
 
     public function delete(): void
     {
+        $this->authorizeEdit();
+
         $projectId = $this->task->project_id;
         $this->task->delete();
 
@@ -464,6 +503,10 @@ new class extends Component
         @endforeach
         <flux:breadcrumbs.item>Aufgabe</flux:breadcrumbs.item>
     </flux:breadcrumbs>
+
+    @unless ($this->canEdit)
+        <flux:callout class="mb-4" icon="eye" heading="Nur ansehen" text="In diesem Projekt darfst du Aufgaben lesen, aber nicht ändern." />
+    @endunless
 
     <form wire:submit="save" class="space-y-6">
         <flux:input wire:model="title" label="Titel" />
@@ -522,19 +565,23 @@ new class extends Component
             <flux:callout variant="warning" icon="lock-closed" heading="Diese Aufgabe ist blockiert" text="Mindestens eine Aufgabe, von der sie abhängt, ist noch nicht erledigt." />
         @endif
 
-        <div class="flex gap-3">
-            <flux:button type="submit" variant="primary">Speichern</flux:button>
-            <flux:spacer />
-            <flux:modal.trigger name="delete-task">
-                <flux:button variant="danger" icon="trash">Löschen</flux:button>
-            </flux:modal.trigger>
-        </div>
+        @if ($this->canEdit)
+            <div class="flex gap-3">
+                <flux:button type="submit" variant="primary">Speichern</flux:button>
+                <flux:spacer />
+                <flux:modal.trigger name="delete-task">
+                    <flux:button variant="danger" icon="trash">Löschen</flux:button>
+                </flux:modal.trigger>
+            </div>
+        @endif
     </form>
 
-    <form wire:submit="createTag" class="mt-4 flex items-end gap-2">
-        <flux:input wire:model="newTag" label="Neuer Tag" placeholder="z. B. Bug" class="max-w-xs" />
-        <flux:button type="submit" icon="plus">Anlegen</flux:button>
-    </form>
+    @if ($this->canEdit)
+        <form wire:submit="createTag" class="mt-4 flex items-end gap-2">
+            <flux:input wire:model="newTag" label="Neuer Tag" placeholder="z. B. Bug" class="max-w-xs" />
+            <flux:button type="submit" icon="plus">Anlegen</flux:button>
+        </form>
+    @endif
 
     <flux:separator class="my-8" />
 
@@ -549,15 +596,17 @@ new class extends Component
 
     @php($rootChildren = $this->childrenMap->get($task->id, collect()))
     @if ($rootChildren->isNotEmpty())
-        <x-task-subtree :tasks="$rootChildren" :children-map="$this->childrenMap" :parent-id="$task->id" />
+        <x-task-subtree :tasks="$rootChildren" :children-map="$this->childrenMap" :parent-id="$task->id" :can-edit="$this->canEdit" />
     @endif
 
-    <form wire:submit="addSubtask({{ $task->id }})" class="mt-3 flex items-end gap-2">
-        <flux:input wire:model="newSubtaskTitles.{{ $task->id }}" label="Neue Subtask" placeholder="Titel …" class="max-w-sm" />
-        <flux:button type="submit" icon="plus">Hinzufügen</flux:button>
-        <flux:button type="button" icon="bars-3-bottom-left" wire:click="addSection({{ $task->id }})">Überschrift</flux:button>
-    </form>
-    @error('newSubtaskTitles.'.$task->id) <flux:text class="mt-1 text-red-500">{{ $message }}</flux:text> @enderror
+    @if ($this->canEdit)
+        <form wire:submit="addSubtask({{ $task->id }})" class="mt-3 flex items-end gap-2">
+            <flux:input wire:model="newSubtaskTitles.{{ $task->id }}" label="Neue Subtask" placeholder="Titel …" class="max-w-sm" />
+            <flux:button type="submit" icon="plus">Hinzufügen</flux:button>
+            <flux:button type="button" icon="bars-3-bottom-left" wire:click="addSection({{ $task->id }})">Überschrift</flux:button>
+        </form>
+        @error('newSubtaskTitles.'.$task->id) <flux:text class="mt-1 text-red-500">{{ $message }}</flux:text> @enderror
+    @endif
 
     <flux:separator class="my-8" />
 
@@ -582,10 +631,12 @@ new class extends Component
         @endforelse
     </div>
 
-    <form wire:submit="addComment" class="mt-6 space-y-3">
-        <x-markdown-editor wire:model="comment" placeholder="Kommentar schreiben … (Markdown, @ für Erwähnungen)" :rows="3" :mentions="$this->mentionOptions" />
-        <flux:button type="submit">Kommentieren</flux:button>
-    </form>
+    @if ($this->canEdit)
+        <form wire:submit="addComment" class="mt-6 space-y-3">
+            <x-markdown-editor wire:model="comment" placeholder="Kommentar schreiben … (Markdown, @ für Erwähnungen)" :rows="3" :mentions="$this->mentionOptions" />
+            <flux:button type="submit">Kommentieren</flux:button>
+        </form>
+    @endif
 
     <flux:modal name="delete-task" class="min-w-[22rem]">
         <div class="space-y-6">

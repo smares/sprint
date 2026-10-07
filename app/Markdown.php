@@ -4,6 +4,7 @@ namespace App;
 
 use App\Models\Task;
 use App\Models\User;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 use League\CommonMark\Extension\ExternalLink\ExternalLinkExtension;
@@ -85,7 +86,11 @@ class Markdown
         }
 
         $users = User::whereIn('id', collect($mentions)->where('type', 'user')->pluck('id'))->pluck('name', 'id');
-        $tasks = Task::whereIn('id', collect($mentions)->where('type', 'task')->pluck('id'))->pluck('title', 'id');
+        $tasks = Task::with('project')
+            ->whereIn('id', collect($mentions)->where('type', 'task')->pluck('id'))
+            ->get()
+            ->filter(fn (Task $task) => Gate::allows('view', $task->project))
+            ->pluck('title', 'id');
 
         return (string) preg_replace_callback(
             '/'.self::PLACEHOLDER_START.'(\d+)'.self::PLACEHOLDER_END.'/u',

@@ -8,7 +8,7 @@ use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Validator;
 
-#[Signature('user:create {name} {email} {--password= : Passwort (sonst wird eines erzeugt)}')]
+#[Signature('user:create {name} {email} {--password= : Passwort (sonst wird eines erzeugt)} {--admin : Als Administrator der ganzen Anwendung anlegen}')]
 #[Description('Legt einen neuen Benutzer an (es gibt keine öffentliche Registrierung)')]
 class CreateUser extends Command
 {
@@ -31,6 +31,7 @@ class CreateUser extends Command
             'name' => $this->argument('name'),
             'email' => $this->argument('email'),
             'password' => $password,
+            'is_admin' => (bool) $this->option('admin'),
         ]);
 
         $this->components->info("Benutzer angelegt. Passwort: {$password}");

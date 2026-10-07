@@ -31,10 +31,10 @@ class TaskNotificationsTest extends TestCase
     {
         parent::setUp();
 
-        $this->actor = User::factory()->create();
-        $this->assignee = User::factory()->create();
-        $this->collaborator = User::factory()->create();
-        $this->outsider = User::factory()->create();
+        $this->actor = User::factory()->admin()->create();
+        $this->assignee = User::factory()->admin()->create();
+        $this->collaborator = User::factory()->admin()->create();
+        $this->outsider = User::factory()->admin()->create();
 
         $this->task = Task::factory()->create(['assignee_id' => $this->assignee->id, 'title' => 'Release planen']);
         $this->task->collaborators()->attach($this->collaborator);

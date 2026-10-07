@@ -11,6 +11,7 @@ new #[Title('Meine Aufgaben')] class extends Component
     public function tasks()
     {
         return Task::query()
+            ->whereHas('project', fn ($projects) => $projects->visibleTo(auth()->user()))
             ->with(['project', 'parent', 'status'])
             ->where(fn ($query) => $query
                 ->where('assignee_id', auth()->id())

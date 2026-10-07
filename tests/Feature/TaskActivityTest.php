@@ -21,7 +21,7 @@ class TaskActivityTest extends TestCase
     {
         parent::setUp();
 
-        $this->user = User::factory()->create(['name' => 'Anna Autorin']);
+        $this->user = User::factory()->admin()->create(['name' => 'Anna Autorin']);
         $this->actingAs($this->user);
     }
 
@@ -63,7 +63,7 @@ class TaskActivityTest extends TestCase
     public function test_assignee_due_date_title_and_description_changes_are_recorded(): void
     {
         $task = Task::factory()->create(['title' => 'Alt', 'due_date' => '2026-12-01']);
-        $other = User::factory()->create(['name' => 'Ben Muster']);
+        $other = User::factory()->admin()->create(['name' => 'Ben Muster']);
 
         $task->update(['assignee_id' => $other->id, 'due_date' => '2026-12-24', 'title' => 'Neu', 'description' => 'Text']);
 
@@ -89,7 +89,7 @@ class TaskActivityTest extends TestCase
     {
         $task = Task::factory()->create();
         $tag = Tag::factory()->for($task->project)->create(['name' => 'Bug']);
-        $helper = User::factory()->create(['name' => 'Clara Test']);
+        $helper = User::factory()->admin()->create(['name' => 'Clara Test']);
         $blocker = Task::factory()->for($task->project)->create(['title' => 'Vorarbeit']);
         $waiting = Task::factory()->for($task->project)->create(['title' => 'Folgearbeit']);
 
@@ -177,7 +177,7 @@ class TaskActivityTest extends TestCase
         $task = Task::factory()->create();
         $this->user->delete();
         auth()->logout();
-        $this->actingAs(User::factory()->create());
+        $this->actingAs(User::factory()->admin()->create());
 
         $this->get(route('tasks.show', $task))->assertOk()->assertSee('Jemand');
     }

@@ -23,6 +23,7 @@ Route::middleware('auth')->group(function () {
 
     Route::livewire('/projects', 'pages::projects.index')->name('projects.index');
     Route::livewire('/projects/{project}', 'pages::projects.show')->name('projects.show');
+    Route::livewire('/projects/{project}/members', 'pages::projects.members')->name('projects.members');
     Route::livewire('/projects/{project}/statuses', 'pages::projects.statuses')->name('projects.statuses');
     Route::livewire('/projects/{project}/board', 'pages::projects.board')->name('projects.board');
     Route::livewire('/tasks/mine', 'pages::tasks.mine')->name('tasks.mine');

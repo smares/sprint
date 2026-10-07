@@ -18,14 +18,14 @@ class TaskCollaboratorsTest extends TestCase
     {
         parent::setUp();
 
-        $this->user = User::factory()->create();
+        $this->user = User::factory()->admin()->create();
         $this->actingAs($this->user);
     }
 
     public function test_multiple_collaborators_can_be_saved(): void
     {
         $task = Task::factory()->create();
-        $people = User::factory()->count(3)->create();
+        $people = User::factory()->admin()->count(3)->create();
 
         Livewire::test('pages::tasks.show', ['task' => $task])
             ->set('collaboratorIds', $people->pluck('id')->map(fn ($id) => (string) $id)->all())
@@ -38,7 +38,7 @@ class TaskCollaboratorsTest extends TestCase
     public function test_collaborators_can_be_removed(): void
     {
         $task = Task::factory()->create();
-        $task->collaborators()->attach(User::factory()->count(2)->create());
+        $task->collaborators()->attach(User::factory()->admin()->count(2)->create());
 
         Livewire::test('pages::tasks.show', ['task' => $task])
             ->set('collaboratorIds', [])
@@ -60,7 +60,7 @@ class TaskCollaboratorsTest extends TestCase
     public function test_assignee_is_not_stored_as_collaborator(): void
     {
         $task = Task::factory()->create();
-        $other = User::factory()->create();
+        $other = User::factory()->admin()->create();
 
         Livewire::test('pages::tasks.show', ['task' => $task])
             ->set('assigneeId', (string) $this->user->id)
@@ -86,7 +86,7 @@ class TaskCollaboratorsTest extends TestCase
     public function test_list_and_board_show_collaborator_count(): void
     {
         $task = Task::factory()->create();
-        $task->collaborators()->attach(User::factory()->count(2)->create());
+        $task->collaborators()->attach(User::factory()->admin()->count(2)->create());
 
         $this->get(route('projects.show', $task->project))->assertOk()->assertSee('+ 2 Beteiligte');
         $this->get(route('projects.board', $task->project))->assertOk()->assertSee('+2');

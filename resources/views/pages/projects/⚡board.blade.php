@@ -4,12 +4,35 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskStatus;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
 new class extends Component
 {
     public Project $project;
+
+    public function mount(): void
+    {
+        Gate::authorize('view', $this->project);
+    }
+
+    public function hydrate(): void
+    {
+        Gate::authorize('view', $this->project);
+    }
+
+    #[Computed]
+    public function canEdit(): bool
+    {
+        return Gate::allows('edit', $this->project);
+    }
+
+    #[Computed]
+    public function canManage(): bool
+    {
+        return Gate::allows('manage', $this->project);
+    }
 
     /**
      * @return array<int, \Illuminate\Support\Collection<int, Task>>
@@ -47,6 +70,8 @@ new class extends Component
 
     public function moveTask(int|string $taskId, int $position, string $group): void
     {
+        Gate::authorize('edit', $this->project);
+
         $status = ctype_digit($group) ? $this->project->statuses()->find((int) $group) : null;
         abort_if($status === null, 422);
 
@@ -89,7 +114,10 @@ new class extends Component
             <flux:button icon="view-columns" disabled>Board</flux:button>
         </flux:button.group>
 
-            <flux:button icon="cog-6-tooth" href="{{ route('projects.statuses', $project) }}" wire:navigate>Status</flux:button>
+            @if ($this->canManage)
+                <flux:button icon="cog-6-tooth" href="{{ route('projects.statuses', $project) }}" wire:navigate>Status</flux:button>
+                <flux:button icon="users" href="{{ route('projects.members', $project) }}" wire:navigate>Mitglieder</flux:button>
+            @endif
     </div>
 
     <flux:kanban class="items-start overflow-x-auto pb-4">
@@ -99,12 +127,12 @@ new class extends Component
 
                 <flux:kanban.column.cards
                     class="min-h-16"
-                    wire:sort="moveTask"
-                    wire:sort:group="tasks"
+                    :wire:sort="$this->canEdit ? 'moveTask' : null"
+                    :wire:sort:group="$this->canEdit ? 'tasks' : null"
                     wire:sort:group-id="{{ $status->id }}"
                 >
                     @foreach ($this->columns[$status->id] as $task)
-                        <flux:kanban.card wire:key="task-{{ $task->id }}" wire:sort:item="{{ $task->id }}">
+                        <flux:kanban.card wire:key="task-{{ $task->id }}" :wire:sort:item="$this->canEdit ? $task->id : null">
                             <a href="{{ route('tasks.show', $task) }}" wire:navigate class="font-medium hover:underline">{{ $task->title }}</a>
                             @if ($task->isBlocked())
                                 <flux:icon.lock-closed variant="micro" class="ms-1 inline text-amber-500" title="Blockiert" />

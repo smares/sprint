@@ -3,6 +3,7 @@
 use App\Models\Project;
 use App\Models\TaskStatus;
 use Flux\Flux;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -26,8 +27,15 @@ new class extends Component
 
     public string $replacementId = '';
 
+    public function hydrate(): void
+    {
+        Gate::authorize('manage', $this->project);
+    }
+
     public function mount(): void
     {
+        Gate::authorize('manage', $this->project);
+
         $this->fillForm();
     }
 

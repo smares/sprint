@@ -13,7 +13,10 @@ new #[Title('Meine Aufgaben')] class extends Component
     {
         return Task::query()
             ->with('project')
-            ->where('assignee_id', auth()->id())
+            ->where(fn ($query) => $query
+                ->where('assignee_id', auth()->id())
+                ->orWhereHas('collaborators', fn ($collaborators) => $collaborators->whereKey(auth()->id()))
+            )
             ->where('status', '!=', TaskStatus::Done)
             ->orderByRaw('due_date is null')
             ->orderBy('due_date')
@@ -27,7 +30,7 @@ new #[Title('Meine Aufgaben')] class extends Component
     <flux:heading size="xl" class="mb-6">Meine Aufgaben</flux:heading>
 
     @if ($this->tasks->isEmpty())
-        <flux:callout icon="check-circle" heading="Alles erledigt" text="Dir sind keine offenen Aufgaben zugewiesen." />
+        <flux:callout icon="check-circle" heading="Alles erledigt" text="Dir sind keine offenen Aufgaben zugewiesen oder du bist an keiner beteiligt." />
     @else
         <flux:table>
             <flux:table.columns>

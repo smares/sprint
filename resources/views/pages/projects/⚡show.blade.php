@@ -34,7 +34,7 @@ new class extends Component
     public function tasks()
     {
         return $this->project->tasks()
-            ->with(['assignee', 'tags', 'blockers'])
+            ->with(['assignee', 'collaborators', 'tags', 'blockers'])
             ->when($this->statusFilter === 'open', fn ($q) => $q->where('status', '!=', TaskStatus::Done))
             ->when(TaskStatus::tryFrom($this->statusFilter), fn ($q, $status) => $q->where('status', $status))
             ->when($this->assigneeFilter === 'me', fn ($q) => $q->where('assignee_id', auth()->id()))
@@ -180,7 +180,12 @@ new class extends Component
                         <flux:table.cell>
                             <flux:badge size="sm" :color="$task->status->color()">{{ $task->status->label() }}</flux:badge>
                         </flux:table.cell>
-                        <flux:table.cell>{{ $task->assignee?->name ?? '–' }}</flux:table.cell>
+                        <flux:table.cell>
+                            {{ $task->assignee?->name ?? '–' }}
+                            @if ($task->collaborators->isNotEmpty())
+                                <flux:text size="sm" class="block" title="{{ $task->collaborators->pluck('name')->join(', ') }}">+ {{ $task->collaborators->count() }} {{ $task->collaborators->count() === 1 ? 'Beteiligte:r' : 'Beteiligte' }}</flux:text>
+                            @endif
+                        </flux:table.cell>
                         <flux:table.cell>
                             @if ($task->due_date)
                                 <flux:text :class="$task->isOverdue() ? 'text-red-500' : ''">{{ $task->due_date->format('d.m.Y') }}</flux:text>

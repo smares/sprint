@@ -18,7 +18,7 @@ new class extends Component
     public function columns(): array
     {
         $tasks = $this->project->tasks()
-            ->with(['assignee', 'tags', 'blockers'])
+            ->with(['assignee', 'collaborators', 'tags', 'blockers'])
             ->orderBy('position')
             ->orderBy('id')
             ->get()
@@ -106,7 +106,9 @@ new class extends Component
                             @endif
 
                             <div class="mt-2 flex items-center justify-between gap-2">
-                                <flux:text size="sm">{{ $task->assignee?->name ?? 'Niemand' }}</flux:text>
+                                <flux:text size="sm" title="{{ $task->collaborators->pluck('name')->join(', ') }}">
+                                    {{ $task->assignee?->name ?? 'Niemand' }}@if ($task->collaborators->isNotEmpty()) +{{ $task->collaborators->count() }}@endif
+                                </flux:text>
                                 @if ($task->due_date)
                                     <flux:text size="sm" :class="$task->isOverdue() ? 'text-red-500' : ''">{{ $task->due_date->format('d.m.Y') }}</flux:text>
                                 @endif

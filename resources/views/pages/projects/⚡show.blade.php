@@ -102,9 +102,16 @@ new class extends Component
             @endif
         </div>
 
-        <flux:modal.trigger name="create-task">
-            <flux:button variant="primary" icon="plus">Neue Aufgabe</flux:button>
-        </flux:modal.trigger>
+        <div class="flex items-center gap-3">
+            <flux:button.group>
+                <flux:button icon="list-bullet" disabled>Liste</flux:button>
+                <flux:button icon="view-columns" href="{{ route('projects.board', $project) }}" wire:navigate>Board</flux:button>
+            </flux:button.group>
+
+            <flux:modal.trigger name="create-task">
+                <flux:button variant="primary" icon="plus">Neue Aufgabe</flux:button>
+            </flux:modal.trigger>
+        </div>
     </div>
 
     <div class="mb-4 flex gap-3">

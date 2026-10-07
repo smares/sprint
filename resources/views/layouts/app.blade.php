@@ -23,6 +23,10 @@
 
                 <flux:spacer />
 
+                <form action="{{ route('search') }}" method="GET" class="me-4 hidden sm:block" role="search">
+                    <flux:input name="q" type="search" size="sm" icon="magnifying-glass" placeholder="Suchen …" aria-label="Suchen" />
+                </form>
+
                 <flux:dropdown position="bottom" align="end">
                     <flux:profile :name="auth()->user()->name" initials="{{ auth()->user()->initials() }}" />
                     <flux:menu>

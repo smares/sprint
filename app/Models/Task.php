@@ -7,6 +7,7 @@ use App\Notifications\TaskStatusChanged;
 use App\Notifications\UserMentioned;
 use App\RepeatMode;
 use App\RepeatUnit;
+use App\TaskSearch;
 use Database\Factories\TaskFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -39,7 +40,14 @@ class Task extends Model
             }
         });
 
+        static::saved(function (self $task) {
+            if ($task->wasRecentlyCreated || $task->wasChanged(['title', 'description'])) {
+                app(TaskSearch::class)->index($task);
+            }
+        });
+
         static::deleting(function (self $task) {
+            app(TaskSearch::class)->forget($task->id);
             $task->deleteAttachmentFiles();
         });
 

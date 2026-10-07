@@ -1,0 +1,61 @@
+<?php
+
+use App\Models\Task;
+use App\TaskStatus;
+use Livewire\Attributes\Computed;
+use Livewire\Attributes\Title;
+use Livewire\Component;
+
+new #[Title('Meine Aufgaben')] class extends Component
+{
+    #[Computed]
+    public function tasks()
+    {
+        return Task::query()
+            ->with('project')
+            ->where('assignee_id', auth()->id())
+            ->where('status', '!=', TaskStatus::Done)
+            ->orderByRaw('due_date is null')
+            ->orderBy('due_date')
+            ->orderBy('id')
+            ->get();
+    }
+};
+?>
+
+<div>
+    <flux:heading size="xl" class="mb-6">Meine Aufgaben</flux:heading>
+
+    @if ($this->tasks->isEmpty())
+        <flux:callout icon="check-circle" heading="Alles erledigt" text="Dir sind keine offenen Aufgaben zugewiesen." />
+    @else
+        <flux:table>
+            <flux:table.columns>
+                <flux:table.column>Aufgabe</flux:table.column>
+                <flux:table.column>Projekt</flux:table.column>
+                <flux:table.column>Status</flux:table.column>
+                <flux:table.column>Fällig</flux:table.column>
+            </flux:table.columns>
+            <flux:table.rows>
+                @foreach ($this->tasks as $task)
+                    <flux:table.row wire:key="task-{{ $task->id }}">
+                        <flux:table.cell>
+                            <a href="{{ route('tasks.show', $task) }}" wire:navigate class="font-medium hover:underline">{{ $task->title }}</a>
+                        </flux:table.cell>
+                        <flux:table.cell>{{ $task->project->name }}</flux:table.cell>
+                        <flux:table.cell>
+                            <flux:badge size="sm" :color="$task->status->color()">{{ $task->status->label() }}</flux:badge>
+                        </flux:table.cell>
+                        <flux:table.cell>
+                            @if ($task->due_date)
+                                <flux:text :class="$task->isOverdue() ? 'text-red-500' : ''">{{ $task->due_date->format('d.m.Y') }}</flux:text>
+                            @else
+                                –
+                            @endif
+                        </flux:table.cell>
+                    </flux:table.row>
+                @endforeach
+            </flux:table.rows>
+        </flux:table>
+    @endif
+</div>

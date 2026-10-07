@@ -1,7 +1,24 @@
 <?php
 
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
+Route::livewire('/login', 'pages::login')->name('login')->middleware('guest');
+
+Route::post('/logout', function (Request $request) {
+    Auth::logout();
+    $request->session()->invalidate();
+    $request->session()->regenerateToken();
+
+    return redirect()->route('login');
+})->middleware('auth')->name('logout');
+
+Route::middleware('auth')->group(function () {
+    Route::redirect('/', '/projects');
+
+    Route::livewire('/projects', 'pages::projects.index')->name('projects.index');
+    Route::livewire('/projects/{project}', 'pages::projects.show')->name('projects.show');
+    Route::livewire('/tasks/mine', 'pages::tasks.mine')->name('tasks.mine');
+    Route::livewire('/tasks/{task}', 'pages::tasks.show')->name('tasks.show');
 });

@@ -172,7 +172,7 @@ new class extends Component
                             @if ($task->tags->isNotEmpty())
                                 <div class="mt-2 flex flex-wrap gap-1">
                                     @foreach ($task->tags as $tag)
-                                        <flux:badge size="sm" :color="$tag->color">{{ $tag->name }}</flux:badge>
+                                        <x-color-badge size="sm" :color="$tag->color">{{ $tag->name }}</x-color-badge>
                                     @endforeach
                                 </div>
                             @endif

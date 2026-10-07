@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\ColorCast;
 use Database\Factories\TaskStatusFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -15,14 +16,9 @@ class TaskStatus extends Model
     /** @use HasFactory<TaskStatusFactory> */
     use HasFactory;
 
-    /**
-     * @var list<string>
-     */
-    public const COLORS = ['zinc', 'red', 'orange', 'amber', 'lime', 'green', 'teal', 'sky', 'blue', 'indigo', 'purple', 'pink'];
-
     protected function casts(): array
     {
-        return ['is_done' => 'boolean'];
+        return ['is_done' => 'boolean', 'color' => ColorCast::class];
     }
 
     /**
@@ -33,9 +29,9 @@ class TaskStatus extends Model
     public static function defaults(): array
     {
         return [
-            ['name' => 'Offen', 'color' => 'zinc', 'position' => 0, 'is_done' => false],
-            ['name' => 'In Arbeit', 'color' => 'blue', 'position' => 1, 'is_done' => false],
-            ['name' => 'Erledigt', 'color' => 'green', 'position' => 2, 'is_done' => true],
+            ['name' => 'Offen', 'color' => '#71717a', 'position' => 0, 'is_done' => false],
+            ['name' => 'In Arbeit', 'color' => '#3b82f6', 'position' => 1, 'is_done' => false],
+            ['name' => 'Erledigt', 'color' => '#22c55e', 'position' => 2, 'is_done' => true],
         ];
     }
 

@@ -134,3 +134,16 @@
     background: var(--color-sky-900);
     color: var(--color-sky-200);
 }
+
+/* Colors of tags, statuses and field options come from the color picker as --badge. */
+.color-badge,
+.color-chip {
+    background-color: color-mix(in srgb, var(--badge) 16%, white);
+    color: color-mix(in srgb, var(--badge) 55%, black);
+}
+
+.dark .color-badge,
+.dark .color-chip {
+    background-color: color-mix(in srgb, var(--badge) 30%, #18181b);
+    color: color-mix(in srgb, var(--badge) 45%, white);
+}

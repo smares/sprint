@@ -1,5 +1,6 @@
 <?php
 
+use App\Color;
 use App\CustomFieldType;
 use App\Markdown;
 use App\Models\Attachment;
@@ -443,7 +444,7 @@ new class extends Component
         $name = trim($validated['newTag']);
 
         $tag = $project->tags()->firstOrCreate(['name' => $name], [
-            'color' => Tag::COLORS[$project->tags()->count() % count(Tag::COLORS)],
+            'color' => Color::next($project->tags()->count()),
         ]);
 
         $this->tagIds = array_values(array_unique([...$this->tagIds, (string) $tag->id]));

@@ -51,7 +51,7 @@ new #[Title('Meine Aufgaben')] class extends Component
                         </flux:table.cell>
                         <flux:table.cell class="max-md:hidden">{{ $task->project->name }}</flux:table.cell>
                         <flux:table.cell>
-                            <flux:badge size="sm" :color="$task->status->color">{{ $task->status->name }}</flux:badge>
+                            <x-color-badge size="sm" :color="$task->status->color">{{ $task->status->name }}</x-color-badge>
                         </flux:table.cell>
                         <flux:table.cell>
                             @if ($task->due_date)

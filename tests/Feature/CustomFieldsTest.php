@@ -112,11 +112,11 @@ class CustomFieldsTest extends TestCase
             ->set("newOptions.{$field->id}", 'Egal')->call('addOption', $field->id)->assertHasNoErrors();
 
         $option = $field->options()->where('name', 'Egal')->firstOrFail();
-        $component->set("optionNames.{$option->id}", 'Nebensache')->set("optionColors.{$option->id}", 'pink');
+        $component->set("optionNames.{$option->id}", 'Nebensache')->set("optionColors.{$option->id}", '#ec4899');
         $this->assertSame('Nebensache', $option->fresh()->name);
-        $this->assertSame('pink', $option->fresh()->color);
+        $this->assertSame('#ec4899', $option->fresh()->color);
 
-        $component->set("optionColors.{$option->id}", 'neon')->assertSet("optionColors.{$option->id}", 'pink');
+        $component->set("optionColors.{$option->id}", 'neon')->assertSet("optionColors.{$option->id}", '#ec4899');
 
         $component->call('moveOption', $option->id, 0, $field->id);
         $this->assertSame($option->id, $field->options()->firstOrFail()->id);

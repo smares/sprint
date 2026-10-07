@@ -3,6 +3,7 @@
 use App\CustomFieldType;
 use App\Models\CustomField;
 use App\Models\CustomFieldOption;
+use App\Color;
 use App\Models\Project;
 use App\Models\TaskStatus;
 use Flux\Flux;
@@ -156,7 +157,7 @@ new class extends Component
 
         $field->options()->create([
             'name' => trim($this->newOptions[$fieldId]),
-            'color' => TaskStatus::COLORS[$field->options()->count() % count(TaskStatus::COLORS)],
+            'color' => Color::next($field->options()->count()),
             'position' => ($field->options()->max('position') ?? -1) + 1,
         ]);
 
@@ -183,7 +184,7 @@ new class extends Component
     {
         $option = $this->optionOrFail($id);
 
-        if (! in_array($value, TaskStatus::COLORS, true)) {
+        if (! Color::isHex($value)) {
             $this->optionColors[$id] = $option->color;
 
             return;
@@ -248,13 +249,9 @@ new class extends Component
                     <ul class="ms-6 space-y-2" wire:sort="moveOption" wire:sort:group="options" wire:sort:group-id="{{ $field->id }}">
                         @foreach ($field->options as $option)
                             <li wire:key="option-{{ $option->id }}" wire:sort:item="{{ $option->id }}" class="flex items-center gap-2">
-                                <flux:badge size="sm" :color="$option->color" class="shrink-0">&nbsp;</flux:badge>
+                                <x-color-badge size="sm" :color="$option->color" class="shrink-0">&nbsp;</x-color-badge>
                                 <flux:input size="sm" wire:model.blur="optionNames.{{ $option->id }}" aria-label="Option" class="min-w-0 flex-1" />
-                                <flux:select size="sm" variant="listbox" wire:model.live="optionColors.{{ $option->id }}" aria-label="Farbe" class="max-w-28">
-                                    @foreach (\App\Models\TaskStatus::COLORS as $color)
-                                        <flux:select.option value="{{ $color }}">{{ $color }}</flux:select.option>
-                                    @endforeach
-                                </flux:select>
+                                <flux:color-picker type="button" size="sm" with-confirmation :swatches="\App\Color::SWATCHES" wire:model.live="optionColors.{{ $option->id }}" aria-label="Farbe" />
                                 <flux:button size="xs" variant="ghost" icon="x-mark" wire:click="removeOption({{ $option->id }})" aria-label="Option entfernen" />
                             </li>
                         @endforeach

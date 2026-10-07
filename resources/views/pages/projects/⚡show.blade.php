@@ -383,11 +383,11 @@ new class extends Component
                                 <flux:badge size="sm" icon="list-bullet" class="ms-1">{{ $progress['done'] }}/{{ $progress['total'] }}</flux:badge>
                             @endif
                             @foreach ($task->tags as $tag)
-                                <flux:badge size="sm" :color="$tag->color" class="ms-1">{{ $tag->name }}</flux:badge>
+                                <x-color-badge size="sm" :color="$tag->color" class="ms-1">{{ $tag->name }}</x-color-badge>
                             @endforeach
                         </flux:table.cell>
                         <flux:table.cell>
-                            <flux:badge size="sm" :color="$task->status->color">{{ $task->status->name }}</flux:badge>
+                            <x-color-badge size="sm" :color="$task->status->color">{{ $task->status->name }}</x-color-badge>
                         </flux:table.cell>
                         <flux:table.cell class="max-md:hidden">
                             {{ $task->assignee?->name ?? '–' }}

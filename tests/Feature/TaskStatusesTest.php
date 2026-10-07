@@ -70,13 +70,13 @@ class TaskStatusesTest extends TestCase
 
         Livewire::test('project-statuses', ['project' => $this->project])
             ->set("names.{$status->id}", 'Aktiv')
-            ->set("colors.{$status->id}", 'pink')
+            ->set("colors.{$status->id}", '#ec4899')
             ->set("colors.{$status->id}", 'nonsense')
-            ->assertSet("colors.{$status->id}", 'pink');
+            ->assertSet("colors.{$status->id}", '#ec4899');
 
         $status->refresh();
         $this->assertSame('Aktiv', $status->name);
-        $this->assertSame('pink', $status->color);
+        $this->assertSame('#ec4899', $status->color);
     }
 
     public function test_status_cannot_be_renamed_to_empty(): void

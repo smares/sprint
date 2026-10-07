@@ -22,7 +22,7 @@ class CustomFieldOptionFactory extends Factory
         return [
             'custom_field_id' => CustomField::factory()->state(['type' => CustomFieldType::Select]),
             'name' => fake()->unique()->word(),
-            'color' => 'zinc',
+            'color' => '#71717a',
             'position' => 10,
         ];
     }

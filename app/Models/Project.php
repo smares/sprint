@@ -35,6 +35,11 @@ class Project extends Model
         return $this->belongsToMany(User::class, 'project_members')->withPivot('role')->withTimestamps()->orderBy('users.name');
     }
 
+    public function teams(): BelongsToMany
+    {
+        return $this->belongsToMany(Team::class, 'project_team')->withPivot('role')->withTimestamps()->orderBy('teams.name');
+    }
+
     /**
      * What the person may do here: app admins manage every project, everybody else needs a membership.
      */
@@ -48,14 +53,28 @@ class Project extends Model
             return ProjectRole::Admin;
         }
 
-        $role = $this->members()->whereKey($user->getKey())->first()?->pivot->role;
+        $roles = $this->teams()
+            ->whereHas('users', fn (Builder $users) => $users->whereKey($user->getKey()))
+            ->get()
+            ->map(fn (Team $team) => $team->pivot->role);
 
-        return $role === null ? null : ProjectRole::from($role);
+        $direct = $this->members()->whereKey($user->getKey())->first()?->pivot->role;
+
+        return $roles->push($direct)
+            ->filter()
+            ->map(fn (string $role) => ProjectRole::from($role))
+            ->sortByDesc(fn (ProjectRole $role) => $role->level())
+            ->first();
     }
 
     public function canBeViewedBy(?User $user): bool
     {
         return $this->roleFor($user) !== null;
+    }
+
+    public function setTeamRole(Team $team, ProjectRole $role): void
+    {
+        $this->teams()->syncWithoutDetaching([$team->getKey() => ['role' => $role->value]]);
     }
 
     public function setRole(User $user, ProjectRole $role): void
@@ -72,7 +91,10 @@ class Project extends Model
             return;
         }
 
-        $query->whereHas('members', fn (Builder $members) => $members->whereKey($user->getKey()));
+        $query->where(fn (Builder $projects) => $projects
+            ->whereHas('members', fn (Builder $members) => $members->whereKey($user->getKey()))
+            ->orWhereHas('teams.users', fn (Builder $users) => $users->whereKey($user->getKey()))
+        );
     }
 
     /**
@@ -84,6 +106,7 @@ class Project extends Model
             ->where(fn (Builder $users) => $users
                 ->where('is_admin', true)
                 ->orWhereHas('projects', fn (Builder $projects) => $projects->whereKey($this->getKey()))
+                ->orWhereHas('teams.projects', fn (Builder $projects) => $projects->whereKey($this->getKey()))
             );
     }
 

@@ -26,6 +26,11 @@ Route::middleware('auth')->group(function () {
     Route::livewire('/projects/{project}/members', 'pages::projects.members')->name('projects.members');
     Route::livewire('/projects/{project}/statuses', 'pages::projects.statuses')->name('projects.statuses');
     Route::livewire('/projects/{project}/board', 'pages::projects.board')->name('projects.board');
+    Route::middleware('can:administer')->prefix('admin')->group(function () {
+        Route::livewire('/users', 'pages::admin.users')->name('admin.users');
+        Route::livewire('/teams', 'pages::admin.teams')->name('admin.teams');
+    });
+
     Route::livewire('/tasks/mine', 'pages::tasks.mine')->name('tasks.mine');
     Route::livewire('/tasks/{task}', 'pages::tasks.show')->name('tasks.show');
 });

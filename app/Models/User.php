@@ -38,6 +38,11 @@ class User extends Authenticatable
         return $this->belongsToMany(Project::class, 'project_members')->withPivot('role')->withTimestamps();
     }
 
+    public function teams(): BelongsToMany
+    {
+        return $this->belongsToMany(Team::class);
+    }
+
     public function initials(): string
     {
         return Str::of($this->name)

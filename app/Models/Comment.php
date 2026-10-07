@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Markdown;
 use App\Notifications\TaskCommented;
 use App\Notifications\UserMentioned;
+use App\TaskSearch;
 use Database\Factories\CommentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -20,6 +21,9 @@ class Comment extends Model
 
     protected static function booted(): void
     {
+        static::saved(fn (self $comment) => app(TaskSearch::class)->index($comment->task_id));
+        static::deleted(fn (self $comment) => app(TaskSearch::class)->index($comment->task_id));
+
         static::created(function (self $comment) {
             $comment->loadMissing('task', 'user');
 

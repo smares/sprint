@@ -27,9 +27,7 @@ Route::middleware('auth')->group(function () {
     Route::livewire('/projects', 'pages::projects.index')->name('projects.index');
     Route::livewire('/projects/{project}', 'pages::projects.show')->name('projects.show');
     Route::livewire('/projects/{project}/fields', 'pages::projects.fields')->name('projects.fields');
-    Route::livewire('/projects/{project}/tags', 'pages::projects.tags')->name('projects.tags');
     Route::livewire('/projects/{project}/members', 'pages::projects.members')->name('projects.members');
-    Route::livewire('/projects/{project}/statuses', 'pages::projects.statuses')->name('projects.statuses');
     Route::livewire('/projects/{project}/board', 'pages::projects.board')->name('projects.board');
     Route::livewire('/projects/{project}/calendar', 'pages::projects.calendar')->name('projects.calendar');
     Route::livewire('/projects/{project}/timeline', 'pages::projects.timeline')->name('projects.timeline');

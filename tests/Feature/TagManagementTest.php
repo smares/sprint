@@ -27,10 +27,10 @@ class TagManagementTest extends TestCase
 
     private function page()
     {
-        return Livewire::test('pages::projects.tags', ['project' => $this->project]);
+        return Livewire::test('project-tags', ['project' => $this->project]);
     }
 
-    public function test_only_managers_can_open_the_page(): void
+    public function test_only_managers_get_the_tag_modal(): void
     {
         $editor = User::factory()->create();
         $manager = User::factory()->create();
@@ -38,17 +38,67 @@ class TagManagementTest extends TestCase
         $this->project->setRole($manager, ProjectRole::Admin);
         Tag::factory()->for($this->project)->create(['name' => 'Dringend']);
 
-        $this->actingAs($editor)->get(route('projects.tags', $this->project))->assertForbidden();
-        $this->actingAs($manager)->get(route('projects.tags', $this->project))->assertOk()->assertSee('Dringend');
+        $this->actingAs($editor)->get(route('projects.show', $this->project))->assertOk()->assertDontSee('project-tags', false)->assertDontSee('Neues Tag');
+        Livewire::test('project-tags', ['project' => $this->project])->assertForbidden();
+
+        $this->actingAs($manager)->get(route('projects.show', $this->project))->assertOk()->assertSee('project-tags', false)->assertSee('Dringend');
     }
 
-    public function test_the_list_page_links_to_it_for_managers_only(): void
+    public function test_actions_need_the_manage_right_even_after_loading(): void
     {
-        $this->get(route('projects.show', $this->project))->assertSee(route('projects.tags', $this->project), false);
+        $manager = User::factory()->create();
+        $this->project->setRole($manager, ProjectRole::Admin);
+        $component = Livewire::actingAs($manager)->test('project-tags', ['project' => $this->project]);
 
-        $editor = User::factory()->create();
-        $this->project->setRole($editor, ProjectRole::Editor);
-        $this->actingAs($editor)->get(route('projects.show', $this->project))->assertDontSee(route('projects.tags', $this->project), false);
+        $this->project->setRole($manager, ProjectRole::Viewer);
+
+        $component->set('newName', 'Neu')->assertForbidden();
+        $this->assertSame(0, $this->project->tags()->count());
+    }
+
+    public function test_changes_are_announced_to_the_page_once_the_modal_closes(): void
+    {
+        $tag = Tag::factory()->for($this->project)->create(['name' => 'Alt']);
+
+        foreach ([
+            fn ($page) => $page->set('newName', 'Neu')->call('add'),
+            fn ($page) => $page->set("names.{$tag->id}", 'Umbenannt'),
+            fn ($page) => $page->set("colors.{$tag->id}", 'sky'),
+            fn ($page) => $page->call('confirmDelete', $tag->id)->call('delete'),
+        ] as $change) {
+            $page = $this->page();
+            $change($page)->assertNotDispatched('tags-changed')->call('closed')->assertDispatched('tags-changed');
+            $page->call('closed')->assertSet('dirty', false);
+        }
+
+        $this->page()->call('closed')->assertNotDispatched('tags-changed');
+    }
+
+    public function test_deleting_shows_a_confirmation_inline_and_can_be_cancelled(): void
+    {
+        $tag = Tag::factory()->for($this->project)->create(['name' => 'Alt']);
+
+        $this->page()
+            ->assertDontSee('Das Tag wird von allen Aufgaben entfernt')
+            ->call('confirmDelete', $tag->id)
+            ->assertSet('deletingId', (string) $tag->id)
+            ->assertSee('Das Tag wird von allen Aufgaben entfernt')
+            ->call('cancelDelete')
+            ->assertSet('deletingId', '')
+            ->assertDontSee('Das Tag wird von allen Aufgaben entfernt');
+
+        $this->assertModelExists($tag);
+    }
+
+    public function test_the_list_drops_a_filter_on_a_deleted_tag(): void
+    {
+        $tag = Tag::factory()->for($this->project)->create();
+
+        Livewire::test('pages::projects.show', ['project' => $this->project])
+            ->set('tagFilter', (string) $tag->id)
+            ->tap(fn () => $tag->delete())
+            ->dispatch('tags-changed')
+            ->assertSet('tagFilter', '');
     }
 
     public function test_tags_show_how_often_they_are_used(): void

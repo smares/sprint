@@ -10,6 +10,7 @@ use Flux\Flux;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
@@ -54,6 +55,20 @@ new class extends Component
         return Gate::allows('edit', $this->project);
     }
 
+    /**
+     * Statuses and tags are edited in modals; the list re-renders itself, and a filter on a deleted tag is dropped.
+     */
+    #[On('statuses-changed')]
+    #[On('tags-changed')]
+    public function settingsChanged(): void
+    {
+        if ($this->tagFilter !== '' && ! $this->project->tags()->whereKey($this->tagFilter)->exists()) {
+            $this->tagFilter = '';
+        }
+
+        unset($this->statuses, $this->tagOptions);
+    }
+
     #[Computed]
     public function canManage(): bool
     {
@@ -92,7 +107,7 @@ new class extends Component
     #[Computed]
     public function statuses()
     {
-        return $this->project->statuses;
+        return $this->project->statuses()->get();
     }
 
     /**
@@ -285,8 +300,8 @@ new class extends Component
             <x-project-views :project="$project" active="list" />
 
             @if ($this->canManage)
-                <flux:button icon="cog-6-tooth" href="{{ route('projects.statuses', $project) }}" wire:navigate>Status</flux:button>
-                <flux:button icon="tag" href="{{ route('projects.tags', $project) }}" wire:navigate>Tags</flux:button>
+                <livewire:project-statuses :project="$project" />
+                <livewire:project-tags :project="$project" />
                 <flux:button icon="adjustments-horizontal" href="{{ route('projects.fields', $project) }}" wire:navigate>Felder</flux:button>
                 <flux:button icon="users" href="{{ route('projects.members', $project) }}" wire:navigate>Mitglieder</flux:button>
             @endif

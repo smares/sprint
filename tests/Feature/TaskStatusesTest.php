@@ -35,7 +35,7 @@ class TaskStatusesTest extends TestCase
     {
         $other = Project::factory()->create();
 
-        Livewire::test('pages::projects.statuses', ['project' => $this->project])
+        Livewire::test('project-statuses', ['project' => $this->project])
             ->set('newName', 'Im Test')
             ->call('add');
 
@@ -43,17 +43,17 @@ class TaskStatusesTest extends TestCase
         $this->assertNotContains('Im Test', $other->statuses()->pluck('name')->all());
     }
 
-    public function test_status_page_renders_and_requires_login(): void
+    public function test_the_status_modal_is_part_of_list_and_board_and_lists_the_statuses(): void
     {
-        $this->get(route('projects.statuses', $this->project))->assertOk()->assertSee('In Arbeit');
+        $this->get(route('projects.show', $this->project))->assertOk()->assertSee('project-statuses', false);
+        $this->get(route('projects.board', $this->project))->assertOk()->assertSee('project-statuses', false);
 
-        auth()->logout();
-        $this->get(route('projects.statuses', $this->project))->assertRedirect(route('login'));
+        Livewire::test('project-statuses', ['project' => $this->project])->assertSet('names', $this->project->statuses->pluck('name', 'id')->all());
     }
 
     public function test_status_can_be_added_with_a_name(): void
     {
-        $component = Livewire::test('pages::projects.statuses', ['project' => $this->project])
+        $component = Livewire::test('project-statuses', ['project' => $this->project])
             ->call('add')
             ->assertHasErrors('newName');
 
@@ -68,7 +68,7 @@ class TaskStatusesTest extends TestCase
     {
         $status = $this->project->statuses[1];
 
-        Livewire::test('pages::projects.statuses', ['project' => $this->project])
+        Livewire::test('project-statuses', ['project' => $this->project])
             ->set("names.{$status->id}", 'Aktiv')
             ->set("colors.{$status->id}", 'pink')
             ->set("colors.{$status->id}", 'nonsense')
@@ -83,7 +83,7 @@ class TaskStatusesTest extends TestCase
     {
         $status = $this->project->statuses[0];
 
-        Livewire::test('pages::projects.statuses', ['project' => $this->project])
+        Livewire::test('project-statuses', ['project' => $this->project])
             ->set("names.{$status->id}", '  ')
             ->assertSet("names.{$status->id}", 'Offen');
 
@@ -94,7 +94,7 @@ class TaskStatusesTest extends TestCase
     {
         [$open, $inProgress] = [$this->project->statuses[0], $this->project->statuses[1]];
 
-        Livewire::test('pages::projects.statuses', ['project' => $this->project])
+        Livewire::test('project-statuses', ['project' => $this->project])
             ->call('move', $inProgress->id, 0);
 
         $this->assertSame($inProgress->id, $this->project->defaultStatus()->id);
@@ -105,7 +105,7 @@ class TaskStatusesTest extends TestCase
     {
         $foreign = Project::factory()->create()->statuses[0];
 
-        Livewire::test('pages::projects.statuses', ['project' => $this->project])
+        Livewire::test('project-statuses', ['project' => $this->project])
             ->call('move', $foreign->id, 0)
             ->assertStatus(404);
     }
@@ -114,7 +114,7 @@ class TaskStatusesTest extends TestCase
     {
         $done = $this->project->doneStatus();
 
-        Livewire::test('pages::projects.statuses', ['project' => $this->project])
+        Livewire::test('project-statuses', ['project' => $this->project])
             ->set("done.{$done->id}", false)
             ->assertSet("done.{$done->id}", true);
 
@@ -125,7 +125,7 @@ class TaskStatusesTest extends TestCase
     {
         [$open, $inProgress] = [$this->project->statuses[0], $this->project->statuses[1]];
 
-        $component = Livewire::test('pages::projects.statuses', ['project' => $this->project])
+        $component = Livewire::test('project-statuses', ['project' => $this->project])
             ->set("done.{$open->id}", true);
 
         $component->set("done.{$inProgress->id}", true)->assertSet("done.{$inProgress->id}", false);
@@ -137,7 +137,7 @@ class TaskStatusesTest extends TestCase
     {
         $extra = TaskStatus::factory()->for($this->project)->create();
 
-        Livewire::test('pages::projects.statuses', ['project' => $this->project])
+        Livewire::test('project-statuses', ['project' => $this->project])
             ->set("done.{$extra->id}", true);
 
         $this->assertTrue($extra->fresh()->is_done);
@@ -149,7 +149,7 @@ class TaskStatusesTest extends TestCase
         $open = $this->project->statuses[0];
         $task = Task::factory()->for($this->project)->inProgress()->create();
 
-        Livewire::test('pages::projects.statuses', ['project' => $this->project])
+        Livewire::test('project-statuses', ['project' => $this->project])
             ->call('confirmDelete', $inProgress->id)
             ->call('delete')
             ->assertHasErrors('replacementId')
@@ -165,7 +165,7 @@ class TaskStatusesTest extends TestCase
     {
         $inProgress = $this->project->statuses[1];
 
-        Livewire::test('pages::projects.statuses', ['project' => $this->project])
+        Livewire::test('project-statuses', ['project' => $this->project])
             ->call('confirmDelete', $inProgress->id)
             ->call('delete')
             ->assertHasNoErrors();
@@ -179,7 +179,7 @@ class TaskStatusesTest extends TestCase
         $foreign = Project::factory()->create()->statuses[0];
         Task::factory()->for($this->project)->inProgress()->create();
 
-        Livewire::test('pages::projects.statuses', ['project' => $this->project])
+        Livewire::test('project-statuses', ['project' => $this->project])
             ->call('confirmDelete', $inProgress->id)
             ->set('replacementId', (string) $foreign->id)
             ->call('delete')
@@ -192,7 +192,7 @@ class TaskStatusesTest extends TestCase
     {
         $done = $this->project->doneStatus();
 
-        Livewire::test('pages::projects.statuses', ['project' => $this->project])
+        Livewire::test('project-statuses', ['project' => $this->project])
             ->call('confirmDelete', $done->id)
             ->assertSet('deletingId', '');
 
@@ -225,5 +225,36 @@ class TaskStatusesTest extends TestCase
 
         $task->fresh()->toggleDone();
         $this->assertSame($this->project->defaultStatus()->id, $task->fresh()->status_id);
+    }
+
+    public function test_changes_are_announced_once_the_modal_closes_and_the_board_picks_them_up(): void
+    {
+        $board = Livewire::test('pages::projects.board', ['project' => $this->project])->assertDontSee('Wartet auf Kunde');
+
+        Livewire::test('project-statuses', ['project' => $this->project])
+            ->set('newName', 'Wartet auf Kunde')->call('add')
+            ->assertNotDispatched('statuses-changed')
+            ->call('closed')
+            ->assertDispatched('statuses-changed')
+            ->call('closed')
+            ->assertNotDispatched('statuses-changed');
+
+        $board->dispatch('statuses-changed')->assertSee('Wartet auf Kunde');
+    }
+
+    public function test_deleting_asks_inline_and_can_be_cancelled(): void
+    {
+        $status = $this->project->statuses()->where('name', 'In Arbeit')->firstOrFail();
+        Task::factory()->for($this->project)->create(['status_id' => $status->id]);
+
+        Livewire::test('project-statuses', ['project' => $this->project])
+            ->assertDontSee('wechseln in den Ersatz-Status')
+            ->call('confirmDelete', $status->id)
+            ->assertSee('wechseln in den Ersatz-Status')
+            ->call('cancelDelete')
+            ->assertSet('deletingId', '')
+            ->assertDontSee('wechseln in den Ersatz-Status');
+
+        $this->assertModelExists($status);
     }
 }

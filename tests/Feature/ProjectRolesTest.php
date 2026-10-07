@@ -74,7 +74,6 @@ class ProjectRolesTest extends TestCase
 
         $this->get(route('projects.show', $this->project))->assertForbidden();
         $this->get(route('projects.board', $this->project))->assertForbidden();
-        $this->get(route('projects.statuses', $this->project))->assertForbidden();
         $this->get(route('projects.members', $this->project))->assertForbidden();
         $this->get(route('tasks.show', $task))->assertForbidden();
     }
@@ -163,8 +162,9 @@ class ProjectRolesTest extends TestCase
         $this->assertDatabaseHas('tasks', ['title' => 'Neue Aufgabe']);
         $this->assertDatabaseHas('comments', ['body' => 'Hallo']);
 
-        $this->get(route('projects.statuses', $this->project))->assertForbidden();
+        Livewire::test('project-statuses', ['project' => $this->project])->assertForbidden();
         $this->get(route('projects.members', $this->project))->assertForbidden();
+        $this->get(route('projects.show', $this->project))->assertDontSee('project-statuses', false);
     }
 
     public function test_managers_and_app_admins_can_open_the_management_pages(): void
@@ -172,7 +172,8 @@ class ProjectRolesTest extends TestCase
         foreach ([$this->manager, $this->appAdmin] as $person) {
             $this->actingAs($person);
 
-            $this->get(route('projects.statuses', $this->project))->assertOk();
+            $this->get(route('projects.show', $this->project))->assertOk()->assertSee('project-statuses', false);
+            $this->get(route('projects.board', $this->project))->assertOk()->assertSee('project-statuses', false);
             $this->get(route('projects.members', $this->project))->assertOk();
             $this->get(route('projects.show', $this->project))->assertSee('Mitglieder');
         }
@@ -180,7 +181,7 @@ class ProjectRolesTest extends TestCase
 
     public function test_status_page_actions_need_the_manage_right_even_after_loading(): void
     {
-        $component = Livewire::actingAs($this->manager)->test('pages::projects.statuses', ['project' => $this->project]);
+        $component = Livewire::actingAs($this->manager)->test('project-statuses', ['project' => $this->project]);
 
         $this->project->setRole($this->manager, ProjectRole::Viewer);
         $this->project->setRole($this->editor, ProjectRole::Admin);

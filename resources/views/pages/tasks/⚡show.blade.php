@@ -37,6 +37,9 @@ new class extends Component
     /** @var array<int|string, string> */
     public array $newSubtaskTitles = [];
 
+    /** @var array<int|string, string> */
+    public array $sectionTitles = [];
+
     /** @var list<string> */
     public array $collaboratorIds = [];
 
@@ -54,6 +57,10 @@ new class extends Component
         $this->assigneeId = (string) ($this->task->assignee_id ?? '');
         $this->dueDate = $this->task->due_date?->format('Y-m-d') ?? '';
         $this->parentId = (string) ($this->task->parent_id ?? '');
+        $this->sectionTitles = $this->task->project->tasks()
+            ->where('is_section', true)
+            ->pluck('title', 'id')
+            ->all();
         $this->tagIds = $this->task->tags->pluck('id')->map(fn ($id) => (string) $id)->all();
         $this->collaboratorIds = $this->task->collaborators()->pluck('users.id')->map(fn ($id) => (string) $id)->all();
         $this->blockerIds = $this->task->blockers()->pluck('tasks.id')->map(fn ($id) => (string) $id)->all();
@@ -124,42 +131,133 @@ new class extends Component
         return $this->task->project->subtaskProgress()[$this->task->getKey()] ?? null;
     }
 
+    /**
+     * @return list<int>
+     */
+    #[Computed]
+    public function sectionIds(): array
+    {
+        return $this->projectTasks->where('is_section', true)->pluck('id')->all();
+    }
+
     #[Computed]
     public function possibleParents()
     {
         $excluded = [$this->task->getKey(), ...$this->descendantIds];
 
-        return $this->projectTasks->reject(fn ($task) => in_array($task->id, $excluded, true));
+        return $this->projectTasks->reject(fn ($task) => $task->is_section || in_array($task->id, $excluded, true));
+    }
+
+    /**
+     * Ids of the task and all of its descendants that can have subtasks (no section headings).
+     *
+     * @return list<int>
+     */
+    private function containerIds(): array
+    {
+        return array_values(array_diff([$this->task->getKey(), ...$this->descendantIds], $this->sectionIds));
+    }
+
+    private function resetSubtaskCaches(): void
+    {
+        unset($this->projectTasks, $this->childrenMap, $this->descendantIds, $this->sectionIds, $this->progress);
     }
 
     public function addSubtask(int $parentId): void
     {
-        abort_unless(in_array($parentId, [$this->task->getKey(), ...$this->descendantIds], true), 404);
+        $this->createChild($parentId, isSection: false);
+    }
+
+    public function addSection(int $parentId): void
+    {
+        $this->createChild($parentId, isSection: true);
+    }
+
+    private function createChild(int $parentId, bool $isSection): void
+    {
+        abort_unless(in_array($parentId, $this->containerIds(), true), 404);
 
         $this->validate([
             "newSubtaskTitles.$parentId" => ['required', 'string', 'max:255'],
         ], attributes: ["newSubtaskTitles.$parentId" => 'Titel']);
 
-        $this->task->project->tasks()->create([
+        $child = $this->task->project->tasks()->create([
             'parent_id' => $parentId,
+            'is_section' => $isSection,
             'title' => trim($this->newSubtaskTitles[$parentId]),
             'creator_id' => auth()->id(),
             'position' => ($this->task->project->tasks()->where('parent_id', $parentId)->max('position') ?? -1) + 1,
         ]);
 
-        unset($this->newSubtaskTitles[$parentId], $this->projectTasks, $this->childrenMap, $this->progress);
+        if ($isSection) {
+            $this->sectionTitles[$child->id] = $child->title;
+        }
+
+        unset($this->newSubtaskTitles[$parentId]);
+        $this->resetSubtaskCaches();
     }
 
     public function toggleSubtask(int $subtaskId): void
     {
-        abort_unless(in_array($subtaskId, $this->descendantIds, true), 404);
+        abort_unless(in_array($subtaskId, $this->descendantIds, true) && ! in_array($subtaskId, $this->sectionIds, true), 404);
 
         $subtask = $this->task->project->tasks()->findOrFail($subtaskId);
         $subtask->update([
             'status' => $subtask->status === TaskStatus::Done ? TaskStatus::Todo : TaskStatus::Done,
         ]);
 
-        unset($this->projectTasks, $this->childrenMap, $this->progress);
+        $this->resetSubtaskCaches();
+    }
+
+    public function updatedSectionTitles(string $value, string $sectionId): void
+    {
+        abort_unless(in_array((int) $sectionId, $this->sectionIds, true) && in_array((int) $sectionId, $this->descendantIds, true), 404);
+
+        $title = trim($value);
+
+        if ($title === '' || mb_strlen($title) > 255) {
+            $this->sectionTitles[$sectionId] = $this->projectTasks->firstWhere('id', (int) $sectionId)->title;
+
+            return;
+        }
+
+        $this->task->project->tasks()->whereKey($sectionId)->update(['title' => $title]);
+        $this->resetSubtaskCaches();
+    }
+
+    public function deleteSection(int $sectionId): void
+    {
+        abort_unless(in_array($sectionId, $this->sectionIds, true) && in_array($sectionId, $this->descendantIds, true), 404);
+
+        $this->task->project->tasks()->whereKey($sectionId)->delete();
+        unset($this->sectionTitles[$sectionId]);
+        $this->resetSubtaskCaches();
+    }
+
+    public function moveSubtask(int|string $itemId, int $position, int|string $parentId): void
+    {
+        $itemId = (int) $itemId;
+        $parentId = (int) $parentId;
+
+        abort_unless(in_array($itemId, $this->descendantIds, true), 404);
+        abort_unless(in_array($parentId, $this->containerIds(), true), 404);
+
+        $subtree = [$itemId];
+        $queue = [$itemId];
+
+        while ($queue !== []) {
+            foreach ($this->childrenMap->get(array_shift($queue), []) as $child) {
+                $subtree[] = $child->id;
+                $queue[] = $child->id;
+            }
+        }
+
+        abort_if(in_array($parentId, $subtree, true), 422);
+
+        $this->task->project->tasks()->findOrFail($parentId)
+            ->placeChild($this->task->project->tasks()->findOrFail($itemId), $position);
+
+        $this->resetSubtaskCaches();
     }
 
     #[Computed]
@@ -385,12 +483,13 @@ new class extends Component
 
     @php($rootChildren = $this->childrenMap->get($task->id, collect()))
     @if ($rootChildren->isNotEmpty())
-        <x-task-subtree :tasks="$rootChildren" :children-map="$this->childrenMap" />
+        <x-task-subtree :tasks="$rootChildren" :children-map="$this->childrenMap" :parent-id="$task->id" />
     @endif
 
     <form wire:submit="addSubtask({{ $task->id }})" class="mt-3 flex items-end gap-2">
         <flux:input wire:model="newSubtaskTitles.{{ $task->id }}" label="Neue Subtask" placeholder="Titel …" class="max-w-sm" />
         <flux:button type="submit" icon="plus">Hinzufügen</flux:button>
+        <flux:button type="button" icon="bars-3-bottom-left" wire:click="addSection({{ $task->id }})">Überschrift</flux:button>
     </form>
     @error('newSubtaskTitles.'.$task->id) <flux:text class="mt-1 text-red-500">{{ $message }}</flux:text> @enderror
 
@@ -417,7 +516,7 @@ new class extends Component
     <flux:modal name="delete-task" class="min-w-[22rem]">
         <div class="space-y-6">
             <flux:heading size="lg">Aufgabe löschen?</flux:heading>
-            <flux:text>Die Aufgabe @if (count($this->descendantIds) > 0) mit {{ count($this->descendantIds) }} Subtasks @endif und alle Kommentare werden unwiderruflich gelöscht.</flux:text>
+            <flux:text>Die Aufgabe @if (count($this->descendantIds) - count($this->sectionIds) > 0) mit {{ count($this->descendantIds) - count($this->sectionIds) }} Subtasks @endif und alle Kommentare werden unwiderruflich gelöscht.</flux:text>
             <div class="flex gap-2">
                 <flux:spacer />
                 <flux:modal.close><flux:button variant="ghost">Abbrechen</flux:button></flux:modal.close>

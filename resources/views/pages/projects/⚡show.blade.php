@@ -22,6 +22,12 @@ new class extends Component
     #[Url(as: 'tag')]
     public string $tagFilter = '';
 
+    #[Url(as: 'sort')]
+    public string $sortBy = '';
+
+    #[Url(as: 'dir')]
+    public string $sortDirection = 'asc';
+
     public string $title = '';
 
     public string $description = '';
@@ -41,8 +47,10 @@ new class extends Component
             ->when($this->assigneeFilter === 'me', fn ($q) => $q->where('assignee_id', auth()->id()))
             ->when(ctype_digit($this->assigneeFilter), fn ($q) => $q->where('assignee_id', (int) $this->assigneeFilter))
             ->when(ctype_digit($this->tagFilter), fn ($q) => $q->whereHas('tags', fn ($tags) => $tags->whereKey((int) $this->tagFilter)))
-            ->orderByRaw('due_date is null')
-            ->orderBy('due_date')
+            ->when($this->sortBy === 'due', fn ($q) => $q->orderByRaw('due_date is null')->orderBy('due_date', $this->sortDirection))
+            ->when($this->sortBy === 'title', fn ($q) => $q->orderBy('title', $this->sortDirection))
+            ->when($this->sortBy === 'status', fn ($q) => $q->orderBy('status', $this->sortDirection))
+            ->orderBy('position')
             ->orderBy('id')
             ->get();
     }
@@ -83,11 +91,47 @@ new class extends Component
             'assignee_id' => $validated['assigneeId'] ?: null,
             'due_date' => $validated['dueDate'] ?: null,
             'creator_id' => auth()->id(),
+            'position' => $this->project->nextRootPosition(),
         ]);
 
         $this->reset('title', 'description', 'assigneeId', 'dueDate');
         unset($this->tasks);
         Flux::modal('create-task')->close();
+    }
+
+    public function sort(string $column): void
+    {
+        if (! in_array($column, ['due', 'title', 'status'], true)) {
+            return;
+        }
+
+        if ($this->sortBy === $column) {
+            if ($this->sortDirection === 'asc') {
+                $this->sortDirection = 'desc';
+            } else {
+                $this->reset('sortBy', 'sortDirection');
+            }
+        } else {
+            $this->sortBy = $column;
+            $this->sortDirection = 'asc';
+        }
+
+        unset($this->tasks);
+    }
+
+    public function moveTask(int|string $taskId, int $position): void
+    {
+        abort_unless($this->sortBy === '', 422);
+
+        $task = $this->project->tasks()->whereNull('parent_id')->findOrFail($taskId);
+
+        $this->project->placeRootTask(
+            $task,
+            $this->tasks->pluck('id')->reject(fn ($id) => $id === $task->id)->values()->all(),
+            $position,
+        );
+
+        unset($this->tasks);
     }
 
     public function toggleDone(int $taskId): void
@@ -167,14 +211,14 @@ new class extends Component
         <flux:table>
             <flux:table.columns>
                 <flux:table.column class="w-10"></flux:table.column>
-                <flux:table.column>Aufgabe</flux:table.column>
-                <flux:table.column>Status</flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'title'" :direction="$sortDirection" wire:click="sort('title')">Aufgabe</flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'status'" :direction="$sortDirection" wire:click="sort('status')">Status</flux:table.column>
                 <flux:table.column>Zuständig</flux:table.column>
-                <flux:table.column>Fällig</flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'due'" :direction="$sortDirection" wire:click="sort('due')">Fällig</flux:table.column>
             </flux:table.columns>
-            <flux:table.rows>
+            <flux:table.rows :wire:sort="$sortBy === '' ? 'moveTask' : null">
                 @foreach ($this->tasks as $task)
-                    <flux:table.row wire:key="task-{{ $task->id }}">
+                    <flux:table.row wire:key="task-{{ $task->id }}" :wire:sort:item="$sortBy === '' ? $task->id : null">
                         <flux:table.cell>
                             <flux:checkbox :checked="$task->status === TaskStatus::Done" wire:click="toggleDone({{ $task->id }})" />
                         </flux:table.cell>

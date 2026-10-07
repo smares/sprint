@@ -2,26 +2,49 @@
 
 use App\Models\Task;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
 new #[Title('Meine Aufgaben')] class extends Component
 {
-    #[Computed]
-    public function tasks()
+    private const PAGE_SIZE = 50;
+
+    #[Locked]
+    public int $limit = self::PAGE_SIZE;
+
+    public function loadMore(): void
+    {
+        $this->limit += self::PAGE_SIZE;
+    }
+
+    private function mine()
     {
         return Task::query()
             ->whereHas('project', fn ($projects) => $projects->visibleTo(auth()->user()))
-            ->with(['project', 'parent', 'status'])
             ->where(fn ($query) => $query
                 ->where('assignee_id', auth()->id())
                 ->orWhereHas('collaborators', fn ($collaborators) => $collaborators->whereKey(auth()->id()))
             )
-            ->whereHas('status', fn ($status) => $status->where('is_done', false))
+            ->whereHas('status', fn ($status) => $status->where('is_done', false));
+    }
+
+    #[Computed]
+    public function tasks()
+    {
+        return $this->mine()
+            ->with(['project', 'parent', 'status'])
             ->orderByRaw('due_date is null')
             ->orderBy('due_date')
             ->orderBy('id')
+            ->limit($this->limit)
             ->get();
+    }
+
+    #[Computed]
+    public function totalTasks(): int
+    {
+        return $this->mine()->count();
     }
 };
 ?>
@@ -65,5 +88,12 @@ new #[Title('Meine Aufgaben')] class extends Component
             </flux:table.rows>
         </flux:table>
         </div>
+
+        @if ($this->totalTasks > $this->tasks->count())
+            <div wire:intersect="loadMore" class="mt-4 flex items-center justify-center gap-3">
+                <flux:text size="sm">{{ $this->tasks->count() }} von {{ $this->totalTasks }} Aufgaben</flux:text>
+                <flux:button size="sm" wire:click="loadMore">Mehr laden</flux:button>
+            </div>
+        @endif
     @endif
 </div>

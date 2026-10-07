@@ -7,12 +7,19 @@ use App\Models\TaskStatus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
 new class extends Component
 {
     use OpensTaskPanel;
+
+    private const PAGE_SIZE = 30;
+
+    /** @var array<int, int> */
+    #[Locked]
+    public array $columnLimits = [];
 
     public Project $project;
 
@@ -29,7 +36,7 @@ new class extends Component
     #[On('statuses-changed')]
     public function statusesChanged(): void
     {
-        unset($this->statuses, $this->columns);
+        unset($this->statuses, $this->columns, $this->columnTotals);
     }
 
     #[Computed]
@@ -50,17 +57,46 @@ new class extends Component
     #[Computed]
     public function columns(): array
     {
-        $tasks = $this->project->tasks()
-            ->whereNull('parent_id')
-            ->with(['assignee', 'collaborators', 'tags', 'status', 'blockers.status', 'fieldValues'])
-            ->orderBy('position')
-            ->orderBy('id')
-            ->get()
-            ->groupBy('status_id');
-
         return $this->statuses
-            ->mapWithKeys(fn (TaskStatus $status) => [$status->id => $tasks->get($status->id, collect())])
+            ->mapWithKeys(fn (TaskStatus $status) => [$status->id => $this->columnQuery($status->id)
+                ->with(['assignee', 'collaborators', 'tags', 'status', 'blockers.status', 'fieldValues'])
+                ->limit($this->columnLimit($status->id))
+                ->get()])
             ->all();
+    }
+
+    /**
+     * How many tasks each column has in total, shown in the header and used to offer "Mehr laden".
+     *
+     * @return array<int, int>
+     */
+    #[Computed]
+    public function columnTotals(): array
+    {
+        $counts = $this->project->tasks()->whereNull('parent_id')->selectRaw('status_id, count(*) as total')->groupBy('status_id')->pluck('total', 'status_id');
+
+        return $this->statuses->mapWithKeys(fn (TaskStatus $status) => [$status->id => (int) ($counts[$status->id] ?? 0)])->all();
+    }
+
+    private function columnQuery(int $statusId)
+    {
+        return $this->project->tasks()
+            ->whereNull('parent_id')
+            ->where('status_id', $statusId)
+            ->orderBy('position')
+            ->orderBy('id');
+    }
+
+    private function columnLimit(int $statusId): int
+    {
+        return $this->columnLimits[$statusId] ?? self::PAGE_SIZE;
+    }
+
+    public function loadMoreInColumn(int $statusId): void
+    {
+        abort_unless($this->statuses->contains('id', $statusId), 404);
+
+        $this->columnLimits[$statusId] = $this->columnLimit($statusId) + self::PAGE_SIZE;
     }
 
     /**
@@ -99,17 +135,14 @@ new class extends Component
         DB::transaction(function () use ($task, $status, $position) {
             $task->update(['status_id' => $status->id]);
 
-            $this->project->placeRootTask($task, $this->project->tasks()
-                ->whereNull('parent_id')
-                ->where('status_id', $status->id)
+            $this->project->placeRootTask($task, $this->columnQuery($status->id)
                 ->whereKeyNot($task->getKey())
-                ->orderBy('position')
-                ->orderBy('id')
+                ->limit($this->columnLimit($status->id))
                 ->pluck('id')
                 ->all(), $position);
         });
 
-        unset($this->columns);
+        unset($this->columns, $this->columnTotals);
     }
 
     public function rendering($view): void
@@ -140,7 +173,7 @@ new class extends Component
     <flux:kanban class="items-start overflow-x-auto pb-4">
         @foreach ($this->statuses as $status)
             <flux:kanban.column wire:key="column-{{ $status->id }}" class="shrink-0">
-                <flux:kanban.column.header :heading="$status->name" :count="$this->columns[$status->id]->count()" />
+                <flux:kanban.column.header :heading="$status->name" :count="$this->columnTotals[$status->id]" />
 
                 <flux:kanban.column.cards
                     class="min-h-16"
@@ -189,6 +222,12 @@ new class extends Component
                         </flux:kanban.card>
                     @endforeach
                 </flux:kanban.column.cards>
+
+                @if ($this->columnTotals[$status->id] > $this->columns[$status->id]->count())
+                    <flux:button size="sm" variant="ghost" class="mt-2 w-full" wire:click="loadMoreInColumn({{ $status->id }})">
+                        Mehr laden ({{ $this->columns[$status->id]->count() }} von {{ $this->columnTotals[$status->id] }})
+                    </flux:button>
+                @endif
             </flux:kanban.column>
         @endforeach
     </flux:kanban>

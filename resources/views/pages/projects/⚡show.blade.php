@@ -11,6 +11,7 @@ use Flux\Flux;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -19,10 +20,15 @@ new class extends Component
 {
     use OpensTaskPanel;
 
+    private const PAGE_SIZE = 50;
+
     public Project $project;
 
     #[Url(as: 'status')]
     public string $statusFilter = 'open';
+
+    #[Locked]
+    public int $limit = self::PAGE_SIZE;
 
     #[Url(as: 'assignee')]
     public string $assigneeFilter = '';
@@ -86,25 +92,58 @@ new class extends Component
 
     public string $startDate = '';
 
-    #[Computed]
-    public function tasks()
+    /**
+     * Top-level tasks matching the filters, without order and limit.
+     */
+    private function filteredTasks()
     {
         return $this->project->tasks()
             ->whereNull('parent_id')
-            ->with(['assignee', 'collaborators', 'tags', 'status', 'blockers.status', 'fieldValues'])
             ->when($this->statusFilter === 'open', fn ($q) => $q->whereHas('status', fn ($status) => $status->where('is_done', false)))
             ->when(ctype_digit($this->statusFilter), fn ($q) => $q->where('status_id', (int) $this->statusFilter))
             ->when($this->assigneeFilter === 'me', fn ($q) => $q->where('assignee_id', auth()->id()))
             ->when(ctype_digit($this->assigneeFilter), fn ($q) => $q->where('assignee_id', (int) $this->assigneeFilter))
             ->when(ctype_digit($this->tagFilter), fn ($q) => $q->whereHas('tags', fn ($tags) => $tags->whereKey((int) $this->tagFilter)))
-            ->tap(fn ($q) => $this->applyFieldFilters($q))
+            ->tap(fn ($q) => $this->applyFieldFilters($q));
+    }
+
+    /**
+     * The first page of the list; more is loaded when the end of the list comes into view.
+     */
+    #[Computed]
+    public function tasks()
+    {
+        return $this->filteredTasks()
+            ->with(['assignee', 'collaborators', 'tags', 'status', 'blockers.status', 'fieldValues'])
             ->tap(fn ($q) => $this->applyFieldSort($q))
             ->when($this->sortBy === 'due', fn ($q) => $q->orderByRaw('due_date is null')->orderBy('due_date', $this->sortDirection))
             ->when($this->sortBy === 'title', fn ($q) => $q->orderBy('title', $this->sortDirection))
             ->when($this->sortBy === 'status', fn ($q) => $q->orderBy(TaskStatus::select('position')->whereColumn('task_statuses.id', 'tasks.status_id'), $this->sortDirection))
             ->orderBy('position')
             ->orderBy('id')
+            ->limit($this->limit)
             ->get();
+    }
+
+    #[Computed]
+    public function totalTasks(): int
+    {
+        return $this->filteredTasks()->count();
+    }
+
+    public function loadMore(): void
+    {
+        $this->limit += self::PAGE_SIZE;
+    }
+
+    /**
+     * Any change to what is shown starts again at the first page.
+     */
+    public function updated(string $name): void
+    {
+        if (in_array(explode('.', $name)[0], ['statusFilter', 'assigneeFilter', 'tagFilter', 'fieldFilters', 'sortBy', 'sortDirection'], true)) {
+            $this->limit = self::PAGE_SIZE;
+        }
     }
 
     #[Computed]
@@ -285,10 +324,13 @@ new class extends Component
         $this->assigneeFilter = '';
         $this->tagFilter = '';
         $this->fieldFilters = [];
+        $this->limit = self::PAGE_SIZE;
     }
 
     public function sort(string $column): void
     {
+        $this->limit = self::PAGE_SIZE;
+
         $isField = str_starts_with($column, 'field:') && $this->customFields->contains('id', (int) substr($column, 6));
 
         if (! $isField && ! in_array($column, ['due', 'title', 'status'], true)) {
@@ -505,6 +547,13 @@ new class extends Component
             </flux:table.rows>
         </flux:table>
         </div>
+
+        @if ($this->totalTasks > $this->tasks->count())
+            <div wire:intersect="loadMore" class="mt-4 flex items-center justify-center gap-3">
+                <flux:text size="sm">{{ $this->tasks->count() }} von {{ $this->totalTasks }} Aufgaben</flux:text>
+                <flux:button size="sm" wire:click="loadMore">Mehr laden</flux:button>
+            </div>
+        @endif
     @endif
 
     @if ($this->canEdit)

@@ -4,12 +4,33 @@ use App\Models\Project;
 use App\Models\Task;
 use App\TaskSearch;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
 new #[Title('Suche')] class extends Component
 {
+    private const PAGE_SIZE = 50;
+
+    #[Locked]
+    public int $limit = self::PAGE_SIZE;
+
+    public function loadMore(): void
+    {
+        $this->limit += self::PAGE_SIZE;
+    }
+
+    /**
+     * A new query or filter starts again at the first page.
+     */
+    public function updated(string $name): void
+    {
+        if ($name !== 'limit') {
+            $this->limit = self::PAGE_SIZE;
+        }
+    }
+
     #[Url(as: 'q')]
     public string $query = '';
 
@@ -51,7 +72,7 @@ new #[Title('Suche')] class extends Component
                 'mine' => $this->mine,
             ])
             ->with(['project', 'parent', 'status', 'comments', 'attachments'])
-            ->limit(51)
+            ->limit($this->limit + 1)
             ->get();
     }
 
@@ -96,7 +117,7 @@ new #[Title('Suche')] class extends Component
             <flux:callout icon="magnifying-glass" heading="Nichts gefunden" text="Zu „{{ $query }}“ gibt es keine passenden Aufgaben, die du sehen darfst." />
         @else
             <ul class="divide-y divide-zinc-200 dark:divide-zinc-700">
-                @foreach ($this->results->take(50) as $task)
+                @foreach ($this->results->take($this->limit) as $task)
                     @php($hit = $this->explain($task))
                     <li wire:key="result-{{ $task->id }}" class="py-3">
                         <div class="flex items-center gap-2">
@@ -114,8 +135,11 @@ new #[Title('Suche')] class extends Component
                 @endforeach
             </ul>
 
-            @if ($this->results->count() > 50)
-                <flux:text size="sm" class="mt-3">Es gibt mehr als 50 Treffer – grenze die Suche ein.</flux:text>
+            @if ($this->results->count() > $this->limit)
+                <div wire:intersect="loadMore" class="mt-4 flex items-center justify-center gap-3">
+                    <flux:text size="sm">{{ $this->limit }} Treffer angezeigt, es gibt weitere.</flux:text>
+                    <flux:button size="sm" wire:click="loadMore">Mehr laden</flux:button>
+                </div>
             @endif
         @endif
     </div>

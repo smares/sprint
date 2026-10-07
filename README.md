@@ -23,6 +23,7 @@ Gebaut mit Laravel 13, Livewire 4 und [Flux UI Pro](https://fluxui.dev). Die Obe
 - **Tags pro Projekt** (derselbe Name darf in mehreren Projekten existieren); Projekt-Admins verwalten sie in einem Fenster direkt an der Projektliste: umbenennen, per Farbwähler umfärben, löschen oder beim Löschen auf ein anderes Tag zusammenführen
 - **Abhängigkeiten** („blockiert“ / „blockiert von“) nur als Markierung, ohne Sperre; Zyklen werden abgelehnt
 - **Beteiligte** (mehrere Personen) zusätzlich zur zuständigen Person; *Meine Aufgaben* enthält auch Aufgaben, an denen man beteiligt ist
+- **Kommentare bearbeiten und löschen**: Wer einen Kommentar geschrieben hat, kann ihn nachträglich ändern (mit Hinweis „bearbeitet“; neue @-Erwähnungen benachrichtigen, alte nicht noch einmal) oder löschen; Projekt-Admins dürfen fremde Kommentare löschen, aber nicht ändern
 - **Aktivitätsverlauf** an jeder Aufgabe: wer wann Status, Zuständige, Fälligkeit, Titel, Beschreibung, Tags, Beteiligte oder Abhängigkeiten geändert hat, zusammen mit den Kommentaren in einer Zeitleiste
 - **Kommentare** mit Markdown (GitHub-Variante: Tabellen, Durchgestrichen, Aufgabenlisten, automatische Links)
 - **Markdown** auch in der Beschreibung, mit Vorschau

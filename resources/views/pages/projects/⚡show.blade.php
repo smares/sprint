@@ -34,7 +34,7 @@ new class extends Component
     public function tasks()
     {
         return $this->project->tasks()
-            ->with(['assignee', 'tags'])
+            ->with(['assignee', 'tags', 'blockers'])
             ->when($this->statusFilter === 'open', fn ($q) => $q->where('status', '!=', TaskStatus::Done))
             ->when(TaskStatus::tryFrom($this->statusFilter), fn ($q, $status) => $q->where('status', $status))
             ->when($this->assigneeFilter === 'me', fn ($q) => $q->where('assignee_id', auth()->id()))
@@ -170,6 +170,9 @@ new class extends Component
                         </flux:table.cell>
                         <flux:table.cell>
                             <a href="{{ route('tasks.show', $task) }}" wire:navigate class="font-medium hover:underline">{{ $task->title }}</a>
+                            @if ($task->isBlocked())
+                                <flux:icon.lock-closed variant="micro" class="ms-1 inline text-amber-500" title="Blockiert" />
+                            @endif
                             @foreach ($task->tags as $tag)
                                 <flux:badge size="sm" :color="$tag->color" class="ms-1">{{ $tag->name }}</flux:badge>
                             @endforeach

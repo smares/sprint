@@ -50,6 +50,57 @@ class Task extends Model
         return $this->belongsToMany(Tag::class);
     }
 
+    /**
+     * Tasks that must be finished before this one.
+     */
+    public function blockers(): BelongsToMany
+    {
+        return $this->belongsToMany(self::class, 'task_dependencies', 'blocked_id', 'blocker_id');
+    }
+
+    /**
+     * Tasks that are waiting for this one.
+     */
+    public function blocking(): BelongsToMany
+    {
+        return $this->belongsToMany(self::class, 'task_dependencies', 'blocker_id', 'blocked_id');
+    }
+
+    public function isBlocked(): bool
+    {
+        if ($this->relationLoaded('blockers')) {
+            return $this->blockers->contains(fn (self $blocker) => $blocker->status !== TaskStatus::Done);
+        }
+
+        return $this->blockers()->where('status', '!=', TaskStatus::Done)->exists();
+    }
+
+    /**
+     * Whether following the "blocking" edges leads back to this task.
+     */
+    public function hasDependencyCycle(): bool
+    {
+        $visited = [];
+        $queue = $this->blocking()->pluck('tasks.id')->all();
+
+        while ($queue !== []) {
+            $id = array_shift($queue);
+
+            if ($id === $this->getKey()) {
+                return true;
+            }
+
+            if (isset($visited[$id])) {
+                continue;
+            }
+
+            $visited[$id] = true;
+            $queue = [...$queue, ...self::findOrFail($id)->blocking()->pluck('tasks.id')->all()];
+        }
+
+        return false;
+    }
+
     public function isOverdue(): bool
     {
         return $this->due_date !== null

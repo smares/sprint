@@ -145,21 +145,23 @@ class DailyDigestTest extends TestCase
         $this->task('Planung', '2026-10-09');
 
         $mail = (new DailyDigestNotification(app(DailyDigest::class)->tasksFor($this->user)))->toMail($this->user);
-        $text = collect($mail->introLines)->implode("\n");
+        $html = (string) $mail->render();
 
         $this->assertSame('Deine Aufgaben: 1 überfällig, 1 heute fällig, 1 demnächst', $mail->subject);
-        $this->assertStringContainsString('**Überfällig**', $text);
-        $this->assertStringContainsString('- ['.$overdue->title.']('.route('tasks.show', $overdue).') · Website · 05.10.2026', $text);
-        $this->assertStringContainsString('**Heute fällig**', $text);
-        $this->assertStringContainsString('**In den nächsten Tagen**', $text);
-        $this->assertSame(route('tasks.mine'), $mail->actionUrl);
+        $text = preg_replace('/\s+/', ' ', strip_tags($html));
+        $this->assertStringContainsString('Überfällig', $text);
+        $this->assertStringContainsString($overdue->title.' · Website · 05.10.2026', $text);
+        $this->assertStringContainsString('Heute fällig', $text);
+        $this->assertStringContainsString('In den nächsten Tagen', $text);
+        $this->assertStringContainsString('href="'.route('tasks.show', $overdue).'"', $html);
+        $this->assertStringContainsString('href="'.route('tasks.mine').'"', $html);
     }
 
     public function test_sections_without_tasks_do_not_appear_in_the_mail(): void
     {
         $this->task('Nur heute', '2026-10-07');
 
-        $text = collect((new DailyDigestNotification(app(DailyDigest::class)->tasksFor($this->user)))->toMail($this->user)->introLines)->implode("\n");
+        $text = strip_tags((string) (new DailyDigestNotification(app(DailyDigest::class)->tasksFor($this->user)))->toMail($this->user)->render());
 
         $this->assertStringNotContainsString('Überfällig', $text);
         $this->assertStringNotContainsString('In den nächsten Tagen', $text);

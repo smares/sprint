@@ -4,6 +4,7 @@ namespace App\Notifications;
 
 use App\Markdown;
 use App\Models\Comment;
+use App\Notifications\Concerns\BuildsLocalizedMail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -13,7 +14,7 @@ use Illuminate\Support\Str;
 
 class TaskCommented extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use BuildsLocalizedMail, Queueable;
 
     public function __construct(public Comment $comment) {}
 
@@ -29,26 +30,39 @@ class TaskCommented extends Notification implements ShouldQueue
     {
         $task = $this->comment->task;
 
-        return (new MailMessage)
-            ->subject("Neuer Kommentar: {$task->title}")
-            ->greeting("Hallo {$notifiable->name},")
-            ->line("{$this->comment->user->name} hat die Aufgabe „{$task->title}“ im Projekt „{$task->project->name}“ kommentiert:")
-            ->line('> '.Str::limit(Markdown::plainText($this->comment->body), 500))
-            ->action('Aufgabe öffnen', route('tasks.show', $task))
-            ->line('Du bekommst diese Mail, weil du zuständig oder beteiligt bist. [Für diese Aufgabe abbestellen]('.self::unsubscribeUrl($task, $notifiable).')');
+        return $this->localizedMail('task-commented', [
+            'name' => $notifiable->name,
+            'who' => $this->comment->user->name,
+            'title' => $task->title,
+            'project' => $task->project->name,
+            'excerpt' => Str::limit(Markdown::plainText($this->comment->body), 500),
+            'url' => route('tasks.show', $task),
+            'unsubscribeUrl' => self::unsubscribeUrl($task, $notifiable),
+        ]);
     }
 
     /**
      * What the in-app inbox shows; names and text are not stored, the task is read live.
      *
-     * @return array{task_id: int, summary: string}
+     * @return array{task_id: int, kind: string, by: ?string}
      */
     public function toArray(object $notifiable): array
     {
         return [
             'task_id' => $this->comment->task_id,
-            'summary' => ($this->comment->user?->name ?? 'Jemand').' hat kommentiert',
+            'kind' => 'commented',
+            'by' => $this->comment->user?->name,
         ];
+    }
+
+    /**
+     * The sentence for the inbox, in the language of the reader.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public static function sentence(array $data): string
+    {
+        return __(':name commented', ['name' => $data['by'] ?? __('Someone')]);
     }
 
     public static function unsubscribeUrl(object $task, object $user): string

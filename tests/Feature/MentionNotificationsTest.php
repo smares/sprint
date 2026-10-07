@@ -162,8 +162,8 @@ class MentionNotificationsTest extends TestCase
         $html = (string) $comment->render();
 
         $this->assertSame('Du wurdest erwähnt: Release planen', $comment->subject);
-        $this->assertStringContainsString('in einem Kommentar', implode(' ', $comment->introLines));
-        $this->assertStringContainsString('in der Beschreibung', implode(' ', $description->introLines));
+        $this->assertStringContainsString('in einem Kommentar', $html);
+        $this->assertStringContainsString('in der Beschreibung', (string) $description->render());
         $this->assertStringContainsString('Anna Autorin', $html);
         $this->assertStringContainsString('@Olaf Außenstehend', $html);
         $this->assertStringNotContainsString('user:'.$this->outsider->id, $html);

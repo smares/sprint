@@ -1,5 +1,6 @@
 <?php
 
+use App\Locale;
 use App\Models\User;
 use Flux\Flux;
 use Illuminate\Support\Facades\Gate;
@@ -19,6 +20,8 @@ new #[Title('Benutzer')] class extends Component
 
     public bool $makeAdmin = false;
 
+    public string $locale = '';
+
     /** @var array<int|string, bool> */
     public array $admins = [];
 
@@ -30,6 +33,8 @@ new #[Title('Benutzer')] class extends Component
     public function mount(): void
     {
         Gate::authorize('administer');
+
+        $this->locale = app()->getLocale();
 
         $this->fillAdmins();
     }
@@ -56,6 +61,7 @@ new #[Title('Benutzer')] class extends Component
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['nullable', 'string', 'min:8', 'max:255'],
+            'locale' => ['required', Rule::in(Locale::codes())],
         ], attributes: ['name' => 'Name', 'email' => 'E-Mail', 'password' => 'Passwort']);
 
         $password = $validated['password'] ?: Str::password(16, symbols: false);
@@ -65,11 +71,13 @@ new #[Title('Benutzer')] class extends Component
             'email' => $validated['email'],
             'password' => $password,
             'is_admin' => $this->makeAdmin,
+            'locale' => $validated['locale'],
         ]);
 
         $this->shownPassword = $password;
         $this->shownFor = $validated['email'];
         $this->reset('name', 'email', 'password', 'makeAdmin');
+        $this->locale = app()->getLocale();
         unset($this->users);
         $this->fillAdmins();
     }
@@ -190,6 +198,11 @@ new #[Title('Benutzer')] class extends Component
             <flux:input wire:model="email" type="email" label="E-Mail" />
         </div>
         <flux:input wire:model="password" type="password" label="Passwort" description="Leer lassen, dann wird eines erzeugt und einmalig angezeigt." />
+        <flux:select variant="listbox" wire:model="locale" label="Sprache">
+            @foreach (\App\Locale::available() as $code => $name)
+                <flux:select.option value="{{ $code }}">{{ $name }}</flux:select.option>
+            @endforeach
+        </flux:select>
         <flux:checkbox wire:model="makeAdmin" label="Administrator der ganzen Anwendung" />
         <flux:button type="submit" variant="primary" icon="plus">Anlegen</flux:button>
     </form>

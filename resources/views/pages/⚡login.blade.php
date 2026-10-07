@@ -216,4 +216,11 @@ new #[Title('Anmelden')] class extends Component
             <flux:text x-show="failed" class="text-red-600 dark:text-red-400">Die Anmeldung mit dem Passkey hat nicht geklappt.</flux:text>
         </div>
     @endif
+
+    <form method="POST" action="{{ route('locale.update') }}" class="mt-10 flex justify-center gap-1">
+        @csrf
+        @foreach (\App\Locale::available() as $code => $name)
+            <flux:button type="submit" name="locale" value="{{ $code }}" size="sm" :variant="app()->getLocale() === $code ? 'filled' : 'ghost'" lang="{{ $code }}">{{ $name }}</flux:button>
+        @endforeach
+    </form>
 </div>

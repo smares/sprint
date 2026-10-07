@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Task;
+use App\Notifications\Concerns\BuildsLocalizedMail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -10,7 +11,7 @@ use Illuminate\Notifications\Notification;
 
 class TaskStatusChanged extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use BuildsLocalizedMail, Queueable;
 
     public function __construct(
         public Task $task,
@@ -29,25 +30,39 @@ class TaskStatusChanged extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        $who = $this->changedBy ?? 'Jemand';
-
-        return (new MailMessage)
-            ->subject("Status geändert: {$this->task->title}")
-            ->greeting("Hallo {$notifiable->name},")
-            ->line("{$who} hat den Status der Aufgabe „{$this->task->title}“ im Projekt „{$this->task->project->name}“ geändert:")
-            ->line("**{$this->oldStatus}** → **{$this->newStatus}**")
-            ->action('Aufgabe öffnen', route('tasks.show', $this->task))
-            ->line('Du bekommst diese Mail, weil du zuständig oder beteiligt bist. [Für diese Aufgabe abbestellen]('.TaskCommented::unsubscribeUrl($this->task, $notifiable).')');
+        return $this->localizedMail('task-status-changed', [
+            'name' => $notifiable->name,
+            'who' => $this->changedBy,
+            'title' => $this->task->title,
+            'project' => $this->task->project->name,
+            'old' => $this->oldStatus,
+            'new' => $this->newStatus,
+            'url' => route('tasks.show', $this->task),
+            'unsubscribeUrl' => TaskCommented::unsubscribeUrl($this->task, $notifiable),
+        ]);
     }
 
     /**
-     * @return array{task_id: int, summary: string}
+     * @return array{task_id: int, kind: string, by: ?string, from: string, to: string}
      */
     public function toArray(object $notifiable): array
     {
         return [
             'task_id' => $this->task->id,
-            'summary' => ($this->changedBy ?? 'Jemand')." hat den Status von „{$this->oldStatus}“ auf „{$this->newStatus}“ geändert",
+            'kind' => 'status_changed',
+            'by' => $this->changedBy,
+            'from' => $this->oldStatus,
+            'to' => $this->newStatus,
         ];
+    }
+
+    /**
+     * The sentence for the inbox, in the language of the reader.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public static function sentence(array $data): string
+    {
+        return __(':name changed the status from “:from” to “:to”', ['name' => $data['by'] ?? __('Someone'), 'from' => $data['from'] ?? '–', 'to' => $data['to'] ?? '–']);
     }
 }

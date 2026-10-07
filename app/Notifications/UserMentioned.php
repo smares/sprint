@@ -4,6 +4,7 @@ namespace App\Notifications;
 
 use App\Markdown;
 use App\Models\Task;
+use App\Notifications\Concerns\BuildsLocalizedMail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -12,7 +13,7 @@ use Illuminate\Support\Str;
 
 class UserMentioned extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use BuildsLocalizedMail, Queueable;
 
     /**
      * @param  'comment'|'description'  $where
@@ -34,28 +35,42 @@ class UserMentioned extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        $who = $this->mentionedBy ?? 'Jemand';
-        $place = $this->where === 'comment' ? 'in einem Kommentar zur Aufgabe' : 'in der Beschreibung der Aufgabe';
-
-        return (new MailMessage)
-            ->subject("Du wurdest erwähnt: {$this->task->title}")
-            ->greeting("Hallo {$notifiable->name},")
-            ->line("{$who} hat dich {$place} „{$this->task->title}“ im Projekt „{$this->task->project->name}“ erwähnt:")
-            ->line('> '.Str::limit(Markdown::plainText($this->text), 500))
-            ->action('Aufgabe öffnen', route('tasks.show', $this->task))
-            ->line('Du bekommst diese Mail, weil dich jemand mit @ erwähnt hat. [Für diese Aufgabe abbestellen]('.TaskCommented::unsubscribeUrl($this->task, $notifiable).')');
+        return $this->localizedMail('user-mentioned', [
+            'name' => $notifiable->name,
+            'who' => $this->mentionedBy,
+            'where' => $this->where,
+            'title' => $this->task->title,
+            'project' => $this->task->project->name,
+            'excerpt' => Str::limit(Markdown::plainText($this->text), 500),
+            'url' => route('tasks.show', $this->task),
+            'unsubscribeUrl' => TaskCommented::unsubscribeUrl($this->task, $notifiable),
+        ]);
     }
 
     /**
-     * @return array{task_id: int, summary: string}
+     * @return array{task_id: int, kind: string, by: ?string, where: string}
      */
     public function toArray(object $notifiable): array
     {
-        $place = $this->where === 'comment' ? 'in einem Kommentar' : 'in der Beschreibung';
-
         return [
             'task_id' => $this->task->id,
-            'summary' => ($this->mentionedBy ?? 'Jemand')." hat dich {$place} erwähnt",
+            'kind' => 'mentioned',
+            'by' => $this->mentionedBy,
+            'where' => $this->where,
         ];
+    }
+
+    /**
+     * The sentence for the inbox, in the language of the reader.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public static function sentence(array $data): string
+    {
+        $name = $data['by'] ?? __('Someone');
+
+        return ($data['where'] ?? 'comment') === 'comment'
+            ? __(':name mentioned you in a comment', ['name' => $name])
+            : __(':name mentioned you in the description', ['name' => $name]);
     }
 }

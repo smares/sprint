@@ -15,6 +15,22 @@ return [
 
     'digest_time' => env('SPRINT_DIGEST_TIME', '07:30'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Languages
+    |--------------------------------------------------------------------------
+    |
+    | The languages people can choose, as two-letter codes with their names in
+    | the language itself. `APP_LOCALE` is the default for new people and for
+    | visitors whose browser asks for something else.
+    |
+    */
+
+    'locales' => [
+        'de' => 'Deutsch',
+        'en' => 'English',
+    ],
+
     /** How many days ahead the digest looks, besides today and overdue tasks. */
     'digest_days_ahead' => 3,
 

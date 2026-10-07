@@ -2,11 +2,22 @@
 
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\HealthController;
+use App\Locale;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Validation\Rule;
 use Laravel\Passkeys\Http\Controllers\PasskeyLoginController;
 use Laravel\Passkeys\Http\Controllers\PasskeyRegistrationController;
+
+Route::post('/locale', function (Request $request) {
+    $locale = $request->validate(['locale' => ['required', Rule::in(Locale::codes())]])['locale'];
+
+    $request->session()->put('locale', $locale);
+    $request->user()?->update(['locale' => $locale]);
+
+    return back();
+})->name('locale.update');
 
 Route::get('/health', HealthController::class)->middleware('throttle:60,1')->name('health');
 

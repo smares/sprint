@@ -48,13 +48,13 @@ new class extends Component
         $throttleKey = 'confirm-password|'.auth()->id().'|'.request()->ip();
 
         if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
-            throw ValidationException::withMessages(['password' => 'Zu viele Versuche. Bitte in '.RateLimiter::availableIn($throttleKey).' Sekunden erneut versuchen.']);
+            throw ValidationException::withMessages(['password' => __('Too many attempts. Please try again in :seconds seconds.', ['seconds' => RateLimiter::availableIn($throttleKey)])]);
         }
 
         if (! Hash::check($this->password, auth()->user()->password)) {
             RateLimiter::hit($throttleKey);
 
-            throw ValidationException::withMessages(['password' => 'Das Passwort stimmt nicht.']);
+            throw ValidationException::withMessages(['password' => __('The password is incorrect.')]);
         }
 
         RateLimiter::clear($throttleKey);
@@ -91,7 +91,7 @@ new class extends Component
         $user = auth()->user();
         abort_if($user->two_factor_secret === null || $user->two_factor_confirmed_at !== null, 404);
 
-        $this->validate(['code' => ['required', 'string']], attributes: ['code' => 'Code']);
+        $this->validate(['code' => ['required', 'string']], attributes: ['code' => __('Code')]);
 
         $valid = app(TwoFactorAuthenticationProvider::class)->verify(
             Fortify::currentEncrypter()->decrypt($user->two_factor_secret),
@@ -99,7 +99,7 @@ new class extends Component
         );
 
         if (! $valid) {
-            throw ValidationException::withMessages(['code' => 'Der Code stimmt nicht. Bitte prüfe die Uhrzeit auf deinem Gerät.']);
+            throw ValidationException::withMessages(['code' => __('The code is incorrect. Please check the time on your device.')]);
         }
 
         $user->forceFill(['two_factor_confirmed_at' => now()])->save();
@@ -107,7 +107,7 @@ new class extends Component
         $this->reset('code');
         $this->showRecoveryCodes = true;
         $this->refreshUser();
-        Flux::toast(variant: 'success', text: 'Zwei-Faktor-Anmeldung eingeschaltet.');
+        Flux::toast(variant: 'success', text: __('Two-factor authentication turned on.'));
     }
 
     public function toggleRecoveryCodes(): void
@@ -126,7 +126,7 @@ new class extends Component
 
         $this->showRecoveryCodes = true;
         $this->refreshUser();
-        Flux::toast(variant: 'success', text: 'Neue Wiederherstellungscodes erzeugt. Die alten sind ungültig.');
+        Flux::toast(variant: 'success', text: __('New recovery codes generated. The old ones are invalid.'));
     }
 
     public function disableTwoFactor(): void
@@ -137,7 +137,7 @@ new class extends Component
 
         $this->reset('code', 'showRecoveryCodes');
         $this->refreshUser();
-        Flux::toast(variant: 'success', text: 'Zwei-Faktor-Anmeldung ausgeschaltet.');
+        Flux::toast(variant: 'success', text: __('Two-factor authentication turned off.'));
     }
 
     public function passkeysChanged(): void
@@ -155,7 +155,7 @@ new class extends Component
         app(DeletePasskey::class)(auth()->user(), $passkey);
 
         unset($this->passkeys);
-        Flux::toast(variant: 'success', text: 'Passkey entfernt.');
+        Flux::toast(variant: 'success', text: __('Passkey removed.'));
     }
 };
 ?>
@@ -164,29 +164,29 @@ new class extends Component
 
 <div class="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-700">
     <div class="space-y-1 p-5">
-        <flux:heading size="lg">Zusätzliche Absicherung</flux:heading>
-        <flux:text>Zwei-Faktor-Anmeldung und Passkeys schützen dein Konto über das Passwort hinaus. Du änderst sie gemeinsam, nachdem du dein Passwort bestätigt hast.</flux:text>
+        <flux:heading size="lg">{{ __('Additional protection') }}</flux:heading>
+        <flux:text>{{ __('Two-factor authentication and passkeys protect your account beyond the password. You change them together after confirming your password.') }}</flux:text>
     </div>
 
     @if ($this->confirmed)
         <div class="flex items-center gap-3 border-t border-green-200 bg-green-50 px-5 py-3 text-sm text-green-900 dark:border-green-900 dark:bg-green-950/40 dark:text-green-200">
             <flux:icon.lock-open variant="mini" class="shrink-0" />
-            <span>Freigeschaltet bis {{ $this->confirmedUntil->format('H:i') }} Uhr – so lange kannst du alles in dieser Gruppe ändern.</span>
+            <span>{{ __('Unlocked until :time – until then you can change everything in this group.', ['time' => $this->confirmedUntil->isoFormat('LT')]) }}</span>
         </div>
     @else
         <form wire:submit="confirmPassword" class="space-y-3 border-t border-zinc-200 bg-zinc-50 p-5 dark:border-zinc-700 dark:bg-zinc-800/50">
             <div class="flex items-start gap-3">
                 <flux:icon.lock-closed variant="mini" class="mt-0.5 shrink-0 text-zinc-500" />
                 <div>
-                    <flux:heading>Gesperrt – Passwort bestätigen</flux:heading>
-                    <flux:text size="sm" class="mt-1">Schaltet Zwei-Faktor-Anmeldung und Passkeys für {{ round(config('auth.password_timeout', 10800) / 3600) }} Stunden zum Ändern frei.</flux:text>
+                    <flux:heading>{{ __('Locked – confirm password') }}</flux:heading>
+                    <flux:text size="sm" class="mt-1">{{ __('Unlocks changing two-factor authentication and passkeys for :hours hours.', ['hours' => round(config('auth.password_timeout', 10800) / 3600)]) }}</flux:text>
                 </div>
             </div>
             <div class="flex items-start gap-2">
                 <div class="min-w-0 flex-1">
-                    <flux:input wire:model="password" type="password" placeholder="Aktuelles Passwort" aria-label="Aktuelles Passwort" autocomplete="current-password" />
+                    <flux:input wire:model="password" type="password" placeholder="{{ __('Current password') }}" aria-label="{{ __('Current password') }}" autocomplete="current-password" />
                 </div>
-                <flux:button type="submit" variant="primary">Freischalten</flux:button>
+                <flux:button type="submit" variant="primary">{{ __('Unlock') }}</flux:button>
             </div>
             <flux:error name="password" />
         </form>
@@ -194,23 +194,23 @@ new class extends Component
 
     <div class="space-y-4 border-t border-zinc-200 p-5 dark:border-zinc-700">
         <div class="flex items-center gap-3">
-            <flux:heading>Zwei-Faktor-Anmeldung</flux:heading>
+            <flux:heading>{{ __('Two-factor authentication') }}</flux:heading>
             @if ($user->hasEnabledTwoFactorAuthentication())
-                <flux:badge color="green" size="sm">An</flux:badge>
+                <flux:badge color="green" size="sm">{{ __('On') }}</flux:badge>
             @elseif ($user->two_factor_secret)
-                <flux:badge color="amber" size="sm">Nicht abgeschlossen</flux:badge>
+                <flux:badge color="amber" size="sm">{{ __('Incomplete') }}</flux:badge>
             @else
-                <flux:badge size="sm">Aus</flux:badge>
+                <flux:badge size="sm">{{ __('Off') }}</flux:badge>
             @endif
         </div>
 
         @if ($user->hasEnabledTwoFactorAuthentication())
-            <flux:text>Bei der Anmeldung mit Passwort wird zusätzlich ein Code aus deiner Authenticator-App abgefragt. Mit einem Passkey meldest du dich ohne zweiten Code an.</flux:text>
+            <flux:text>{{ __('When you sign in with a password, a code from your authenticator app is also requested. With a passkey you sign in without a second code.') }}</flux:text>
 
             @if ($this->confirmed)
                 @if ($showRecoveryCodes)
                     <div class="rounded-lg bg-zinc-100 p-4 dark:bg-zinc-800">
-                        <flux:text class="mb-2">Bewahre diese Codes sicher auf. Jeder funktioniert einmal, falls du dein Gerät verlierst.</flux:text>
+                        <flux:text class="mb-2">{{ __('Keep these codes safe. Each works once, in case you lose your device.') }}</flux:text>
                         <div class="grid grid-cols-2 gap-1 font-mono text-sm">
                             @foreach ($user->recoveryCodes() as $recoveryCode)
                                 <div wire:key="rc-{{ $loop->index }}">{{ $recoveryCode }}</div>
@@ -220,35 +220,35 @@ new class extends Component
                 @endif
 
                 <div class="flex flex-wrap gap-2">
-                    <flux:button size="sm" wire:click="toggleRecoveryCodes">{{ $showRecoveryCodes ? 'Codes verbergen' : 'Wiederherstellungscodes anzeigen' }}</flux:button>
-                    <flux:button size="sm" wire:click="regenerateRecoveryCodes" wire:confirm="Neue Codes erzeugen? Die bisherigen werden ungültig.">Neue Codes erzeugen</flux:button>
-                    <flux:button size="sm" variant="danger" wire:click="disableTwoFactor" wire:confirm="Zwei-Faktor-Anmeldung ausschalten?">Ausschalten</flux:button>
+                    <flux:button size="sm" wire:click="toggleRecoveryCodes">{{ $showRecoveryCodes ? __('Hide codes') : __('Show recovery codes') }}</flux:button>
+                    <flux:button size="sm" wire:click="regenerateRecoveryCodes" wire:confirm="{{ __('Generate new codes? The previous ones will become invalid.') }}">{{ __('Generate new codes') }}</flux:button>
+                    <flux:button size="sm" variant="danger" wire:click="disableTwoFactor" wire:confirm="{{ __('Turn off two-factor authentication?') }}">{{ __('Turn off') }}</flux:button>
                 </div>
             @endif
         @elseif ($user->two_factor_secret)
             @if ($this->confirmed)
-                <flux:text>Scanne den QR-Code mit einer Authenticator-App (z. B. 1Password, Authy, Google Authenticator) und gib den angezeigten Code ein.</flux:text>
+                <flux:text>{{ __('Scan the QR code with an authenticator app (e.g. 1Password, Authy, Google Authenticator) and enter the code shown.') }}</flux:text>
                 <div class="inline-block rounded-lg bg-white p-2">{!! $user->twoFactorQrCodeSvg() !!}</div>
-                <flux:text size="sm">Oder den Schlüssel eintippen: <code class="font-mono">{{ \Laravel\Fortify\Fortify::currentEncrypter()->decrypt($user->two_factor_secret) }}</code></flux:text>
+                <flux:text size="sm">{{ __('Or type in the key:') }} <code class="font-mono">{{ \Laravel\Fortify\Fortify::currentEncrypter()->decrypt($user->two_factor_secret) }}</code></flux:text>
                 <form wire:submit="confirmTwoFactor" class="space-y-3">
-                    <flux:input wire:model="code" label="Code aus der App" inputmode="numeric" autocomplete="one-time-code" />
+                    <flux:input wire:model="code" :label="__('Code from the app')" inputmode="numeric" autocomplete="one-time-code" />
                     <div class="flex gap-2">
-                        <flux:button type="submit" variant="primary">Bestätigen und einschalten</flux:button>
-                        <flux:button type="button" variant="ghost" wire:click="disableTwoFactor">Abbrechen</flux:button>
+                        <flux:button type="submit" variant="primary">{{ __('Confirm and turn on') }}</flux:button>
+                        <flux:button type="button" variant="ghost" wire:click="disableTwoFactor">{{ __('Cancel') }}</flux:button>
                     </div>
                 </form>
             @endif
         @else
-            <flux:text>Zusätzlich zum Passwort wird bei der Anmeldung ein Code aus einer Authenticator-App abgefragt.</flux:text>
+            <flux:text>{{ __('In addition to the password, a code from an authenticator app is requested at sign-in.') }}</flux:text>
             @if ($this->confirmed)
-                <flux:button size="sm" wire:click="enableTwoFactor">Einrichten</flux:button>
+                <flux:button size="sm" wire:click="enableTwoFactor">{{ __('Set up') }}</flux:button>
             @endif
         @endif
     </div>
 
     <div class="space-y-4 border-t border-zinc-200 p-5 dark:border-zinc-700">
-        <flux:heading>Passkeys</flux:heading>
-        <flux:text>Melde dich ohne Passwort an: mit Fingerabdruck, Gesicht, Sicherheitsschlüssel oder Gerätesperre. Ein Passkey ersetzt Passwort und zweiten Faktor.</flux:text>
+        <flux:heading>{{ __('Passkeys') }}</flux:heading>
+        <flux:text>{{ __('Sign in without a password: with fingerprint, face, security key or device lock. A passkey replaces password and second factor.') }}</flux:text>
 
         @if ($this->passkeys->isNotEmpty())
             <div class="divide-y divide-zinc-200 rounded-lg border border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">
@@ -258,23 +258,23 @@ new class extends Component
                             <div class="truncate font-medium">{{ $passkey->name }}</div>
                             <flux:text size="sm">
                                 @if ($passkey->authenticator){{ $passkey->authenticator }} · @endif
-                                angelegt am {{ $passkey->created_at->format('d.m.Y') }}
-                                · {{ $passkey->last_used_at ? 'zuletzt benutzt '.$passkey->last_used_at->diffForHumans() : 'noch nie benutzt' }}
+                                {{ __('created on :date', ['date' => $passkey->created_at->isoFormat('L')]) }}
+                                · {{ $passkey->last_used_at ? __('last used :time', ['time' => $passkey->last_used_at->diffForHumans()]) : __('never used') }}
                             </flux:text>
                         </div>
                         @if ($this->confirmed)
-                            <flux:button size="sm" variant="ghost" icon="trash" wire:click="deletePasskey({{ $passkey->id }})" wire:confirm="Passkey „{{ $passkey->name }}“ entfernen?" aria-label="Passkey entfernen" />
+                            <flux:button size="sm" variant="ghost" icon="trash" wire:click="deletePasskey({{ $passkey->id }})" wire:confirm="{{ __('Remove passkey “:name”?', ['name' => $passkey->name]) }}" aria-label="{{ __('Remove passkey') }}" />
                         @endif
                     </div>
                 @endforeach
             </div>
         @else
-            <flux:text>Noch kein Passkey angelegt.</flux:text>
+            <flux:text>{{ __('No passkey created yet.') }}</flux:text>
         @endif
 
         @if ($this->confirmed)
             <div x-data="{ supported: !!window.PublicKeyCredential, busy: false, failed: false }" class="space-y-3">
-                <flux:text x-show="!supported" x-cloak>Dieser Browser unterstützt keine Passkeys.</flux:text>
+                <flux:text x-show="!supported" x-cloak>{{ __('This browser does not support passkeys.') }}</flux:text>
                 <form
                     x-show="supported"
                     x-cloak
@@ -287,9 +287,9 @@ new class extends Component
                             .finally(() => { busy = false })
                     "
                 >
-                    <flux:input wire:model="passkeyName" label="Name des neuen Passkeys" placeholder="z. B. MacBook oder iPhone" required />
-                    <flux:button type="submit" size="sm" icon="plus" x-bind:disabled="busy">Passkey hinzufügen</flux:button>
-                    <flux:text x-show="failed" class="text-red-600 dark:text-red-400">Der Passkey konnte nicht angelegt werden.</flux:text>
+                    <flux:input wire:model="passkeyName" :label="__('Name of the new passkey')" placeholder="{{ __('e.g. MacBook or iPhone') }}" required />
+                    <flux:button type="submit" size="sm" icon="plus" x-bind:disabled="busy">{{ __('Add passkey') }}</flux:button>
+                    <flux:text x-show="failed" class="text-red-600 dark:text-red-400">{{ __('The passkey could not be created.') }}</flux:text>
                 </form>
             </div>
         @endif

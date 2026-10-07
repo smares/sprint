@@ -24,7 +24,7 @@ class TaskStatusChanged extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['mail'];
+        return ['mail', 'database'];
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -38,5 +38,16 @@ class TaskStatusChanged extends Notification implements ShouldQueue
             ->line("**{$this->oldStatus}** → **{$this->newStatus}**")
             ->action('Aufgabe öffnen', route('tasks.show', $this->task))
             ->line('Du bekommst diese Mail, weil du zuständig oder beteiligt bist. [Für diese Aufgabe abbestellen]('.TaskCommented::unsubscribeUrl($this->task, $notifiable).')');
+    }
+
+    /**
+     * @return array{task_id: int, summary: string}
+     */
+    public function toArray(object $notifiable): array
+    {
+        return [
+            'task_id' => $this->task->id,
+            'summary' => ($this->changedBy ?? 'Jemand')." hat den Status von „{$this->oldStatus}“ auf „{$this->newStatus}“ geändert",
+        ];
     }
 }

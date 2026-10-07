@@ -22,6 +22,7 @@ Route::livewire('/tasks/{task}/notifications/{user}', 'pages::tasks.notification
 Route::middleware('auth')->group(function () {
     Route::redirect('/', '/projects');
 
+    Route::livewire('/inbox', 'pages::inbox')->name('inbox');
     Route::livewire('/search', 'pages::search')->name('search');
     Route::livewire('/projects', 'pages::projects.index')->name('projects.index');
     Route::livewire('/projects/{project}', 'pages::projects.show')->name('projects.show');

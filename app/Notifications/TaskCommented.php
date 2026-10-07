@@ -22,7 +22,7 @@ class TaskCommented extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['mail'];
+        return ['mail', 'database'];
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -36,6 +36,19 @@ class TaskCommented extends Notification implements ShouldQueue
             ->line('> '.Str::limit(Markdown::plainText($this->comment->body), 500))
             ->action('Aufgabe öffnen', route('tasks.show', $task))
             ->line('Du bekommst diese Mail, weil du zuständig oder beteiligt bist. [Für diese Aufgabe abbestellen]('.self::unsubscribeUrl($task, $notifiable).')');
+    }
+
+    /**
+     * What the in-app inbox shows; names and text are not stored, the task is read live.
+     *
+     * @return array{task_id: int, summary: string}
+     */
+    public function toArray(object $notifiable): array
+    {
+        return [
+            'task_id' => $this->comment->task_id,
+            'summary' => ($this->comment->user?->name ?? 'Jemand').' hat kommentiert',
+        ];
     }
 
     public static function unsubscribeUrl(object $task, object $user): string

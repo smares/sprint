@@ -25,6 +25,7 @@ Gebaut mit Laravel 13, Livewire 4 und [Flux UI Pro](https://fluxui.dev). Die Obe
 - **Markdown** auch in der Beschreibung, mit Vorschau
 - **`@`-Erwähnungen** von Personen und Aufgaben: ein `@` tippen, aus dem Fenster wählen; angezeigt wird immer der aktuelle Name bzw. Titel
 - **E-Mail-Benachrichtigungen** an zuständige und beteiligte Personen bei neuen Kommentaren und Statuswechseln sowie an erwähnte Personen (auch ohne Beteiligung, einmal pro neuer Erwähnung); pro Aufgabe abbestellbar (Schalter auf der Aufgabenseite oder signierter Link in der Mail, auch ohne Login)
+- **Posteingang** (Glocke in der Kopfzeile mit Zähler): dieselben Benachrichtigungen auch in der Anwendung, mit gelesen/ungelesen, „alle gelesen" und Entfernen; es wird kein Kommentartext gespeichert, und Einträge zu Aufgaben, die man nicht mehr sehen darf, bleiben ohne Link. Gilt ab Einführung, ältere Mails erscheinen nicht nachträglich
 
 Es gibt keine öffentliche Registrierung: Benutzer legt ein Administrator in der App an (*Benutzer*) oder per Kommando (siehe unten). Wer ein Projekt anlegt, verwaltet es und kann dort weitere Mitglieder hinzufügen.
 
@@ -110,6 +111,7 @@ GitHub Actions führt die Tests auf PHP 8.3, 8.4 und 8.5 aus (`.github/workflows
 ## Betrieb
 
 - Die Datenbank wird über die Variablen `DB_*` in `.env` gewählt (SQLite, MySQL, PostgreSQL)
+- Der Posteingang liegt in der Tabelle `notifications` und wird über dieselbe Queue befüllt wie die Mails (Worker nötig)
 - E-Mails brauchen einen Mailer: `MAIL_MAILER` und die übrigen `MAIL_*`-Variablen in `.env` (lokal reicht `log`, dann landen die Mails in `storage/logs`); `MAIL_FROM_ADDRESS` und `MAIL_FROM_NAME` bestimmen den Absender. Versendet wird über die Queue, ohne laufenden Worker kommt nichts an
 - Sitzungen, Cache und Queue nutzen standardmäßig die Datenbank (`SESSION_DRIVER`, `CACHE_STORE`, `QUEUE_CONNECTION`); für die Queue läuft im Betrieb ein Worker: `php artisan queue:work`
 - Anhänge liegen privat auf der Disk `local` (`storage/app/private`) und müssen mit gesichert werden; für große Dateien müssen `upload_max_filesize` und `post_max_size` in der PHP-Konfiguration (und ggf. das Limit des Webservers) mindestens 20 MB erlauben

@@ -29,7 +29,7 @@ class UserMentioned extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['mail'];
+        return ['mail', 'database'];
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -44,5 +44,18 @@ class UserMentioned extends Notification implements ShouldQueue
             ->line('> '.Str::limit(Markdown::plainText($this->text), 500))
             ->action('Aufgabe öffnen', route('tasks.show', $this->task))
             ->line('Du bekommst diese Mail, weil dich jemand mit @ erwähnt hat. [Für diese Aufgabe abbestellen]('.TaskCommented::unsubscribeUrl($this->task, $notifiable).')');
+    }
+
+    /**
+     * @return array{task_id: int, summary: string}
+     */
+    public function toArray(object $notifiable): array
+    {
+        $place = $this->where === 'comment' ? 'in einem Kommentar' : 'in der Beschreibung';
+
+        return [
+            'task_id' => $this->task->id,
+            'summary' => ($this->mentionedBy ?? 'Jemand')." hat dich {$place} erwähnt",
+        ];
     }
 }

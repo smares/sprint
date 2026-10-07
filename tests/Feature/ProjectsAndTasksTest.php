@@ -32,7 +32,12 @@ class ProjectsAndTasksTest extends TestCase
         $this->get('/projects')
             ->assertOk()
             ->assertSee('Website Relaunch')
-            ->assertDontSee('Altes Projekt');
+            ->assertSee('Archivierte Projekte (1)')
+            ->assertSee('Altes Projekt');
+
+        $component = Livewire::test('pages::projects.index');
+        $this->assertSame(['Website Relaunch'], $component->instance()->projects->pluck('name')->all());
+        $this->assertSame(['Altes Projekt'], $component->instance()->archivedProjects->pluck('name')->all());
     }
 
     public function test_project_can_be_created(): void

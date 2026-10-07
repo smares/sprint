@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\CustomFieldType;
 use App\ProjectRole;
+use App\TaskSearch;
 use Database\Factories\ProjectFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 #[Fillable(['name', 'description', 'archived_at'])]
 class Project extends Model
@@ -21,6 +23,13 @@ class Project extends Model
 
     protected static function booted(): void
     {
+        static::deleting(function (self $project) {
+            $taskIds = $project->tasks()->pluck('id')->all();
+
+            Storage::disk(Attachment::DISK)->delete(Attachment::whereIn('task_id', $taskIds)->pluck('path')->all());
+            app(TaskSearch::class)->forgetMany($taskIds);
+        });
+
         static::created(function (self $project) {
             $project->statuses()->createMany(TaskStatus::defaults());
 

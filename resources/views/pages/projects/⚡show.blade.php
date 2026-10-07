@@ -392,6 +392,10 @@ new class extends Component
         <flux:breadcrumbs.item>{{ $project->name }}</flux:breadcrumbs.item>
     </flux:breadcrumbs>
 
+    @if ($project->archived_at)
+        <flux:callout class="mb-4" icon="archive-box" heading="Archiviert" text="Dieses Projekt ist archiviert und nur noch lesbar." />
+    @endif
+
     <div @class(['mb-6 flex flex-col gap-4', 'lg:flex-row lg:items-center lg:justify-between' => ! $this->panelTask])>
         <div>
             <flux:heading size="xl">{{ $project->name }}</flux:heading>

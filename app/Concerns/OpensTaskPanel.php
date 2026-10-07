@@ -39,6 +39,12 @@ trait OpensTaskPanel
     #[On('task-changed')]
     public function taskChanged(): void {}
 
+    /**
+     * Name, description or archiving changed in the settings window.
+     */
+    #[On('project-updated')]
+    public function projectUpdated(): void {}
+
     #[On('task-deleted')]
     public function taskDeleted(): void
     {

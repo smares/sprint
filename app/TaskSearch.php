@@ -91,6 +91,18 @@ class TaskSearch
     }
 
     /**
+     * @param  list<int>  $taskIds
+     */
+    public function forgetMany(array $taskIds): void
+    {
+        if ($this->usesFullText()) {
+            foreach (array_chunk($taskIds, 500) as $chunk) {
+                DB::table(self::TABLE)->whereIn('rowid', $chunk)->delete();
+            }
+        }
+    }
+
+    /**
      * Rebuild the whole index from scratch.
      */
     public function rebuild(): int

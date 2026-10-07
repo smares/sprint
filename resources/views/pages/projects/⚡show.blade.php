@@ -1,5 +1,6 @@
 <?php
 
+use App\Concerns\EditsTasksInBulk;
 use App\Concerns\OpensTaskPanel;
 use App\CustomFieldType;
 use App\Models\CustomField;
@@ -19,6 +20,7 @@ use Livewire\Component;
 
 new class extends Component
 {
+    use EditsTasksInBulk;
     use OpensTaskPanel;
 
     private const PAGE_SIZE = 50;
@@ -96,7 +98,7 @@ new class extends Component
     /**
      * Top-level tasks matching the filters, without order and limit.
      */
-    private function filteredTasks()
+    protected function filteredTasks()
     {
         return $this->project->tasks()
             ->whereNull('parent_id')
@@ -144,6 +146,10 @@ new class extends Component
     {
         if (in_array(explode('.', $name)[0], ['statusFilter', 'assigneeFilter', 'tagFilter', 'fieldFilters', 'sortBy', 'sortDirection'], true)) {
             $this->limit = self::PAGE_SIZE;
+        }
+
+        if (in_array(explode('.', $name)[0], ['statusFilter', 'assigneeFilter', 'tagFilter', 'fieldFilters'], true)) {
+            $this->selected = [];
         }
     }
 
@@ -311,6 +317,8 @@ new class extends Component
 
     public function clearFilter(string $key): void
     {
+        $this->selected = [];
+
         match (true) {
             $key === 'assignee' => $this->assigneeFilter = '',
             $key === 'tag' => $this->tagFilter = '',
@@ -369,6 +377,7 @@ new class extends Component
     public function applyFilter(int $filterId): void
     {
         $saved = $this->project->savedFilters()->visibleTo(auth()->user())->findOrFail($filterId);
+        $this->selected = [];
         $filters = $saved->filters;
 
         $status = (string) ($filters['status'] ?? 'open');
@@ -412,6 +421,7 @@ new class extends Component
 
     public function resetFilters(): void
     {
+        $this->selected = [];
         $this->statusFilter = 'open';
         $this->assigneeFilter = '';
         $this->tagFilter = '';
@@ -478,7 +488,7 @@ new class extends Component
 };
 ?>
 
-<div @class(['lg:pe-[39rem]' => $this->panelTask])>
+<div @class(['lg:pe-[39rem]' => $this->panelTask, 'pb-28' => $selecting])>
     <flux:breadcrumbs class="mb-4">
         <flux:breadcrumbs.item href="{{ route('projects.index') }}" wire:navigate>Projekte</flux:breadcrumbs.item>
         <flux:breadcrumbs.item>{{ $project->name }}</flux:breadcrumbs.item>
@@ -524,6 +534,10 @@ new class extends Component
         <flux:modal.trigger name="saved-filters">
             <flux:button icon="bookmark">Ansichten @if ($this->savedFilters->isNotEmpty()) <flux:badge size="sm" inset="top bottom">{{ $this->savedFilters->count() }}</flux:badge> @endif</flux:button>
         </flux:modal.trigger>
+
+        @if ($this->canEdit && ! $selecting && $this->tasks->isNotEmpty())
+            <flux:button icon="check-circle" wire:click="startSelecting">Auswählen</flux:button>
+        @endif
 
         <flux:badge size="sm" color="zinc">{{ $this->statusFilterLabel }}</flux:badge>
 
@@ -628,7 +642,11 @@ new class extends Component
         <div class="overflow-x-auto">
         <flux:table>
             <flux:table.columns>
-                <flux:table.column class="w-10"></flux:table.column>
+                <flux:table.column class="w-10">
+                    @if ($selecting)
+                        <flux:checkbox :checked="$this->tasks->isNotEmpty() && $this->tasks->pluck('id')->diff($this->selectedIds)->isEmpty()" wire:click="togglePage" aria-label="Alle sichtbaren Aufgaben auswählen" />
+                    @endif
+                </flux:table.column>
                 <flux:table.column sortable :sorted="$sortBy === 'title'" :direction="$sortDirection" wire:click="sort('title')">Aufgabe</flux:table.column>
                 <flux:table.column sortable :sorted="$sortBy === 'status'" :direction="$sortDirection" wire:click="sort('status')">Status</flux:table.column>
                 <flux:table.column class="{{ $this->panelTask ? 'hidden' : 'max-md:hidden' }}">Zuständig</flux:table.column>
@@ -637,11 +655,19 @@ new class extends Component
                     <flux:table.column wire:key="column-{{ $field->id }}" class="{{ $this->panelTask ? 'hidden' : 'max-md:hidden' }}" sortable :sorted="$sortBy === 'field:'.$field->id" :direction="$sortDirection" wire:click="sort('field:{{ $field->id }}')">{{ $field->name }}</flux:table.column>
                 @endforeach
             </flux:table.columns>
-            <flux:table.rows :wire:sort="$sortBy === '' && $this->canEdit ? 'moveTask' : null">
+            <flux:table.rows :wire:sort="$sortBy === '' && $this->canEdit && ! $selecting ? 'moveTask' : null">
                 @foreach ($this->tasks as $task)
-                    <flux:table.row wire:key="task-{{ $task->id }}" :wire:sort:item="$sortBy === '' && $this->canEdit ? $task->id : null">
+                    <flux:table.row wire:key="task-{{ $task->id }}" :wire:sort:item="$sortBy === '' && $this->canEdit && ! $selecting ? $task->id : null">
                         <flux:table.cell>
-                            <flux:checkbox :checked="$task->isDone()" :disabled="! $this->canEdit" wire:click="toggleDone({{ $task->id }})" />
+                            @if ($selecting)
+                                <flux:checkbox
+                                    :checked="in_array((string) $task->id, array_map('strval', $selected), true)"
+                                    x-on:click="$wire.selected = $wire.selected.includes('{{ $task->id }}') ? $wire.selected.filter((id) => id !== '{{ $task->id }}') : [...$wire.selected, '{{ $task->id }}']"
+                                    aria-label="Aufgabe auswählen"
+                                />
+                            @else
+                                <flux:checkbox :checked="$task->isDone()" :disabled="! $this->canEdit" wire:click="toggleDone({{ $task->id }})" />
+                            @endif
                         </flux:table.cell>
                         <flux:table.cell class="min-w-44 whitespace-normal">
                             <a href="{{ route('tasks.show', $task) }}" x-on:click="if ($event.metaKey || $event.ctrlKey || $event.shiftKey || $event.button !== 0) return; $event.preventDefault(); $wire.openTask({{ $task->id }})" @class(['font-medium hover:underline', 'text-blue-600 dark:text-blue-400' => (string) $task->id === $openTaskId])>{{ $task->title }}</a>
@@ -691,6 +717,83 @@ new class extends Component
                 <flux:button size="sm" wire:click="loadMore">Mehr laden</flux:button>
             </div>
         @endif
+    @endif
+
+    @if ($selecting)
+        <div class="pointer-events-none fixed inset-x-0 bottom-4 z-30 flex justify-center px-4">
+            <div class="pointer-events-auto flex w-full max-w-xl flex-col gap-2 rounded-xl border border-zinc-200 bg-white p-2 shadow-lg sm:w-auto sm:max-w-full sm:flex-row sm:items-center dark:border-zinc-700 dark:bg-zinc-800">
+                <div class="flex items-center gap-2">
+                    <flux:text class="px-2 font-medium"><span x-text="$wire.selected.length">0</span> ausgewählt</flux:text>
+
+                    @if ($this->totalTasks > $this->tasks->count())
+                        <flux:button size="sm" variant="ghost" wire:click="selectAllMatching">Alle {{ min($this->totalTasks, 500) }} auswählen</flux:button>
+                    @endif
+
+                    <flux:button size="sm" variant="ghost" icon="x-mark" wire:click="stopSelecting" aria-label="Auswahl beenden" class="ms-auto sm:hidden" />
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2">
+                    <flux:button size="sm" icon="check" wire:click="bulkComplete" x-bind:disabled="$wire.selected.length === 0">Erledigen</flux:button>
+
+                    <flux:modal.trigger name="bulk-edit">
+                        <flux:button size="sm" icon="pencil-square" x-bind:disabled="$wire.selected.length === 0">Ändern</flux:button>
+                    </flux:modal.trigger>
+
+                    <flux:button size="sm" variant="danger" icon="trash" wire:click="bulkDelete" wire:confirm="Die ausgewählten Aufgaben samt Unteraufgaben endgültig löschen?" x-bind:disabled="$wire.selected.length === 0">Löschen</flux:button>
+
+                    <flux:button size="sm" variant="ghost" icon="x-mark" wire:click="stopSelecting" aria-label="Auswahl beenden" class="max-sm:hidden" />
+                </div>
+            </div>
+        </div>
+
+        <flux:modal name="bulk-edit" class="w-full max-w-md">
+            <form wire:submit="applyBulkChanges" class="space-y-5">
+                <div>
+                    <flux:heading size="lg"><span x-text="$wire.selected.length">0</span> Aufgaben ändern</flux:heading>
+                    <flux:text class="mt-1">Nur was du ausfüllst, wird geändert; alles andere bleibt, wie es ist.</flux:text>
+                </div>
+
+                <flux:select variant="listbox" wire:model="bulkStatus" label="Status">
+                    <flux:select.option value="">Nicht ändern</flux:select.option>
+                    @foreach ($this->statuses as $status)
+                        <flux:select.option value="{{ $status->id }}">{{ $status->name }}</flux:select.option>
+                    @endforeach
+                </flux:select>
+                <flux:error name="bulkStatus" />
+
+                <flux:select variant="listbox" wire:model="bulkAssignee" label="Zuständig">
+                    <flux:select.option value="">Nicht ändern</flux:select.option>
+                    <flux:select.option value="none">Niemand</flux:select.option>
+                    @foreach ($this->users as $user)
+                        <flux:select.option value="{{ $user->id }}">{{ $user->name }}</flux:select.option>
+                    @endforeach
+                </flux:select>
+
+                <div class="space-y-2">
+                    <flux:date-picker wire:model="bulkDueDate" label="Fällig am" locale="de-DE" placeholder="Nicht ändern" clearable description="Liegt der Beginn einer Aufgabe danach, rückt er auf dieses Datum." />
+                    <flux:checkbox wire:model="bulkClearDueDate" label="Fälligkeit entfernen" />
+                </div>
+
+                @if ($this->tagOptions->isNotEmpty())
+                    <flux:pillbox wire:model="bulkAddTags" multiple label="Tags hinzufügen" placeholder="Tags wählen …">
+                        @foreach ($this->tagOptions as $tag)
+                            <flux:pillbox.option wire:key="add-tag-{{ $tag->id }}" value="{{ $tag->id }}">{{ $tag->name }}</flux:pillbox.option>
+                        @endforeach
+                    </flux:pillbox>
+
+                    <flux:pillbox wire:model="bulkRemoveTags" multiple label="Tags entfernen" placeholder="Tags wählen …">
+                        @foreach ($this->tagOptions as $tag)
+                            <flux:pillbox.option wire:key="remove-tag-{{ $tag->id }}" value="{{ $tag->id }}">{{ $tag->name }}</flux:pillbox.option>
+                        @endforeach
+                    </flux:pillbox>
+                @endif
+
+                <div class="flex justify-end gap-2">
+                    <flux:modal.close><flux:button variant="ghost">Abbrechen</flux:button></flux:modal.close>
+                    <flux:button type="submit" variant="primary">Übernehmen</flux:button>
+                </div>
+            </form>
+        </flux:modal>
     @endif
 
     @if ($this->canEdit)

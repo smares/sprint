@@ -5,7 +5,9 @@ use App\Models\Task;
 use App\Models\User;
 use App\TaskStatus;
 use Flux\Flux;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -30,6 +32,12 @@ new class extends Component
 
     public string $newTag = '';
 
+    /** @var list<string> */
+    public array $blockerIds = [];
+
+    /** @var list<string> */
+    public array $blockingIds = [];
+
     public function mount(): void
     {
         $this->title = $this->task->title;
@@ -38,6 +46,17 @@ new class extends Component
         $this->assigneeId = (string) ($this->task->assignee_id ?? '');
         $this->dueDate = $this->task->due_date?->format('Y-m-d') ?? '';
         $this->tagIds = $this->task->tags->pluck('id')->map(fn ($id) => (string) $id)->all();
+        $this->blockerIds = $this->task->blockers()->pluck('tasks.id')->map(fn ($id) => (string) $id)->all();
+        $this->blockingIds = $this->task->blocking()->pluck('tasks.id')->map(fn ($id) => (string) $id)->all();
+    }
+
+    #[Computed]
+    public function otherTasks()
+    {
+        return $this->task->project->tasks()
+            ->whereKeyNot($this->task->getKey())
+            ->orderBy('title')
+            ->get(['id', 'title']);
     }
 
     #[Computed]
@@ -86,7 +105,28 @@ new class extends Component
             'dueDate' => ['nullable', 'date'],
             'tagIds' => ['array'],
             'tagIds.*' => ['integer', Rule::exists('tags', 'id')->where('project_id', $this->task->project_id)],
+            'blockerIds' => ['array'],
+            'blockerIds.*' => ['integer', Rule::exists('tasks', 'id')->where('project_id', $this->task->project_id)->whereNot('id', $this->task->getKey())],
+            'blockingIds' => ['array'],
+            'blockingIds.*' => ['integer', Rule::exists('tasks', 'id')->where('project_id', $this->task->project_id)->whereNot('id', $this->task->getKey())],
         ]);
+
+        if (array_intersect($validated['blockerIds'], $validated['blockingIds']) !== []) {
+            throw ValidationException::withMessages([
+                'blockingIds' => 'Eine Aufgabe kann nicht gleichzeitig blockieren und blockiert werden.',
+            ]);
+        }
+
+        DB::transaction(function () use ($validated) {
+            $this->task->blockers()->sync($validated['blockerIds']);
+            $this->task->blocking()->sync($validated['blockingIds']);
+
+            if ($this->task->hasDependencyCycle()) {
+                throw ValidationException::withMessages([
+                    'blockingIds' => 'Diese Abhängigkeiten würden einen Kreis bilden.',
+                ]);
+            }
+        });
 
         $this->task->update([
             'title' => $validated['title'],
@@ -160,6 +200,23 @@ new class extends Component
                 <flux:pillbox.option wire:key="tag-{{ $tag->id }}" value="{{ $tag->id }}">{{ $tag->name }}</flux:pillbox.option>
             @endforeach
         </flux:pillbox>
+
+        <div class="grid gap-4 sm:grid-cols-2">
+            <flux:pillbox wire:model="blockerIds" multiple searchable label="Blockiert von" placeholder="Aufgaben wählen …">
+                @foreach ($this->otherTasks as $other)
+                    <flux:pillbox.option wire:key="blocker-{{ $other->id }}" value="{{ $other->id }}">{{ $other->title }}</flux:pillbox.option>
+                @endforeach
+            </flux:pillbox>
+            <flux:pillbox wire:model="blockingIds" multiple searchable label="Blockiert" placeholder="Aufgaben wählen …">
+                @foreach ($this->otherTasks as $other)
+                    <flux:pillbox.option wire:key="blocking-{{ $other->id }}" value="{{ $other->id }}">{{ $other->title }}</flux:pillbox.option>
+                @endforeach
+            </flux:pillbox>
+        </div>
+
+        @if ($task->isBlocked())
+            <flux:callout variant="warning" icon="lock-closed" heading="Diese Aufgabe ist blockiert" text="Mindestens eine Aufgabe, von der sie abhängt, ist noch nicht erledigt." />
+        @endif
 
         <div class="flex gap-3">
             <flux:button type="submit" variant="primary">Speichern</flux:button>

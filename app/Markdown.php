@@ -51,6 +51,31 @@ class Markdown
     }
 
     /**
+     * Ids of all people mentioned in the text.
+     *
+     * @return list<int>
+     */
+    public static function mentionedUserIds(?string $text): array
+    {
+        preg_match_all(self::MENTION_PATTERN, (string) $text, $matches, PREG_SET_ORDER);
+
+        return collect($matches)
+            ->filter(fn (array $match) => $match[2] === 'user')
+            ->map(fn (array $match) => (int) $match[3])
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Mention tokens replaced by plain `@Name` / `Title` text, e.g. for emails.
+     */
+    public static function plainText(?string $text): string
+    {
+        return (string) preg_replace(self::MENTION_PATTERN, '@$1', (string) $text);
+    }
+
+    /**
      * @param  list<array{name: string, type: string, id: int}>  $mentions
      */
     private static function insertMentions(string $html, array $mentions): string

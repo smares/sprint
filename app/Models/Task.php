@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Markdown;
 use App\Notifications\TaskStatusChanged;
+use App\Notifications\UserMentioned;
 use Database\Factories\TaskFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -27,18 +29,32 @@ class Task extends Model
         });
 
         static::updated(function (self $task) {
-            if ($task->is_section || ! $task->wasChanged('status_id')) {
+            if ($task->is_section) {
                 return;
             }
 
-            $old = TaskStatus::find($task->getOriginal('status_id'));
-            $new = $task->status;
             $actor = auth()->user();
 
-            Notification::send(
-                $task->usersToNotify($actor),
-                new TaskStatusChanged($task, $old?->name ?? '–', $new->name, $actor?->name),
-            );
+            if ($task->wasChanged('status_id')) {
+                $old = TaskStatus::find($task->getOriginal('status_id'));
+
+                Notification::send(
+                    $task->usersToNotify($actor),
+                    new TaskStatusChanged($task, $old?->name ?? '–', $task->status->name, $actor?->name),
+                );
+            }
+
+            if ($task->wasChanged('description')) {
+                $added = array_diff(
+                    Markdown::mentionedUserIds($task->description),
+                    Markdown::mentionedUserIds($task->getOriginal('description')),
+                );
+
+                Notification::send(
+                    $task->usersToMention($added, $actor),
+                    new UserMentioned($task, 'description', (string) $task->description, $actor?->name),
+                );
+            }
         });
     }
 
@@ -176,6 +192,22 @@ class Task extends Model
         return collect([$this->assignee, ...$this->collaborators()->get()])
             ->filter()
             ->unique('id')
+            ->reject(fn (User $user) => $muted->contains($user->id) || $user->id === $except?->id)
+            ->values();
+    }
+
+    /**
+     * Mentioned people who should get an email: not the person who wrote the mention and not
+     * those who muted this task. Mentioned people do not need to be assignee or collaborator.
+     *
+     * @param  iterable<int>  $userIds
+     * @return Collection<int, User>
+     */
+    public function usersToMention(iterable $userIds, ?User $except = null): Collection
+    {
+        $muted = $this->notificationMutes()->pluck('users.id');
+
+        return User::whereIn('id', collect($userIds)->all())->get()
             ->reject(fn (User $user) => $muted->contains($user->id) || $user->id === $except?->id)
             ->values();
     }

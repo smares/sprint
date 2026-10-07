@@ -17,7 +17,7 @@ Gebaut mit Laravel 13, Livewire 4 und [Flux UI Pro](https://fluxui.dev). Die Obe
 - **Kommentare** mit Markdown (GitHub-Variante: Tabellen, Durchgestrichen, Aufgabenlisten, automatische Links)
 - **Markdown** auch in der Beschreibung, mit Vorschau
 - **`@`-Erwähnungen** von Personen und Aufgaben: ein `@` tippen, aus dem Fenster wählen; angezeigt wird immer der aktuelle Name bzw. Titel
-- **E-Mail-Benachrichtigungen** an zuständige und beteiligte Personen bei neuen Kommentaren und Statuswechseln; pro Aufgabe abbestellbar (Schalter auf der Aufgabenseite oder signierter Link in der Mail, auch ohne Login)
+- **E-Mail-Benachrichtigungen** an zuständige und beteiligte Personen bei neuen Kommentaren und Statuswechseln sowie an erwähnte Personen (auch ohne Beteiligung, einmal pro neuer Erwähnung); pro Aufgabe abbestellbar (Schalter auf der Aufgabenseite oder signierter Link in der Mail, auch ohne Login)
 
 Es gibt keine öffentliche Registrierung, Benutzer legt ein Administrator per Kommando an (siehe unten).
 

@@ -42,7 +42,7 @@ new class extends Component
     {
         $tasks = $this->project->tasks()
             ->whereNull('parent_id')
-            ->with(['assignee', 'collaborators', 'tags', 'status', 'blockers.status'])
+            ->with(['assignee', 'collaborators', 'tags', 'status', 'blockers.status', 'fieldValues'])
             ->orderBy('position')
             ->orderBy('id')
             ->get()
@@ -51,6 +51,15 @@ new class extends Component
         return $this->statuses
             ->mapWithKeys(fn (TaskStatus $status) => [$status->id => $tasks->get($status->id, collect())])
             ->all();
+    }
+
+    /**
+     * Fields shown on the cards.
+     */
+    #[Computed]
+    public function listFields()
+    {
+        return $this->project->customFields()->with('options')->where('show_in_list', true)->get();
     }
 
     #[Computed]
@@ -141,6 +150,14 @@ new class extends Component
 
                             @if ($progress = $this->progress[$task->id] ?? null)
                                 <flux:badge size="sm" icon="list-bullet" class="mt-2">{{ $progress['done'] }}/{{ $progress['total'] }}</flux:badge>
+                            @endif
+
+                            @if ($this->listFields->isNotEmpty())
+                                <div class="mt-2 flex flex-wrap gap-1">
+                                    @foreach ($this->listFields as $field)
+                                        <x-field-value :task="$task" :field="$field" :show-empty="false" :with-name="$field->type !== \App\CustomFieldType::Select" />
+                                    @endforeach
+                                </div>
                             @endif
 
                             @if ($task->tags->isNotEmpty())

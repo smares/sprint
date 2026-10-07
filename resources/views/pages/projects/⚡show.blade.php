@@ -1,9 +1,13 @@
 <?php
 
+use App\CustomFieldType;
+use App\Models\CustomField;
+use App\Models\CustomFieldValue;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskStatus;
 use Flux\Flux;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Url;
@@ -21,6 +25,10 @@ new class extends Component
 
     #[Url(as: 'tag')]
     public string $tagFilter = '';
+
+    /** @var array<int|string, string> */
+    #[Url(as: 'f')]
+    public array $fieldFilters = [];
 
     #[Url(as: 'sort')]
     public string $sortBy = '';
@@ -63,12 +71,14 @@ new class extends Component
     {
         return $this->project->tasks()
             ->whereNull('parent_id')
-            ->with(['assignee', 'collaborators', 'tags', 'status', 'blockers.status'])
+            ->with(['assignee', 'collaborators', 'tags', 'status', 'blockers.status', 'fieldValues'])
             ->when($this->statusFilter === 'open', fn ($q) => $q->whereHas('status', fn ($status) => $status->where('is_done', false)))
             ->when(ctype_digit($this->statusFilter), fn ($q) => $q->where('status_id', (int) $this->statusFilter))
             ->when($this->assigneeFilter === 'me', fn ($q) => $q->where('assignee_id', auth()->id()))
             ->when(ctype_digit($this->assigneeFilter), fn ($q) => $q->where('assignee_id', (int) $this->assigneeFilter))
             ->when(ctype_digit($this->tagFilter), fn ($q) => $q->whereHas('tags', fn ($tags) => $tags->whereKey((int) $this->tagFilter)))
+            ->tap(fn ($q) => $this->applyFieldFilters($q))
+            ->tap(fn ($q) => $this->applyFieldSort($q))
             ->when($this->sortBy === 'due', fn ($q) => $q->orderByRaw('due_date is null')->orderBy('due_date', $this->sortDirection))
             ->when($this->sortBy === 'title', fn ($q) => $q->orderBy('title', $this->sortDirection))
             ->when($this->sortBy === 'status', fn ($q) => $q->orderBy(TaskStatus::select('position')->whereColumn('task_statuses.id', 'tasks.status_id'), $this->sortDirection))
@@ -81,6 +91,73 @@ new class extends Component
     public function statuses()
     {
         return $this->project->statuses;
+    }
+
+    /**
+     * Fields shown as columns in the list.
+     */
+    #[Computed]
+    public function listFields()
+    {
+        return $this->customFields->where('show_in_list', true)->values();
+    }
+
+    #[Computed]
+    public function customFields()
+    {
+        return $this->project->customFields()->with('options')->get();
+    }
+
+    /**
+     * Fields people can filter by: the single-choice ones.
+     */
+    #[Computed]
+    public function filterableFields()
+    {
+        return $this->customFields->where('type', CustomFieldType::Select)->values();
+    }
+
+    private function applyFieldFilters($query): void
+    {
+        foreach ($this->filterableFields as $field) {
+            $option = $this->fieldFilters[$field->id] ?? '';
+
+            if (ctype_digit((string) $option) && $field->options->contains('id', (int) $option)) {
+                $query->whereHas('fieldValues', fn ($values) => $values
+                    ->where('custom_field_id', $field->id)
+                    ->where('option_id', (int) $option));
+            }
+        }
+    }
+
+    private function applyFieldSort($query): void
+    {
+        if (! str_starts_with($this->sortBy, 'field:')) {
+            return;
+        }
+
+        $field = $this->customFields->firstWhere('id', (int) substr($this->sortBy, 6));
+
+        if ($field === null) {
+            return;
+        }
+
+        $value = CustomFieldValue::query()
+            ->where('custom_field_values.custom_field_id', $field->id)
+            ->whereColumn('custom_field_values.task_id', 'tasks.id');
+
+        match ($field->type) {
+            CustomFieldType::Select => $value->join('custom_field_options as sort_options', 'sort_options.id', '=', 'custom_field_values.option_id')->select('sort_options.position'),
+            CustomFieldType::Number => $value->select(DB::raw('cast(custom_field_values.value as '.match (DB::connection()->getDriverName()) {
+                'mysql', 'mariadb' => 'decimal(30, 10)',
+                'pgsql' => 'double precision',
+                default => 'real',
+            }.')')),
+            default => $value->select('custom_field_values.value'),
+        };
+
+        $query->orderByRaw("({$value->toSql()}) is null", $value->getBindings())
+            ->orderBy($value, $this->sortDirection);
     }
 
     #[Computed]
@@ -131,7 +208,9 @@ new class extends Component
 
     public function sort(string $column): void
     {
-        if (! in_array($column, ['due', 'title', 'status'], true)) {
+        $isField = str_starts_with($column, 'field:') && $this->customFields->contains('id', (int) substr($column, 6));
+
+        if (! $isField && ! in_array($column, ['due', 'title', 'status'], true)) {
             return;
         }
 
@@ -235,6 +314,15 @@ new class extends Component
             @endforeach
         </flux:select>
 
+        @foreach ($this->filterableFields as $field)
+            <flux:select wire:key="filter-{{ $field->id }}" variant="listbox" wire:model.live="fieldFilters.{{ $field->id }}" class="max-w-48">
+                <flux:select.option value="">Alle: {{ $field->name }}</flux:select.option>
+                @foreach ($field->options as $option)
+                    <flux:select.option value="{{ $option->id }}">{{ $option->name }}</flux:select.option>
+                @endforeach
+            </flux:select>
+        @endforeach
+
         @if ($this->tagOptions->isNotEmpty())
             <flux:select variant="listbox" wire:model.live="tagFilter" class="max-w-48">
                 <flux:select.option value="">Alle Tags</flux:select.option>
@@ -255,6 +343,9 @@ new class extends Component
                 <flux:table.column sortable :sorted="$sortBy === 'status'" :direction="$sortDirection" wire:click="sort('status')">Status</flux:table.column>
                 <flux:table.column>Zuständig</flux:table.column>
                 <flux:table.column sortable :sorted="$sortBy === 'due'" :direction="$sortDirection" wire:click="sort('due')">Fällig</flux:table.column>
+                @foreach ($this->listFields as $field)
+                    <flux:table.column wire:key="column-{{ $field->id }}" sortable :sorted="$sortBy === 'field:'.$field->id" :direction="$sortDirection" wire:click="sort('field:{{ $field->id }}')">{{ $field->name }}</flux:table.column>
+                @endforeach
             </flux:table.columns>
             <flux:table.rows :wire:sort="$sortBy === '' && $this->canEdit ? 'moveTask' : null">
                 @foreach ($this->tasks as $task)
@@ -290,6 +381,11 @@ new class extends Component
                                 –
                             @endif
                         </flux:table.cell>
+                        @foreach ($this->listFields as $field)
+                            <flux:table.cell wire:key="cell-{{ $task->id }}-{{ $field->id }}">
+                                <x-field-value :task="$task" :field="$field" />
+                            </flux:table.cell>
+                        @endforeach
                     </flux:table.row>
                 @endforeach
             </flux:table.rows>

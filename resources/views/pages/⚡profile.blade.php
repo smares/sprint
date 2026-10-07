@@ -1,0 +1,104 @@
+<?php
+
+use Flux\Flux;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Title;
+use Livewire\Component;
+
+new #[Title('Profil')] class extends Component
+{
+    public string $name = '';
+
+    public string $email = '';
+
+    public string $emailPassword = '';
+
+    public string $currentPassword = '';
+
+    public string $newPassword = '';
+
+    public string $newPasswordConfirmation = '';
+
+    public function mount(): void
+    {
+        $this->name = auth()->user()->name;
+        $this->email = auth()->user()->email;
+    }
+
+    public function saveProfile(): void
+    {
+        $user = auth()->user();
+
+        $validated = $this->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+        ], attributes: ['name' => 'Name', 'email' => 'E-Mail']);
+
+        if (Str::lower($validated['email']) !== Str::lower($user->email)) {
+            $this->validate(['emailPassword' => ['required']], attributes: ['emailPassword' => 'Passwort']);
+
+            if (! Hash::check($this->emailPassword, $user->password)) {
+                throw ValidationException::withMessages(['emailPassword' => 'Das Passwort stimmt nicht.']);
+            }
+        }
+
+        $user->update(['name' => trim($validated['name']), 'email' => $validated['email']]);
+
+        $this->reset('emailPassword');
+        Flux::toast(variant: 'success', text: 'Profil gespeichert.');
+    }
+
+    public function changePassword(): void
+    {
+        $user = auth()->user();
+
+        $this->validate([
+            'currentPassword' => ['required'],
+            'newPassword' => ['required', 'string', 'min:8', 'max:255', 'same:newPasswordConfirmation', 'different:currentPassword'],
+            'newPasswordConfirmation' => ['required'],
+        ], attributes: [
+            'currentPassword' => 'Aktuelles Passwort',
+            'newPassword' => 'Neues Passwort',
+            'newPasswordConfirmation' => 'Wiederholung',
+        ]);
+
+        if (! Hash::check($this->currentPassword, $user->password)) {
+            throw ValidationException::withMessages(['currentPassword' => 'Das aktuelle Passwort stimmt nicht.']);
+        }
+
+        $user->forceFill(['password' => $this->newPassword, 'remember_token' => Str::random(60)])->save();
+
+        $this->reset('currentPassword', 'newPassword', 'newPasswordConfirmation');
+        Flux::toast(variant: 'success', text: 'Passwort geändert.');
+    }
+};
+?>
+
+<div class="max-w-xl space-y-10">
+    <div>
+        <flux:heading size="xl">Profil</flux:heading>
+        <flux:text class="mt-1">Dein Name und deine E-Mail-Adresse erscheinen bei Zuweisungen, Kommentaren und in Benachrichtigungen.</flux:text>
+    </div>
+
+    <form wire:submit="saveProfile" class="space-y-4">
+        <flux:input wire:model="name" label="Name" autocomplete="name" />
+        <flux:input wire:model="email" type="email" label="E-Mail" autocomplete="email" />
+        @if (\Illuminate\Support\Str::lower($email) !== \Illuminate\Support\Str::lower(auth()->user()->email))
+            <flux:input wire:model="emailPassword" type="password" label="Passwort zur Bestätigung" description="Zum Ändern der E-Mail-Adresse brauchst du dein aktuelles Passwort." autocomplete="current-password" />
+        @endif
+        <flux:button type="submit" variant="primary">Speichern</flux:button>
+    </form>
+
+    <flux:separator />
+
+    <form wire:submit="changePassword" class="space-y-4">
+        <flux:heading size="lg">Passwort ändern</flux:heading>
+        <flux:input wire:model="currentPassword" type="password" label="Aktuelles Passwort" autocomplete="current-password" />
+        <flux:input wire:model="newPassword" type="password" label="Neues Passwort" description="Mindestens 8 Zeichen." autocomplete="new-password" />
+        <flux:input wire:model="newPasswordConfirmation" type="password" label="Neues Passwort wiederholen" autocomplete="new-password" />
+        <flux:button type="submit">Passwort ändern</flux:button>
+    </form>
+</div>

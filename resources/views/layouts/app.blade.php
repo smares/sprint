@@ -51,6 +51,7 @@
                             </flux:radio.group>
                         </div>
                         <flux:menu.separator />
+                        <flux:menu.item icon="user" href="{{ route('profile') }}" wire:navigate>Profil</flux:menu.item>
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
                             <flux:menu.item as="button" type="submit" icon="arrow-right-start-on-rectangle">Abmelden</flux:menu.item>

@@ -4,8 +4,20 @@ use App\Http\Controllers\AttachmentController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use Laravel\Passkeys\Http\Controllers\PasskeyLoginController;
+use Laravel\Passkeys\Http\Controllers\PasskeyRegistrationController;
 
 Route::livewire('/login', 'pages::login')->name('login')->middleware('guest');
+
+Route::middleware(['guest', 'throttle:6,1'])->group(function () {
+    Route::get('/passkeys/login/options', [PasskeyLoginController::class, 'index'])->name('passkey.login-options');
+    Route::post('/passkeys/login', [PasskeyLoginController::class, 'store'])->name('passkey.login');
+});
+
+Route::middleware(['auth', 'password.confirm', 'throttle:6,1'])->group(function () {
+    Route::get('/user/passkeys/options', [PasskeyRegistrationController::class, 'index'])->name('passkey.registration-options');
+    Route::post('/user/passkeys', [PasskeyRegistrationController::class, 'store'])->name('passkey.store');
+});
 
 Route::post('/logout', function (Request $request) {
     Auth::logout();

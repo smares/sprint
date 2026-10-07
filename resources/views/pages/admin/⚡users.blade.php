@@ -42,7 +42,7 @@ new #[Title('Benutzer')] class extends Component
     #[Computed]
     public function users()
     {
-        return User::query()->orderBy('name')->get();
+        return User::query()->withCount('passkeys')->orderBy('name')->get();
     }
 
     private function fillAdmins(): void
@@ -98,6 +98,14 @@ new #[Title('Benutzer')] class extends Component
 
         $this->shownPassword = $password;
         $this->shownFor = $user->email;
+    }
+
+    public function resetSecondFactors(int $userId): void
+    {
+        User::findOrFail($userId)->resetSecondFactors();
+
+        unset($this->users);
+        Flux::toast(variant: 'success', text: 'Zwei-Faktor-Anmeldung und Passkeys zurückgesetzt.');
     }
 
     public function deactivate(int $userId): void
@@ -161,6 +169,9 @@ new #[Title('Benutzer')] class extends Component
                 </div>
                 <flux:checkbox wire:model.live="admins.{{ $user->id }}" label="Administrator" />
                 <flux:button size="xs" variant="ghost" icon="key" wire:click="resetPassword({{ $user->id }})" wire:confirm="Neues Passwort für {{ $user->name }} erzeugen? Das alte gilt dann nicht mehr." aria-label="Neues Passwort erzeugen" />
+                @if ($user->two_factor_secret || $user->passkeys_count)
+                    <flux:button size="xs" variant="ghost" icon="shield-exclamation" wire:click="resetSecondFactors({{ $user->id }})" wire:confirm="Zwei-Faktor-Anmeldung und Passkeys von {{ $user->name }} zurücksetzen? Danach reicht wieder das Passwort." aria-label="Zweiten Faktor zurücksetzen" title="Zwei-Faktor und Passkeys zurücksetzen" />
+                @endif
                 @if ($user->isActive())
                     @unless ($user->is(auth()->user()))
                         <flux:button size="xs" variant="ghost" icon="no-symbol" wire:click="deactivate({{ $user->id }})" wire:confirm="{{ $user->name }} deaktivieren? Die Person kann sich nicht mehr anmelden und bekommt keine Zuweisungen oder Mails mehr; Aufgaben, Kommentare und Verlauf bleiben erhalten." aria-label="Deaktivieren" title="Deaktivieren" />

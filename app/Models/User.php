@@ -13,14 +13,17 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Laravel\Fortify\Contracts\PasskeyUser;
+use Laravel\Fortify\PasskeyAuthenticatable;
+use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable(['name', 'email', 'password', 'is_admin', 'deactivated_at', 'digest_enabled'])]
-#[Hidden(['password', 'remember_token'])]
-class User extends Authenticatable
+#[Hidden(['password', 'remember_token', 'two_factor_secret', 'two_factor_recovery_codes'])]
+class User extends Authenticatable implements PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
 
     /**
      * @var array<string, mixed>
@@ -39,6 +42,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_admin' => 'boolean',
             'deactivated_at' => 'datetime',
+            'two_factor_confirmed_at' => 'datetime',
             'digest_enabled' => 'boolean',
         ];
     }
@@ -77,6 +81,15 @@ class User extends Authenticatable
         if (config('session.driver') === 'database') {
             DB::table(config('session.table', 'sessions'))->where('user_id', $this->getKey())->delete();
         }
+    }
+
+    /**
+     * For people locked out: drop the authenticator app and all passkeys so that the password is enough again.
+     */
+    public function resetSecondFactors(): void
+    {
+        $this->forceFill(['two_factor_secret' => null, 'two_factor_recovery_codes' => null, 'two_factor_confirmed_at' => null])->save();
+        $this->passkeys()->delete();
     }
 
     public function reactivate(): void

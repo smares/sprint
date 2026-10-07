@@ -673,6 +673,7 @@ new class extends Component
                         <flux:checkbox :checked="$this->tasks->isNotEmpty() && $this->tasks->pluck('id')->diff($this->selectedIds)->isEmpty()" wire:click="togglePage" aria-label="Alle sichtbaren Aufgaben auswählen" />
                     @endif
                 </flux:table.column>
+                <flux:table.column class="w-8 text-right" title="Zeilennummer in dieser Liste">#</flux:table.column>
                 <flux:table.column sortable :sorted="$sortBy === 'title'" :direction="$sortDirection" wire:click="sort('title')">Aufgabe</flux:table.column>
                 <flux:table.column sortable :sorted="$sortBy === 'status'" :direction="$sortDirection" wire:click="sort('status')">Status</flux:table.column>
                 <flux:table.column class="{{ $this->panelTask ? 'hidden' : 'max-md:hidden' }}">Zuständig</flux:table.column>
@@ -695,6 +696,7 @@ new class extends Component
                                 <flux:checkbox :checked="$task->isDone()" :disabled="! $this->canEdit" wire:click="toggleDone({{ $task->id }})" />
                             @endif
                         </flux:table.cell>
+                        <flux:table.cell class="w-8 text-right tabular-nums text-zinc-400 dark:text-zinc-500" data-row-number="{{ $loop->iteration }}">{{ $loop->iteration }}</flux:table.cell>
                         <flux:table.cell class="min-w-44 whitespace-normal">
                             <a href="{{ route('tasks.show', $task) }}" x-on:click="if ($event.metaKey || $event.ctrlKey || $event.shiftKey || $event.button !== 0) return; $event.preventDefault(); $wire.openTask({{ $task->id }})" @class(['font-medium hover:underline', 'text-blue-600 dark:text-blue-400' => (string) $task->id === $openTaskId])>{{ $task->title }}</a>
                             @if ($task->isBlocked())

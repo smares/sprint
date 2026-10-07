@@ -25,13 +25,13 @@ new #[Title('Profil')] class extends Component
 
     public bool $digest = true;
 
-    #[Url(as: 'tab', except: 'profil')]
-    public string $tab = 'profil';
+    #[Url(as: 'tab', except: 'profile')]
+    public string $tab = 'profile';
 
     public function mount(): void
     {
-        if (! in_array($this->tab, ['profil', 'sicherheit', 'api'], true)) {
-            $this->tab = 'profil';
+        if (! in_array($this->tab, ['profile', 'security', 'api'], true)) {
+            $this->tab = 'profile';
         }
 
         $this->name = auth()->user()->name;
@@ -103,12 +103,12 @@ new #[Title('Profil')] class extends Component
 
     <flux:tab.group>
         <flux:tabs wire:model="tab" scrollable>
-            <flux:tab name="profil" icon="user">Profil</flux:tab>
-            <flux:tab name="sicherheit" icon="shield-check">Sicherheit</flux:tab>
+            <flux:tab name="profile" icon="user">Profil</flux:tab>
+            <flux:tab name="security" icon="shield-check">Sicherheit</flux:tab>
             <flux:tab name="api" icon="key">API-Zugang</flux:tab>
         </flux:tabs>
 
-        <flux:tab.panel name="profil" class="space-y-8">
+        <flux:tab.panel name="profile" class="space-y-8">
             <div>
                 <flux:heading size="lg">Persönliche Angaben</flux:heading>
                 <flux:text class="mt-1">Dein Name und deine E-Mail-Adresse erscheinen bei Zuweisungen, Kommentaren und in Benachrichtigungen.</flux:text>
@@ -128,7 +128,7 @@ new #[Title('Profil')] class extends Component
             <flux:switch wire:model.live="digest" label="Tageszusammenfassung per E-Mail" description="Werktags am Morgen eine Mail mit deinen überfälligen und bald fälligen Aufgaben, nur wenn es etwas zu berichten gibt." />
         </flux:tab.panel>
 
-        <flux:tab.panel name="sicherheit" class="space-y-8">
+        <flux:tab.panel name="security" class="space-y-8">
             <form wire:submit="changePassword" class="space-y-4">
                 <flux:heading size="lg">Passwort ändern</flux:heading>
                 <flux:input wire:model="currentPassword" type="password" label="Aktuelles Passwort" autocomplete="current-password" />

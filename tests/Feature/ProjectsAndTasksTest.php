@@ -223,4 +223,19 @@ class ProjectsAndTasksTest extends TestCase
         $this->assertFalse(Task::factory()->done()->make(['due_date' => now()->subDay()])->isOverdue());
         $this->assertFalse(Task::factory()->make(['due_date' => null])->isOverdue());
     }
+
+    public function test_the_list_numbers_its_rows_in_the_order_shown(): void
+    {
+        $project = Project::factory()->create();
+        foreach (['Banane', 'Apfel', 'Kirsche'] as $position => $title) {
+            Task::factory()->for($project)->create(['title' => $title, 'position' => $position]);
+        }
+
+        $page = Livewire::test('pages::projects.show', ['project' => $project]);
+
+        $page->assertSeeHtml('data-row-number="1"')->assertSeeHtml('data-row-number="3"')->assertDontSeeHtml('data-row-number="4"');
+        $page->assertSeeInOrder(['1', 'Banane', '2', 'Apfel', '3', 'Kirsche']);
+
+        $page->call('sort', 'title')->assertSeeInOrder(['1', 'Apfel', '2', 'Banane', '3', 'Kirsche']);
+    }
 }

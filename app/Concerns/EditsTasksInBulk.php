@@ -140,11 +140,13 @@ trait EditsTasksInBulk
         $tasks = $this->selectedTasks();
         $done = $this->project->doneStatus()->id;
 
-        foreach ($tasks as $task) {
-            if ($task->status_id !== $done) {
-                $task->update(['status_id' => $done]);
+        Task::bundlingStatusNotifications(function () use ($tasks, $done) {
+            foreach ($tasks as $task) {
+                if ($task->status_id !== $done) {
+                    $task->update(['status_id' => $done]);
+                }
             }
-        }
+        });
 
         $this->finishBulk($tasks->count() === 1 ? 'Eine Aufgabe erledigt.' : $tasks->count().' Aufgaben erledigt.');
     }
@@ -173,7 +175,7 @@ trait EditsTasksInBulk
         $tasks = $this->selectedTasks();
         $tagNames = $this->project->tags()->pluck('name', 'id');
 
-        DB::transaction(function () use ($tasks, $validated, $due, $tagNames) {
+        Task::bundlingStatusNotifications(fn () => DB::transaction(function () use ($tasks, $validated, $due, $tagNames) {
             foreach ($tasks as $task) {
                 $changes = [];
 
@@ -201,7 +203,7 @@ trait EditsTasksInBulk
 
                 $this->syncBulkTags($task, $validated['bulkAddTags'], $validated['bulkRemoveTags'], $tagNames);
             }
-        });
+        }));
 
         $this->finishBulk($tasks->count() === 1 ? 'Eine Aufgabe geändert.' : $tasks->count().' Aufgaben geändert.');
     }

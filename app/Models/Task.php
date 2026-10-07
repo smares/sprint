@@ -3,11 +3,13 @@
 namespace App\Models;
 
 use App\Markdown;
+use App\Notifications\TasksStatusChanged;
 use App\Notifications\TaskStatusChanged;
 use App\Notifications\UserMentioned;
 use App\RepeatMode;
 use App\RepeatUnit;
 use App\TaskSearch;
+use Closure;
 use Database\Factories\TaskFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -28,6 +30,46 @@ class Task extends Model
 {
     /** @use HasFactory<TaskFactory> */
     use HasFactory;
+
+    /**
+     * While tasks are changed in bulk: status changes per recipient, to be sent as one message.
+     *
+     * @var array<int, array{user: User, changes: list<array{task: Task, from: string, to: string}>}>|null
+     */
+    private static ?array $bundledStatusChanges = null;
+
+    /**
+     * Change many tasks without one mail per task: everybody who would have got several messages about
+     * status changes gets a single one that lists them; a single change is sent as usual.
+     */
+    public static function bundlingStatusNotifications(Closure $changes): void
+    {
+        self::$bundledStatusChanges = [];
+
+        try {
+            $changes();
+            $bundled = self::$bundledStatusChanges;
+        } finally {
+            self::$bundledStatusChanges = null;
+        }
+
+        $actorName = auth()->user()?->name;
+
+        foreach ($bundled as $entry) {
+            if (count($entry['changes']) === 1) {
+                ['task' => $task, 'from' => $from, 'to' => $to] = $entry['changes'][0];
+
+                Notification::send($entry['user'], new TaskStatusChanged($task, $from, $to, $actorName));
+
+                continue;
+            }
+
+            Notification::send($entry['user'], new TasksStatusChanged(
+                array_map(fn (array $change) => ['id' => $change['task']->id, 'title' => $change['task']->title, 'project' => $change['task']->project->name, 'from' => $change['from'], 'to' => $change['to']], $entry['changes']),
+                $actorName,
+            ));
+        }
+    }
 
     protected static function booted(): void
     {
@@ -68,10 +110,16 @@ class Task extends Model
             if ($task->wasChanged('status_id')) {
                 $old = TaskStatus::find($task->getOriginal('status_id'));
 
-                Notification::send(
-                    $task->usersToNotify($actor),
-                    new TaskStatusChanged($task, $old?->name ?? '–', $task->status->name, $actor?->name),
-                );
+                foreach ($task->usersToNotify($actor) as $recipient) {
+                    $change = ['task' => $task, 'from' => $old?->name ?? '–', 'to' => $task->status->name];
+
+                    if (self::$bundledStatusChanges === null) {
+                        Notification::send($recipient, new TaskStatusChanged($task, $change['from'], $change['to'], $actor?->name));
+                    } else {
+                        self::$bundledStatusChanges[$recipient->id]['user'] = $recipient;
+                        self::$bundledStatusChanges[$recipient->id]['changes'][] = $change;
+                    }
+                }
             }
 
             if ($task->wasChanged('status_id') && $task->isDone() && $task->repeat_unit !== null) {

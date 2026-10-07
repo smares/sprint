@@ -1,6 +1,7 @@
 {
     "2D color picker": "Farbfläche",
     ":name changed the status from “:from” to “:to”": ":name hat den Status von „:from“ auf „:to“ geändert",
+    ":name changed the status of :count tasks": ":name hat den Status von :count Aufgaben geändert",
     ":name commented": ":name hat kommentiert",
     ":name mentioned you in a comment": ":name hat dich in einem Kommentar erwähnt",
     ":name mentioned you in the description": ":name hat dich in der Beschreibung erwähnt",

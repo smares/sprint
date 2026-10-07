@@ -1,6 +1,8 @@
 <?php
 
+use App\CustomFieldType;
 use App\Markdown;
+use App\Models\CustomField;
 use App\Models\Tag;
 use App\Models\Task;
 use App\Models\User;
@@ -25,6 +27,9 @@ new class extends Component
     public string $assigneeId = '';
 
     public string $dueDate = '';
+
+    /** @var array<int|string, string|null> */
+    public array $fieldValues = [];
 
     public string $comment = '';
 
@@ -77,6 +82,9 @@ new class extends Component
         $this->statusId = (string) $this->task->status_id;
         $this->assigneeId = (string) ($this->task->assignee_id ?? '');
         $this->dueDate = $this->task->due_date?->format('Y-m-d') ?? '';
+        $this->fieldValues = $this->task->fieldValues
+            ->mapWithKeys(fn ($value) => [$value->custom_field_id => (string) ($value->option_id ?? $value->value)])
+            ->all();
         $this->notificationsOn = ! $this->task->isMutedBy(auth()->user());
         $this->parentId = (string) ($this->task->parent_id ?? '');
         $this->sectionTitles = $this->task->project->tasks()
@@ -92,6 +100,71 @@ new class extends Component
     public function updatedNotificationsOn(bool $value): void
     {
         $this->task->setMutedBy(auth()->user(), ! $value);
+    }
+
+    #[Computed]
+    public function customFields()
+    {
+        return $this->task->project->customFields()->with('options')->get();
+    }
+
+    /**
+     * Validation rules for the custom field values of this project.
+     *
+     * @return array<string, list<mixed>>
+     */
+    private function fieldRules(): array
+    {
+        return $this->customFields->mapWithKeys(fn (CustomField $field) => ["fieldValues.{$field->id}" => match ($field->type) {
+            CustomFieldType::Select => ['nullable', Rule::in($field->options->pluck('id')->map(fn ($id) => (string) $id)->all())],
+            CustomFieldType::Text => ['nullable', 'string', 'max:500'],
+            CustomFieldType::Number => ['nullable', 'numeric'],
+            CustomFieldType::Date => ['nullable', 'date'],
+        }])->all();
+    }
+
+    private function displayFieldValue(CustomField $field, ?string $value): string
+    {
+        return match (true) {
+            $value === null || $value === '' => '–',
+            $field->type === CustomFieldType::Select => $field->options->firstWhere('id', (int) $value)?->name ?? '–',
+            $field->type === CustomFieldType::Date => \Illuminate\Support\Carbon::parse($value)->format('d.m.Y'),
+            default => $value,
+        };
+    }
+
+    /**
+     * @param  array<int|string, string|null>  $input
+     */
+    private function saveFieldValues(array $input): void
+    {
+        $existing = $this->task->fieldValues()->get()->keyBy('custom_field_id');
+
+        foreach ($this->customFields as $field) {
+            $new = trim((string) ($input[$field->id] ?? ''));
+            $new = $new === '' ? null : $new;
+            $current = $existing->get($field->id);
+            $old = $current === null ? null : (string) ($current->option_id ?? $current->value);
+
+            if ($new === $old) {
+                continue;
+            }
+
+            if ($new === null) {
+                $current->delete();
+            } else {
+                $this->task->fieldValues()->updateOrCreate(
+                    ['custom_field_id' => $field->id],
+                    ['option_id' => $field->type === CustomFieldType::Select ? $new : null, 'value' => $field->type === CustomFieldType::Select ? null : $new],
+                );
+            }
+
+            $this->task->logActivity('field_changed', [
+                'name' => $field->name,
+                'from' => $this->displayFieldValue($field, $old),
+                'to' => $this->displayFieldValue($field, $new),
+            ]);
+        }
     }
 
     #[Computed]
@@ -370,6 +443,7 @@ new class extends Component
             'statusId' => ['required', Rule::in($this->task->project->statuses->pluck('id')->map(fn ($id) => (string) $id)->all())],
             'assigneeId' => ['nullable', Rule::in($this->users->pluck('id')->map(fn ($id) => (string) $id)->all())],
             'dueDate' => ['nullable', 'date'],
+            ...$this->fieldRules(),
             'tagIds' => ['array'],
             'tagIds.*' => ['integer', Rule::exists('tags', 'id')->where('project_id', $this->task->project_id)],
             'parentId' => ['nullable', Rule::in($this->possibleParents->pluck('id')->map(fn ($id) => (string) $id)->all())],
@@ -413,6 +487,8 @@ new class extends Component
             'assignee_id' => $validated['assigneeId'] ?: null,
             'due_date' => $validated['dueDate'] ?: null,
         ]);
+
+        $this->saveFieldValues($validated['fieldValues'] ?? []);
 
         $tagChanges = $this->task->tags()->sync($validated['tagIds']);
         $collaboratorChanges = $this->task->collaborators()->sync(
@@ -526,6 +602,30 @@ new class extends Component
             </flux:select>
             <flux:date-picker wire:model="dueDate" label="Fällig am" locale="de-DE" clearable />
         </div>
+
+        @if ($this->customFields->isNotEmpty())
+            <div class="grid gap-4 sm:grid-cols-3">
+                @foreach ($this->customFields as $field)
+                    @switch($field->type)
+                        @case(\App\CustomFieldType::Select)
+                            <flux:select wire:key="field-{{ $field->id }}" variant="listbox" wire:model="fieldValues.{{ $field->id }}" :label="$field->name" placeholder="–" clearable>
+                                @foreach ($field->options as $option)
+                                    <flux:select.option value="{{ $option->id }}">{{ $option->name }}</flux:select.option>
+                                @endforeach
+                            </flux:select>
+                            @break
+                        @case(\App\CustomFieldType::Number)
+                            <flux:input wire:key="field-{{ $field->id }}" wire:model="fieldValues.{{ $field->id }}" type="number" step="any" :label="$field->name" />
+                            @break
+                        @case(\App\CustomFieldType::Date)
+                            <flux:date-picker wire:key="field-{{ $field->id }}" wire:model="fieldValues.{{ $field->id }}" :label="$field->name" locale="de-DE" clearable />
+                            @break
+                        @default
+                            <flux:input wire:key="field-{{ $field->id }}" wire:model="fieldValues.{{ $field->id }}" :label="$field->name" />
+                    @endswitch
+                @endforeach
+            </div>
+        @endif
 
         <flux:select variant="listbox" wire:model="parentId" label="Übergeordnete Aufgabe">
             <flux:select.option value="">Keine</flux:select.option>

@@ -83,8 +83,96 @@ const registerMentionable = () => {
     }))
 }
 
-if (window.Alpine) {
+
+/**
+ * Timeline bars: drag to move, drag an edge to stretch or shrink; the new dates are saved in whole days.
+ */
+const registerTimelineBar = () => {
+    window.Alpine.data('timelineBar', (taskId) => ({
+        mode: null,
+        startX: 0,
+        delta: 0,
+        dayWidth: 0,
+        width: 0,
+        moved: false,
+
+        begin(event, mode) {
+            if (event.button !== 0) {
+                return
+            }
+
+            const grid = this.$root.parentElement
+
+            this.mode = mode
+            this.startX = event.clientX
+            this.delta = 0
+            this.moved = false
+            this.width = this.$root.getBoundingClientRect().width
+            this.dayWidth = grid.getBoundingClientRect().width / Number(grid.dataset.days)
+
+            this.$root.setPointerCapture(event.pointerId)
+            event.preventDefault()
+        },
+
+        move(event) {
+            if (this.mode === null) {
+                return
+            }
+
+            const distance = event.clientX - this.startX
+
+            if (Math.abs(distance) > 3) {
+                this.moved = true
+            }
+
+            this.delta = Math.round(distance / this.dayWidth)
+
+            const shift = this.delta * this.dayWidth
+
+            this.$root.style.justifySelf = 'start'
+            this.$root.style.transform = this.mode === 'end' ? '' : `translateX(${shift}px)`
+            this.$root.style.width = `${this.mode === 'move' ? this.width : this.width + (this.mode === 'end' ? shift : -shift)}px`
+        },
+
+        finish() {
+            if (this.mode === null) {
+                return
+            }
+
+            const mode = this.mode
+            const delta = this.delta
+
+            this.cancel()
+
+            if (delta !== 0) {
+                this.$wire.reschedule(taskId, mode, delta)
+            }
+        },
+
+        cancel() {
+            this.mode = null
+            this.$root.style.transform = ''
+            this.$root.style.width = ''
+            this.$root.style.justifySelf = ''
+        },
+
+        suppressClick(event) {
+            if (this.moved) {
+                event.preventDefault()
+                event.stopPropagation()
+                this.moved = false
+            }
+        },
+    }))
+}
+
+const registerAll = () => {
     registerMentionable()
+    registerTimelineBar()
+}
+
+if (window.Alpine) {
+    registerAll()
 } else {
-    document.addEventListener('alpine:init', registerMentionable)
+    document.addEventListener('alpine:init', registerAll)
 }

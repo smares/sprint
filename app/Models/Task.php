@@ -507,6 +507,42 @@ class Task extends Model
     }
 
     /**
+     * Move the whole task in time: start and due date shift by the same number of days.
+     */
+    public function shiftDates(int $days): void
+    {
+        $this->update([
+            'start_date' => $this->start_date?->copy()->addDays($days),
+            'due_date' => $this->due_date?->copy()->addDays($days),
+        ]);
+    }
+
+    /**
+     * Stretch or shrink the task by dragging one edge; the edges never cross.
+     *
+     * @param  'start'|'end'  $edge
+     */
+    public function resizeSpan(string $edge, int $days): void
+    {
+        $start = $this->spanStart()?->copy();
+        $end = $this->spanEnd()?->copy();
+
+        if ($start === null || $end === null) {
+            return;
+        }
+
+        if ($edge === 'start') {
+            $start = $start->addDays($days);
+            $start = $start->gt($end) ? $end->copy() : $start;
+        } else {
+            $end = $end->addDays($days);
+            $end = $end->lt($start) ? $start->copy() : $end;
+        }
+
+        $this->update(['start_date' => $start, 'due_date' => $end]);
+    }
+
+    /**
      * First day of the task's time span; tasks with only a due date last a single day.
      */
     public function spanStart(): ?Carbon

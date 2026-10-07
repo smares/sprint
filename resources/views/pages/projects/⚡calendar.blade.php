@@ -33,6 +33,32 @@ new class extends Component
         return ($parsed ?? now())->startOfMonth()->startOfDay();
     }
 
+    #[Computed]
+    public function canEdit(): bool
+    {
+        return Gate::allows('edit', $this->project);
+    }
+
+    /**
+     * Drop a task on another day: the whole task moves by the distance between the two days.
+     */
+    public function moveToDay(int|string $taskId, string $from, string $to): void
+    {
+        Gate::authorize('edit', $this->project);
+
+        $isDate = fn (string $value) => preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) === 1 && Carbon::hasFormat($value, 'Y-m-d');
+        abort_unless($isDate($from) && $isDate($to), 422);
+
+        $task = $this->project->tasks()->whereNull('parent_id')->where('is_section', false)->findOrFail($taskId);
+        $days = (int) Carbon::parse($from)->startOfDay()->diffInDays(Carbon::parse($to)->startOfDay(), false);
+
+        if ($days !== 0 && abs($days) <= 3650) {
+            $task->shiftDates($days);
+        }
+
+        unset($this->weeks, $this->undated);
+    }
+
     public function previousMonth(): void
     {
         $this->month = $this->monthStart->copy()->subMonth()->format('Y-m');
@@ -135,7 +161,15 @@ new class extends Component
 
             @foreach ($this->weeks as $week)
                 @foreach ($week as $day)
-                    <div wire:key="day-{{ $day['date']->toDateString() }}" @class([
+                    <div wire:key="day-{{ $day['date']->toDateString() }}"
+                        @if ($this->canEdit)
+                            x-data="{ over: false }"
+                            x-on:dragover.prevent="over = true"
+                            x-on:dragleave="over = false"
+                            x-on:drop.prevent="over = false; const task = JSON.parse($event.dataTransfer.getData('text/plain') || '{}'); if (task.id) { $wire.moveToDay(task.id, task.from, '{{ $day['date']->toDateString() }}') }"
+                            x-bind:class="over && 'ring-2 ring-inset ring-blue-400'"
+                        @endif
+                        @class([
                         'min-h-28 space-y-1 border-e border-b border-zinc-200 p-1.5 dark:border-zinc-700',
                         'bg-zinc-50/60 text-zinc-400 dark:bg-zinc-900/40' => ! $day['inMonth'],
                     ])>
@@ -147,6 +181,10 @@ new class extends Component
                         @foreach ($day['tasks']->take(3) as $task)
                             <a wire:key="chip-{{ $day['date']->toDateString() }}-{{ $task->id }}" href="{{ route('tasks.show', $task) }}" wire:navigate
                                style="--badge: {{ $task->status->color }}"
+                               @if ($this->canEdit)
+                                   draggable="true"
+                                   x-on:dragstart="$event.dataTransfer.setData('text/plain', JSON.stringify({ id: {{ $task->id }}, from: '{{ $day['date']->toDateString() }}' })); $event.dataTransfer.effectAllowed = 'move'"
+                               @endif
                                class="color-chip block truncate rounded px-1.5 py-0.5 text-xs hover:underline {{ $task->isDone() ? 'line-through opacity-60' : '' }}">{{ $task->title }}</a>
                         @endforeach
 

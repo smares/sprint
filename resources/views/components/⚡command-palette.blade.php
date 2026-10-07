@@ -61,6 +61,7 @@ new class extends Component
                     <flux:command.item icon="check-circle" x-on:click="Livewire.navigate('{{ route('tasks.mine') }}')">Meine Aufgaben</flux:command.item>
                     <flux:command.item icon="bell" x-on:click="Livewire.navigate('{{ route('inbox') }}')">Posteingang</flux:command.item>
                     <flux:command.item icon="magnifying-glass" x-on:click="Livewire.navigate('{{ route('search') }}')">Suche</flux:command.item>
+                    <flux:command.item icon="user" x-on:click="Livewire.navigate('{{ route('profile') }}')">Profil</flux:command.item>
                     @can('administer')
                         <flux:command.item icon="user-group" x-on:click="Livewire.navigate('{{ route('admin.teams') }}')">Teams</flux:command.item>
                         <flux:command.item icon="users" x-on:click="Livewire.navigate('{{ route('admin.users') }}')">Benutzer</flux:command.item>

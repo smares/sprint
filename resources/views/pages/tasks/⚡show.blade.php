@@ -32,6 +32,8 @@ new class extends Component
 
     public string $newTag = '';
 
+    public bool $notificationsOn = true;
+
     public string $parentId = '';
 
     /** @var array<int|string, string> */
@@ -56,6 +58,7 @@ new class extends Component
         $this->statusId = (string) $this->task->status_id;
         $this->assigneeId = (string) ($this->task->assignee_id ?? '');
         $this->dueDate = $this->task->due_date?->format('Y-m-d') ?? '';
+        $this->notificationsOn = ! $this->task->isMutedBy(auth()->user());
         $this->parentId = (string) ($this->task->parent_id ?? '');
         $this->sectionTitles = $this->task->project->tasks()
             ->where('is_section', true)
@@ -65,6 +68,11 @@ new class extends Component
         $this->collaboratorIds = $this->task->collaborators()->pluck('users.id')->map(fn ($id) => (string) $id)->all();
         $this->blockerIds = $this->task->blockers()->pluck('tasks.id')->map(fn ($id) => (string) $id)->all();
         $this->blockingIds = $this->task->blocking()->pluck('tasks.id')->map(fn ($id) => (string) $id)->all();
+    }
+
+    public function updatedNotificationsOn(bool $value): void
+    {
+        $this->task->setMutedBy(auth()->user(), ! $value);
     }
 
     #[Computed]
@@ -452,6 +460,8 @@ new class extends Component
                 <flux:pillbox.option wire:key="collaborator-{{ $user->id }}" value="{{ $user->id }}">{{ $user->name }}</flux:pillbox.option>
             @endforeach
         </flux:pillbox>
+
+        <flux:switch wire:model.live="notificationsOn" label="E-Mails zu dieser Aufgabe" description="Zuständige und Beteiligte bekommen eine Mail bei neuen Kommentaren und Statuswechseln." />
 
         <flux:pillbox wire:model="tagIds" multiple label="Tags" placeholder="Tags wählen …">
             @foreach ($this->projectTags as $tag)

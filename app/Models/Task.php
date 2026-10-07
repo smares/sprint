@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Notifications\TaskStatusChanged;
 use Database\Factories\TaskFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -9,7 +10,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 
 #[Fillable(['project_id', 'parent_id', 'is_section', 'assignee_id', 'creator_id', 'title', 'description', 'status_id', 'position', 'due_date'])]
 class Task extends Model
@@ -21,6 +24,21 @@ class Task extends Model
     {
         static::creating(function (self $task) {
             $task->status_id ??= $task->project->defaultStatus()->id;
+        });
+
+        static::updated(function (self $task) {
+            if ($task->is_section || ! $task->wasChanged('status_id')) {
+                return;
+            }
+
+            $old = TaskStatus::find($task->getOriginal('status_id'));
+            $new = $task->status;
+            $actor = auth()->user();
+
+            Notification::send(
+                $task->usersToNotify($actor),
+                new TaskStatusChanged($task, $old?->name ?? '–', $new->name, $actor?->name),
+            );
         });
     }
 
@@ -124,6 +142,42 @@ class Task extends Model
                 self::whereKey($id)->update(['position' => $index]);
             }
         });
+    }
+
+    public function notificationMutes(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'task_notification_mutes');
+    }
+
+    public function isMutedBy(User $user): bool
+    {
+        return $this->notificationMutes()->whereKey($user->getKey())->exists();
+    }
+
+    public function setMutedBy(User $user, bool $muted): void
+    {
+        if ($muted) {
+            $this->notificationMutes()->syncWithoutDetaching([$user->getKey()]);
+        } else {
+            $this->notificationMutes()->detach($user->getKey());
+        }
+    }
+
+    /**
+     * People who want to hear about this task: the assignee and all collaborators, without
+     * those who muted it and without the person who caused the event.
+     *
+     * @return Collection<int, User>
+     */
+    public function usersToNotify(?User $except = null): Collection
+    {
+        $muted = $this->notificationMutes()->pluck('users.id');
+
+        return collect([$this->assignee, ...$this->collaborators()->get()])
+            ->filter()
+            ->unique('id')
+            ->reject(fn (User $user) => $muted->contains($user->id) || $user->id === $except?->id)
+            ->values();
     }
 
     public function isBlocked(): bool

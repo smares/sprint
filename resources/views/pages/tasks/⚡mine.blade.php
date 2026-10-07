@@ -12,7 +12,7 @@ new #[Title('Meine Aufgaben')] class extends Component
     public function tasks()
     {
         return Task::query()
-            ->with('project')
+            ->with(['project', 'parent'])
             ->where(fn ($query) => $query
                 ->where('assignee_id', auth()->id())
                 ->orWhereHas('collaborators', fn ($collaborators) => $collaborators->whereKey(auth()->id()))
@@ -44,6 +44,9 @@ new #[Title('Meine Aufgaben')] class extends Component
                     <flux:table.row wire:key="task-{{ $task->id }}">
                         <flux:table.cell>
                             <a href="{{ route('tasks.show', $task) }}" wire:navigate class="font-medium hover:underline">{{ $task->title }}</a>
+                            @if ($task->parent)
+                                <flux:text size="sm" class="block">in {{ $task->parent->title }}</flux:text>
+                            @endif
                         </flux:table.cell>
                         <flux:table.cell>{{ $task->project->name }}</flux:table.cell>
                         <flux:table.cell>

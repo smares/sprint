@@ -18,6 +18,7 @@ new class extends Component
     public function columns(): array
     {
         $tasks = $this->project->tasks()
+            ->whereNull('parent_id')
             ->with(['assignee', 'collaborators', 'tags', 'blockers'])
             ->orderBy('position')
             ->orderBy('id')
@@ -29,15 +30,25 @@ new class extends Component
             ->all();
     }
 
+    /**
+     * @return array<int, array{done: int, total: int}>
+     */
+    #[Computed]
+    public function progress(): array
+    {
+        return $this->project->subtaskProgress();
+    }
+
     public function moveTask(int|string $taskId, int $position, string $group): void
     {
         $status = TaskStatus::tryFrom($group);
         abort_if($status === null, 422);
 
-        $task = $this->project->tasks()->findOrFail($taskId);
+        $task = $this->project->tasks()->whereNull('parent_id')->findOrFail($taskId);
 
         DB::transaction(function () use ($task, $status, $position) {
             $orderedIds = $this->project->tasks()
+                ->whereNull('parent_id')
                 ->where('status', $status)
                 ->whereKeyNot($task->getKey())
                 ->orderBy('position')
@@ -95,6 +106,10 @@ new class extends Component
                             <a href="{{ route('tasks.show', $task) }}" wire:navigate class="font-medium hover:underline">{{ $task->title }}</a>
                             @if ($task->isBlocked())
                                 <flux:icon.lock-closed variant="micro" class="ms-1 inline text-amber-500" title="Blockiert" />
+                            @endif
+
+                            @if ($progress = $this->progress[$task->id] ?? null)
+                                <flux:badge size="sm" icon="list-bullet" class="mt-2">{{ $progress['done'] }}/{{ $progress['total'] }}</flux:badge>
                             @endif
 
                             @if ($task->tags->isNotEmpty())

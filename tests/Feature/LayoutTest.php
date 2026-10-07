@@ -50,7 +50,7 @@ class LayoutTest extends TestCase
         foreach (['Liste', 'Kalender', 'Zeitleiste'] as $label) {
             $response->assertSee('aria-label="'.$label.'"', false);
         }
-        $response->assertSee('max-sm:sr-only', false);
+        $response->assertSee('sm:hidden', false);
     }
 
     public function test_guests_get_no_navigation(): void

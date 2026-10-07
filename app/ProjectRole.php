@@ -11,9 +11,9 @@ enum ProjectRole: string
     public function label(): string
     {
         return match ($this) {
-            self::Viewer => 'Ansehen',
-            self::Editor => 'Bearbeiten',
-            self::Admin => 'Verwalten',
+            self::Viewer => __('View'),
+            self::Editor => __('Edit'),
+            self::Admin => __('Manage'),
         };
     }
 

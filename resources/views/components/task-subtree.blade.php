@@ -9,8 +9,8 @@
         @if ($subtask->is_section)
             <li wire:key="section-{{ $subtask->id }}" wire:sort:item="{{ $subtask->id }}" class="flex items-center gap-2 border-b border-zinc-200 pb-1 pt-3 dark:border-zinc-700">
                 @if ($canEdit)
-                    <flux:input size="sm" variant="filled" class="max-w-xs font-semibold" wire:model.blur="sectionTitles.{{ $subtask->id }}" aria-label="Überschrift" />
-                    <flux:button size="xs" variant="ghost" icon="trash" wire:click="deleteSection({{ $subtask->id }})" aria-label="Überschrift löschen" />
+                    <flux:input size="sm" variant="filled" class="max-w-xs font-semibold" wire:model.blur="sectionTitles.{{ $subtask->id }}" aria-label="{{ __('Heading') }}" />
+                    <flux:button size="xs" variant="ghost" icon="trash" wire:click="deleteSection({{ $subtask->id }})" aria-label="{{ __('Delete heading') }}" />
                 @else
                     <flux:heading size="sm">{{ $subtask->title }}</flux:heading>
                 @endif
@@ -36,8 +36,8 @@
 
                 @if ($canEdit)
                     <form wire:submit="addSubtask({{ $subtask->id }})" class="ms-8 mt-1 flex items-center gap-2">
-                        <flux:input size="sm" wire:model="newSubtaskTitles.{{ $subtask->id }}" placeholder="Subtask zu „{{ \Illuminate\Support\Str::limit($subtask->title, 30) }}“ …" class="max-w-xs" />
-                        <flux:button type="button" size="xs" variant="ghost" icon="bars-3-bottom-left" wire:click="addSection({{ $subtask->id }})" aria-label="Überschrift hinzufügen" />
+                        <flux:input size="sm" wire:model="newSubtaskTitles.{{ $subtask->id }}" placeholder="{{ __('Subtask for “:title” …', ['title' => \Illuminate\Support\Str::limit($subtask->title, 30)]) }}" class="max-w-xs" />
+                        <flux:button type="button" size="xs" variant="ghost" icon="bars-3-bottom-left" wire:click="addSection({{ $subtask->id }})" aria-label="{{ __('Add heading') }}" />
                     </form>
                 @endif
             </li>

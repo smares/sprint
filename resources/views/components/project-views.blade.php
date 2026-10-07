@@ -2,10 +2,10 @@
 
 @php
     $views = [
-        'list' => ['Liste', 'list-bullet', 'projects.show'],
-        'board' => ['Board', 'view-columns', 'projects.board'],
-        'calendar' => ['Kalender', 'calendar-days', 'projects.calendar'],
-        'timeline' => ['Zeitleiste', 'arrow-turn-down-right', 'projects.timeline'],
+        'list' => [__('List'), 'list-bullet', 'projects.show'],
+        'board' => [__('Board'), 'view-columns', 'projects.board'],
+        'calendar' => [__('Calendar'), 'calendar-days', 'projects.calendar'],
+        'timeline' => [__('Timeline'), 'arrow-turn-down-right', 'projects.timeline'],
     ];
 @endphp
 

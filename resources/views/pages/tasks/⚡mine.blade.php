@@ -6,7 +6,7 @@ use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Title('Meine Aufgaben')] class extends Component
+new #[Title('My tasks')] class extends Component
 {
     private const PAGE_SIZE = 50;
 
@@ -50,18 +50,18 @@ new #[Title('Meine Aufgaben')] class extends Component
 ?>
 
 <div>
-    <flux:heading size="xl" class="mb-6">Meine Aufgaben</flux:heading>
+    <flux:heading size="xl" class="mb-6">{{ __('My tasks') }}</flux:heading>
 
     @if ($this->tasks->isEmpty())
-        <flux:callout icon="check-circle" heading="Alles erledigt" text="Dir sind keine offenen Aufgaben zugewiesen oder du bist an keiner beteiligt." />
+        <flux:callout icon="check-circle" :heading="__('All done')" :text="__('You have no open tasks assigned or none you are involved in.')" />
     @else
         <div class="overflow-x-auto">
         <flux:table>
             <flux:table.columns>
-                <flux:table.column>Aufgabe</flux:table.column>
-                <flux:table.column class="max-md:hidden">Projekt</flux:table.column>
-                <flux:table.column>Status</flux:table.column>
-                <flux:table.column>Fällig</flux:table.column>
+                <flux:table.column>{{ __('Task') }}</flux:table.column>
+                <flux:table.column class="max-md:hidden">{{ __('Project') }}</flux:table.column>
+                <flux:table.column>{{ __('Status') }}</flux:table.column>
+                <flux:table.column>{{ __('Due') }}</flux:table.column>
             </flux:table.columns>
             <flux:table.rows>
                 @foreach ($this->tasks as $task)
@@ -69,7 +69,7 @@ new #[Title('Meine Aufgaben')] class extends Component
                         <flux:table.cell class="min-w-44 whitespace-normal">
                             <a href="{{ route('tasks.show', $task) }}" wire:navigate class="font-medium hover:underline">{{ $task->title }}</a>
                             @if ($task->parent)
-                                <flux:text size="sm" class="block">in {{ $task->parent->title }}</flux:text>
+                                <flux:text size="sm" class="block">{{ __('in :title', ['title' => $task->parent->title]) }}</flux:text>
                             @endif
                         </flux:table.cell>
                         <flux:table.cell class="max-md:hidden">{{ $task->project->name }}</flux:table.cell>
@@ -78,7 +78,7 @@ new #[Title('Meine Aufgaben')] class extends Component
                         </flux:table.cell>
                         <flux:table.cell>
                             @if ($task->due_date)
-                                <flux:text :class="$task->isOverdue() ? 'text-red-500' : ''">{{ $task->due_date->format('d.m.Y') }}</flux:text>
+                                <flux:text :class="$task->isOverdue() ? 'text-red-500' : ''">{{ $task->due_date->isoFormat('L') }}</flux:text>
                             @else
                                 –
                             @endif
@@ -91,8 +91,8 @@ new #[Title('Meine Aufgaben')] class extends Component
 
         @if ($this->totalTasks > $this->tasks->count())
             <div wire:intersect="loadMore" class="mt-4 flex items-center justify-center gap-3">
-                <flux:text size="sm">{{ $this->tasks->count() }} von {{ $this->totalTasks }} Aufgaben</flux:text>
-                <flux:button size="sm" wire:click="loadMore">Mehr laden</flux:button>
+                <flux:text size="sm">{{ __(':shown of :total tasks', ['shown' => $this->tasks->count(), 'total' => $this->totalTasks]) }}</flux:text>
+                <flux:button size="sm" wire:click="loadMore">{{ __('Load more') }}</flux:button>
             </div>
         @endif
     @endif

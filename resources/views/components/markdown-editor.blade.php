@@ -7,13 +7,13 @@
         @endif
 
         <div class="flex gap-1 text-sm">
-            <button type="button" x-on:click="tab = 'write'" x-bind:class="tab === 'write' ? 'font-semibold underline' : 'text-zinc-500'">Schreiben</button>
+            <button type="button" x-on:click="tab = 'write'" x-bind:class="tab === 'write' ? 'font-semibold underline' : 'text-zinc-500'">{{ __('Write') }}</button>
             <span class="text-zinc-300">|</span>
             <button
                 type="button"
                 x-on:click="tab = 'preview'; loading = true; $wire.previewMarkdown($root.querySelector('textarea').value).then(result => { html = result; loading = false })"
                 x-bind:class="tab === 'preview' ? 'font-semibold underline' : 'text-zinc-500'"
-            >Vorschau</button>
+            >{{ __('Preview') }}</button>
         </div>
     </div>
 
@@ -23,7 +23,7 @@
         <ul x-show="open && matches.length" x-cloak class="absolute z-20 mt-1 max-h-64 w-72 overflow-auto rounded-lg border border-zinc-200 bg-white p-1 text-sm shadow-lg dark:border-zinc-700 dark:bg-zinc-800" role="listbox">
             <template x-for="(item, index) in matches" x-bind:key="item.type + item.id">
                 <li>
-                    <div x-show="index === 0 || matches[index - 1].type !== item.type" class="px-2 pt-1 text-xs font-semibold uppercase text-zinc-400" x-text="item.type === 'user' ? 'Personen' : 'Aufgaben'"></div>
+                    <div x-show="index === 0 || matches[index - 1].type !== item.type" class="px-2 pt-1 text-xs font-semibold uppercase text-zinc-400" x-text="item.type === 'user' ? @js(__('People')) : @js(__('Tasks'))"></div>
                     <button
                         type="button"
                         role="option"
@@ -38,7 +38,7 @@
     </div>
 
     <div x-show="tab === 'preview'" x-cloak class="min-h-24 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
-        <flux:text x-show="loading">Lädt …</flux:text>
-        <div x-show="!loading" class="markdown" x-html="html || '<em>Nichts zu zeigen.</em>'"></div>
+        <flux:text x-show="loading">{{ __('Loading...') }}</flux:text>
+        <div x-show="!loading" class="markdown" x-html="html || '<em>' + @js(__('Nothing to show.')) + '</em>'"></div>
     </div>
 </div>

@@ -60,7 +60,7 @@ new #[Title('Teams')] class extends Component
     {
         $validated = $this->validate([
             'newName' => ['required', 'string', 'max:100', 'unique:teams,name'],
-        ], attributes: ['newName' => 'Name']);
+        ], attributes: ['newName' => __('Name')]);
 
         Team::create(['name' => trim($validated['newName'])]);
 
@@ -78,7 +78,7 @@ new #[Title('Teams')] class extends Component
 
         if (! $valid) {
             $this->names[$teamId] = $team->name;
-            Flux::toast(variant: 'danger', text: 'Der Name ist leer, zu lang oder schon vergeben.');
+            Flux::toast(variant: 'danger', text: __('The name is empty, too long or already taken.'));
 
             return;
         }
@@ -94,7 +94,7 @@ new #[Title('Teams')] class extends Component
 
         $this->validate([
             "newMembers.$teamId" => ['required', Rule::exists('users', 'id')],
-        ], attributes: ["newMembers.$teamId" => 'Person']);
+        ], attributes: ["newMembers.$teamId" => __('Person')]);
 
         $team->users()->syncWithoutDetaching([(int) $userId]);
 
@@ -127,16 +127,16 @@ new #[Title('Teams')] class extends Component
 ?>
 
 <div class="max-w-3xl">
-    <flux:heading size="xl" class="mb-1">Teams</flux:heading>
-    <flux:text class="mb-6">Ein Team ist eine Gruppe von Personen. In einem Projekt unter <em>Mitglieder</em> gibst du einem ganzen Team auf einmal Zugriff.</flux:text>
+    <flux:heading size="xl" class="mb-1">{{ __('Teams') }}</flux:heading>
+    <flux:text class="mb-6">{!! __('A team is a group of people. In a project under <em>Members</em> you give a whole team access at once.') !!}</flux:text>
 
     <div class="space-y-4">
         @forelse ($this->teams as $team)
             <flux:card wire:key="team-{{ $team->id }}" class="space-y-3">
                 <div class="flex items-center gap-3">
-                    <flux:input size="sm" wire:model.blur="names.{{ $team->id }}" aria-label="Name des Teams" class="max-w-xs font-semibold" />
-                    <flux:text size="sm" class="flex-1">{{ $team->projects_count }} {{ $team->projects_count === 1 ? 'Projekt' : 'Projekte' }}</flux:text>
-                    <flux:button size="xs" variant="ghost" icon="trash" wire:click="confirmDelete({{ $team->id }})" aria-label="Team löschen" />
+                    <flux:input size="sm" wire:model.blur="names.{{ $team->id }}" aria-label="{{ __('Team name') }}" class="max-w-xs font-semibold" />
+                    <flux:text size="sm" class="flex-1">{{ trans_choice('{0} :count projects|{1} :count project|[2,*] :count projects', $team->projects_count) }}</flux:text>
+                    <flux:button size="xs" variant="ghost" icon="trash" wire:click="confirmDelete({{ $team->id }})" aria-label="{{ __('Delete team') }}" />
                 </div>
 
                 <div class="flex flex-wrap gap-2">
@@ -146,39 +146,39 @@ new #[Title('Teams')] class extends Component
                             <flux:badge.close wire:click="removeMember({{ $team->id }}, {{ $member->id }})" />
                         </flux:badge>
                     @empty
-                        <flux:text size="sm">Noch keine Personen.</flux:text>
+                        <flux:text size="sm">{{ __('No people yet.') }}</flux:text>
                     @endforelse
                 </div>
 
                 <form wire:submit="addMember({{ $team->id }})" class="flex items-end gap-2">
-                    <flux:select size="sm" variant="listbox" searchable wire:model="newMembers.{{ $team->id }}" placeholder="Person hinzufügen …" class="max-w-xs">
+                    <flux:select size="sm" variant="listbox" searchable wire:model="newMembers.{{ $team->id }}" placeholder="{{ __('Add person …') }}" class="max-w-xs">
                         @foreach ($this->users->reject(fn ($user) => $team->users->contains('id', $user->id)) as $candidate)
                             <flux:select.option value="{{ $candidate->id }}">{{ $candidate->name }}</flux:select.option>
                         @endforeach
                     </flux:select>
-                    <flux:button size="sm" type="submit" icon="plus">Hinzufügen</flux:button>
+                    <flux:button size="sm" type="submit" icon="plus">{{ __('Add') }}</flux:button>
                 </form>
                 @error('newMembers.'.$team->id) <flux:text class="text-red-500">{{ $message }}</flux:text> @enderror
             </flux:card>
         @empty
-            <flux:text>Es gibt noch keine Teams.</flux:text>
+            <flux:text>{{ __('There are no teams yet.') }}</flux:text>
         @endforelse
     </div>
 
     <form wire:submit="create" class="mt-8 flex items-end gap-2">
-        <flux:input wire:model="newName" label="Neues Team" placeholder="z. B. Entwicklung" class="max-w-xs" />
-        <flux:button type="submit" icon="plus">Anlegen</flux:button>
+        <flux:input wire:model="newName" :label="__('New team')" placeholder="{{ __('e.g. Engineering') }}" class="max-w-xs" />
+        <flux:button type="submit" icon="plus">{{ __('Create team') }}</flux:button>
     </form>
     @error('newName') <flux:text class="mt-1 text-red-500">{{ $message }}</flux:text> @enderror
 
     <flux:modal name="delete-team" class="min-w-[22rem]">
         <div class="space-y-6">
-            <flux:heading size="lg">Team löschen?</flux:heading>
-            <flux:text>Das Team und sein Zugriff auf Projekte werden entfernt. Die Personen selbst bleiben bestehen.</flux:text>
+            <flux:heading size="lg">{{ __('Delete team?') }}</flux:heading>
+            <flux:text>{{ __('The team and its access to projects will be removed. The people themselves remain.') }}</flux:text>
             <div class="flex gap-2">
                 <flux:spacer />
-                <flux:modal.close><flux:button variant="ghost">Abbrechen</flux:button></flux:modal.close>
-                <flux:button variant="danger" wire:click="delete">Löschen</flux:button>
+                <flux:modal.close><flux:button variant="ghost">{{ __('Cancel') }}</flux:button></flux:modal.close>
+                <flux:button variant="danger" wire:click="delete">{{ __('Delete') }}</flux:button>
             </div>
         </div>
     </flux:modal>

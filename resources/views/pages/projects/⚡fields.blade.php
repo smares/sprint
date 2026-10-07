@@ -84,7 +84,7 @@ new class extends Component
         $validated = $this->validate([
             'newName' => ['required', 'string', 'max:100'],
             'newType' => ['required', Rule::enum(CustomFieldType::class)],
-        ], attributes: ['newName' => 'Name', 'newType' => 'Typ']);
+        ], attributes: ['newName' => __('Name'), 'newType' => __('Type')]);
 
         $this->project->customFields()->create([
             'name' => trim($validated['newName']),
@@ -153,7 +153,7 @@ new class extends Component
 
         $this->validate([
             "newOptions.$fieldId" => ['required', 'string', 'max:100'],
-        ], attributes: ["newOptions.$fieldId" => 'Name']);
+        ], attributes: ["newOptions.$fieldId" => __('Name')]);
 
         $field->options()->create([
             'name' => trim($this->newOptions[$fieldId]),
@@ -219,30 +219,30 @@ new class extends Component
 
     public function rendering($view): void
     {
-        $view->title('Felder – '.$this->project->name);
+        $view->title(__('Fields – :project', ['project' => $this->project->name]));
     }
 };
 ?>
 
 <div class="max-w-3xl">
     <flux:breadcrumbs class="mb-4">
-        <flux:breadcrumbs.item href="{{ route('projects.index') }}" wire:navigate>Projekte</flux:breadcrumbs.item>
+        <flux:breadcrumbs.item href="{{ route('projects.index') }}" wire:navigate>{{ __('Projects') }}</flux:breadcrumbs.item>
         <flux:breadcrumbs.item href="{{ route('projects.show', $project) }}" wire:navigate>{{ $project->name }}</flux:breadcrumbs.item>
-        <flux:breadcrumbs.item>Felder</flux:breadcrumbs.item>
+        <flux:breadcrumbs.item>{{ __('Fields') }}</flux:breadcrumbs.item>
     </flux:breadcrumbs>
 
-    <flux:heading size="xl" class="mb-1">Felder</flux:heading>
-    <flux:text class="mb-6">Eigene Felder wie <em>Priorität</em> oder <em>Aufwand</em> erscheinen an jeder Aufgabe dieses Projekts. Die Reihenfolge bestimmt die Anzeige.</flux:text>
+    <flux:heading size="xl" class="mb-1">{{ __('Fields') }}</flux:heading>
+    <flux:text class="mb-6">{!! __('Custom fields like <em>Priority</em> or <em>Effort</em> appear on every task in this project. Their order determines how they are displayed.') !!}</flux:text>
 
     <ul class="space-y-3" wire:sort="moveField">
         @foreach ($this->fields as $field)
             <li wire:key="field-{{ $field->id }}" wire:sort:item="{{ $field->id }}" class="space-y-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
                 <div class="flex items-center gap-3">
                     <flux:icon.bars-2 variant="micro" class="shrink-0 text-zinc-400" />
-                    <flux:input size="sm" wire:model.blur="names.{{ $field->id }}" aria-label="Name" class="min-w-0 flex-1" />
+                    <flux:input size="sm" wire:model.blur="names.{{ $field->id }}" aria-label="{{ __('Name') }}" class="min-w-0 flex-1" />
                     <flux:badge size="sm">{{ $field->type->label() }}</flux:badge>
-                    <flux:checkbox wire:model.live="inList.{{ $field->id }}" label="In der Liste" />
-                    <flux:button size="xs" variant="ghost" icon="trash" wire:click="confirmDelete({{ $field->id }})" aria-label="Feld löschen" />
+                    <flux:checkbox wire:model.live="inList.{{ $field->id }}" :label="__('In list')" />
+                    <flux:button size="xs" variant="ghost" icon="trash" wire:click="confirmDelete({{ $field->id }})" aria-label="{{ __('Delete field') }}" />
                 </div>
 
                 @if ($field->type === \App\CustomFieldType::Select)
@@ -250,16 +250,16 @@ new class extends Component
                         @foreach ($field->options as $option)
                             <li wire:key="option-{{ $option->id }}" wire:sort:item="{{ $option->id }}" class="flex items-center gap-2">
                                 <x-color-badge size="sm" :color="$option->color" class="shrink-0">&nbsp;</x-color-badge>
-                                <flux:input size="sm" wire:model.blur="optionNames.{{ $option->id }}" aria-label="Option" class="min-w-0 flex-1" />
-                                <flux:color-picker type="button" size="sm" with-confirmation :swatches="\App\Color::SWATCHES" wire:model.live="optionColors.{{ $option->id }}" aria-label="Farbe" />
-                                <flux:button size="xs" variant="ghost" icon="x-mark" wire:click="removeOption({{ $option->id }})" aria-label="Option entfernen" />
+                                <flux:input size="sm" wire:model.blur="optionNames.{{ $option->id }}" aria-label="{{ __('Option') }}" class="min-w-0 flex-1" />
+                                <flux:color-picker type="button" size="sm" with-confirmation :swatches="\App\Color::SWATCHES" wire:model.live="optionColors.{{ $option->id }}" aria-label="{{ __('Color') }}" />
+                                <flux:button size="xs" variant="ghost" icon="x-mark" wire:click="removeOption({{ $option->id }})" aria-label="{{ __('Remove option') }}" />
                             </li>
                         @endforeach
                     </ul>
 
                     <form wire:submit="addOption({{ $field->id }})" class="ms-6 flex items-center gap-2">
-                        <flux:input size="sm" wire:model="newOptions.{{ $field->id }}" placeholder="Neue Option …" class="max-w-xs" />
-                        <flux:button size="sm" type="submit" icon="plus">Hinzufügen</flux:button>
+                        <flux:input size="sm" wire:model="newOptions.{{ $field->id }}" placeholder="{{ __('New option …') }}" class="max-w-xs" />
+                        <flux:button size="sm" type="submit" icon="plus">{{ __('Add') }}</flux:button>
                     </form>
                     @error('newOptions.'.$field->id) <flux:text class="ms-6 text-red-500">{{ $message }}</flux:text> @enderror
                 @endif
@@ -268,24 +268,24 @@ new class extends Component
     </ul>
 
     <form wire:submit="add" class="mt-6 flex items-end gap-2">
-        <flux:input wire:model="newName" label="Neues Feld" placeholder="z. B. Aufwand" class="min-w-0 flex-1" />
-        <flux:select variant="listbox" wire:model="newType" label="Typ" class="max-w-36">
+        <flux:input wire:model="newName" :label="__('New field')" placeholder="{{ __('e.g. Effort') }}" class="min-w-0 flex-1" />
+        <flux:select variant="listbox" wire:model="newType" :label="__('Type')" class="max-w-36">
             @foreach (\App\CustomFieldType::cases() as $type)
                 <flux:select.option value="{{ $type->value }}">{{ $type->label() }}</flux:select.option>
             @endforeach
         </flux:select>
-        <flux:button type="submit" icon="plus">Anlegen</flux:button>
+        <flux:button type="submit" icon="plus">{{ __('Create') }}</flux:button>
     </form>
     @error('newName') <flux:text class="mt-1 text-red-500">{{ $message }}</flux:text> @enderror
 
     <flux:modal name="delete-field" class="min-w-[22rem]">
         <div class="space-y-6">
-            <flux:heading size="lg">Feld löschen?</flux:heading>
-            <flux:text>Das Feld und alle Werte, die an den Aufgaben darin eingetragen sind, werden gelöscht.</flux:text>
+            <flux:heading size="lg">{{ __('Delete field?') }}</flux:heading>
+            <flux:text>{{ __('The field and all values entered in it on tasks will be deleted.') }}</flux:text>
             <div class="flex gap-2">
                 <flux:spacer />
-                <flux:modal.close><flux:button variant="ghost">Abbrechen</flux:button></flux:modal.close>
-                <flux:button variant="danger" wire:click="delete">Löschen</flux:button>
+                <flux:modal.close><flux:button variant="ghost">{{ __('Cancel') }}</flux:button></flux:modal.close>
+                <flux:button variant="danger" wire:click="delete">{{ __('Delete') }}</flux:button>
             </div>
         </div>
     </flux:modal>

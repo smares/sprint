@@ -29,9 +29,9 @@ class TaskStatus extends Model
     public static function defaults(): array
     {
         return [
-            ['name' => 'Offen', 'color' => '#71717a', 'position' => 0, 'is_done' => false],
-            ['name' => 'In Arbeit', 'color' => '#3b82f6', 'position' => 1, 'is_done' => false],
-            ['name' => 'Erledigt', 'color' => '#22c55e', 'position' => 2, 'is_done' => true],
+            ['name' => __('Open'), 'color' => '#71717a', 'position' => 0, 'is_done' => false],
+            ['name' => __('In progress'), 'color' => '#3b82f6', 'position' => 1, 'is_done' => false],
+            ['name' => __('Done'), 'color' => '#22c55e', 'position' => 2, 'is_done' => true],
         ];
     }
 

@@ -52,7 +52,7 @@ new class extends Component
         Gate::authorize('edit', $this->project);
 
         $this->imported = null;
-        $this->validate(['file' => ['required', 'file', 'max:'.TaskCsv::MAX_KILOBYTES]], [], ['file' => 'Datei']);
+        $this->validate(['file' => ['required', 'file', 'max:'.TaskCsv::MAX_KILOBYTES]], [], ['file' => __('File')]);
 
         ['plan' => $plan, 'error' => $error] = $this->planFromFile();
 
@@ -90,18 +90,18 @@ new class extends Component
         [$code, $detail] = array_pad(explode(':', $entry['message'], 2), 2, '');
 
         $text = match ($code) {
-            'no-title' => 'Kein Titel',
-            'title-too-long' => 'Titel länger als 255 Zeichen',
-            'too-many-rows' => 'Mehr als '.TaskCsv::MAX_ROWS.' Zeilen, der Rest wird nicht importiert',
-            'unknown-status' => "Status „{$detail}“ gibt es nicht, es gilt der erste offene",
-            'unknown-person' => "„{$detail}“ ist kein aktives Mitglied des Projekts und wird ignoriert",
-            'bad-date' => "Datum „{$detail}“ nicht lesbar und wird ignoriert",
-            'start-after-due' => 'Beginn liegt nach der Fälligkeit und wird ignoriert',
-            'bad-field' => "Feldwert „{$detail}“ passt nicht und wird ignoriert",
+            'no-title' => __('No title'),
+            'title-too-long' => __('Title longer than 255 characters'),
+            'too-many-rows' => __('More than :max rows, the rest is not imported', ['max' => TaskCsv::MAX_ROWS]),
+            'unknown-status' => __('Status “:value” does not exist, the first open one applies', ['value' => $detail]),
+            'unknown-person' => __('“:value” is not an active member of the project and is ignored', ['value' => $detail]),
+            'bad-date' => __('Date “:value” is not readable and is ignored', ['value' => $detail]),
+            'start-after-due' => __('Start is after the due date and is ignored'),
+            'bad-field' => __('Field value “:value” does not fit and is ignored', ['value' => $detail]),
             default => $entry['message'],
         };
 
-        return $entry['line'] > 0 ? "Zeile {$entry['line']}: {$text}" : $text;
+        return $entry['line'] > 0 ? __('Row :line: :text', ['line' => $entry['line'], 'text' => $text]) : $text;
     }
 };
 ?>
@@ -109,34 +109,34 @@ new class extends Component
 <flux:modal name="project-import" class="w-full max-w-lg" x-on:close="$wire.startOver()">
     <div class="space-y-5">
         <div>
-            <flux:heading size="lg">Aufgaben aus CSV importieren</flux:heading>
-            <flux:text class="mt-1">Lade eine CSV-Datei hoch, zum Beispiel einen Export aus Sprint oder aus Asana. Jede Zeile wird zu einer neuen Aufgabe; vorhandene Aufgaben ändern sich nicht.</flux:text>
+            <flux:heading size="lg">{{ __('Import tasks from CSV') }}</flux:heading>
+            <flux:text class="mt-1">{{ __('Upload a CSV file, for example an export from Sprint or Asana. Each row becomes a new task; existing tasks are not changed.') }}</flux:text>
         </div>
 
         @if ($imported !== null)
-            <flux:callout variant="success" icon="check-circle" :heading="$imported === 1 ? 'Eine Aufgabe importiert' : $imported.' Aufgaben importiert'" />
+            <flux:callout variant="success" icon="check-circle" :heading="trans_choice('{1} One task imported|[0,*] :count tasks imported', $imported)" />
 
             <div class="flex justify-end gap-2">
-                <flux:button variant="ghost" wire:click="startOver">Noch eine Datei</flux:button>
-                <flux:modal.close><flux:button variant="primary" x-on:click="$dispatch('tasks-imported')">Fertig</flux:button></flux:modal.close>
+                <flux:button variant="ghost" wire:click="startOver">{{ __('Another file') }}</flux:button>
+                <flux:modal.close><flux:button variant="primary" x-on:click="$dispatch('tasks-imported')">{{ __('Done') }}</flux:button></flux:modal.close>
             </div>
         @else
-            <flux:file-upload wire:model="file" label="CSV-Datei">
-                <flux:file-upload.dropzone heading="Datei hierher ziehen oder klicken" text="CSV bis {{ intdiv(TaskCsv::MAX_KILOBYTES, 1024) }} MB, höchstens {{ TaskCsv::MAX_ROWS }} Zeilen" inline />
+            <flux:file-upload wire:model="file" :label="__('CSV file')">
+                <flux:file-upload.dropzone :heading="__('Drag a file here or click')" text="{{ __('CSV up to :size MB, at most :rows rows', ['size' => intdiv(TaskCsv::MAX_KILOBYTES, 1024), 'rows' => TaskCsv::MAX_ROWS]) }}" inline />
             </flux:file-upload>
             @error('file') <flux:text class="text-red-500">{{ $message }}</flux:text> @enderror
 
             @if ($report)
                 @if ($report['error'] === 'no-title')
-                    <flux:callout variant="danger" icon="exclamation-triangle" heading="Keine Titel-Spalte gefunden" text="Die erste Zeile braucht eine Spalte „title“ (oder „Name“, „Titel“, „Aufgabe“)." />
+                    <flux:callout variant="danger" icon="exclamation-triangle" :heading="__('No title column found')" :text="__('The first row needs a column “title” (or “Name”, “Titel”, “Aufgabe”).')" />
                 @elseif ($report['error'] === 'empty')
-                    <flux:callout variant="danger" icon="exclamation-triangle" heading="Die Datei ist leer" />
+                    <flux:callout variant="danger" icon="exclamation-triangle" :heading="__('The file is empty')" />
                 @else
-                    <flux:callout :variant="$report['count'] > 0 ? 'success' : 'warning'" icon="document-text" :heading="$report['count'] === 1 ? 'Eine Aufgabe bereit zum Import' : $report['count'].' Aufgaben bereit zum Import'" />
+                    <flux:callout :variant="$report['count'] > 0 ? 'success' : 'warning'" icon="document-text" :heading="trans_choice('{1} One task ready to import|[0,*] :count tasks ready to import', $report['count'])" />
 
                     @if ($report['errors'])
                         <div>
-                            <flux:heading size="sm">Diese Zeilen werden übersprungen ({{ count($report['errors']) }})</flux:heading>
+                            <flux:heading size="sm">{{ __('These rows are skipped (:count)', ['count' => count($report['errors'])]) }}</flux:heading>
                             <ul class="mt-1 list-inside list-disc text-sm text-red-600 dark:text-red-400">
                                 @foreach (array_slice($report['errors'], 0, 8) as $entry)
                                     <li>{{ $this->describe($entry) }}</li>
@@ -147,14 +147,14 @@ new class extends Component
 
                     @if ($report['warnings'])
                         <div>
-                            <flux:heading size="sm">Hinweise ({{ count($report['warnings']) }})</flux:heading>
+                            <flux:heading size="sm">{{ __('Notes (:count)', ['count' => count($report['warnings'])]) }}</flux:heading>
                             <ul class="mt-1 list-inside list-disc text-sm text-amber-700 dark:text-amber-400">
                                 @foreach (array_slice($report['warnings'], 0, 8) as $entry)
                                     <li>{{ $this->describe($entry) }}</li>
                                 @endforeach
                             </ul>
                             @if (count($report['warnings']) > 8)
-                                <flux:text size="sm" class="mt-1">… und {{ count($report['warnings']) - 8 }} weitere</flux:text>
+                                <flux:text size="sm" class="mt-1">{{ __('… and :count more', ['count' => count($report['warnings']) - 8]) }}</flux:text>
                             @endif
                         </div>
                     @endif
@@ -162,8 +162,8 @@ new class extends Component
             @endif
 
             <div class="flex justify-end gap-2">
-                <flux:modal.close><flux:button variant="ghost">Abbrechen</flux:button></flux:modal.close>
-                <flux:button variant="primary" wire:click="import" :disabled="! $report || ($report['count'] ?? 0) === 0">Importieren</flux:button>
+                <flux:modal.close><flux:button variant="ghost">{{ __('Cancel') }}</flux:button></flux:modal.close>
+                <flux:button variant="primary" wire:click="import" :disabled="! $report || ($report['count'] ?? 0) === 0">{{ __('Import') }}</flux:button>
             </div>
         @endif
     </div>

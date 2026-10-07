@@ -10,7 +10,7 @@ use Laravel\Fortify\Fortify;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Title('Anmelden')] class extends Component
+new #[Title('Sign in')] class extends Component
 {
     private const CHALLENGE_MINUTES = 5;
 
@@ -44,7 +44,7 @@ new #[Title('Anmelden')] class extends Component
 
         if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
             throw ValidationException::withMessages([
-                'email' => 'Zu viele Versuche. Bitte in '.RateLimiter::availableIn($throttleKey).' Sekunden erneut versuchen.',
+                'email' => __('Too many attempts. Please try again in :seconds seconds.', ['seconds' => RateLimiter::availableIn($throttleKey)]),
             ]);
         }
 
@@ -55,14 +55,14 @@ new #[Title('Anmelden')] class extends Component
         if ($user === null || ! $provider->validateCredentials($user, $credentials)) {
             RateLimiter::hit($throttleKey);
 
-            throw ValidationException::withMessages(['email' => 'E-Mail oder Passwort ist falsch.']);
+            throw ValidationException::withMessages(['email' => __('Email or password is incorrect.')]);
         }
 
         if (! $user->isActive()) {
             RateLimiter::hit($throttleKey);
 
             // Only somebody who knows the password learns that the account was deactivated.
-            throw ValidationException::withMessages(['email' => 'Dieses Konto wurde deaktiviert. Bitte wende dich an einen Administrator.']);
+            throw ValidationException::withMessages(['email' => __('This account has been deactivated. Please contact an administrator.')]);
         }
 
         RateLimiter::clear($throttleKey);
@@ -90,14 +90,14 @@ new #[Title('Anmelden')] class extends Component
         if ($user === null) {
             $this->cancelChallenge();
 
-            throw ValidationException::withMessages(['code' => 'Die Anmeldung ist abgelaufen. Bitte noch einmal von vorn.']);
+            throw ValidationException::withMessages(['code' => __('Your sign-in has expired. Please start over.')]);
         }
 
         $throttleKey = 'two-factor|'.$user->getKey().'|'.request()->ip();
 
         if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
             throw ValidationException::withMessages([
-                'code' => 'Zu viele Versuche. Bitte in '.RateLimiter::availableIn($throttleKey).' Sekunden erneut versuchen.',
+                'code' => __('Too many attempts. Please try again in :seconds seconds.', ['seconds' => RateLimiter::availableIn($throttleKey)]),
             ]);
         }
 
@@ -105,8 +105,8 @@ new #[Title('Anmelden')] class extends Component
             RateLimiter::hit($throttleKey);
 
             throw ValidationException::withMessages([$this->useRecoveryCode ? 'recoveryCode' : 'code' => $this->useRecoveryCode
-                ? 'Dieser Wiederherstellungscode stimmt nicht.'
-                : 'Der Code stimmt nicht.']);
+                ? __('This recovery code is incorrect.')
+                : __('The code is incorrect.')]);
         }
 
         RateLimiter::clear($throttleKey);
@@ -170,27 +170,27 @@ new #[Title('Anmelden')] class extends Component
 ?>
 
 <div class="mx-auto mt-24 max-w-sm px-4">
-    <flux:heading size="xl" class="mb-6">Anmelden</flux:heading>
+    <flux:heading size="xl" class="mb-6">{{ __('Sign in') }}</flux:heading>
 
     @if ($needsCode)
         <form wire:submit="confirmCode" class="space-y-6">
             @if ($useRecoveryCode)
-                <flux:input wire:model="recoveryCode" label="Wiederherstellungscode" description="Jeder Code gilt nur einmal." autofocus autocomplete="off" />
+                <flux:input wire:model="recoveryCode" :label="__('Recovery code')" :description="__('Each code can only be used once.')" autofocus autocomplete="off" />
             @else
-                <flux:input wire:model="code" label="Code aus der Authenticator-App" inputmode="numeric" autofocus autocomplete="one-time-code" />
+                <flux:input wire:model="code" :label="__('Code from the authenticator app')" inputmode="numeric" autofocus autocomplete="one-time-code" />
             @endif
-            <flux:button type="submit" variant="primary" class="w-full">Bestätigen</flux:button>
+            <flux:button type="submit" variant="primary" class="w-full">{{ __('Confirm') }}</flux:button>
             <div class="flex justify-between">
-                <flux:button type="button" variant="subtle" size="sm" wire:click="toggleRecoveryCode">{{ $useRecoveryCode ? 'Code aus der App verwenden' : 'Wiederherstellungscode verwenden' }}</flux:button>
-                <flux:button type="button" variant="subtle" size="sm" wire:click="cancelChallenge">Abbrechen</flux:button>
+                <flux:button type="button" variant="subtle" size="sm" wire:click="toggleRecoveryCode">{{ $useRecoveryCode ? __('Use code from the app') : __('Use a recovery code') }}</flux:button>
+                <flux:button type="button" variant="subtle" size="sm" wire:click="cancelChallenge">{{ __('Cancel') }}</flux:button>
             </div>
         </form>
     @else
         <form wire:submit="login" class="space-y-6">
-            <flux:input wire:model="email" label="E-Mail" type="email" autofocus autocomplete="email webauthn" />
-            <flux:input wire:model="password" label="Passwort" type="password" autocomplete="current-password" />
-            <flux:checkbox wire:model="remember" label="Angemeldet bleiben" />
-            <flux:button type="submit" variant="primary" class="w-full">Anmelden</flux:button>
+            <flux:input wire:model="email" :label="__('Email')" type="email" autofocus autocomplete="email webauthn" />
+            <flux:input wire:model="password" :label="__('Password')" type="password" autocomplete="current-password" />
+            <flux:checkbox wire:model="remember" :label="__('Stay signed in')" />
+            <flux:button type="submit" variant="primary" class="w-full">{{ __('Sign in') }}</flux:button>
         </form>
 
         <div
@@ -199,7 +199,7 @@ new #[Title('Anmelden')] class extends Component
             x-cloak
             class="mt-6 space-y-3"
         >
-            <flux:separator text="oder" />
+            <flux:separator :text="__('or')" />
             <flux:button
                 type="button"
                 icon="finger-print"
@@ -212,8 +212,8 @@ new #[Title('Anmelden')] class extends Component
                         .catch(() => { failed = true })
                         .finally(() => { busy = false })
                 "
-            >Mit Passkey anmelden</flux:button>
-            <flux:text x-show="failed" class="text-red-600 dark:text-red-400">Die Anmeldung mit dem Passkey hat nicht geklappt.</flux:text>
+            >{{ __('Sign in with a passkey') }}</flux:button>
+            <flux:text x-show="failed" class="text-red-600 dark:text-red-400">{{ __('Signing in with the passkey failed.') }}</flux:text>
         </div>
     @endif
 

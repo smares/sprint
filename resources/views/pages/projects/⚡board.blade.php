@@ -154,12 +154,12 @@ new class extends Component
 
 <div @class(['lg:pe-[39rem]' => $this->panelTask])>
     <flux:breadcrumbs class="mb-4">
-        <flux:breadcrumbs.item href="{{ route('projects.index') }}" wire:navigate>Projekte</flux:breadcrumbs.item>
+        <flux:breadcrumbs.item href="{{ route('projects.index') }}" wire:navigate>{{ __('Projects') }}</flux:breadcrumbs.item>
         <flux:breadcrumbs.item>{{ $project->name }}</flux:breadcrumbs.item>
     </flux:breadcrumbs>
 
     @if ($project->archived_at)
-        <flux:callout class="mb-4" icon="archive-box" heading="Archiviert" text="Dieses Projekt ist archiviert und nur noch lesbar." />
+        <flux:callout class="mb-4" icon="archive-box" :heading="__('Archived')" :text="__('This project is archived and read-only.')" />
     @endif
 
     <div @class(['mb-6 flex flex-col gap-4', 'lg:flex-row lg:items-center lg:justify-between' => ! $this->panelTask])>
@@ -189,10 +189,10 @@ new class extends Component
                         <flux:kanban.card wire:key="task-{{ $task->id }}" :wire:sort:item="$this->canEdit ? $task->id : null">
                             <a href="{{ route('tasks.show', $task) }}" x-on:click="if ($event.metaKey || $event.ctrlKey || $event.shiftKey || $event.button !== 0) return; $event.preventDefault(); $wire.openTask({{ $task->id }})" @class(['font-medium hover:underline', 'text-blue-600 dark:text-blue-400' => (string) $task->id === $openTaskId])>{{ $task->title }}</a>
                             @if ($task->isBlocked())
-                                <flux:icon.lock-closed variant="micro" class="ms-1 inline text-amber-500" title="Blockiert" />
+                                <flux:icon.lock-closed variant="micro" class="ms-1 inline text-amber-500" title="{{ __('Blocked') }}" />
                             @endif
                             @if ($task->isRecurring())
-                                <flux:icon.arrow-path variant="micro" class="ms-1 inline text-zinc-400" title="Wiederholt sich {{ $task->recurrenceLabel() }}" />
+                                <flux:icon.arrow-path variant="micro" class="ms-1 inline text-zinc-400" title="{{ __('Repeats :interval', ['interval' => $task->recurrenceLabel()]) }}" />
                             @endif
 
                             @if ($progress = $this->progress[$task->id] ?? null)
@@ -217,10 +217,10 @@ new class extends Component
 
                             <div class="mt-2 flex items-center justify-between gap-2">
                                 <flux:text size="sm" title="{{ $task->collaborators->pluck('name')->join(', ') }}">
-                                    {{ $task->assignee?->name ?? 'Niemand' }}@if ($task->collaborators->isNotEmpty()) +{{ $task->collaborators->count() }}@endif
+                                    {{ $task->assignee?->name ?? __('Nobody') }}@if ($task->collaborators->isNotEmpty()) +{{ $task->collaborators->count() }}@endif
                                 </flux:text>
                                 @if ($task->due_date)
-                                    <flux:text size="sm" :class="$task->isOverdue() ? 'text-red-500' : ''">{{ $task->due_date->format('d.m.Y') }}</flux:text>
+                                    <flux:text size="sm" :class="$task->isOverdue() ? 'text-red-500' : ''">{{ $task->due_date->isoFormat('L') }}</flux:text>
                                 @endif
                             </div>
                         </flux:kanban.card>
@@ -229,7 +229,7 @@ new class extends Component
 
                 @if ($this->columnTotals[$status->id] > $this->columns[$status->id]->count())
                     <flux:button size="sm" variant="ghost" class="mt-2 w-full" wire:click="loadMoreInColumn({{ $status->id }})">
-                        Mehr laden ({{ $this->columns[$status->id]->count() }} von {{ $this->columnTotals[$status->id] }})
+                        {{ __('Load more (:shown of :total)', ['shown' => $this->columns[$status->id]->count(), 'total' => $this->columnTotals[$status->id]]) }}
                     </flux:button>
                 @endif
             </flux:kanban.column>

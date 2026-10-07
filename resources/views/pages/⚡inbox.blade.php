@@ -7,7 +7,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithPagination;
 
-new #[Title('Posteingang')] class extends Component
+new #[Title('Inbox')] class extends Component
 {
     use WithPagination;
 
@@ -79,31 +79,31 @@ new #[Title('Posteingang')] class extends Component
 
 <div class="max-w-3xl">
     <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <flux:heading size="xl">Posteingang</flux:heading>
+        <flux:heading size="xl">{{ __('Inbox') }}</flux:heading>
         @if (auth()->user()->unreadNotifications()->exists())
-            <flux:button size="sm" icon="check" wire:click="markAllRead">Alle als gelesen markieren</flux:button>
+            <flux:button size="sm" icon="check" wire:click="markAllRead">{{ __('Mark all as read') }}</flux:button>
         @endif
     </div>
 
     @if ($this->notifications->isEmpty())
-        <flux:callout icon="inbox" heading="Nichts Neues" text="Hier erscheinen Kommentare, Statuswechsel und Erwähnungen zu Aufgaben, bei denen du zuständig oder beteiligt bist." />
+        <flux:callout icon="inbox" :heading="__('Nothing new')" :text="__('Comments, status changes and mentions on tasks you are responsible for or involved in appear here.')" />
     @else
         <ul class="divide-y divide-zinc-200 dark:divide-zinc-700">
             @foreach ($this->notifications as $notification)
                 @php($task = $this->tasks->get($notification->data['task_id'] ?? null))
                 <li wire:key="notification-{{ $notification->id }}" class="flex items-start gap-3 py-3">
-                    <span class="mt-2 size-2 shrink-0 rounded-full {{ $notification->read_at === null ? 'bg-blue-500' : 'bg-transparent' }}" aria-label="{{ $notification->read_at === null ? 'ungelesen' : 'gelesen' }}"></span>
+                    <span class="mt-2 size-2 shrink-0 rounded-full {{ $notification->read_at === null ? 'bg-blue-500' : 'bg-transparent' }}" aria-label="{{ $notification->read_at === null ? __('unread') : __('read') }}"></span>
                     <div class="min-w-0 flex-1">
                         @if ($task)
                             <button type="button" wire:click="open('{{ $notification->id }}')" class="block truncate text-start font-medium hover:underline">{{ $task->title }}</button>
                             <flux:text size="sm">{{ \App\InboxText::sentence($notification) }} · {{ $task->project->name }} · {{ $notification->created_at->diffForHumans() }}</flux:text>
                         @else
-                            <flux:text class="italic">Aufgabe nicht mehr verfügbar</flux:text>
+                            <flux:text class="italic">{{ __('Task no longer available') }}</flux:text>
                             <flux:text size="sm">{{ $notification->created_at->diffForHumans() }}</flux:text>
                         @endif
                     </div>
-                    <flux:button size="xs" variant="ghost" :icon="$notification->read_at === null ? 'envelope-open' : 'envelope'" wire:click="toggleRead('{{ $notification->id }}')" aria-label="{{ $notification->read_at === null ? 'Als gelesen markieren' : 'Als ungelesen markieren' }}" />
-                    <flux:button size="xs" variant="ghost" icon="x-mark" wire:click="remove('{{ $notification->id }}')" aria-label="Entfernen" />
+                    <flux:button size="xs" variant="ghost" :icon="$notification->read_at === null ? 'envelope-open' : 'envelope'" wire:click="toggleRead('{{ $notification->id }}')" aria-label="{{ $notification->read_at === null ? __('Mark as read') : __('Mark as unread') }}" />
+                    <flux:button size="xs" variant="ghost" icon="x-mark" wire:click="remove('{{ $notification->id }}')" aria-label="{{ __('Remove') }}" />
                 </li>
             @endforeach
         </ul>

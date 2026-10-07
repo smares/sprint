@@ -9,7 +9,7 @@ use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
-new #[Title('Suche')] class extends Component
+new #[Title('Search')] class extends Component
 {
     private const PAGE_SIZE = 50;
 
@@ -87,34 +87,34 @@ new #[Title('Suche')] class extends Component
 ?>
 
 <div class="max-w-4xl">
-    <flux:heading size="xl" class="mb-6">Suche</flux:heading>
+    <flux:heading size="xl" class="mb-6">{{ __('Search') }}</flux:heading>
 
     <div class="space-y-4">
-        <flux:input wire:model.live.debounce.300ms="query" type="search" icon="magnifying-glass" placeholder="Titel, Beschreibung, Kommentare, Anhänge …" autofocus clearable />
+        <flux:input wire:model.live.debounce.300ms="query" type="search" icon="magnifying-glass" :placeholder="__('Title, description, comments, attachments …')" autofocus clearable />
 
         <div class="grid gap-4 sm:grid-cols-3">
-            <flux:select variant="listbox" wire:model.live="projectId" label="Projekt">
-                <flux:select.option value="">Alle Projekte</flux:select.option>
+            <flux:select variant="listbox" wire:model.live="projectId" :label="__('Project')">
+                <flux:select.option value="">{{ __('All projects') }}</flux:select.option>
                 @foreach ($this->projects as $project)
                     <flux:select.option value="{{ $project->id }}">{{ $project->name }}</flux:select.option>
                 @endforeach
             </flux:select>
-            <flux:select variant="listbox" wire:model.live="state" label="Status">
-                <flux:select.option value="all">Offen und erledigt</flux:select.option>
-                <flux:select.option value="open">Nur offene</flux:select.option>
-                <flux:select.option value="done">Nur erledigte</flux:select.option>
+            <flux:select variant="listbox" wire:model.live="state" :label="__('Status')">
+                <flux:select.option value="all">{{ __('Open and done') }}</flux:select.option>
+                <flux:select.option value="open">{{ __('Open only') }}</flux:select.option>
+                <flux:select.option value="done">{{ __('Done only') }}</flux:select.option>
             </flux:select>
             <div class="flex items-end pb-2">
-                <flux:switch wire:model.live="mine" label="Nur meine Aufgaben" />
+                <flux:switch wire:model.live="mine" :label="__('Only my tasks')" />
             </div>
         </div>
     </div>
 
     <div class="mt-8">
         @if ($this->terms === [])
-            <flux:text>Gib einen Suchbegriff ein. Alle Wörter müssen vorkommen, Wortanfänge reichen.</flux:text>
+            <flux:text>{{ __('Enter a search term. All words must appear; word beginnings are enough.') }}</flux:text>
         @elseif ($this->results->isEmpty())
-            <flux:callout icon="magnifying-glass" heading="Nichts gefunden" text="Zu „{{ $query }}“ gibt es keine passenden Aufgaben, die du sehen darfst." />
+            <flux:callout icon="magnifying-glass" :heading="__('No results found')" :text="__('There are no matching tasks for “:query” that you can see.', ['query' => $query])" />
         @else
             <ul class="divide-y divide-zinc-200 dark:divide-zinc-700">
                 @foreach ($this->results->take($this->limit) as $task)
@@ -125,8 +125,8 @@ new #[Title('Suche')] class extends Component
                             <x-color-badge size="sm" :color="$task->status->color">{{ $task->status->name }}</x-color-badge>
                         </div>
                         <flux:text size="sm">
-                            {{ $task->project->name }}@if ($task->parent) · in {{ $task->parent->title }}@endif
-                            @if ($task->due_date) · fällig {{ $task->due_date->format('d.m.Y') }}@endif
+                            {{ $task->project->name }}@if ($task->parent) · {{ __('in :title', ['title' => $task->parent->title]) }}@endif
+                            @if ($task->due_date) · {{ __('due :date', ['date' => $task->due_date->isoFormat('L')]) }}@endif
                         </flux:text>
                         @if ($hit)
                             <flux:text size="sm" class="mt-1"><span class="font-medium">{{ $hit['label'] }}:</span> {{ $hit['text'] }}</flux:text>
@@ -137,8 +137,8 @@ new #[Title('Suche')] class extends Component
 
             @if ($this->results->count() > $this->limit)
                 <div wire:intersect="loadMore" class="mt-4 flex items-center justify-center gap-3">
-                    <flux:text size="sm">{{ $this->limit }} Treffer angezeigt, es gibt weitere.</flux:text>
-                    <flux:button size="sm" wire:click="loadMore">Mehr laden</flux:button>
+                    <flux:text size="sm">{{ __(':count results shown, there are more.', ['count' => $this->limit]) }}</flux:text>
+                    <flux:button size="sm" wire:click="loadMore">{{ __('Load more') }}</flux:button>
                 </div>
             @endif
         @endif

@@ -294,7 +294,7 @@ new class extends Component
         $filters = collect();
 
         if ($this->assigneeFilter === 'me') {
-            $filters->push(['key' => 'assignee', 'label' => 'Nur meine']);
+            $filters->push(['key' => 'assignee', 'label' => __('Only mine')]);
         } elseif (ctype_digit($this->assigneeFilter) && ($user = $this->users->firstWhere('id', (int) $this->assigneeFilter))) {
             $filters->push(['key' => 'assignee', 'label' => $user->name]);
         }
@@ -318,9 +318,9 @@ new class extends Component
     public function statusFilterLabel(): string
     {
         return match (true) {
-            $this->statusFilter === 'open' => 'Offene',
-            $this->statusFilter === 'all' => 'Alle Status',
-            default => $this->statuses->firstWhere('id', (int) $this->statusFilter)?->name ?? 'Offene',
+            $this->statusFilter === 'open' => __('Open tasks'),
+            $this->statusFilter === 'all' => __('All statuses'),
+            default => $this->statuses->firstWhere('id', (int) $this->statusFilter)?->name ?? __('Open tasks'),
         };
     }
 
@@ -366,7 +366,7 @@ new class extends Component
 
     public function saveCurrentFilter(): void
     {
-        $validated = $this->validate(['saveName' => ['required', 'string', 'max:80']], attributes: ['saveName' => 'Name']);
+        $validated = $this->validate(['saveName' => ['required', 'string', 'max:80']], attributes: ['saveName' => __('Name')]);
 
         $shared = $this->saveShared && Gate::allows('manage', $this->project);
 
@@ -377,7 +377,7 @@ new class extends Component
 
         $this->reset('saveName', 'saveShared');
         unset($this->savedFilters);
-        Flux::toast(variant: 'success', text: 'Ansicht gespeichert.');
+        Flux::toast(variant: 'success', text: __('View saved.'));
     }
 
     /**
@@ -499,12 +499,12 @@ new class extends Component
 
 <div @class(['lg:pe-[39rem]' => $this->panelTask, 'pb-28' => $selecting])>
     <flux:breadcrumbs class="mb-4">
-        <flux:breadcrumbs.item href="{{ route('projects.index') }}" wire:navigate>Projekte</flux:breadcrumbs.item>
+        <flux:breadcrumbs.item href="{{ route('projects.index') }}" wire:navigate>{{ __('Projects') }}</flux:breadcrumbs.item>
         <flux:breadcrumbs.item>{{ $project->name }}</flux:breadcrumbs.item>
     </flux:breadcrumbs>
 
     @if ($project->archived_at)
-        <flux:callout class="mb-4" icon="archive-box" heading="Archiviert" text="Dieses Projekt ist archiviert und nur noch lesbar." />
+        <flux:callout class="mb-4" icon="archive-box" :heading="__('Archived')" :text="__('This project is archived and read-only.')" />
     @endif
 
     <div @class(['mb-6 flex flex-col gap-4', 'lg:flex-row lg:items-center lg:justify-between' => ! $this->panelTask])>
@@ -520,7 +520,7 @@ new class extends Component
 
             @if ($this->canEdit)
                 <flux:modal.trigger name="create-task">
-                    <flux:button variant="primary" icon="plus">Neue Aufgabe</flux:button>
+                    <flux:button variant="primary" icon="plus">{{ __('New task') }}</flux:button>
                 </flux:modal.trigger>
             @endif
 
@@ -533,7 +533,7 @@ new class extends Component
     <div class="mb-4 flex flex-wrap items-center gap-2">
         <flux:modal.trigger name="filters">
             <flux:button icon="funnel">
-                Filter
+                {{ __('Filter') }}
                 @if ($this->activeFilters->isNotEmpty())
                     <flux:badge size="sm" color="blue" inset="top bottom">{{ $this->activeFilters->count() }}</flux:badge>
                 @endif
@@ -541,35 +541,35 @@ new class extends Component
         </flux:modal.trigger>
 
         <flux:modal.trigger name="saved-filters">
-            <flux:button icon="bookmark">Ansichten @if ($this->savedFilters->isNotEmpty()) <flux:badge size="sm" inset="top bottom">{{ $this->savedFilters->count() }}</flux:badge> @endif</flux:button>
+            <flux:button icon="bookmark">{{ __('Views') }} @if ($this->savedFilters->isNotEmpty()) <flux:badge size="sm" inset="top bottom">{{ $this->savedFilters->count() }}</flux:badge> @endif</flux:button>
         </flux:modal.trigger>
 
         @if ($this->canEdit && ! $selecting && $this->tasks->isNotEmpty())
-            <flux:button icon="check-circle" wire:click="startSelecting">Auswählen</flux:button>
+            <flux:button icon="check-circle" wire:click="startSelecting">{{ __('Select') }}</flux:button>
         @endif
 
         <flux:badge size="sm" color="zinc">{{ $this->statusFilterLabel }}</flux:badge>
 
         @foreach ($this->activeFilters as $filter)
-            <flux:badge wire:key="active-{{ $filter['key'] }}" size="sm" color="blue" as="button" type="button" wire:click="clearFilter('{{ $filter['key'] }}')" title="Filter entfernen">
+            <flux:badge wire:key="active-{{ $filter['key'] }}" size="sm" color="blue" as="button" type="button" wire:click="clearFilter('{{ $filter['key'] }}')" title="{{ __('Remove filter') }}">
                 {{ $filter['label'] }}
                 <flux:icon.x-mark variant="micro" class="ms-1" />
             </flux:badge>
         @endforeach
 
         @if ($this->activeFilters->isNotEmpty())
-            <flux:button size="sm" variant="ghost" wire:click="resetFilters">Zurücksetzen</flux:button>
+            <flux:button size="sm" variant="ghost" wire:click="resetFilters">{{ __('Reset') }}</flux:button>
         @endif
 
         <flux:dropdown align="end" class="ms-auto">
-            <flux:button icon="ellipsis-horizontal" aria-label="Weitere Aktionen" />
+            <flux:button icon="ellipsis-horizontal" aria-label="{{ __('More actions') }}" />
 
             <flux:menu>
-                <flux:menu.item icon="arrow-down-tray" href="{{ route('projects.export', $project) }}">Als CSV exportieren</flux:menu.item>
-                <flux:menu.item icon="arrow-down-tray" href="{{ route('projects.export', [$project, 'delimiter' => 'semicolon']) }}">Als CSV für Excel exportieren</flux:menu.item>
+                <flux:menu.item icon="arrow-down-tray" href="{{ route('projects.export', $project) }}">{{ __('Export as CSV') }}</flux:menu.item>
+                <flux:menu.item icon="arrow-down-tray" href="{{ route('projects.export', [$project, 'delimiter' => 'semicolon']) }}">{{ __('Export as CSV for Excel') }}</flux:menu.item>
                 @if ($this->canEdit)
                     <flux:menu.separator />
-                    <flux:menu.item icon="arrow-up-tray" x-on:click="$flux.modal('project-import').show()">CSV importieren …</flux:menu.item>
+                    <flux:menu.item icon="arrow-up-tray" x-on:click="$flux.modal('project-import').show()">{{ __('Import CSV …') }}</flux:menu.item>
                 @endif
             </flux:menu>
         </flux:dropdown>
@@ -582,8 +582,8 @@ new class extends Component
     <flux:modal name="saved-filters" class="w-full max-w-md">
         <div class="space-y-5">
             <div>
-                <flux:heading size="lg">Gespeicherte Ansichten</flux:heading>
-                <flux:text class="mt-1">Eine Ansicht merkt sich Filter und Sortierung der Liste.</flux:text>
+                <flux:heading size="lg">{{ __('Saved views') }}</flux:heading>
+                <flux:text class="mt-1">{{ __('A view remembers the filters and sorting of the list.') }}</flux:text>
             </div>
 
             @forelse ($this->savedFilters as $saved)
@@ -592,25 +592,25 @@ new class extends Component
                         <span class="truncate">{{ $saved->name }}</span>
                     </flux:button>
                     @if ($saved->isShared())
-                        <flux:badge size="sm" color="blue">Geteilt</flux:badge>
+                        <flux:badge size="sm" color="blue">{{ __('Shared') }}</flux:badge>
                     @endif
                     @if (! $saved->isShared() || $this->canManage)
-                        <flux:button size="xs" variant="ghost" icon="trash" wire:click="deleteFilter({{ $saved->id }})" wire:confirm="Ansicht „{{ $saved->name }}“ löschen?" aria-label="Ansicht löschen" />
+                        <flux:button size="xs" variant="ghost" icon="trash" wire:click="deleteFilter({{ $saved->id }})" wire:confirm="{{ __('Delete view “:name”?', ['name' => $saved->name]) }}" aria-label="{{ __('Delete view') }}" />
                     @endif
                 </div>
             @empty
-                <flux:text>Noch keine Ansichten gespeichert.</flux:text>
+                <flux:text>{{ __('No views saved yet.') }}</flux:text>
             @endforelse
 
             <flux:separator />
 
             <form wire:submit="saveCurrentFilter" class="space-y-3">
-                <flux:input wire:model="saveName" label="Aktuelle Filter speichern als" placeholder="z. B. Meine offenen Aufgaben" />
+                <flux:input wire:model="saveName" :label="__('Save current filters as')" :placeholder="__('e.g. My open tasks')" />
                 @if ($this->canManage)
-                    <flux:checkbox wire:model="saveShared" label="Für alle im Projekt sichtbar" />
+                    <flux:checkbox wire:model="saveShared" :label="__('Visible to everyone in the project')" />
                 @endif
                 <div class="flex justify-end">
-                    <flux:button type="submit" variant="primary" icon="bookmark">Speichern</flux:button>
+                    <flux:button type="submit" variant="primary" icon="bookmark">{{ __('Save') }}</flux:button>
                 </div>
             </form>
         </div>
@@ -618,19 +618,19 @@ new class extends Component
 
     <flux:modal name="filters" class="w-full max-w-md">
         <div class="space-y-5">
-            <flux:heading size="lg">Filter</flux:heading>
+            <flux:heading size="lg">{{ __('Filter') }}</flux:heading>
 
-            <flux:select variant="listbox" wire:model.live="statusFilter" label="Status">
-                <flux:select.option value="open">Offen</flux:select.option>
-                <flux:select.option value="all">Alle</flux:select.option>
+            <flux:select variant="listbox" wire:model.live="statusFilter" :label="__('Status')">
+                <flux:select.option value="open">{{ __('Open') }}</flux:select.option>
+                <flux:select.option value="all">{{ __('All') }}</flux:select.option>
                 @foreach ($this->statuses as $status)
                     <flux:select.option value="{{ $status->id }}">{{ $status->name }}</flux:select.option>
                 @endforeach
             </flux:select>
 
-            <flux:select variant="listbox" wire:model.live="assigneeFilter" label="Person">
-                <flux:select.option value="">Alle Personen</flux:select.option>
-                <flux:select.option value="me">Nur meine</flux:select.option>
+            <flux:select variant="listbox" wire:model.live="assigneeFilter" :label="__('Person')">
+                <flux:select.option value="">{{ __('All people') }}</flux:select.option>
+                <flux:select.option value="me">{{ __('Only mine') }}</flux:select.option>
                 @foreach ($this->users as $user)
                     <flux:select.option value="{{ $user->id }}">{{ $user->name }}</flux:select.option>
                 @endforeach
@@ -638,7 +638,7 @@ new class extends Component
 
             @foreach ($this->filterableFields as $field)
                 <flux:select wire:key="filter-{{ $field->id }}" variant="listbox" wire:model.live="fieldFilters.{{ $field->id }}" label="{{ $field->name }}">
-                    <flux:select.option value="">Alle</flux:select.option>
+                    <flux:select.option value="">{{ __('All') }}</flux:select.option>
                     @foreach ($field->options as $option)
                         <flux:select.option value="{{ $option->id }}">{{ $option->name }}</flux:select.option>
                     @endforeach
@@ -646,8 +646,8 @@ new class extends Component
             @endforeach
 
             @if ($this->tagOptions->isNotEmpty())
-                <flux:select variant="listbox" wire:model.live="tagFilter" label="Tag">
-                    <flux:select.option value="">Alle Tags</flux:select.option>
+                <flux:select variant="listbox" wire:model.live="tagFilter" :label="__('Tag')">
+                    <flux:select.option value="">{{ __('All tags') }}</flux:select.option>
                     @foreach ($this->tagOptions as $tag)
                         <flux:select.option value="{{ $tag->id }}">{{ $tag->name }}</flux:select.option>
                     @endforeach
@@ -655,28 +655,28 @@ new class extends Component
             @endif
 
             <div class="flex gap-2">
-                <flux:button variant="ghost" wire:click="resetFilters">Zurücksetzen</flux:button>
+                <flux:button variant="ghost" wire:click="resetFilters">{{ __('Reset') }}</flux:button>
                 <flux:spacer />
-                <flux:modal.close><flux:button variant="primary">Fertig</flux:button></flux:modal.close>
+                <flux:modal.close><flux:button variant="primary">{{ __('Done') }}</flux:button></flux:modal.close>
             </div>
         </div>
     </flux:modal>
 
     @if ($this->tasks->isEmpty())
-        <flux:callout icon="check-circle" heading="Keine Aufgaben" text="Mit diesen Filtern gibt es hier nichts zu tun." />
+        <flux:callout icon="check-circle" :heading="__('No tasks')" :text="__('Nothing to do here with these filters.')" />
     @else
         <div class="overflow-x-auto">
         <flux:table>
             <flux:table.columns>
                 <flux:table.column class="w-10">
                     @if ($selecting)
-                        <flux:checkbox :checked="$this->tasks->isNotEmpty() && $this->tasks->pluck('id')->diff($this->selectedIds)->isEmpty()" wire:click="togglePage" aria-label="Alle sichtbaren Aufgaben auswählen" />
+                        <flux:checkbox :checked="$this->tasks->isNotEmpty() && $this->tasks->pluck('id')->diff($this->selectedIds)->isEmpty()" wire:click="togglePage" aria-label="{{ __('Select all visible tasks') }}" />
                     @endif
                 </flux:table.column>
-                <flux:table.column sortable :sorted="$sortBy === 'title'" :direction="$sortDirection" wire:click="sort('title')">Aufgabe</flux:table.column>
-                <flux:table.column sortable :sorted="$sortBy === 'status'" :direction="$sortDirection" wire:click="sort('status')">Status</flux:table.column>
-                <flux:table.column class="{{ $this->panelTask ? 'hidden' : 'max-md:hidden' }}">Zuständig</flux:table.column>
-                <flux:table.column sortable :sorted="$sortBy === 'due'" :direction="$sortDirection" wire:click="sort('due')">Fällig</flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'title'" :direction="$sortDirection" wire:click="sort('title')">{{ __('Task') }}</flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'status'" :direction="$sortDirection" wire:click="sort('status')">{{ __('Status') }}</flux:table.column>
+                <flux:table.column class="{{ $this->panelTask ? 'hidden' : 'max-md:hidden' }}">{{ __('Assignee') }}</flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'due'" :direction="$sortDirection" wire:click="sort('due')">{{ __('Due') }}</flux:table.column>
                 @foreach ($this->listFields as $field)
                     <flux:table.column wire:key="column-{{ $field->id }}" class="{{ $this->panelTask ? 'hidden' : 'max-md:hidden' }}" sortable :sorted="$sortBy === 'field:'.$field->id" :direction="$sortDirection" wire:click="sort('field:{{ $field->id }}')">{{ $field->name }}</flux:table.column>
                 @endforeach
@@ -689,19 +689,19 @@ new class extends Component
                                 <flux:checkbox
                                     :checked="in_array((string) $task->id, array_map('strval', $selected), true)"
                                     x-on:click="$wire.selected = $wire.selected.includes('{{ $task->id }}') ? $wire.selected.filter((id) => id !== '{{ $task->id }}') : [...$wire.selected, '{{ $task->id }}']"
-                                    aria-label="Aufgabe auswählen"
+                                    aria-label="{{ __('Select task') }}"
                                 />
                             @else
                                 <flux:checkbox :checked="$task->isDone()" :disabled="! $this->canEdit" wire:click="toggleDone({{ $task->id }})" />
                             @endif
                         </flux:table.cell>
                         <flux:table.cell class="min-w-44 whitespace-normal">
-                            <span class="me-1.5 inline-block min-w-4 select-none text-end align-baseline text-xs tabular-nums text-zinc-300 dark:text-zinc-600" data-row-number="{{ $loop->iteration }}" title="Zeile {{ $loop->iteration }}">{{ $loop->iteration }}</span><a href="{{ route('tasks.show', $task) }}" x-on:click="if ($event.metaKey || $event.ctrlKey || $event.shiftKey || $event.button !== 0) return; $event.preventDefault(); $wire.openTask({{ $task->id }})" @class(['font-medium hover:underline', 'text-blue-600 dark:text-blue-400' => (string) $task->id === $openTaskId])>{{ $task->title }}</a>
+                            <span class="me-1.5 inline-block min-w-4 select-none text-end align-baseline text-xs tabular-nums text-zinc-300 dark:text-zinc-600" data-row-number="{{ $loop->iteration }}" title="{{ __('Row :number', ['number' => $loop->iteration]) }}">{{ $loop->iteration }}</span><a href="{{ route('tasks.show', $task) }}" x-on:click="if ($event.metaKey || $event.ctrlKey || $event.shiftKey || $event.button !== 0) return; $event.preventDefault(); $wire.openTask({{ $task->id }})" @class(['font-medium hover:underline', 'text-blue-600 dark:text-blue-400' => (string) $task->id === $openTaskId])>{{ $task->title }}</a>
                             @if ($task->isBlocked())
-                                <flux:icon.lock-closed variant="micro" class="ms-1 inline text-amber-500" title="Blockiert" />
+                                <flux:icon.lock-closed variant="micro" class="ms-1 inline text-amber-500" title="{{ __('Blocked') }}" />
                             @endif
                             @if ($task->isRecurring())
-                                <flux:icon.arrow-path variant="micro" class="ms-1 inline text-zinc-400" title="Wiederholt sich {{ $task->recurrenceLabel() }}" />
+                                <flux:icon.arrow-path variant="micro" class="ms-1 inline text-zinc-400" title="{{ __('Repeats :schedule', ['schedule' => $task->recurrenceLabel()]) }}" />
                             @endif
                             @if ($progress = $this->progress[$task->id] ?? null)
                                 <flux:badge size="sm" icon="list-bullet" class="ms-1">{{ $progress['done'] }}/{{ $progress['total'] }}</flux:badge>
@@ -716,12 +716,12 @@ new class extends Component
                         <flux:table.cell class="{{ $this->panelTask ? 'hidden' : 'max-md:hidden' }}">
                             {{ $task->assignee?->name ?? '–' }}
                             @if ($task->collaborators->isNotEmpty())
-                                <flux:text size="sm" class="block" title="{{ $task->collaborators->pluck('name')->join(', ') }}">+ {{ $task->collaborators->count() }} {{ $task->collaborators->count() === 1 ? 'Beteiligte:r' : 'Beteiligte' }}</flux:text>
+                                <flux:text size="sm" class="block" title="{{ $task->collaborators->pluck('name')->join(', ') }}">{{ trans_choice('{1} + :count collaborator|[2,*] + :count collaborators', $task->collaborators->count()) }}</flux:text>
                             @endif
                         </flux:table.cell>
                         <flux:table.cell>
                             @if ($task->due_date)
-                                <flux:text :class="$task->isOverdue() ? 'text-red-500' : ''">{{ $task->due_date->format('d.m.Y') }}</flux:text>
+                                <flux:text :class="$task->isOverdue() ? 'text-red-500' : ''">{{ $task->due_date->isoFormat('L') }}</flux:text>
                             @else
                                 –
                             @endif
@@ -739,8 +739,8 @@ new class extends Component
 
         @if ($this->totalTasks > $this->tasks->count())
             <div wire:intersect="loadMore" class="mt-4 flex items-center justify-center gap-3">
-                <flux:text size="sm">{{ $this->tasks->count() }} von {{ $this->totalTasks }} Aufgaben</flux:text>
-                <flux:button size="sm" wire:click="loadMore">Mehr laden</flux:button>
+                <flux:text size="sm">{{ __(':shown of :total tasks', ['shown' => $this->tasks->count(), 'total' => $this->totalTasks]) }}</flux:text>
+                <flux:button size="sm" wire:click="loadMore">{{ __('Load more') }}</flux:button>
             </div>
         @endif
     @endif
@@ -749,25 +749,25 @@ new class extends Component
         <div class="pointer-events-none fixed inset-x-0 bottom-4 z-30 flex justify-center px-4">
             <div class="pointer-events-auto flex w-full max-w-xl flex-col gap-2 rounded-xl border border-zinc-200 bg-white p-2 shadow-lg sm:w-auto sm:max-w-full sm:flex-row sm:items-center dark:border-zinc-700 dark:bg-zinc-800">
                 <div class="flex items-center gap-2">
-                    <flux:text class="px-2 font-medium"><span x-text="$wire.selected.length">0</span> ausgewählt</flux:text>
+                    <flux:text class="px-2 font-medium">{!! __(':count selected', ['count' => '<span x-text="$wire.selected.length">0</span>']) !!}</flux:text>
 
                     @if ($this->totalTasks > $this->tasks->count())
-                        <flux:button size="sm" variant="ghost" wire:click="selectAllMatching">Alle {{ min($this->totalTasks, 500) }} auswählen</flux:button>
+                        <flux:button size="sm" variant="ghost" wire:click="selectAllMatching">{{ __('Select all :count', ['count' => min($this->totalTasks, 500)]) }}</flux:button>
                     @endif
 
-                    <flux:button size="sm" variant="ghost" icon="x-mark" wire:click="stopSelecting" aria-label="Auswahl beenden" class="ms-auto sm:hidden" />
+                    <flux:button size="sm" variant="ghost" icon="x-mark" wire:click="stopSelecting" aria-label="{{ __('End selection') }}" class="ms-auto sm:hidden" />
                 </div>
 
                 <div class="flex flex-wrap items-center gap-2">
-                    <flux:button size="sm" icon="check" wire:click="bulkComplete" x-bind:disabled="$wire.selected.length === 0">Erledigen</flux:button>
+                    <flux:button size="sm" icon="check" wire:click="bulkComplete" x-bind:disabled="$wire.selected.length === 0">{{ __('Complete') }}</flux:button>
 
                     <flux:modal.trigger name="bulk-edit">
-                        <flux:button size="sm" icon="pencil-square" x-bind:disabled="$wire.selected.length === 0">Ändern</flux:button>
+                        <flux:button size="sm" icon="pencil-square" x-bind:disabled="$wire.selected.length === 0">{{ __('Change') }}</flux:button>
                     </flux:modal.trigger>
 
-                    <flux:button size="sm" variant="danger" icon="trash" wire:click="bulkDelete" wire:confirm="Die ausgewählten Aufgaben samt Unteraufgaben endgültig löschen?" x-bind:disabled="$wire.selected.length === 0">Löschen</flux:button>
+                    <flux:button size="sm" variant="danger" icon="trash" wire:click="bulkDelete" wire:confirm="{{ __('Permanently delete the selected tasks including their subtasks?') }}" x-bind:disabled="$wire.selected.length === 0">{{ __('Delete') }}</flux:button>
 
-                    <flux:button size="sm" variant="ghost" icon="x-mark" wire:click="stopSelecting" aria-label="Auswahl beenden" class="max-sm:hidden" />
+                    <flux:button size="sm" variant="ghost" icon="x-mark" wire:click="stopSelecting" aria-label="{{ __('End selection') }}" class="max-sm:hidden" />
                 </div>
             </div>
         </div>
@@ -775,39 +775,39 @@ new class extends Component
         <flux:modal name="bulk-edit" class="w-full max-w-md">
             <form wire:submit="applyBulkChanges" class="space-y-5">
                 <div>
-                    <flux:heading size="lg"><span x-text="$wire.selected.length">0</span> Aufgaben ändern</flux:heading>
-                    <flux:text class="mt-1">Nur was du ausfüllst, wird geändert; alles andere bleibt, wie es ist.</flux:text>
+                    <flux:heading size="lg">{!! __('Change :count tasks', ['count' => '<span x-text="$wire.selected.length">0</span>']) !!}</flux:heading>
+                    <flux:text class="mt-1">{{ __('Only what you fill in is changed; everything else stays as it is.') }}</flux:text>
                 </div>
 
-                <flux:select variant="listbox" wire:model="bulkStatus" label="Status">
-                    <flux:select.option value="">Nicht ändern</flux:select.option>
+                <flux:select variant="listbox" wire:model="bulkStatus" :label="__('Status')">
+                    <flux:select.option value="">{{ __('Leave unchanged') }}</flux:select.option>
                     @foreach ($this->statuses as $status)
                         <flux:select.option value="{{ $status->id }}">{{ $status->name }}</flux:select.option>
                     @endforeach
                 </flux:select>
                 <flux:error name="bulkStatus" />
 
-                <flux:select variant="listbox" wire:model="bulkAssignee" label="Zuständig">
-                    <flux:select.option value="">Nicht ändern</flux:select.option>
-                    <flux:select.option value="none">Niemand</flux:select.option>
+                <flux:select variant="listbox" wire:model="bulkAssignee" :label="__('Assignee')">
+                    <flux:select.option value="">{{ __('Leave unchanged') }}</flux:select.option>
+                    <flux:select.option value="none">{{ __('Nobody') }}</flux:select.option>
                     @foreach ($this->users as $user)
                         <flux:select.option value="{{ $user->id }}">{{ $user->name }}</flux:select.option>
                     @endforeach
                 </flux:select>
 
                 <div class="space-y-2">
-                    <flux:date-picker wire:model="bulkDueDate" label="Fällig am" locale="de-DE" placeholder="Nicht ändern" clearable description="Liegt der Beginn einer Aufgabe danach, rückt er auf dieses Datum." />
-                    <flux:checkbox wire:model="bulkClearDueDate" label="Fälligkeit entfernen" />
+                    <flux:date-picker wire:model="bulkDueDate" :label="__('Due on')" locale="{{ app()->getLocale() }}" :placeholder="__('Leave unchanged')" clearable :description="__('If a task starts after that date, its start moves to this date.')" />
+                    <flux:checkbox wire:model="bulkClearDueDate" :label="__('Remove due date')" />
                 </div>
 
                 @if ($this->tagOptions->isNotEmpty())
-                    <flux:pillbox wire:model="bulkAddTags" multiple label="Tags hinzufügen" placeholder="Tags wählen …">
+                    <flux:pillbox wire:model="bulkAddTags" multiple :label="__('Add tags')" :placeholder="__('Select tags …')">
                         @foreach ($this->tagOptions as $tag)
                             <flux:pillbox.option wire:key="add-tag-{{ $tag->id }}" value="{{ $tag->id }}">{{ $tag->name }}</flux:pillbox.option>
                         @endforeach
                     </flux:pillbox>
 
-                    <flux:pillbox wire:model="bulkRemoveTags" multiple label="Tags entfernen" placeholder="Tags wählen …">
+                    <flux:pillbox wire:model="bulkRemoveTags" multiple :label="__('Remove tags')" :placeholder="__('Select tags …')">
                         @foreach ($this->tagOptions as $tag)
                             <flux:pillbox.option wire:key="remove-tag-{{ $tag->id }}" value="{{ $tag->id }}">{{ $tag->name }}</flux:pillbox.option>
                         @endforeach
@@ -815,8 +815,8 @@ new class extends Component
                 @endif
 
                 <div class="flex justify-end gap-2">
-                    <flux:modal.close><flux:button variant="ghost">Abbrechen</flux:button></flux:modal.close>
-                    <flux:button type="submit" variant="primary">Übernehmen</flux:button>
+                    <flux:modal.close><flux:button variant="ghost">{{ __('Cancel') }}</flux:button></flux:modal.close>
+                    <flux:button type="submit" variant="primary">{{ __('Apply') }}</flux:button>
                 </div>
             </form>
         </flux:modal>
@@ -825,22 +825,22 @@ new class extends Component
     @if ($this->canEdit)
         <flux:modal name="create-task" class="md:w-[28rem]">
             <form wire:submit="createTask" class="space-y-6">
-                <flux:heading size="lg">Neue Aufgabe</flux:heading>
-                <flux:input wire:model="title" label="Titel" autofocus />
-                <flux:textarea wire:model="description" label="Beschreibung" rows="3" />
-                <flux:select variant="listbox" wire:model="assigneeId" label="Zuständig">
-                    <flux:select.option value="">Niemand</flux:select.option>
+                <flux:heading size="lg">{{ __('New task') }}</flux:heading>
+                <flux:input wire:model="title" :label="__('Title')" autofocus />
+                <flux:textarea wire:model="description" :label="__('Description')" rows="3" />
+                <flux:select variant="listbox" wire:model="assigneeId" :label="__('Assignee')">
+                    <flux:select.option value="">{{ __('Nobody') }}</flux:select.option>
                     @foreach ($this->users as $user)
                         <flux:select.option value="{{ $user->id }}">{{ $user->name }}</flux:select.option>
                     @endforeach
                 </flux:select>
                 <div class="grid grid-cols-2 gap-4">
-                    <flux:date-picker wire:model="startDate" label="Beginnt am" locale="de-DE" placeholder="Datum wählen" clearable />
-                    <flux:date-picker wire:model="dueDate" label="Fällig am" locale="de-DE" placeholder="Datum wählen" clearable />
+                    <flux:date-picker wire:model="startDate" label="{{ __('Starts on') }}" locale="{{ app()->getLocale() }}" placeholder="{{ __('Select date') }}" clearable />
+                    <flux:date-picker wire:model="dueDate" label="{{ __('Due on') }}" locale="{{ app()->getLocale() }}" placeholder="{{ __('Select date') }}" clearable />
                 </div>
                 <div class="flex">
                     <flux:spacer />
-                    <flux:button type="submit" variant="primary">Anlegen</flux:button>
+                    <flux:button type="submit" variant="primary">{{ __('Create') }}</flux:button>
                 </div>
             </form>
         </flux:modal>

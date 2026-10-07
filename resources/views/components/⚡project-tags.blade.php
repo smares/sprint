@@ -101,7 +101,7 @@ new class extends Component
         $name = trim($validated['newName']);
 
         if ($this->nameTaken($name)) {
-            $this->addError('newName', 'Dieses Tag gibt es in diesem Projekt schon.');
+            $this->addError('newName', __('This tag already exists in this project.'));
 
             return;
         }
@@ -128,7 +128,7 @@ new class extends Component
 
         if ($this->nameTaken($name, $tag->id)) {
             $this->names[$id] = $tag->name;
-            Flux::toast(variant: 'danger', text: "Das Tag „{$name}“ gibt es in diesem Projekt schon.");
+            Flux::toast(variant: 'danger', text: __('The tag “:name” already exists in this project.', ['name' => $name]));
 
             return;
         }
@@ -166,7 +166,7 @@ new class extends Component
                 'nullable',
                 Rule::exists('tags', 'id')->where('project_id', $this->project->id)->whereNot('id', $tag->id),
             ],
-        ], attributes: ['mergeIntoId' => 'Ersatz-Tag']);
+        ], attributes: ['mergeIntoId' => __('Replacement tag')]);
 
         DB::transaction(function () use ($tag) {
             if ($this->mergeIntoId !== '') {
@@ -187,36 +187,36 @@ new class extends Component
     <flux:modal name="project-tags" class="w-full max-w-xl" x-on:close="$wire.closed()">
         <div class="space-y-6">
             <div>
-                <flux:heading size="lg">Tags</flux:heading>
-                <flux:text class="mt-1">Tags gelten nur in diesem Projekt. Umbenennen und Umfärben wirkt sofort auf alle Aufgaben.</flux:text>
+                <flux:heading size="lg">{{ __('Tags') }}</flux:heading>
+                <flux:text class="mt-1">{{ __('Tags only apply to this project. Renaming and recoloring takes effect on all tasks immediately.') }}</flux:text>
             </div>
 
             @if ($this->tags->isEmpty())
-                <flux:callout icon="tag" heading="Noch keine Tags" text="Lege hier das erste Tag an oder direkt an einer Aufgabe." />
+                <flux:callout icon="tag" :heading="__('No tags yet')" :text="__('Create the first tag here or directly on a task.')" />
             @else
                 <ul class="max-h-96 space-y-2 overflow-y-auto">
                     @foreach ($this->tags as $tag)
                         <li wire:key="tag-{{ $tag->id }}" class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
                             <div class="flex items-center gap-3">
-                                <x-color-badge size="sm" :color="$tag->color" class="shrink-0" title="Aufgaben mit diesem Tag">{{ $tag->tasks_count }}</x-color-badge>
-                                <flux:input size="sm" wire:model.blur="names.{{ $tag->id }}" aria-label="Name" class="min-w-0 flex-1" />
-                                <flux:color-picker type="button" size="sm" with-confirmation :swatches="\App\Color::SWATCHES" wire:model.live="colors.{{ $tag->id }}" aria-label="Farbe" />
-                                <flux:button size="xs" variant="ghost" icon="trash" wire:click="confirmDelete({{ $tag->id }})" aria-label="Tag löschen" />
+                                <x-color-badge size="sm" :color="$tag->color" class="shrink-0" title="{{ __('Tasks with this tag') }}">{{ $tag->tasks_count }}</x-color-badge>
+                                <flux:input size="sm" wire:model.blur="names.{{ $tag->id }}" aria-label="{{ __('Name') }}" class="min-w-0 flex-1" />
+                                <flux:color-picker type="button" size="sm" with-confirmation :swatches="\App\Color::SWATCHES" wire:model.live="colors.{{ $tag->id }}" aria-label="{{ __('Color') }}" />
+                                <flux:button size="xs" variant="ghost" icon="trash" wire:click="confirmDelete({{ $tag->id }})" aria-label="{{ __('Delete tag') }}" />
                             </div>
 
                             @if ($deletingId === (string) $tag->id)
                                 <form wire:submit="delete" class="mt-3 space-y-3 border-t border-zinc-200 pt-3 dark:border-zinc-700">
-                                    <flux:text size="sm">Das Tag wird von allen Aufgaben entfernt. Wahlweise bekommen diese Aufgaben stattdessen ein anderes Tag.</flux:text>
-                                    <flux:select size="sm" variant="listbox" wire:model="mergeIntoId" label="Stattdessen zuweisen (optional)">
-                                        <flux:select.option value="">Kein Ersatz</flux:select.option>
+                                    <flux:text size="sm">{{ __('The tag will be removed from all tasks. Optionally, those tasks get another tag instead.') }}</flux:text>
+                                    <flux:select size="sm" variant="listbox" wire:model="mergeIntoId" :label="__('Assign instead (optional)')">
+                                        <flux:select.option value="">{{ __('No replacement') }}</flux:select.option>
                                         @foreach ($this->tags->where('id', '!=', $tag->id) as $candidate)
                                             <flux:select.option value="{{ $candidate->id }}">{{ $candidate->name }}</flux:select.option>
                                         @endforeach
                                     </flux:select>
                                     @error('mergeIntoId') <flux:text size="sm" class="text-red-500">{{ $message }}</flux:text> @enderror
                                     <div class="flex justify-end gap-2">
-                                        <flux:button size="sm" variant="ghost" wire:click="cancelDelete">Abbrechen</flux:button>
-                                        <flux:button size="sm" type="submit" variant="danger">Löschen</flux:button>
+                                        <flux:button size="sm" variant="ghost" wire:click="cancelDelete">{{ __('Cancel') }}</flux:button>
+                                        <flux:button size="sm" type="submit" variant="danger">{{ __('Delete') }}</flux:button>
                                     </div>
                                 </form>
                             @endif
@@ -226,8 +226,8 @@ new class extends Component
             @endif
 
             <form wire:submit="add" class="flex items-end gap-2">
-                <flux:input wire:model="newName" label="Neues Tag" placeholder="z. B. Wichtig" class="flex-1" />
-                <flux:button type="submit" icon="plus">Anlegen</flux:button>
+                <flux:input wire:model="newName" :label="__('New tag')" :placeholder="__('e.g. Important')" class="flex-1" />
+                <flux:button type="submit" icon="plus">{{ __('Create') }}</flux:button>
             </form>
             @error('newName') <flux:text class="-mt-4 text-red-500">{{ $message }}</flux:text> @enderror
         </div>

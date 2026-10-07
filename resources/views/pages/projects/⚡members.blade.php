@@ -50,6 +50,7 @@ new class extends Component
     public function candidates()
     {
         return User::query()
+            ->active()
             ->whereDoesntHave('projects', fn ($projects) => $projects->whereKey($this->project->getKey()))
             ->orderBy('name')
             ->get(['id', 'name', 'email']);
@@ -213,7 +214,7 @@ new class extends Component
             <li wire:key="member-{{ $member->id }}" class="flex items-center gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
                 <flux:avatar size="sm" :name="$member->name" />
                 <div class="min-w-0 flex-1">
-                    <flux:heading class="truncate">{{ $member->name }}</flux:heading>
+                    <flux:heading class="truncate">{{ $member->name }} @unless ($member->isActive()) <flux:badge size="sm" color="zinc">Deaktiviert</flux:badge> @endunless</flux:heading>
                     <flux:text size="sm" class="truncate">{{ $member->email }}</flux:text>
                 </div>
                 <flux:select size="sm" variant="listbox" wire:model.live="roles.{{ $member->id }}" aria-label="Rolle" class="max-w-36">

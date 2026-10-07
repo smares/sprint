@@ -100,6 +100,32 @@ new #[Title('Benutzer')] class extends Component
         $this->shownFor = $user->email;
     }
 
+    public function deactivate(int $userId): void
+    {
+        $user = User::findOrFail($userId);
+
+        if ($user->is($this->me())) {
+            Flux::toast(variant: 'danger', text: 'Du kannst dich nicht selbst deaktivieren.');
+
+            return;
+        }
+
+        if ($user->isLastActiveAdmin()) {
+            Flux::toast(variant: 'danger', text: 'Das ist der letzte aktive Administrator.');
+
+            return;
+        }
+
+        $user->deactivate();
+        unset($this->users);
+    }
+
+    public function reactivate(int $userId): void
+    {
+        User::findOrFail($userId)->reactivate();
+        unset($this->users);
+    }
+
     public function dismissPassword(): void
     {
         $this->reset('shownPassword', 'shownFor');
@@ -127,14 +153,21 @@ new #[Title('Benutzer')] class extends Component
 
     <ul class="space-y-2">
         @foreach ($this->users as $user)
-            <li wire:key="user-{{ $user->id }}" class="flex items-center gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+            <li wire:key="user-{{ $user->id }}" @class(['flex flex-wrap items-center gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700', 'opacity-60' => ! $user->isActive()])>
                 <flux:avatar size="sm" :name="$user->name" />
                 <div class="min-w-0 flex-1">
-                    <flux:heading class="truncate">{{ $user->name }} @if ($user->is(auth()->user())) <flux:badge size="sm">Du</flux:badge> @endif</flux:heading>
+                    <flux:heading class="truncate">{{ $user->name }} @if ($user->is(auth()->user())) <flux:badge size="sm">Du</flux:badge> @endif @unless ($user->isActive()) <flux:badge size="sm" color="zinc">Deaktiviert</flux:badge> @endunless</flux:heading>
                     <flux:text size="sm" class="truncate">{{ $user->email }}</flux:text>
                 </div>
                 <flux:checkbox wire:model.live="admins.{{ $user->id }}" label="Administrator" />
                 <flux:button size="xs" variant="ghost" icon="key" wire:click="resetPassword({{ $user->id }})" wire:confirm="Neues Passwort für {{ $user->name }} erzeugen? Das alte gilt dann nicht mehr." aria-label="Neues Passwort erzeugen" />
+                @if ($user->isActive())
+                    @unless ($user->is(auth()->user()))
+                        <flux:button size="xs" variant="ghost" icon="no-symbol" wire:click="deactivate({{ $user->id }})" wire:confirm="{{ $user->name }} deaktivieren? Die Person kann sich nicht mehr anmelden und bekommt keine Zuweisungen oder Mails mehr; Aufgaben, Kommentare und Verlauf bleiben erhalten." aria-label="Deaktivieren" title="Deaktivieren" />
+                    @endunless
+                @else
+                    <flux:button size="xs" variant="ghost" icon="arrow-uturn-left" wire:click="reactivate({{ $user->id }})" aria-label="Wieder aktivieren" title="Wieder aktivieren" />
+                @endif
             </li>
         @endforeach
     </ul>

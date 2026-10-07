@@ -30,10 +30,15 @@ new #[Title('Anmelden')] class extends Component
             ]);
         }
 
-        if (! Auth::attempt(['email' => $this->email, 'password' => $this->password], $this->remember)) {
+        $credentials = ['email' => $this->email, 'password' => $this->password];
+
+        if (! Auth::attempt([...$credentials, 'deactivated_at' => null], $this->remember)) {
             RateLimiter::hit($throttleKey);
 
-            throw ValidationException::withMessages(['email' => 'E-Mail oder Passwort ist falsch.']);
+            // Only somebody who knows the password learns that the account was deactivated.
+            throw ValidationException::withMessages(['email' => Auth::validate($credentials)
+                ? 'Dieses Konto wurde deaktiviert. Bitte wende dich an einen Administrator.'
+                : 'E-Mail oder Passwort ist falsch.']);
         }
 
         RateLimiter::clear($throttleKey);

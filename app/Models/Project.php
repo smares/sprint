@@ -116,6 +116,7 @@ class Project extends Model
     public function eligibleUsers(): Builder
     {
         return User::query()
+            ->active()
             ->where(fn (Builder $users) => $users
                 ->where('is_admin', true)
                 ->orWhereHas('projects', fn (Builder $projects) => $projects->whereKey($this->getKey()))

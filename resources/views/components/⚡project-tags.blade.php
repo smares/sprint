@@ -184,10 +184,6 @@ new class extends Component
 ?>
 
 <div>
-    <flux:modal.trigger name="project-tags">
-        <flux:button icon="tag">Tags</flux:button>
-    </flux:modal.trigger>
-
     <flux:modal name="project-tags" class="w-full max-w-xl" x-on:close="$wire.closed()">
         <div class="space-y-6">
             <div>
@@ -230,7 +226,7 @@ new class extends Component
             @endif
 
             <form wire:submit="add" class="flex items-end gap-2">
-                <flux:input wire:model="newName" label="Neues Tag" placeholder="z. B. Dringend" class="flex-1" />
+                <flux:input wire:model="newName" label="Neues Tag" placeholder="z. B. Wichtig" class="flex-1" />
                 <flux:button type="submit" icon="plus">Anlegen</flux:button>
             </form>
             @error('newName') <flux:text class="-mt-4 text-red-500">{{ $message }}</flux:text> @enderror

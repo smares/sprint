@@ -1,5 +1,10 @@
 {
     "$schema": "https://www.schemastore.org/package.json",
+    "name": "sprint",
+    "description": "Sprint – Aufgabenverwaltung für Teams (Frontend-Build).",
+    "keywords": ["sprint", "aufgabenverwaltung", "projektmanagement", "kanban"],
+    "author": "Sebastian Mares",
+    "license": "UNLICENSED",
     "private": true,
     "type": "module",
     "scripts": {

@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Project;
+use App\Models\Team;
 use App\Models\User;
 use App\ProjectRole;
 use Flux\Flux;
@@ -17,8 +18,15 @@ new class extends Component
 
     public string $newRole = 'editor';
 
+    public string $newTeamId = '';
+
+    public string $newTeamRole = 'editor';
+
     /** @var array<int|string, string> */
     public array $roles = [];
+
+    /** @var array<int|string, string> */
+    public array $teamRoles = [];
 
     public function hydrate(): void
     {
@@ -47,29 +55,47 @@ new class extends Component
             ->get(['id', 'name', 'email']);
     }
 
+    #[Computed]
+    public function teams()
+    {
+        return $this->project->teams()->withCount('users')->get();
+    }
+
+    #[Computed]
+    public function teamCandidates()
+    {
+        return Team::query()
+            ->whereDoesntHave('projects', fn ($projects) => $projects->whereKey($this->project->getKey()))
+            ->orderBy('name')
+            ->get(['id', 'name']);
+    }
+
     private function fillRoles(): void
     {
         $this->roles = $this->members->mapWithKeys(fn (User $member) => [$member->id => $member->pivot->role])->all();
+        $this->teamRoles = $this->teams->mapWithKeys(fn (Team $team) => [$team->id => $team->pivot->role])->all();
     }
 
     private function refresh(): void
     {
-        unset($this->members, $this->candidates);
+        unset($this->members, $this->candidates, $this->teams, $this->teamCandidates);
         $this->fillRoles();
     }
 
     /**
-     * A project always keeps at least one member who may manage it.
+     * A project always keeps somebody who may manage it: a member or a team with that role.
      */
-    private function keepsAnAdmin(int $changedUserId, ?ProjectRole $newRole): bool
+    private function keepsAManager(?int $exceptUserId = null, ?int $exceptTeamId = null): bool
     {
-        if ($newRole === ProjectRole::Admin) {
-            return true;
-        }
-
-        return $this->project->members()
+        $member = $this->project->members()
             ->wherePivot('role', ProjectRole::Admin->value)
-            ->where('users.id', '!=', $changedUserId)
+            ->when($exceptUserId, fn ($members) => $members->where('users.id', '!=', $exceptUserId))
+            ->exists();
+
+        return $member || $this->project->teams()
+            ->wherePivot('role', ProjectRole::Admin->value)
+            ->has('users')
+            ->when($exceptTeamId, fn ($teams) => $teams->where('teams.id', '!=', $exceptTeamId))
             ->exists();
     }
 
@@ -91,7 +117,7 @@ new class extends Component
         $member = $this->project->members()->where('users.id', $userId)->firstOrFail();
         $role = ProjectRole::tryFrom($value);
 
-        if ($role === null || ! $this->keepsAnAdmin($member->id, $role)) {
+        if ($role === null || ($member->pivot->role === ProjectRole::Admin->value && $role !== ProjectRole::Admin && ! $this->keepsAManager(exceptUserId: $member->id))) {
             $this->roles[$userId] = $member->pivot->role;
 
             if ($role !== null) {
@@ -109,13 +135,59 @@ new class extends Component
     {
         $member = $this->project->members()->where('users.id', $userId)->firstOrFail();
 
-        if (! $this->keepsAnAdmin($member->id, null)) {
+        if ($member->pivot->role === ProjectRole::Admin->value && ! $this->keepsAManager(exceptUserId: $member->id)) {
             Flux::toast(variant: 'danger', text: 'Ein Projekt braucht mindestens ein Mitglied, das es verwalten darf.');
 
             return;
         }
 
         $this->project->members()->detach($member->id);
+        $this->refresh();
+    }
+
+    public function addTeam(): void
+    {
+        $validated = $this->validate([
+            'newTeamId' => ['required', Rule::in($this->teamCandidates->pluck('id')->map(fn ($id) => (string) $id)->all())],
+            'newTeamRole' => ['required', Rule::enum(ProjectRole::class)],
+        ], attributes: ['newTeamId' => 'Team', 'newTeamRole' => 'Rolle']);
+
+        $this->project->setTeamRole(Team::findOrFail($validated['newTeamId']), ProjectRole::from($validated['newTeamRole']));
+
+        $this->reset('newTeamId');
+        $this->refresh();
+    }
+
+    public function updatedTeamRoles(string $value, string $teamId): void
+    {
+        $team = $this->project->teams()->where('teams.id', $teamId)->firstOrFail();
+        $role = ProjectRole::tryFrom($value);
+
+        if ($role === null || ($team->pivot->role === ProjectRole::Admin->value && $role !== ProjectRole::Admin && ! $this->keepsAManager(exceptTeamId: $team->id))) {
+            $this->teamRoles[$teamId] = $team->pivot->role;
+
+            if ($role !== null) {
+                Flux::toast(variant: 'danger', text: 'Ein Projekt braucht mindestens ein Mitglied, das es verwalten darf.');
+            }
+
+            return;
+        }
+
+        $this->project->setTeamRole($team, $role);
+        $this->refresh();
+    }
+
+    public function removeTeam(int $teamId): void
+    {
+        $team = $this->project->teams()->where('teams.id', $teamId)->firstOrFail();
+
+        if ($team->pivot->role === ProjectRole::Admin->value && ! $this->keepsAManager(exceptTeamId: $team->id)) {
+            Flux::toast(variant: 'danger', text: 'Ein Projekt braucht mindestens ein Mitglied, das es verwalten darf.');
+
+            return;
+        }
+
+        $this->project->teams()->detach($team->id);
         $this->refresh();
     }
 
@@ -168,4 +240,44 @@ new class extends Component
         <flux:button type="submit" icon="plus">Hinzufügen</flux:button>
     </form>
     @error('newUserId') <flux:text class="mt-1 text-red-500">{{ $message }}</flux:text> @enderror
+
+    <flux:heading size="lg" class="mb-1 mt-10">Teams</flux:heading>
+    <flux:text class="mb-4">Alle Personen eines Teams bekommen die hier gewählte Rolle. Wer zusätzlich direkt Mitglied ist, behält die höhere Rolle.</flux:text>
+
+    <ul class="space-y-2">
+        @forelse ($this->teams as $team)
+            <li wire:key="team-{{ $team->id }}" class="flex items-center gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                <flux:icon.user-group class="shrink-0 text-zinc-400" />
+                <div class="min-w-0 flex-1">
+                    <flux:heading class="truncate">{{ $team->name }}</flux:heading>
+                    <flux:text size="sm">{{ $team->users_count }} {{ $team->users_count === 1 ? 'Person' : 'Personen' }}</flux:text>
+                </div>
+                <flux:select size="sm" variant="listbox" wire:model.live="teamRoles.{{ $team->id }}" aria-label="Rolle" class="max-w-36">
+                    @foreach (ProjectRole::cases() as $role)
+                        <flux:select.option value="{{ $role->value }}">{{ $role->label() }}</flux:select.option>
+                    @endforeach
+                </flux:select>
+                <flux:button size="xs" variant="ghost" icon="x-mark" wire:click="removeTeam({{ $team->id }})" aria-label="Team entfernen" />
+            </li>
+        @empty
+            <flux:text>Noch kein Team hat Zugriff.</flux:text>
+        @endforelse
+    </ul>
+
+    @if ($this->teamCandidates->isNotEmpty())
+        <form wire:submit="addTeam" class="mt-4 flex items-end gap-2">
+            <flux:select variant="listbox" wire:model="newTeamId" label="Team hinzufügen" placeholder="Team wählen …" class="min-w-0 flex-1">
+                @foreach ($this->teamCandidates as $candidate)
+                    <flux:select.option value="{{ $candidate->id }}">{{ $candidate->name }}</flux:select.option>
+                @endforeach
+            </flux:select>
+            <flux:select variant="listbox" wire:model="newTeamRole" label="Rolle" class="max-w-36">
+                @foreach (ProjectRole::cases() as $role)
+                    <flux:select.option value="{{ $role->value }}">{{ $role->label() }}</flux:select.option>
+                @endforeach
+            </flux:select>
+            <flux:button type="submit" icon="plus">Hinzufügen</flux:button>
+        </form>
+        @error('newTeamId') <flux:text class="mt-1 text-red-500">{{ $message }}</flux:text> @enderror
+    @endif
 </div>

@@ -6,7 +6,7 @@ Gebaut mit Laravel 13, Livewire 4 und [Flux UI Pro](https://fluxui.dev). Die Obe
 
 ## Funktionen
 
-- **Rollen und Rechte:** Projekte sehen nur ihre Mitglieder. Pro Projekt gibt es die Rollen *Ansehen*, *Bearbeiten* und *Verwalten* (Mitglieder und Status); Administratoren der Anwendung haben überall Zugriff. Zuständige, Beteiligte, Erwähnungen und E-Mails gibt es nur für Personen, die das Projekt sehen dürfen
+- **Rollen und Rechte:** Projekte sehen nur ihre Mitglieder. Pro Projekt gibt es die Rollen *Ansehen*, *Bearbeiten* und *Verwalten* (Mitglieder und Status); **Teams** geben einer ganzen Gruppe auf einmal Zugriff (die höchste Rolle aus direkter Mitgliedschaft und Teams gilt); Administratoren der Anwendung haben überall Zugriff und legen unter *Benutzer* neue Personen an, verwalten Administratoren und unter *Teams* die Gruppen. Zuständige, Beteiligte, Erwähnungen und E-Mails gibt es nur für Personen, die das Projekt sehen dürfen
 - **Projekte und Aufgaben** mit Titel, Beschreibung, zuständiger Person, Fälligkeit und Status
 - **Liste und Kanban-Board** pro Projekt, mit Filtern (Status, Person, Tag) und Sortierung per Klick auf die Spaltenköpfe
 - **Manuelle Reihenfolge** per Drag & Drop; Liste und Board teilen eine Reihenfolge
@@ -21,7 +21,7 @@ Gebaut mit Laravel 13, Livewire 4 und [Flux UI Pro](https://fluxui.dev). Die Obe
 - **`@`-Erwähnungen** von Personen und Aufgaben: ein `@` tippen, aus dem Fenster wählen; angezeigt wird immer der aktuelle Name bzw. Titel
 - **E-Mail-Benachrichtigungen** an zuständige und beteiligte Personen bei neuen Kommentaren und Statuswechseln sowie an erwähnte Personen (auch ohne Beteiligung, einmal pro neuer Erwähnung); pro Aufgabe abbestellbar (Schalter auf der Aufgabenseite oder signierter Link in der Mail, auch ohne Login)
 
-Es gibt keine öffentliche Registrierung, Benutzer legt ein Administrator per Kommando an (siehe unten). Wer ein Projekt anlegt, verwaltet es und kann dort weitere Mitglieder hinzufügen.
+Es gibt keine öffentliche Registrierung: Benutzer legt ein Administrator in der App an (*Benutzer*) oder per Kommando (siehe unten). Wer ein Projekt anlegt, verwaltet es und kann dort weitere Mitglieder hinzufügen.
 
 ## Voraussetzungen
 
@@ -84,9 +84,9 @@ vendor/bin/pint   # Code-Stil
 
 | Pfad | Inhalt |
 | --- | --- |
-| `app/Models` | Eloquent-Modelle: `Project`, `Task`, `TaskStatus`, `Tag`, `Comment`, `User` |
+| `app/Models` | Eloquent-Modelle: `Project`, `Task`, `TaskStatus`, `Tag`, `Comment`, `Team`, `User` |
 | `app/Markdown.php` | Rendert Markdown samt `@`-Erwähnungen zu sicherem HTML |
-| `resources/views/pages` | Seiten als Livewire-Komponenten (Projekte, Board, Status, Aufgaben, Login) |
+| `resources/views/pages` | Seiten als Livewire-Komponenten (Projekte, Board, Status, Mitglieder, Aufgaben, Administration, Login) |
 | `resources/views/components` | Blade-Komponenten (`x-markdown`, `x-markdown-editor`, `x-task-subtree`) |
 | `resources/js/app.js` | Alpine-Komponente für das `@`-Auswahlfenster |
 | `routes/web.php` | Routen (alles hinter dem Login, außer `/login`) |

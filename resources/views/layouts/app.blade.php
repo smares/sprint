@@ -15,6 +15,10 @@
                 <flux:navbar class="ms-4">
                     <flux:navbar.item href="{{ route('projects.index') }}" :current="request()->routeIs('projects.*')" wire:navigate>Projekte</flux:navbar.item>
                     <flux:navbar.item href="{{ route('tasks.mine') }}" :current="request()->routeIs('tasks.mine')" wire:navigate>Meine Aufgaben</flux:navbar.item>
+                    @can('administer')
+                        <flux:navbar.item href="{{ route('admin.teams') }}" :current="request()->routeIs('admin.teams')" wire:navigate>Teams</flux:navbar.item>
+                        <flux:navbar.item href="{{ route('admin.users') }}" :current="request()->routeIs('admin.users')" wire:navigate>Benutzer</flux:navbar.item>
+                    @endcan
                 </flux:navbar>
 
                 <flux:spacer />

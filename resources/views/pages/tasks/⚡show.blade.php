@@ -25,6 +25,9 @@ new class extends Component
 
     public Task $task;
 
+    /** Shown as a side panel next to a list or board instead of as a page of its own. */
+    public bool $panel = false;
+
     public string $title = '';
 
     public string $description = '';
@@ -286,6 +289,18 @@ new class extends Component
     private function resetSubtaskCaches(): void
     {
         unset($this->projectTasks, $this->childrenMap, $this->descendantIds, $this->sectionIds, $this->progress);
+
+        $this->announceChange();
+    }
+
+    /**
+     * Lets the list or board next to the side panel refresh itself.
+     */
+    private function announceChange(): void
+    {
+        if ($this->panel) {
+            $this->dispatch('task-changed');
+        }
     }
 
     public function addSubtask(int $parentId): void
@@ -542,6 +557,8 @@ new class extends Component
         $this->logSyncChanges('blocking', $dependencyChanges['blocking'], Task::class, 'title');
         unset($this->activityFeed);
 
+        $this->announceChange();
+
         Flux::toast(variant: 'success', text: 'Gespeichert.');
     }
 
@@ -645,25 +662,47 @@ new class extends Component
         $projectId = $this->task->project_id;
         $this->task->delete();
 
+        if ($this->panel) {
+            $this->dispatch('task-deleted');
+
+            return;
+        }
+
         $this->redirectRoute('projects.show', $projectId, navigate: true);
     }
 
     public function rendering($view): void
     {
-        $view->title($this->task->title);
+        if (! $this->panel) {
+            $view->title($this->task->title);
+        }
     }
 };
 ?>
 
-<div class="max-w-3xl">
-    <flux:breadcrumbs class="mb-4">
-        <flux:breadcrumbs.item href="{{ route('projects.index') }}" wire:navigate>Projekte</flux:breadcrumbs.item>
-        <flux:breadcrumbs.item href="{{ route('projects.show', $task->project_id) }}" wire:navigate>{{ $task->project->name }}</flux:breadcrumbs.item>
-        @foreach ($this->ancestors as $ancestor)
-            <flux:breadcrumbs.item href="{{ route('tasks.show', $ancestor) }}" wire:navigate>{{ $ancestor->title }}</flux:breadcrumbs.item>
-        @endforeach
-        <flux:breadcrumbs.item>Aufgabe</flux:breadcrumbs.item>
-    </flux:breadcrumbs>
+<div @class(['max-w-3xl' => ! $panel])>
+    @if ($panel)
+        <div class="mb-4 flex items-center gap-2">
+            <flux:text size="sm" class="min-w-0 flex-1 truncate">
+                {{ $task->project->name }}
+                @foreach ($this->ancestors as $ancestor)
+                    <span class="text-zinc-400">/</span>
+                    <button type="button" wire:key="ancestor-{{ $ancestor->id }}" x-on:click="$dispatch('open-task', { id: {{ $ancestor->id }} })" class="hover:underline">{{ $ancestor->title }}</button>
+                @endforeach
+            </flux:text>
+            <flux:button size="sm" variant="ghost" icon="arrow-top-right-on-square" href="{{ route('tasks.show', $task) }}" wire:navigate aria-label="Als Seite öffnen" title="Als Seite öffnen" />
+            <flux:button size="sm" variant="ghost" icon="x-mark" x-on:click="$dispatch('close-task')" aria-label="Schließen" title="Schließen" />
+        </div>
+    @else
+        <flux:breadcrumbs class="mb-4">
+            <flux:breadcrumbs.item href="{{ route('projects.index') }}" wire:navigate>Projekte</flux:breadcrumbs.item>
+            <flux:breadcrumbs.item href="{{ route('projects.show', $task->project_id) }}" wire:navigate>{{ $task->project->name }}</flux:breadcrumbs.item>
+            @foreach ($this->ancestors as $ancestor)
+                <flux:breadcrumbs.item href="{{ route('tasks.show', $ancestor) }}" wire:navigate>{{ $ancestor->title }}</flux:breadcrumbs.item>
+            @endforeach
+            <flux:breadcrumbs.item>Aufgabe</flux:breadcrumbs.item>
+        </flux:breadcrumbs>
+    @endif
 
     @unless ($this->canEdit)
         <flux:callout class="mb-4" icon="eye" heading="Nur ansehen" text="In diesem Projekt darfst du Aufgaben lesen, aber nicht ändern." />
@@ -673,7 +712,7 @@ new class extends Component
         <flux:input wire:model="title" label="Titel" />
         <x-markdown-editor wire:model="description" label="Beschreibung" :rows="5" :mentions="$this->mentionOptions" />
 
-        <div class="grid gap-4 sm:grid-cols-3">
+        <div @class(['grid gap-4', 'sm:grid-cols-3' => ! $panel, 'sm:grid-cols-2' => $panel])>
             <flux:select variant="listbox" wire:model="statusId" label="Status">
                 @foreach ($task->project->statuses as $status)
                     <flux:select.option value="{{ $status->id }}">{{ $status->name }}</flux:select.option>
@@ -688,7 +727,7 @@ new class extends Component
             <flux:date-picker wire:model="dueDate" label="Fällig am" locale="de-DE" placeholder="Datum wählen" clearable />
         </div>
 
-        <div class="grid gap-4 sm:grid-cols-3">
+        <div @class(['grid gap-4', 'sm:grid-cols-3' => ! $panel, 'sm:grid-cols-2' => $panel])>
             <flux:date-picker wire:model="startDate" label="Beginnt am" locale="de-DE" placeholder="Datum wählen" clearable />
         </div>
 
@@ -717,7 +756,7 @@ new class extends Component
         </div>
 
         @if ($this->customFields->isNotEmpty())
-            <div class="grid gap-4 sm:grid-cols-3">
+            <div @class(['grid gap-4', 'sm:grid-cols-3' => ! $panel, 'sm:grid-cols-2' => $panel])>
                 @foreach ($this->customFields as $field)
                     @switch($field->type)
                         @case(\App\CustomFieldType::Select)
@@ -809,7 +848,7 @@ new class extends Component
 
     @php($rootChildren = $this->childrenMap->get($task->id, collect()))
     @if ($rootChildren->isNotEmpty())
-        <x-task-subtree :tasks="$rootChildren" :children-map="$this->childrenMap" :parent-id="$task->id" :can-edit="$this->canEdit" />
+        <x-task-subtree :tasks="$rootChildren" :children-map="$this->childrenMap" :parent-id="$task->id" :can-edit="$this->canEdit" :panel="$panel" />
     @endif
 
     @if ($this->canEdit)

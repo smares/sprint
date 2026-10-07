@@ -3,7 +3,9 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Locale;
 use Database\Factories\UserFactory;
+use Illuminate\Contracts\Translation\HasLocalePreference;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
@@ -18,9 +20,9 @@ use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'email', 'password', 'is_admin', 'deactivated_at', 'digest_enabled'])]
+#[Fillable(['name', 'email', 'password', 'is_admin', 'locale', 'deactivated_at', 'digest_enabled'])]
 #[Hidden(['password', 'remember_token', 'two_factor_secret', 'two_factor_recovery_codes'])]
-class User extends Authenticatable implements PasskeyUser
+class User extends Authenticatable implements HasLocalePreference, PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
@@ -45,6 +47,21 @@ class User extends Authenticatable implements PasskeyUser
             'two_factor_confirmed_at' => 'datetime',
             'digest_enabled' => 'boolean',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function (self $user) {
+            $user->locale ??= config('app.locale');
+        });
+    }
+
+    /**
+     * Mails and notifications to this person go out in their language.
+     */
+    public function preferredLocale(): string
+    {
+        return Locale::isSupported($this->locale) ? $this->locale : config('app.locale');
     }
 
     /**

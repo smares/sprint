@@ -118,7 +118,7 @@ new class extends Component
 
             <div class="flex justify-end gap-2">
                 <flux:button variant="ghost" wire:click="startOver">{{ __('Another file') }}</flux:button>
-                <flux:modal.close><flux:button variant="primary" x-on:click="$dispatch('tasks-imported')">{{ __('Done') }}</flux:button></flux:modal.close>
+                <flux:modal.close><flux:button variant="primary" x-on:click="$dispatch('tasks-imported')">{{ __('Finish') }}</flux:button></flux:modal.close>
             </div>
         @else
             <flux:file-upload wire:model="file" :label="__('CSV file')">

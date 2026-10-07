@@ -3,11 +3,10 @@
 use App\Models\Task;
 use Illuminate\Notifications\DatabaseNotification;
 use Livewire\Attributes\Computed;
-use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithPagination;
 
-new #[Title('Inbox')] class extends Component
+new class extends Component
 {
     use WithPagination;
 
@@ -73,6 +72,11 @@ new #[Title('Inbox')] class extends Component
         $this->ownNotification($id)->delete();
 
         unset($this->notifications);
+    }
+
+    public function rendering($view): void
+    {
+        $view->title(__('Inbox'));
     }
 };
 ?>

@@ -657,7 +657,7 @@ new class extends Component
             <div class="flex gap-2">
                 <flux:button variant="ghost" wire:click="resetFilters">{{ __('Reset') }}</flux:button>
                 <flux:spacer />
-                <flux:modal.close><flux:button variant="primary">{{ __('Done') }}</flux:button></flux:modal.close>
+                <flux:modal.close><flux:button variant="primary">{{ __('Finish') }}</flux:button></flux:modal.close>
             </div>
         </div>
     </flux:modal>

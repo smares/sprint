@@ -6,10 +6,9 @@ use Flux\Flux;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
-use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Title('Teams')] class extends Component
+new class extends Component
 {
     public string $newName = '';
 
@@ -122,6 +121,11 @@ new #[Title('Teams')] class extends Component
         $this->reset('deletingId');
         Flux::modal('delete-team')->close();
         $this->refresh();
+    }
+
+    public function rendering($view): void
+    {
+        $view->title(__('Teams'));
     }
 };
 ?>

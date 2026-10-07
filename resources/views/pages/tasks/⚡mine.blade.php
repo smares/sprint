@@ -3,10 +3,9 @@
 use App\Models\Task;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
-use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Title('My tasks')] class extends Component
+new class extends Component
 {
     private const PAGE_SIZE = 50;
 
@@ -45,6 +44,11 @@ new #[Title('My tasks')] class extends Component
     public function totalTasks(): int
     {
         return $this->mine()->count();
+    }
+
+    public function rendering($view): void
+    {
+        $view->title(__('My tasks'));
     }
 };
 ?>

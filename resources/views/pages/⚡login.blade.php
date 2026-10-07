@@ -7,10 +7,9 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Contracts\TwoFactorAuthenticationProvider;
 use Laravel\Fortify\Fortify;
-use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Title('Sign in')] class extends Component
+new class extends Component
 {
     private const CHALLENGE_MINUTES = 5;
 
@@ -165,6 +164,11 @@ new #[Title('Sign in')] class extends Component
         session()->regenerate();
 
         $this->redirectIntended(route('projects.index'), navigate: true);
+    }
+
+    public function rendering($view): void
+    {
+        $view->title(__('Sign in'));
     }
 };
 ?>

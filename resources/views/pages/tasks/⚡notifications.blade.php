@@ -2,10 +2,9 @@
 
 use App\Models\Task;
 use App\Models\User;
-use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Title('Notifications')] class extends Component
+new class extends Component
 {
     public Task $task;
 
@@ -28,6 +27,11 @@ new #[Title('Notifications')] class extends Component
     {
         $this->task->setMutedBy($this->user, false);
         $this->muted = false;
+    }
+
+    public function rendering($view): void
+    {
+        $view->title(__('Notifications'));
     }
 };
 ?>

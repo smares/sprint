@@ -7,10 +7,9 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
-use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Title('Users')] class extends Component
+new class extends Component
 {
     public string $name = '';
 
@@ -150,6 +149,11 @@ new #[Title('Users')] class extends Component
     private function me(): User
     {
         return auth()->user();
+    }
+
+    public function rendering($view): void
+    {
+        $view->title(__('Users'));
     }
 };
 ?>

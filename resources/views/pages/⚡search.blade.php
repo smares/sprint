@@ -5,11 +5,10 @@ use App\Models\Task;
 use App\TaskSearch;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
-use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
-new #[Title('Search')] class extends Component
+new class extends Component
 {
     private const PAGE_SIZE = 50;
 
@@ -82,6 +81,11 @@ new #[Title('Search')] class extends Component
     public function explain(Task $task): ?array
     {
         return app(TaskSearch::class)->explain($task, $this->terms);
+    }
+
+    public function rendering($view): void
+    {
+        $view->title(__('Search'));
     }
 };
 ?>

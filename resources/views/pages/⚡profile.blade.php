@@ -6,11 +6,10 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
-new #[Title('Profile')] class extends Component
+new class extends Component
 {
     public string $name = '';
 
@@ -106,6 +105,11 @@ new #[Title('Profile')] class extends Component
 
         $this->reset('currentPassword', 'newPassword', 'newPasswordConfirmation');
         Flux::toast(variant: 'success', text: __('Password changed.'));
+    }
+
+    public function rendering($view): void
+    {
+        $view->title(__('Profile'));
     }
 };
 ?>

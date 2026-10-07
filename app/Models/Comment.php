@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Markdown;
 use App\Notifications\TaskCommented;
+use App\Notifications\UserMentioned;
 use Database\Factories\CommentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -21,9 +23,16 @@ class Comment extends Model
         static::created(function (self $comment) {
             $comment->loadMissing('task', 'user');
 
+            $mentionedIds = Markdown::mentionedUserIds($comment->body);
+
             Notification::send(
-                $comment->task->usersToNotify($comment->user),
+                $comment->task->usersToNotify($comment->user)->reject(fn (User $user) => in_array($user->id, $mentionedIds, true)),
                 new TaskCommented($comment),
+            );
+
+            Notification::send(
+                $comment->task->usersToMention($mentionedIds, $comment->user),
+                new UserMentioned($comment->task, 'comment', $comment->body, $comment->user?->name),
             );
         });
     }

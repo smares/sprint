@@ -11,13 +11,13 @@
             <span class="text-zinc-300">|</span>
             <button
                 type="button"
-                x-on:click="tab = 'preview'; loading = true; $wire.previewMarkdown($refs.field.querySelector('textarea').value).then(result => { html = result; loading = false })"
+                x-on:click="tab = 'preview'; loading = true; $wire.previewMarkdown($root.querySelector('textarea').value).then(result => { html = result; loading = false })"
                 x-bind:class="tab === 'preview' ? 'font-semibold underline' : 'text-zinc-500'"
             >Vorschau</button>
         </div>
     </div>
 
-    <div x-show="tab === 'write'" x-ref="field" class="relative" x-data="mentionable(@js($mentions))" x-on:input="onInput($event)" x-on:keydown="onKeydown($event)" x-on:click.outside="open = false">
+    <div x-show="tab === 'write'" class="relative" x-data="mentionable(@js($mentions))" x-on:input="onInput($event)" x-on:keydown="onKeydown($event)" x-on:click.outside="open = false">
         <flux:textarea :rows="$rows" :placeholder="$placeholder" {{ $attributes->whereStartsWith('wire:model') }} />
 
         <ul x-show="open && matches.length" x-cloak class="absolute z-20 mt-1 max-h-64 w-72 overflow-auto rounded-lg border border-zinc-200 bg-white p-1 text-sm shadow-lg dark:border-zinc-700 dark:bg-zinc-800" role="listbox">

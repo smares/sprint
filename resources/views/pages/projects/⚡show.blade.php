@@ -225,6 +225,65 @@ new class extends Component
         Flux::modal('create-task')->close();
     }
 
+    /**
+     * The filters that differ from the default, as removable chips.
+     *
+     * @return \Illuminate\Support\Collection<int, array{key: string, label: string}>
+     */
+    #[Computed]
+    public function activeFilters()
+    {
+        $filters = collect();
+
+        if ($this->assigneeFilter === 'me') {
+            $filters->push(['key' => 'assignee', 'label' => 'Nur meine']);
+        } elseif (ctype_digit($this->assigneeFilter) && ($user = $this->users->firstWhere('id', (int) $this->assigneeFilter))) {
+            $filters->push(['key' => 'assignee', 'label' => $user->name]);
+        }
+
+        foreach ($this->filterableFields as $field) {
+            $option = $field->options->firstWhere('id', (int) ($this->fieldFilters[$field->id] ?? 0));
+
+            if ($option !== null) {
+                $filters->push(['key' => 'field:'.$field->id, 'label' => $field->name.': '.$option->name]);
+            }
+        }
+
+        if (ctype_digit($this->tagFilter) && ($tag = $this->tagOptions->firstWhere('id', (int) $this->tagFilter))) {
+            $filters->push(['key' => 'tag', 'label' => $tag->name]);
+        }
+
+        return $filters;
+    }
+
+    #[Computed]
+    public function statusFilterLabel(): string
+    {
+        return match (true) {
+            $this->statusFilter === 'open' => 'Offene',
+            $this->statusFilter === 'all' => 'Alle Status',
+            default => $this->statuses->firstWhere('id', (int) $this->statusFilter)?->name ?? 'Offene',
+        };
+    }
+
+    public function clearFilter(string $key): void
+    {
+        match (true) {
+            $key === 'assignee' => $this->assigneeFilter = '',
+            $key === 'tag' => $this->tagFilter = '',
+            str_starts_with($key, 'field:') => $this->fieldFilters[(int) substr($key, 6)] = '',
+            default => null,
+        };
+    }
+
+    public function resetFilters(): void
+    {
+        $this->statusFilter = 'open';
+        $this->assigneeFilter = '';
+        $this->tagFilter = '';
+        $this->fieldFilters = [];
+    }
+
     public function sort(string $column): void
     {
         $isField = str_starts_with($column, 'field:') && $this->customFields->contains('id', (int) substr($column, 6));
@@ -299,56 +358,87 @@ new class extends Component
         <div class="flex flex-wrap items-center gap-2">
             <x-project-views :project="$project" active="list" />
 
-            @if ($this->canManage)
-                <livewire:project-statuses :project="$project" />
-                <livewire:project-tags :project="$project" />
-                <flux:button icon="adjustments-horizontal" href="{{ route('projects.fields', $project) }}" wire:navigate>Felder</flux:button>
-                <flux:button icon="users" href="{{ route('projects.members', $project) }}" wire:navigate>Mitglieder</flux:button>
-            @endif
-
             @if ($this->canEdit)
                 <flux:modal.trigger name="create-task">
                     <flux:button variant="primary" icon="plus">Neue Aufgabe</flux:button>
                 </flux:modal.trigger>
             @endif
+
+            @if ($this->canManage)
+                <x-project-menu :project="$project" />
+            @endif
         </div>
     </div>
 
-    <div class="mb-4 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
-        <flux:select variant="listbox" wire:model.live="statusFilter" class="max-w-40">
-            <flux:select.option value="open">Offen</flux:select.option>
-            <flux:select.option value="all">Alle</flux:select.option>
-            @foreach ($this->statuses as $status)
-                <flux:select.option value="{{ $status->id }}">{{ $status->name }}</flux:select.option>
-            @endforeach
-        </flux:select>
+    <div class="mb-4 flex flex-wrap items-center gap-2">
+        <flux:modal.trigger name="filters">
+            <flux:button icon="funnel">
+                Filter
+                @if ($this->activeFilters->isNotEmpty())
+                    <flux:badge size="sm" color="blue" inset="top bottom">{{ $this->activeFilters->count() }}</flux:badge>
+                @endif
+            </flux:button>
+        </flux:modal.trigger>
 
-        <flux:select variant="listbox" wire:model.live="assigneeFilter" class="max-w-48">
-            <flux:select.option value="">Alle Personen</flux:select.option>
-            <flux:select.option value="me">Nur meine</flux:select.option>
-            @foreach ($this->users as $user)
-                <flux:select.option value="{{ $user->id }}">{{ $user->name }}</flux:select.option>
-            @endforeach
-        </flux:select>
+        <flux:badge size="sm" color="zinc">{{ $this->statusFilterLabel }}</flux:badge>
 
-        @foreach ($this->filterableFields as $field)
-            <flux:select wire:key="filter-{{ $field->id }}" variant="listbox" wire:model.live="fieldFilters.{{ $field->id }}" class="max-w-48">
-                <flux:select.option value="">Alle: {{ $field->name }}</flux:select.option>
-                @foreach ($field->options as $option)
-                    <flux:select.option value="{{ $option->id }}">{{ $option->name }}</flux:select.option>
-                @endforeach
-            </flux:select>
+        @foreach ($this->activeFilters as $filter)
+            <flux:badge wire:key="active-{{ $filter['key'] }}" size="sm" color="blue" as="button" type="button" wire:click="clearFilter('{{ $filter['key'] }}')" title="Filter entfernen">
+                {{ $filter['label'] }}
+                <flux:icon.x-mark variant="micro" class="ms-1" />
+            </flux:badge>
         @endforeach
 
-        @if ($this->tagOptions->isNotEmpty())
-            <flux:select variant="listbox" wire:model.live="tagFilter" class="max-w-48">
-                <flux:select.option value="">Alle Tags</flux:select.option>
-                @foreach ($this->tagOptions as $tag)
-                    <flux:select.option value="{{ $tag->id }}">{{ $tag->name }}</flux:select.option>
-                @endforeach
-            </flux:select>
+        @if ($this->activeFilters->isNotEmpty())
+            <flux:button size="sm" variant="ghost" wire:click="resetFilters">Zurücksetzen</flux:button>
         @endif
     </div>
+
+    <flux:modal name="filters" class="w-full max-w-md">
+        <div class="space-y-5">
+            <flux:heading size="lg">Filter</flux:heading>
+
+            <flux:select variant="listbox" wire:model.live="statusFilter" label="Status">
+                <flux:select.option value="open">Offen</flux:select.option>
+                <flux:select.option value="all">Alle</flux:select.option>
+                @foreach ($this->statuses as $status)
+                    <flux:select.option value="{{ $status->id }}">{{ $status->name }}</flux:select.option>
+                @endforeach
+            </flux:select>
+
+            <flux:select variant="listbox" wire:model.live="assigneeFilter" label="Person">
+                <flux:select.option value="">Alle Personen</flux:select.option>
+                <flux:select.option value="me">Nur meine</flux:select.option>
+                @foreach ($this->users as $user)
+                    <flux:select.option value="{{ $user->id }}">{{ $user->name }}</flux:select.option>
+                @endforeach
+            </flux:select>
+
+            @foreach ($this->filterableFields as $field)
+                <flux:select wire:key="filter-{{ $field->id }}" variant="listbox" wire:model.live="fieldFilters.{{ $field->id }}" label="{{ $field->name }}">
+                    <flux:select.option value="">Alle</flux:select.option>
+                    @foreach ($field->options as $option)
+                        <flux:select.option value="{{ $option->id }}">{{ $option->name }}</flux:select.option>
+                    @endforeach
+                </flux:select>
+            @endforeach
+
+            @if ($this->tagOptions->isNotEmpty())
+                <flux:select variant="listbox" wire:model.live="tagFilter" label="Tag">
+                    <flux:select.option value="">Alle Tags</flux:select.option>
+                    @foreach ($this->tagOptions as $tag)
+                        <flux:select.option value="{{ $tag->id }}">{{ $tag->name }}</flux:select.option>
+                    @endforeach
+                </flux:select>
+            @endif
+
+            <div class="flex gap-2">
+                <flux:button variant="ghost" wire:click="resetFilters">Zurücksetzen</flux:button>
+                <flux:spacer />
+                <flux:modal.close><flux:button variant="primary">Fertig</flux:button></flux:modal.close>
+            </div>
+        </div>
+    </flux:modal>
 
     @if ($this->tasks->isEmpty())
         <flux:callout icon="check-circle" heading="Keine Aufgaben" text="Mit diesen Filtern gibt es hier nichts zu tun." />

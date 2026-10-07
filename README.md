@@ -12,7 +12,7 @@ Gebaut mit Laravel 13, Livewire 4 und [Flux UI Pro](https://fluxui.dev). Die Obe
 - **Wiederkehrende Aufgaben**: täglich, wöchentlich, monatlich oder jährlich (alle n Einheiten), wahlweise nach Plan oder nach Erledigung, optional mit Enddatum; beim Erledigen entsteht automatisch die nächste Aufgabe samt Unteraufgaben, Tags, Beteiligten und Feldwerten
 - **Anhänge**: beliebig viele Dateien pro Aufgabe (bis 20 MB je Datei), nur für Projektmitglieder abrufbar; Bilder erscheinen als Vorschau, alles andere wird als Download ausgeliefert
 - **Globale Suche** (Suchfeld in der Kopfzeile): durchsucht Titel, Beschreibung, Kommentare und Anhangsnamen aller Projekte, die man sehen darf; alle Wörter müssen vorkommen, Wortanfänge genügen; Filter nach Projekt, offen/erledigt und „nur meine". Auf SQLite mit FTS5 gibt es einen Volltextindex (nach Relevanz sortiert, Umlaute egal), sonst eine LIKE-Suche
-- **Liste und Kanban-Board** pro Projekt, mit Filtern (Status, Person, Tag) und Sortierung per Klick auf die Spaltenköpfe
+- **Liste und Kanban-Board** pro Projekt, mit Filtern (Status, Person, Felder, Tag; Filter-Knopf mit Fenster, aktive Filter als Chips zum Entfernen) und Sortierung per Klick auf die Spaltenköpfe
 - **Manuelle Reihenfolge** per Drag & Drop; Liste und Board teilen eine Reihenfolge
 - **Eigene Status pro Projekt** mit Name, frei wählbarer Farbe (Farbwähler mit Farbfeldern und Hex-Eingabe), Reihenfolge und „gilt als erledigt“-Markierung (Fenster *Status* an Liste und Board, per Ziehen sortierbar)
 - **Subtasks in beliebiger Tiefe** mit Fortschritt, Zwischenüberschriften und Drag & Drop; der Fortschritt zeigt nur an und erledigt die Hauptaufgabe nicht automatisch

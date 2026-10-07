@@ -129,9 +129,7 @@ new class extends Component
             <x-project-views :project="$project" active="board" />
 
             @if ($this->canManage)
-                <livewire:project-statuses :project="$project" />
-                <flux:button icon="adjustments-horizontal" href="{{ route('projects.fields', $project) }}" wire:navigate>Felder</flux:button>
-                <flux:button icon="users" href="{{ route('projects.members', $project) }}" wire:navigate>Mitglieder</flux:button>
+                <x-project-menu :project="$project" />
             @endif
         </div>
     </div>

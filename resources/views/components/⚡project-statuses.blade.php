@@ -217,10 +217,6 @@ new class extends Component
 ?>
 
 <div>
-    <flux:modal.trigger name="project-statuses">
-        <flux:button icon="cog-6-tooth">Status</flux:button>
-    </flux:modal.trigger>
-
     <flux:modal name="project-statuses" class="w-full max-w-2xl" x-on:close="$wire.closed()">
         <div class="space-y-6">
             <div>

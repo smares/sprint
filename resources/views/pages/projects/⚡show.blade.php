@@ -288,7 +288,7 @@ new class extends Component
         <flux:breadcrumbs.item>{{ $project->name }}</flux:breadcrumbs.item>
     </flux:breadcrumbs>
 
-    <div class="mb-6 flex items-center justify-between">
+    <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
             <flux:heading size="xl">{{ $project->name }}</flux:heading>
             @if ($project->description)
@@ -296,7 +296,7 @@ new class extends Component
             @endif
         </div>
 
-        <div class="flex items-center gap-3">
+        <div class="flex flex-wrap items-center gap-2">
             <x-project-views :project="$project" active="list" />
 
             @if ($this->canManage)
@@ -314,7 +314,7 @@ new class extends Component
         </div>
     </div>
 
-    <div class="mb-4 flex gap-3">
+    <div class="mb-4 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
         <flux:select variant="listbox" wire:model.live="statusFilter" class="max-w-40">
             <flux:select.option value="open">Offen</flux:select.option>
             <flux:select.option value="all">Alle</flux:select.option>
@@ -353,15 +353,16 @@ new class extends Component
     @if ($this->tasks->isEmpty())
         <flux:callout icon="check-circle" heading="Keine Aufgaben" text="Mit diesen Filtern gibt es hier nichts zu tun." />
     @else
+        <div class="overflow-x-auto">
         <flux:table>
             <flux:table.columns>
                 <flux:table.column class="w-10"></flux:table.column>
                 <flux:table.column sortable :sorted="$sortBy === 'title'" :direction="$sortDirection" wire:click="sort('title')">Aufgabe</flux:table.column>
                 <flux:table.column sortable :sorted="$sortBy === 'status'" :direction="$sortDirection" wire:click="sort('status')">Status</flux:table.column>
-                <flux:table.column>Zuständig</flux:table.column>
+                <flux:table.column class="max-md:hidden">Zuständig</flux:table.column>
                 <flux:table.column sortable :sorted="$sortBy === 'due'" :direction="$sortDirection" wire:click="sort('due')">Fällig</flux:table.column>
                 @foreach ($this->listFields as $field)
-                    <flux:table.column wire:key="column-{{ $field->id }}" sortable :sorted="$sortBy === 'field:'.$field->id" :direction="$sortDirection" wire:click="sort('field:{{ $field->id }}')">{{ $field->name }}</flux:table.column>
+                    <flux:table.column wire:key="column-{{ $field->id }}" class="max-md:hidden" sortable :sorted="$sortBy === 'field:'.$field->id" :direction="$sortDirection" wire:click="sort('field:{{ $field->id }}')">{{ $field->name }}</flux:table.column>
                 @endforeach
             </flux:table.columns>
             <flux:table.rows :wire:sort="$sortBy === '' && $this->canEdit ? 'moveTask' : null">
@@ -370,7 +371,7 @@ new class extends Component
                         <flux:table.cell>
                             <flux:checkbox :checked="$task->isDone()" :disabled="! $this->canEdit" wire:click="toggleDone({{ $task->id }})" />
                         </flux:table.cell>
-                        <flux:table.cell>
+                        <flux:table.cell class="min-w-44 whitespace-normal">
                             <a href="{{ route('tasks.show', $task) }}" wire:navigate class="font-medium hover:underline">{{ $task->title }}</a>
                             @if ($task->isBlocked())
                                 <flux:icon.lock-closed variant="micro" class="ms-1 inline text-amber-500" title="Blockiert" />
@@ -388,7 +389,7 @@ new class extends Component
                         <flux:table.cell>
                             <flux:badge size="sm" :color="$task->status->color">{{ $task->status->name }}</flux:badge>
                         </flux:table.cell>
-                        <flux:table.cell>
+                        <flux:table.cell class="max-md:hidden">
                             {{ $task->assignee?->name ?? '–' }}
                             @if ($task->collaborators->isNotEmpty())
                                 <flux:text size="sm" class="block" title="{{ $task->collaborators->pluck('name')->join(', ') }}">+ {{ $task->collaborators->count() }} {{ $task->collaborators->count() === 1 ? 'Beteiligte:r' : 'Beteiligte' }}</flux:text>
@@ -402,7 +403,7 @@ new class extends Component
                             @endif
                         </flux:table.cell>
                         @foreach ($this->listFields as $field)
-                            <flux:table.cell wire:key="cell-{{ $task->id }}-{{ $field->id }}">
+                            <flux:table.cell wire:key="cell-{{ $task->id }}-{{ $field->id }}" class="max-md:hidden">
                                 <x-field-value :task="$task" :field="$field" />
                             </flux:table.cell>
                         @endforeach
@@ -410,6 +411,7 @@ new class extends Component
                 @endforeach
             </flux:table.rows>
         </flux:table>
+        </div>
     @endif
 
     @if ($this->canEdit)
@@ -425,8 +427,8 @@ new class extends Component
                     @endforeach
                 </flux:select>
                 <div class="grid grid-cols-2 gap-4">
-                    <flux:date-picker wire:model="startDate" label="Beginnt am" locale="de-DE" clearable />
-                    <flux:date-picker wire:model="dueDate" label="Fällig am" locale="de-DE" clearable />
+                    <flux:date-picker wire:model="startDate" label="Beginnt am" locale="de-DE" placeholder="Datum wählen" clearable />
+                    <flux:date-picker wire:model="dueDate" label="Fällig am" locale="de-DE" placeholder="Datum wählen" clearable />
                 </div>
                 <div class="flex">
                     <flux:spacer />

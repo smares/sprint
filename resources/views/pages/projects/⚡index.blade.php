@@ -46,7 +46,7 @@ new #[Title('Projekte')] class extends Component
 ?>
 
 <div>
-    <div class="mb-6 flex items-center justify-between">
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
         <flux:heading size="xl">Projekte</flux:heading>
 
         <flux:modal.trigger name="create-project">

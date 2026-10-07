@@ -32,23 +32,24 @@ new #[Title('Meine Aufgaben')] class extends Component
     @if ($this->tasks->isEmpty())
         <flux:callout icon="check-circle" heading="Alles erledigt" text="Dir sind keine offenen Aufgaben zugewiesen oder du bist an keiner beteiligt." />
     @else
+        <div class="overflow-x-auto">
         <flux:table>
             <flux:table.columns>
                 <flux:table.column>Aufgabe</flux:table.column>
-                <flux:table.column>Projekt</flux:table.column>
+                <flux:table.column class="max-md:hidden">Projekt</flux:table.column>
                 <flux:table.column>Status</flux:table.column>
                 <flux:table.column>Fällig</flux:table.column>
             </flux:table.columns>
             <flux:table.rows>
                 @foreach ($this->tasks as $task)
                     <flux:table.row wire:key="task-{{ $task->id }}">
-                        <flux:table.cell>
+                        <flux:table.cell class="min-w-44 whitespace-normal">
                             <a href="{{ route('tasks.show', $task) }}" wire:navigate class="font-medium hover:underline">{{ $task->title }}</a>
                             @if ($task->parent)
                                 <flux:text size="sm" class="block">in {{ $task->parent->title }}</flux:text>
                             @endif
                         </flux:table.cell>
-                        <flux:table.cell>{{ $task->project->name }}</flux:table.cell>
+                        <flux:table.cell class="max-md:hidden">{{ $task->project->name }}</flux:table.cell>
                         <flux:table.cell>
                             <flux:badge size="sm" :color="$task->status->color">{{ $task->status->name }}</flux:badge>
                         </flux:table.cell>
@@ -63,5 +64,6 @@ new #[Title('Meine Aufgaben')] class extends Component
                 @endforeach
             </flux:table.rows>
         </flux:table>
+        </div>
     @endif
 </div>

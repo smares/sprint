@@ -26,6 +26,7 @@ Gebaut mit Laravel 13, Livewire 4 und [Flux UI Pro](https://fluxui.dev). Die Obe
 - **`@`-Erwähnungen** von Personen und Aufgaben: ein `@` tippen, aus dem Fenster wählen; angezeigt wird immer der aktuelle Name bzw. Titel
 - **E-Mail-Benachrichtigungen** an zuständige und beteiligte Personen bei neuen Kommentaren und Statuswechseln sowie an erwähnte Personen (auch ohne Beteiligung, einmal pro neuer Erwähnung); pro Aufgabe abbestellbar (Schalter auf der Aufgabenseite oder signierter Link in der Mail, auch ohne Login)
 - **Posteingang** (Glocke in der Kopfzeile mit Zähler): dieselben Benachrichtigungen auch in der Anwendung, mit gelesen/ungelesen, „alle gelesen" und Entfernen; es wird kein Kommentartext gespeichert, und Einträge zu Aufgaben, die man nicht mehr sehen darf, bleiben ohne Link. Gilt ab Einführung, ältere Mails erscheinen nicht nachträglich
+- **Dunkelmodus und Mobilansicht**: Hell, Dunkel oder System lassen sich im Menü am Avatar umschalten (wird im Browser gemerkt); auf dem Handy wird die Navigation zum ausklappbaren Menü, Werkzeugleisten brechen um, Tabellen blenden Nebenspalten aus und scrollen bei Bedarf
 
 Es gibt keine öffentliche Registrierung: Benutzer legt ein Administrator in der App an (*Benutzer*) oder per Kommando (siehe unten). Wer ein Projekt anlegt, verwaltet es und kann dort weitere Mitglieder hinzufügen.
 

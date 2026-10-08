@@ -37,6 +37,8 @@ new class extends Component
 
     public bool $digest = true;
 
+    public bool $reminders = true;
+
     public string $locale = '';
 
     /** The picture as the browser cropped and shrank it (see `avatarPicker` in app.js). */
@@ -54,6 +56,7 @@ new class extends Component
         $this->name = auth()->user()->name;
         $this->email = auth()->user()->email;
         $this->digest = auth()->user()->digest_enabled;
+        $this->reminders = auth()->user()->reminders_enabled;
         $this->locale = auth()->user()->preferredLocale();
     }
 
@@ -94,6 +97,13 @@ new class extends Component
         auth()->user()->removeAvatar();
 
         $this->redirectRoute('profile', navigate: true);
+    }
+
+    public function updatedReminders(bool $value): void
+    {
+        auth()->user()->update(['reminders_enabled' => $value]);
+
+        Flux::toast(variant: 'success', text: $value ? __('Reminders turned on.') : __('Reminders turned off.'));
     }
 
     public function saveProfile(): void
@@ -275,6 +285,8 @@ new class extends Component
             <flux:separator />
 
             <flux:switch wire:model.live="digest" :label="__('Daily digest by email')" :description="__('On weekday mornings, an email with your overdue and soon-due tasks, only if there is something to report.')" />
+
+            <flux:switch wire:model.live="reminders" :label="__('Reminder the day before')" :description="__('An entry in your inbox the day before a task you are assigned to or collaborate on is due.')" />
         </flux:tab.panel>
 
         <flux:tab.panel name="security" class="space-y-8">

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Notifications\ResetPassword;
 use App\Services\LocaleService;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Translation\HasLocalePreference;
@@ -19,6 +20,7 @@ use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Sanctum\HasApiTokens;
+use SensitiveParameter;
 
 #[Fillable(['name', 'email', 'password', 'is_admin', 'locale', 'deactivated_at', 'digest_enabled'])]
 #[Hidden(['password', 'remember_token', 'two_factor_secret', 'two_factor_recovery_codes'])]
@@ -54,6 +56,14 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
         static::creating(function (self $user) {
             $user->locale ??= config('app.locale');
         });
+    }
+
+    /**
+     * The link for a new password, in the person's language.
+     */
+    public function sendPasswordResetNotification(#[SensitiveParameter] $token): void
+    {
+        $this->notify(new ResetPassword($token));
     }
 
     /**

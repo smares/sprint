@@ -24,6 +24,8 @@ Route::post('/locale', function (Request $request): RedirectResponse {
 Route::get('/health', HealthController::class)->middleware('throttle:60,1')->name('health');
 
 Route::livewire('/login', 'pages::login')->name('login')->middleware('guest');
+Route::livewire('/forgot-password', 'pages::forgot-password')->name('password.request')->middleware('guest');
+Route::livewire('/reset-password/{token}', 'pages::reset-password')->name('password.reset')->middleware('guest');
 
 Route::middleware(['guest', 'throttle:6,1'])->group(function () {
     Route::get('/passkeys/login/options', [PasskeyLoginController::class, 'index'])->name('passkey.login-options');

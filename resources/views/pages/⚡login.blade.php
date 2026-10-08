@@ -182,6 +182,10 @@ new class extends Component
     <flux:card>
     <flux:heading size="xl" class="mb-6">{{ __('Sign in') }}</flux:heading>
 
+    @if (session('status'))
+        <flux:callout variant="success" icon="check-circle" class="mb-6" :heading="session('status')" />
+    @endif
+
     @if ($needsCode)
         <form wire:submit="confirmCode" class="space-y-6">
             @if ($useRecoveryCode)
@@ -199,7 +203,10 @@ new class extends Component
         <form wire:submit="login" class="space-y-6">
             <flux:input wire:model="email" :label="__('Email')" type="email" autofocus autocomplete="email webauthn" />
             <flux:input wire:model="password" :label="__('Password')" type="password" autocomplete="current-password" />
-            <flux:checkbox wire:model="remember" :label="__('Stay signed in')" />
+            <div class="flex items-center justify-between gap-4">
+                <flux:checkbox wire:model="remember" :label="__('Stay signed in')" />
+                <flux:link :href="route('password.request')" wire:navigate class="text-sm">{{ __('Forgot password?') }}</flux:link>
+            </div>
             <flux:button type="submit" variant="primary" class="w-full">{{ __('Sign in') }}</flux:button>
         </form>
 

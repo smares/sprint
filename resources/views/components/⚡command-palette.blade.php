@@ -2,6 +2,8 @@
 
 use App\Models\Project;
 use App\Services\TaskSearchService;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection as SupportCollection;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -13,7 +15,7 @@ new class extends Component
      * Projects the person can open.
      */
     #[Computed]
-    public function projects()
+    public function projects(): Collection
     {
         return Project::visibleTo(auth()->user())->whereNull('archived_at')->orderBy('name')->get(['id', 'name']);
     }
@@ -22,7 +24,7 @@ new class extends Component
      * A handful of matching tasks once at least two characters were typed.
      */
     #[Computed]
-    public function tasks()
+    public function tasks(): SupportCollection
     {
         if (mb_strlen(trim($this->query)) < 2) {
             return collect();

@@ -4,6 +4,7 @@ use App\Color;
 use App\Models\Project;
 use App\Models\TaskStatus;
 use Flux\Flux;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
@@ -43,7 +44,7 @@ new class extends Component
     }
 
     #[Computed]
-    public function statuses()
+    public function statuses(): Collection
     {
         return $this->project->statuses()->withCount('tasks')->get();
     }

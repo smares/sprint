@@ -2,7 +2,9 @@
 
 use App\Models\Project;
 use App\Models\Task;
+use Illuminate\Contracts\View\View;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Url;
@@ -96,7 +98,7 @@ new class extends Component
      * @return \Illuminate\Support\Collection<int, array{task: Task, first: int, last: int}>
      */
     #[Computed]
-    public function rows()
+    public function rows(): Collection
     {
         return $this->project->tasks()
             ->whereNull('parent_id')
@@ -130,7 +132,7 @@ new class extends Component
         return ['dated' => $dated - $this->rows->count(), 'undated' => $undated];
     }
 
-    public function rendering($view): void
+    public function rendering(View $view): void
     {
         $view->title(__('Timeline – :project', ['project' => $this->project->name]));
     }

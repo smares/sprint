@@ -1,10 +1,12 @@
 <?php
 
+use App\Enums\ProjectRole;
 use App\Models\Project;
 use App\Models\Team;
 use App\Models\User;
-use App\Enums\ProjectRole;
 use Flux\Flux;
+use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
@@ -41,13 +43,13 @@ new class extends Component
     }
 
     #[Computed]
-    public function members()
+    public function members(): Collection
     {
         return $this->project->members()->get();
     }
 
     #[Computed]
-    public function candidates()
+    public function candidates(): Collection
     {
         return User::query()
             ->active()
@@ -57,13 +59,13 @@ new class extends Component
     }
 
     #[Computed]
-    public function teams()
+    public function teams(): Collection
     {
         return $this->project->teams()->withCount('users')->get();
     }
 
     #[Computed]
-    public function teamCandidates()
+    public function teamCandidates(): Collection
     {
         return Team::query()
             ->whereDoesntHave('projects', fn ($projects) => $projects->whereKey($this->project->getKey()))
@@ -192,7 +194,7 @@ new class extends Component
         $this->refresh();
     }
 
-    public function rendering($view): void
+    public function rendering(View $view): void
     {
         $view->title(__('Members – :project', ['project' => $this->project->name]));
     }

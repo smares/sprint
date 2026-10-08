@@ -1,6 +1,9 @@
 <?php
 
 use App\Models\Task;
+use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -17,7 +20,7 @@ new class extends Component
         $this->limit += self::PAGE_SIZE;
     }
 
-    private function mine()
+    private function mine(): Builder
     {
         return Task::query()
             ->whereHas('project', fn ($projects) => $projects->visibleTo(auth()->user()))
@@ -29,7 +32,7 @@ new class extends Component
     }
 
     #[Computed]
-    public function tasks()
+    public function tasks(): Collection
     {
         return $this->mine()
             ->with(['project', 'parent', 'status'])
@@ -46,7 +49,7 @@ new class extends Component
         return $this->mine()->count();
     }
 
-    public function rendering($view): void
+    public function rendering(View $view): void
     {
         $view->title(__('My tasks'));
     }

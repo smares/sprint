@@ -1,8 +1,10 @@
 <?php
 
-use App\Services\LocaleService;
 use App\Models\User;
+use App\Services\LocaleService;
 use Flux\Flux;
+use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -44,7 +46,7 @@ new class extends Component
     }
 
     #[Computed]
-    public function users()
+    public function users(): Collection
     {
         return User::query()->withCount('passkeys')->orderBy('name')->get();
     }
@@ -151,7 +153,7 @@ new class extends Component
         return auth()->user();
     }
 
-    public function rendering($view): void
+    public function rendering(View $view): void
     {
         $view->title(__('Users'));
     }

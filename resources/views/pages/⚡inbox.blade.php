@@ -1,7 +1,10 @@
 <?php
 
 use App\Models\Task;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Contracts\View\View;
 use Illuminate\Notifications\DatabaseNotification;
+use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -17,7 +20,7 @@ new class extends Component
     }
 
     #[Computed]
-    public function notifications()
+    public function notifications(): LengthAwarePaginator
     {
         return auth()->user()->notifications()->paginate(30);
     }
@@ -26,7 +29,7 @@ new class extends Component
      * Tasks the person may still open, keyed by id.
      */
     #[Computed]
-    public function tasks()
+    public function tasks(): Collection
     {
         $ids = $this->notifications->getCollection()->pluck('data.task_id')->filter()->unique();
 
@@ -80,7 +83,7 @@ new class extends Component
         unset($this->notifications, $this->hasUnread);
     }
 
-    public function rendering($view): void
+    public function rendering(View $view): void
     {
         $view->title(__('Inbox'));
     }

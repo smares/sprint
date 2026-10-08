@@ -2,16 +2,18 @@
 
 use App\Color;
 use App\Enums\CustomFieldType;
-use App\Services\MarkdownService;
-use App\Models\Attachment;
-use App\Models\CustomField;
 use App\Enums\RepeatMode;
 use App\Enums\RepeatUnit;
+use App\Models\Attachment;
+use App\Models\CustomField;
 use App\Models\Tag;
 use App\Models\Task;
 use App\Models\User;
+use App\Services\MarkdownService;
 use Flux\Flux;
+use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -141,7 +143,7 @@ new class extends Component
     }
 
     #[Computed]
-    public function customFields()
+    public function customFields(): Collection
     {
         return $this->task->project->customFields()->with('options')->get();
     }
@@ -233,7 +235,7 @@ new class extends Component
     }
 
     #[Computed]
-    public function childrenMap()
+    public function childrenMap(): SupportCollection
     {
         return $this->subtreeTasks->groupBy(fn ($task) => $task->parent_id ?? 0);
     }
@@ -301,7 +303,7 @@ new class extends Component
     }
 
     #[Computed]
-    public function possibleParents()
+    public function possibleParents(): Collection
     {
         $excluded = [$this->task->getKey(), ...$this->descendantIds];
 
@@ -470,7 +472,7 @@ new class extends Component
     }
 
     #[Computed]
-    public function otherTasks()
+    public function otherTasks(): Collection
     {
         return $this->task->project->tasks()
             ->whereKeyNot($this->task->getKey())
@@ -479,7 +481,7 @@ new class extends Component
     }
 
     #[Computed]
-    public function projectTags()
+    public function projectTags(): Collection
     {
         return $this->task->project->tags()->orderBy('name')->get();
     }
@@ -505,7 +507,7 @@ new class extends Component
     }
 
     #[Computed]
-    public function users()
+    public function users(): Collection
     {
         $ids = $this->task->project->eligibleUsers()->pluck('users.id')
             ->merge($this->task->collaborators()->pluck('users.id'))
@@ -628,7 +630,7 @@ new class extends Component
      * @return \Illuminate\Support\Collection<int, array{at: \Illuminate\Support\Carbon, comment: ?\App\Models\Comment, activity: ?\App\Models\TaskActivity}>
      */
     #[Computed]
-    public function activityFeed()
+    public function activityFeed(): SupportCollection
     {
         $comments = $this->task->comments()->with('user')->get()
             ->map(fn ($comment) => ['at' => $comment->created_at, 'comment' => $comment, 'activity' => null]);
@@ -716,7 +718,7 @@ new class extends Component
     }
 
     #[Computed]
-    public function attachments()
+    public function attachments(): Collection
     {
         return $this->task->attachments()->with('user')->orderBy('id')->get();
     }
@@ -839,7 +841,7 @@ new class extends Component
         $this->redirectRoute('projects.show', $projectId, navigate: true);
     }
 
-    public function rendering($view): void
+    public function rendering(View $view): void
     {
         if (! $this->panel) {
             $view->title($this->task->title);

@@ -60,8 +60,9 @@ ENV SERVER_NAME=:80 \
 
 VOLUME /app/storage
 
-# The base image checks Caddy, which only runs in the web container; compose.yaml checks that one itself.
-HEALTHCHECK NONE
+# For every container (the base image would check Caddy, which only runs in the web container):
+# database, storage and cache must work; compose.yaml checks Reverb's port instead.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --start-interval=3s CMD ["php", "artisan", "sprint:health"]
 
 ENTRYPOINT ["/app/docker/entrypoint.sh"]
 CMD ["frankenphp", "run", "--config", "/etc/caddy/Caddyfile"]

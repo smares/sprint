@@ -582,5 +582,6 @@
     "{1} One task imported|[0,*] :count tasks imported": "{1} Eine Aufgabe importiert|[0,*] :count Aufgaben importiert",
     "{1} One task ready to import|[0,*] :count tasks ready to import": "{1} Eine Aufgabe bereit zum Import|[0,*] :count Aufgaben bereit zum Import",
     "“:value” is not an active member of the project and is ignored": "„:value“ ist kein aktives Mitglied des Projekts und wird ignoriert",
-    "… and :count more": "… und :count weitere"
+    "… and :count more": "… und :count weitere",
+    "Dates": "Termine"
 }

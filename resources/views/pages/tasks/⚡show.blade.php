@@ -805,109 +805,125 @@ new class extends Component
         @endif
     @endunless
 
-    <form wire:submit="save" class="space-y-6">
+    <form wire:submit="save" class="space-y-4">
         <flux:input wire:model="title" :label="__('Title')" />
-        <x-markdown-editor wire:model="description" :label="__('Description')" :rows="5" :mentions="$this->mentionOptions" />
+        <x-markdown-editor wire:model="description" :label="__('Description')" :rows="3" :mentions="$this->mentionOptions" />
 
-        <div @class(['grid gap-4', 'sm:grid-cols-3' => ! $panel, 'sm:grid-cols-2' => $panel])>
-            <flux:select variant="listbox" wire:model="statusId" :label="__('Status')">
-                @foreach ($task->project->statuses as $status)
-                    <flux:select.option value="{{ $status->id }}">{{ $status->name }}</flux:select.option>
-                @endforeach
-            </flux:select>
-            <flux:select variant="listbox" wire:model="assigneeId" :label="__('Assignee')">
-                <flux:select.option value="">{{ __('Nobody') }}</flux:select.option>
-                @foreach ($this->users as $user)
-                    <flux:select.option value="{{ $user->id }}">{{ $user->name }}{{ $user->isActive() ? '' : ' ('.__('deactivated').')' }}</flux:select.option>
-                @endforeach
-            </flux:select>
-            <flux:date-picker wire:model="dueDate" :label="__('Due on')" locale="{{ app()->getLocale() }}" :placeholder="__('Select a date')" clearable />
-        </div>
-
-        <div @class(['grid gap-4', 'sm:grid-cols-3' => ! $panel, 'sm:grid-cols-2' => $panel])>
-            <flux:date-picker wire:model="startDate" :label="__('Starts on')" locale="{{ app()->getLocale() }}" :placeholder="__('Select a date')" clearable />
-        </div>
-
-        <div class="space-y-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
-            <flux:heading>{{ __('Recurrence') }}</flux:heading>
-            <div class="grid gap-4 sm:grid-cols-4">
-                <flux:select variant="listbox" wire:model.live="repeatUnit" label="{{ __('Repeat') }}" placeholder="{{ __('Never') }}">
-                    <flux:select.option value="">{{ __('Never') }}</flux:select.option>
-                    @foreach (\App\RepeatUnit::cases() as $unit)
-                        <flux:select.option value="{{ $unit->value }}">{{ $unit->label() }}</flux:select.option>
+        <div class="divide-y divide-zinc-100 rounded-lg border border-zinc-200 px-3 dark:divide-zinc-800 dark:border-zinc-700">
+            <x-task-field :label="__('Status')">
+                <flux:select size="sm" variant="listbox" wire:model="statusId" :aria-label="__('Status')">
+                    @foreach ($task->project->statuses as $status)
+                        <flux:select.option value="{{ $status->id }}">{{ $status->name }}</flux:select.option>
                     @endforeach
                 </flux:select>
-                @if ($repeatUnit !== '')
-                    <flux:input wire:model="repeatInterval" type="number" min="1" max="365" :label="__('Every')" />
-                    <flux:select variant="listbox" wire:model="repeatMode" :label="__('Calculated')">
-                        @foreach (\App\RepeatMode::cases() as $mode)
-                            <flux:select.option value="{{ $mode->value }}">{{ $mode->label() }}</flux:select.option>
+            </x-task-field>
+
+            <x-task-field :label="__('Assignee')">
+                <flux:select size="sm" variant="listbox" wire:model="assigneeId" :aria-label="__('Assignee')">
+                    <flux:select.option value="">{{ __('Nobody') }}</flux:select.option>
+                    @foreach ($this->users as $user)
+                        <flux:select.option value="{{ $user->id }}">{{ $user->name }}{{ $user->isActive() ? '' : ' ('.__('deactivated').')' }}</flux:select.option>
+                    @endforeach
+                </flux:select>
+            </x-task-field>
+
+            <x-task-field :label="__('Dates')">
+                <div class="grid gap-2 sm:grid-cols-2">
+                    <flux:date-picker size="sm" wire:model="dueDate" :aria-label="__('Due on')" :placeholder="__('Due on')" locale="{{ app()->getLocale() }}" clearable />
+                    <flux:date-picker size="sm" wire:model="startDate" :aria-label="__('Starts on')" :placeholder="__('Starts on')" locale="{{ app()->getLocale() }}" clearable />
+                </div>
+            </x-task-field>
+
+            <x-task-field :label="__('Recurrence')">
+                <div class="flex flex-wrap items-center gap-2">
+                    <flux:select size="sm" variant="listbox" wire:model.live="repeatUnit" :aria-label="__('Repeat')" placeholder="{{ __('Never') }}" class="!w-36">
+                        <flux:select.option value="">{{ __('Never') }}</flux:select.option>
+                        @foreach (\App\RepeatUnit::cases() as $unit)
+                            <flux:select.option value="{{ $unit->value }}">{{ $unit->label() }}</flux:select.option>
                         @endforeach
                     </flux:select>
-                    <flux:date-picker wire:model="repeatUntil" :label="__('Until')" locale="{{ app()->getLocale() }}" :placeholder="__('Select a date')" clearable />
+                    @if ($repeatUnit !== '')
+                        <flux:input size="sm" wire:model="repeatInterval" type="number" min="1" max="365" :aria-label="__('Every')" :placeholder="__('Every')" class="!w-20" />
+                        <flux:select size="sm" variant="listbox" wire:model="repeatMode" :aria-label="__('Calculated')" class="!w-44">
+                            @foreach (\App\RepeatMode::cases() as $mode)
+                                <flux:select.option value="{{ $mode->value }}">{{ $mode->label() }}</flux:select.option>
+                            @endforeach
+                        </flux:select>
+                        <flux:date-picker size="sm" wire:model="repeatUntil" :aria-label="__('Until')" :placeholder="__('Until')" locale="{{ app()->getLocale() }}" clearable />
+                    @endif
+                </div>
+                @if ($repeatUnit !== '')
+                    <flux:text size="sm" class="mt-1">{!! __('Once you complete the task, the next one is created (with assignees, tags, fields and subtasks). <em>On schedule</em> counts from the due date, <em>after completion</em> from the day you complete it. A due date is required.') !!}</flux:text>
                 @endif
-            </div>
-            @if ($repeatUnit !== '')
-                <flux:text size="sm">{!! __('Once you complete the task, the next one is created (with assignees, tags, fields and subtasks). <em>On schedule</em> counts from the due date, <em>after completion</em> from the day you complete it. A due date is required.') !!}</flux:text>
-            @endif
-        </div>
+            </x-task-field>
 
-        @if ($this->customFields->isNotEmpty())
-            <div @class(['grid gap-4', 'sm:grid-cols-3' => ! $panel, 'sm:grid-cols-2' => $panel])>
-                @foreach ($this->customFields as $field)
+            @foreach ($this->customFields as $field)
+                <x-task-field :label="$field->name" wire:key="field-{{ $field->id }}">
                     @switch($field->type)
                         @case(\App\CustomFieldType::Select)
-                            <flux:select wire:key="field-{{ $field->id }}" variant="listbox" wire:model="fieldValues.{{ $field->id }}" :label="$field->name" placeholder="–" clearable>
+                            <flux:select size="sm" variant="listbox" wire:model="fieldValues.{{ $field->id }}" :aria-label="$field->name" placeholder="–" clearable>
                                 @foreach ($field->options as $option)
                                     <flux:select.option value="{{ $option->id }}">{{ $option->name }}</flux:select.option>
                                 @endforeach
                             </flux:select>
                             @break
                         @case(\App\CustomFieldType::Number)
-                            <flux:input wire:key="field-{{ $field->id }}" wire:model="fieldValues.{{ $field->id }}" type="number" step="any" :label="$field->name" />
+                            <flux:input size="sm" wire:model="fieldValues.{{ $field->id }}" type="number" step="any" :aria-label="$field->name" />
                             @break
                         @case(\App\CustomFieldType::Date)
-                            <flux:date-picker wire:key="field-{{ $field->id }}" wire:model="fieldValues.{{ $field->id }}" :label="$field->name" locale="{{ app()->getLocale() }}" :placeholder="__('Select a date')" clearable />
+                            <flux:date-picker size="sm" wire:model="fieldValues.{{ $field->id }}" :aria-label="$field->name" locale="{{ app()->getLocale() }}" :placeholder="__('Select a date')" clearable />
                             @break
                         @default
-                            <flux:input wire:key="field-{{ $field->id }}" wire:model="fieldValues.{{ $field->id }}" :label="$field->name" />
+                            <flux:input size="sm" wire:model="fieldValues.{{ $field->id }}" :aria-label="$field->name" />
                     @endswitch
-                @endforeach
-            </div>
-        @endif
-
-        <flux:select variant="listbox" wire:model="parentId" :label="__('Parent task')">
-            <flux:select.option value="">{{ __('None') }}</flux:select.option>
-            @foreach ($this->possibleParents as $candidate)
-                <flux:select.option value="{{ $candidate->id }}">{{ $candidate->title }}</flux:select.option>
+                </x-task-field>
             @endforeach
-        </flux:select>
 
-        <flux:pillbox wire:model="collaboratorIds" multiple searchable :label="__('Collaborators')" :placeholder="__('Choose more people …')">
-            @foreach ($this->users as $user)
-                <flux:pillbox.option wire:key="collaborator-{{ $user->id }}" value="{{ $user->id }}">{{ $user->name }}{{ $user->isActive() ? '' : ' ('.__('deactivated').')' }}</flux:pillbox.option>
-            @endforeach
-        </flux:pillbox>
+            <x-task-field :label="__('Parent task')">
+                <flux:select size="sm" variant="listbox" wire:model="parentId" :aria-label="__('Parent task')">
+                    <flux:select.option value="">{{ __('None') }}</flux:select.option>
+                    @foreach ($this->possibleParents as $candidate)
+                        <flux:select.option value="{{ $candidate->id }}">{{ $candidate->title }}</flux:select.option>
+                    @endforeach
+                </flux:select>
+            </x-task-field>
 
-        <flux:switch wire:model.live="notificationsOn" :label="__('Emails about this task')" :description="__('Assignees and collaborators get an email for new comments and status changes.')" />
+            <x-task-field :label="__('Collaborators')">
+                <flux:pillbox size="sm" wire:model="collaboratorIds" multiple searchable :aria-label="__('Collaborators')" :placeholder="__('Choose more people …')">
+                    @foreach ($this->users as $user)
+                        <flux:pillbox.option wire:key="collaborator-{{ $user->id }}" value="{{ $user->id }}">{{ $user->name }}{{ $user->isActive() ? '' : ' ('.__('deactivated').')' }}</flux:pillbox.option>
+                    @endforeach
+                </flux:pillbox>
+            </x-task-field>
 
-        <flux:pillbox wire:model="tagIds" multiple :label="__('Tags')" :placeholder="__('Choose tags …')">
-            @foreach ($this->projectTags as $tag)
-                <flux:pillbox.option wire:key="tag-{{ $tag->id }}" value="{{ $tag->id }}">{{ $tag->name }}</flux:pillbox.option>
-            @endforeach
-        </flux:pillbox>
+            <x-task-field :label="__('Tags')">
+                <flux:pillbox size="sm" wire:model="tagIds" multiple :aria-label="__('Tags')" :placeholder="__('Choose tags …')">
+                    @foreach ($this->projectTags as $tag)
+                        <flux:pillbox.option wire:key="tag-{{ $tag->id }}" value="{{ $tag->id }}">{{ $tag->name }}</flux:pillbox.option>
+                    @endforeach
+                </flux:pillbox>
+            </x-task-field>
 
-        <div class="grid gap-4 sm:grid-cols-2">
-            <flux:pillbox wire:model="blockerIds" multiple searchable :label="__('Blocked by')" :placeholder="__('Choose tasks …')">
-                @foreach ($this->otherTasks as $other)
-                    <flux:pillbox.option wire:key="blocker-{{ $other->id }}" value="{{ $other->id }}">{{ $other->title }}</flux:pillbox.option>
-                @endforeach
-            </flux:pillbox>
-            <flux:pillbox wire:model="blockingIds" multiple searchable :label="__('Blocking')" :placeholder="__('Choose tasks …')">
-                @foreach ($this->otherTasks as $other)
-                    <flux:pillbox.option wire:key="blocking-{{ $other->id }}" value="{{ $other->id }}">{{ $other->title }}</flux:pillbox.option>
-                @endforeach
-            </flux:pillbox>
+            <x-task-field :label="__('Blocked by')">
+                <flux:pillbox size="sm" wire:model="blockerIds" multiple searchable :aria-label="__('Blocked by')" :placeholder="__('Choose tasks …')">
+                    @foreach ($this->otherTasks as $other)
+                        <flux:pillbox.option wire:key="blocker-{{ $other->id }}" value="{{ $other->id }}">{{ $other->title }}</flux:pillbox.option>
+                    @endforeach
+                </flux:pillbox>
+            </x-task-field>
+
+            <x-task-field :label="__('Blocking')">
+                <flux:pillbox size="sm" wire:model="blockingIds" multiple searchable :aria-label="__('Blocking')" :placeholder="__('Choose tasks …')">
+                    @foreach ($this->otherTasks as $other)
+                        <flux:pillbox.option wire:key="blocking-{{ $other->id }}" value="{{ $other->id }}">{{ $other->title }}</flux:pillbox.option>
+                    @endforeach
+                </flux:pillbox>
+            </x-task-field>
+
+            <x-task-field :label="__('Emails about this task')">
+                <flux:switch wire:model.live="notificationsOn" :aria-label="__('Emails about this task')" />
+                <flux:text size="sm" class="mt-1">{{ __('Assignees and collaborators get an email for new comments and status changes.') }}</flux:text>
+            </x-task-field>
         </div>
 
         @if ($task->isBlocked())
@@ -927,13 +943,13 @@ new class extends Component
     </form>
 
     @if ($this->canEdit)
-        <form wire:submit="createTag" class="mt-4 flex items-end gap-2">
-            <flux:input :label="__('New tag')" :placeholder="__('e.g. Bug')" wire:model="newTag" class="max-w-xs" />
-            <flux:button type="submit" icon="plus">{{ __('Create') }}</flux:button>
+        <form wire:submit="createTag" class="mt-3 flex items-center gap-2">
+            <flux:input size="sm" :aria-label="__('New tag')" :placeholder="__('New tag')" wire:model="newTag" class="max-w-xs" />
+            <flux:button size="sm" type="submit" icon="plus">{{ __('Create') }}</flux:button>
         </form>
     @endif
 
-    <flux:separator class="my-8" />
+    <flux:separator class="my-6" />
 
     <flux:heading size="lg" class="mb-2">{{ __('Subtasks') }}</flux:heading>
 
@@ -950,15 +966,15 @@ new class extends Component
     @endif
 
     @if ($this->canEdit)
-        <form wire:submit="addSubtask({{ $task->id }})" class="mt-3 flex items-end gap-2">
-            <flux:input wire:model="newSubtaskTitles.{{ $task->id }}" :label="__('New subtask')" :placeholder="__('Title …')" class="max-w-sm" />
-            <flux:button type="submit" icon="plus">{{ __('Add') }}</flux:button>
-            <flux:button type="button" icon="bars-3-bottom-left" wire:click="addSection({{ $task->id }})">{{ __('Heading') }}</flux:button>
+        <form wire:submit="addSubtask({{ $task->id }})" class="mt-3 flex items-center gap-2">
+            <flux:input size="sm" wire:model="newSubtaskTitles.{{ $task->id }}" :aria-label="__('New subtask')" :placeholder="__('New subtask')" class="max-w-sm" />
+            <flux:button size="sm" type="submit" icon="plus">{{ __('Add') }}</flux:button>
+            <flux:button size="sm" type="button" icon="bars-3-bottom-left" wire:click="addSection({{ $task->id }})">{{ __('Heading') }}</flux:button>
         </form>
         @error('newSubtaskTitles.'.$task->id) <flux:text class="mt-1 text-red-500">{{ $message }}</flux:text> @enderror
     @endif
 
-    <flux:separator class="my-8" />
+    <flux:separator class="my-6" />
 
     <flux:heading size="lg" class="mb-2">{{ __('Attachments') }}</flux:heading>
 
@@ -1028,7 +1044,7 @@ new class extends Component
         </div>
     @endif
 
-    <flux:separator class="my-8" />
+    <flux:separator class="my-6" />
 
     <flux:heading size="lg" class="mb-4">{{ __('Activity and comments') }}</flux:heading>
 

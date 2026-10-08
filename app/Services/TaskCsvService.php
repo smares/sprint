@@ -65,14 +65,10 @@ class TaskCsvService
             'created_at', 'updated_at', 'url',
         ];
 
-        $tasks = $project->tasks()
-            ->where('is_section', false)
-            ->with(['status', 'assignee', 'collaborators', 'tags', 'fieldValues.option'])
-            ->orderBy('position')->orderBy('id')
-            ->get();
-        $byParent = $tasks->groupBy(fn (Task $task) => $task->parent_id ?? 0);
+        $tree = $project->tasks()->where('is_section', false)->orderBy('position')->orderBy('id')->get(['id', 'parent_id']);
+        $orderedIds = collect(iterator_to_array($this->inTreeOrder($tree->groupBy(fn (Task $task) => $task->parent_id ?? 0), 0), false))->pluck('id')->all();
 
-        foreach ($this->inTreeOrder($byParent, 0) as $task) {
+        foreach ($this->inTreeOrderChunks($project, $orderedIds) as $task) {
             $values = $task->fieldValues->keyBy('custom_field_id');
 
             yield [
@@ -96,6 +92,27 @@ class TaskCsvService
                 $task->updated_at->toIso8601String(),
                 route('tasks.show', $task),
             ];
+        }
+    }
+
+    /**
+     * The tasks in the given order with their relations, loaded a chunk at a time so a large project is not held in memory at once.
+     *
+     * @param  list<int>  $orderedIds
+     * @return Generator<int, Task>
+     */
+    private function inTreeOrderChunks(Project $project, array $orderedIds): Generator
+    {
+        foreach (array_chunk($orderedIds, 200) as $chunk) {
+            $loaded = $project->tasks()
+                ->whereKey($chunk)
+                ->with(['status', 'assignee', 'collaborators', 'tags', 'fieldValues.option'])
+                ->get()
+                ->keyBy('id');
+
+            foreach ($chunk as $id) {
+                yield $loaded->get($id);
+            }
         }
     }
 

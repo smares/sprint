@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\User;
 use App\Services\TaskSearchService;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
@@ -29,6 +30,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Model::preventLazyLoading(! $this->app->isProduction());
+
         Gate::define('administer', fn (User $user) => $user->is_admin);
 
         Passkeys::authorizeLoginUsing(fn (Request $request, User $user) => $user->isActive());

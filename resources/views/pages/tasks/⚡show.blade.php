@@ -11,6 +11,7 @@ use App\Models\Tag;
 use App\Models\Task;
 use App\Models\User;
 use Flux\Flux;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -204,20 +205,37 @@ new class extends Component
         }
     }
 
+    /**
+     * All descendants of this task, one query per level of the tree (not the whole project).
+     *
+     * @return Collection<int, Task>
+     */
     #[Computed]
-    public function projectTasks()
+    public function subtreeTasks(): Collection
     {
-        return $this->task->project->tasks()
-            ->with(['assignee', 'status'])
-            ->orderBy('position')
-            ->orderBy('id')
-            ->get();
+        $tasks = new Collection;
+        $frontier = [$this->task->getKey()];
+
+        while ($frontier !== []) {
+            $level = new Collection;
+
+            foreach (array_chunk($frontier, 500) as $parents) {
+                $level = $level->concat(
+                    $this->task->project->tasks()->whereIn('parent_id', $parents)->with(['assignee', 'status'])->orderBy('position')->orderBy('id')->get()
+                );
+            }
+
+            $tasks = $tasks->concat($level);
+            $frontier = $level->pluck('id')->all();
+        }
+
+        return $tasks;
     }
 
     #[Computed]
     public function childrenMap()
     {
-        return $this->projectTasks->groupBy(fn ($task) => $task->parent_id ?? 0);
+        return $this->subtreeTasks->groupBy(fn ($task) => $task->parent_id ?? 0);
     }
 
     /**
@@ -247,13 +265,12 @@ new class extends Component
     #[Computed]
     public function ancestors(): array
     {
-        $byId = $this->projectTasks->keyBy('id');
         $chain = [];
-        $current = $byId->get($this->task->parent_id);
+        $current = $this->task->parent_id === null ? null : $this->task->project->tasks()->find($this->task->parent_id);
 
         while ($current !== null) {
             array_unshift($chain, $current);
-            $current = $byId->get($current->parent_id);
+            $current = $current->parent_id === null ? null : $this->task->project->tasks()->find($current->parent_id);
         }
 
         return $chain;
@@ -265,7 +282,13 @@ new class extends Component
     #[Computed]
     public function progress(): ?array
     {
-        return $this->task->project->subtaskProgress()[$this->task->getKey()] ?? null;
+        $subtasks = $this->subtreeTasks->where('is_section', false);
+
+        if ($subtasks->isEmpty()) {
+            return null;
+        }
+
+        return ['done' => $subtasks->filter(fn (Task $subtask) => $subtask->isDone())->count(), 'total' => $subtasks->count()];
     }
 
     /**
@@ -274,7 +297,7 @@ new class extends Component
     #[Computed]
     public function sectionIds(): array
     {
-        return $this->projectTasks->where('is_section', true)->pluck('id')->all();
+        return $this->subtreeTasks->where('is_section', true)->pluck('id')->all();
     }
 
     #[Computed]
@@ -282,7 +305,12 @@ new class extends Component
     {
         $excluded = [$this->task->getKey(), ...$this->descendantIds];
 
-        return $this->projectTasks->reject(fn ($task) => $task->is_section || in_array($task->id, $excluded, true));
+        return $this->task->project->tasks()
+            ->where('is_section', false)
+            ->whereNotIn('id', $excluded)
+            ->orderBy('position')
+            ->orderBy('id')
+            ->get(['id', 'title']);
     }
 
     /**
@@ -297,7 +325,7 @@ new class extends Component
 
     private function resetSubtaskCaches(): void
     {
-        unset($this->projectTasks, $this->childrenMap, $this->descendantIds, $this->sectionIds, $this->progress);
+        unset($this->subtreeTasks, $this->childrenMap, $this->descendantIds, $this->sectionIds, $this->progress);
 
         $this->announceChange();
     }
@@ -370,7 +398,7 @@ new class extends Component
         $title = trim($value);
 
         if ($title === '' || mb_strlen($title) > 255) {
-            $this->sectionTitles[$sectionId] = $this->projectTasks->firstWhere('id', (int) $sectionId)->title;
+            $this->sectionTitles[$sectionId] = $this->subtreeTasks->firstWhere('id', (int) $sectionId)->title;
 
             return;
         }
@@ -426,12 +454,12 @@ new class extends Component
     {
         return [
             'users' => $this->users->filter(fn ($user) => $user->isActive())->map(fn ($user) => ['id' => $user->id, 'name' => $user->name])->values()->all(),
-            'tasks' => $this->projectTasks
-                ->reject(fn ($task) => $task->is_section)
-                ->sortByDesc('id')
-                ->take(500)
+            'tasks' => $this->task->project->tasks()
+                ->where('is_section', false)
+                ->orderByDesc('id')
+                ->limit(500)
+                ->get(['id', 'title'])
                 ->map(fn ($task) => ['id' => $task->id, 'title' => $task->title])
-                ->values()
                 ->all(),
         ];
     }

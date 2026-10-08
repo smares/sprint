@@ -291,4 +291,15 @@ class SearchTest extends TestCase
 
         Livewire::test('pages::search')->set('query', 'fremd')->assertSee('Nichts gefunden')->assertDontSee('Fremd');
     }
+
+    public function test_the_hit_excerpt_of_a_task_in_a_foreign_project_cannot_be_requested(): void
+    {
+        $foreign = $this->task('Geheim', ['description' => 'vertraulicher Inhalt'], Project::factory()->create());
+        $this->actingAs(User::factory()->create());
+
+        Livewire::test('pages::search')
+            ->set('query', 'vertraulicher')
+            ->call('explain', $foreign->id)
+            ->assertForbidden();
+    }
 }

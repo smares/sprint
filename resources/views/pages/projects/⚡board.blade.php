@@ -4,6 +4,9 @@ use App\Concerns\OpensTaskPanel;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskStatus;
+use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
@@ -78,7 +81,7 @@ new class extends Component
         return $this->statuses->mapWithKeys(fn (TaskStatus $status) => [$status->id => (int) ($counts[$status->id] ?? 0)])->all();
     }
 
-    private function columnQuery(int $statusId)
+    private function columnQuery(int $statusId): HasMany
     {
         return $this->project->tasks()
             ->whereNull('parent_id')
@@ -103,13 +106,13 @@ new class extends Component
      * Fields shown on the cards.
      */
     #[Computed]
-    public function listFields()
+    public function listFields(): Collection
     {
         return $this->project->customFields()->with('options')->where('show_in_list', true)->get();
     }
 
     #[Computed]
-    public function statuses()
+    public function statuses(): Collection
     {
         return $this->project->statuses()->get();
     }
@@ -145,7 +148,7 @@ new class extends Component
         unset($this->columns, $this->columnTotals);
     }
 
-    public function rendering($view): void
+    public function rendering(View $view): void
     {
         $view->title($this->project->name);
     }

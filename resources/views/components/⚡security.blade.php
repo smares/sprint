@@ -1,6 +1,8 @@
 <?php
 
 use Flux\Flux;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
@@ -30,13 +32,13 @@ new class extends Component
     }
 
     #[Computed]
-    public function confirmedUntil()
+    public function confirmedUntil(): Carbon
     {
         return now()->setTimestamp((int) session('auth.password_confirmed_at', 0) + (int) config('auth.password_timeout', 10800));
     }
 
     #[Computed]
-    public function passkeys()
+    public function passkeys(): Collection
     {
         return auth()->user()->passkeys()->latest()->get();
     }

@@ -2,6 +2,7 @@
 
 use App\Services\LocaleService;
 use Flux\Flux;
+use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
@@ -118,7 +119,7 @@ new class extends Component
         Flux::toast(variant: 'success', text: __('Password changed.'));
     }
 
-    public function rendering($view): void
+    public function rendering(View $view): void
     {
         $view->title(__('Profile'));
     }

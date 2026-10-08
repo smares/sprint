@@ -2,6 +2,7 @@
 
 use App\Models\Task;
 use App\Models\User;
+use Illuminate\Contracts\View\View;
 use Livewire\Component;
 
 new class extends Component
@@ -29,7 +30,7 @@ new class extends Component
         $this->muted = false;
     }
 
-    public function rendering($view): void
+    public function rendering(View $view): void
     {
         $view->title(__('Notifications'));
     }

@@ -3,6 +3,8 @@
 use App\Models\Team;
 use App\Models\User;
 use Flux\Flux;
+use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
@@ -33,13 +35,13 @@ new class extends Component
     }
 
     #[Computed]
-    public function teams()
+    public function teams(): Collection
     {
         return Team::query()->with('users')->withCount('projects')->orderBy('name')->get();
     }
 
     #[Computed]
-    public function users()
+    public function users(): Collection
     {
         return User::query()->active()->orderBy('name')->get(['id', 'name', 'email']);
     }
@@ -123,7 +125,7 @@ new class extends Component
         $this->refresh();
     }
 
-    public function rendering($view): void
+    public function rendering(View $view): void
     {
         $view->title(__('Teams'));
     }

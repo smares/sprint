@@ -1,11 +1,13 @@
 <?php
 
+use App\Color;
 use App\Enums\CustomFieldType;
 use App\Models\CustomField;
 use App\Models\CustomFieldOption;
-use App\Color;
 use App\Models\Project;
 use Flux\Flux;
+use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
@@ -49,7 +51,7 @@ new class extends Component
     }
 
     #[Computed]
-    public function fields()
+    public function fields(): Collection
     {
         return $this->project->customFields()->with('options')->withCount('values')->get();
     }
@@ -216,7 +218,7 @@ new class extends Component
         $this->refresh();
     }
 
-    public function rendering($view): void
+    public function rendering(View $view): void
     {
         $view->title(__('Fields – :project', ['project' => $this->project->name]));
     }

@@ -292,3 +292,53 @@ document.addEventListener('click', (event) => {
         detail: { url: image.dataset.previewUrl, download: image.dataset.downloadUrl, name: image.dataset.name, kind: 'image' },
     }))
 })
+
+// Keyboard shortcuts, listed in the overview behind "?" (components/keyboard-shortcuts.blade.php).
+// They never fire while typing, with a modifier key held or while a dialog is open.
+const typingIn = (target) => target.closest?.('input, textarea, select, [contenteditable], [role=combobox], [role=listbox], ui-select, ui-date-picker, ui-editor')
+
+const openTaskId = () => new URLSearchParams(window.location.search).get('task')
+
+const stepThroughTasks = (direction) => {
+    const items = [...document.querySelectorAll('[data-task-id]')].filter((item) => item.offsetParent !== null)
+
+    if (! items.length) {
+        return
+    }
+
+    const current = items.findIndex((item) => item.dataset.taskId === openTaskId())
+    const next = current === -1 ? (direction > 0 ? 0 : items.length - 1) : current + direction
+
+    if (next < 0 || next >= items.length) {
+        return
+    }
+
+    items[next].scrollIntoView({ block: 'nearest' })
+    window.Livewire.dispatch('open-task', { id: Number(items[next].dataset.taskId) })
+}
+
+document.addEventListener('keydown', (event) => {
+    if (event.metaKey || event.ctrlKey || event.altKey || event.defaultPrevented || typingIn(event.target)) {
+        return
+    }
+
+    // A dialog handles its own keys (Escape closes it)
+    if (document.querySelector('dialog[open]')) {
+        return
+    }
+
+    const actions = {
+        '?': () => window.Flux.modal('keyboard-shortcuts').show(),
+        '/': () => window.Flux.modal('command-palette').show(),
+        c: () => window.Livewire.dispatch('new-task'),
+        j: () => stepThroughTasks(1),
+        k: () => stepThroughTasks(-1),
+        e: () => window.Livewire.dispatch('shortcut-toggle-done'),
+        Escape: () => openTaskId() && window.Livewire.dispatch('close-task'),
+    }
+
+    if (actions[event.key]) {
+        event.preventDefault()
+        actions[event.key]()
+    }
+})

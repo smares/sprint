@@ -629,7 +629,7 @@ new class extends Component
             </flux:table.columns>
             <flux:table.rows :wire:sort="$sortBy === '' && $this->canEdit && ! $selecting ? 'moveTask' : null">
                 @foreach ($this->tasks as $task)
-                    <flux:table.row wire:key="task-{{ $task->id }}" :wire:sort:item="$sortBy === '' && $this->canEdit && ! $selecting ? $task->id : null">
+                    <flux:table.row wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" :wire:sort:item="$sortBy === '' && $this->canEdit && ! $selecting ? $task->id : null">
                         <flux:table.cell>
                             @if ($selecting)
                                 <flux:checkbox

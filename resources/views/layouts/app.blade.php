@@ -57,6 +57,9 @@
                         </div>
                         <flux:menu.separator />
                         <flux:menu.item icon="user" href="{{ route('profile') }}" wire:navigate>{{ __('Profile') }}</flux:menu.item>
+                        <flux:modal.trigger name="keyboard-shortcuts">
+                            <flux:menu.item icon="command-line" kbd="?">{{ __('Keyboard shortcuts') }}</flux:menu.item>
+                        </flux:modal.trigger>
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
                             <flux:menu.item as="button" type="submit" icon="arrow-right-start-on-rectangle">{{ __('Log out') }}</flux:menu.item>
@@ -99,6 +102,7 @@
         @endpersist
 
         <x-file-preview />
+        <x-keyboard-shortcuts />
 
         @fluxScripts
     </body>

@@ -34,7 +34,7 @@ class TaskCommented extends Notification implements ShouldQueueAfterCommit
 
         return $this->localizedMail('task-commented', [
             'name' => $notifiable->name,
-            'who' => $this->comment->user->name,
+            'who' => $this->comment->authorName(),
             'title' => $task->title,
             'project' => $task->project->name,
             'excerpt' => Str::limit(MarkdownService::plainText($this->comment->body), 500),
@@ -53,7 +53,7 @@ class TaskCommented extends Notification implements ShouldQueueAfterCommit
         return [
             'task_id' => $this->comment->task_id,
             'kind' => 'commented',
-            'by' => $this->comment->user?->name,
+            'by' => $this->comment->authorName(),
         ];
     }
 

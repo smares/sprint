@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Notification;
 
-#[Fillable(['task_id', 'user_id', 'body'])]
+#[Fillable(['task_id', 'user_id', 'automation_name', 'body'])]
 class Comment extends Model
 {
     /** @use HasFactory<CommentFactory> */
@@ -42,7 +42,7 @@ class Comment extends Model
 
             Notification::send(
                 $comment->task->usersToMention($added, $comment->user),
-                new UserMentioned($comment->task, 'comment', $comment->body, $comment->user?->name),
+                new UserMentioned($comment->task, 'comment', $comment->body, $comment->authorName()),
             );
         });
 
@@ -52,13 +52,13 @@ class Comment extends Model
             $mentionedIds = MarkdownService::mentionedUserIds($comment->body);
 
             Notification::send(
-                $comment->task->usersToNotify($comment->user)->reject(fn (User $user) => in_array($user->id, $mentionedIds, true)),
+                $comment->task->usersToNotify($comment->user ?? auth()->user())->reject(fn (User $user) => in_array($user->id, $mentionedIds, true)),
                 new TaskCommented($comment),
             );
 
             Notification::send(
-                $comment->task->usersToMention($mentionedIds, $comment->user),
-                new UserMentioned($comment->task, 'comment', $comment->body, $comment->user?->name),
+                $comment->task->usersToMention($mentionedIds, $comment->user ?? auth()->user()),
+                new UserMentioned($comment->task, 'comment', $comment->body, $comment->authorName()),
             );
         });
     }
@@ -69,6 +69,14 @@ class Comment extends Model
     public function wasEdited(): bool
     {
         return $this->updated_at !== null && $this->updated_at->gt($this->created_at->copy()->addSeconds(1));
+    }
+
+    /**
+     * The author's name; for a comment written by an automation, the automation's name.
+     */
+    public function authorName(): ?string
+    {
+        return $this->user->name ?? ($this->automation_name === null ? null : Automation::labelFor($this->automation_name));
     }
 
     /**

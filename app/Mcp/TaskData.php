@@ -50,7 +50,7 @@ class TaskData
                 'done' => $child->isDone(),
             ])->values()->all(),
             'comments' => $task->comments->take(-20)->map(fn (Comment $comment) => [
-                'author' => $comment->user?->name,
+                'author' => $comment->authorName(),
                 'at' => $comment->created_at->toIso8601String(),
                 'body' => $comment->body,
             ])->values()->all(),

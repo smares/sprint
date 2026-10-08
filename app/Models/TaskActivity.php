@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['task_id', 'user_id', 'type', 'data'])]
+#[Fillable(['task_id', 'user_id', 'automation_id', 'type', 'data'])]
 class TaskActivity extends Model
 {
     /** @use HasFactory<TaskActivityFactory> */
@@ -36,6 +36,30 @@ class TaskActivity extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * @return BelongsTo<Automation, $this>
+     */
+    public function automation(): BelongsTo
+    {
+        return $this->belongsTo(Automation::class);
+    }
+
+    /**
+     * Who did it: the person, or the automation by the name it had then.
+     */
+    public function actorName(): string
+    {
+        return $this->user->name ?? (isset($this->data['automation']) ? Automation::labelFor($this->data['automation']) : __('Someone'));
+    }
+
+    /**
+     * For a change made by an automation, the person whose change triggered it.
+     */
+    public function triggeredBy(): ?string
+    {
+        return isset($this->data['automation']) ? ($this->data['by'] ?? null) : null;
     }
 
     /**

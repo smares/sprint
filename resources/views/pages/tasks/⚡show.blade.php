@@ -1204,13 +1204,17 @@ new class extends Component
                         @php($comment = $entry['comment'])
                         <flux:timeline.item wire:key="comment-{{ $comment->id }}" align="start">
                             <flux:timeline.indicator variant="bare">
-                                <x-user-avatar size="xs" circle :user="$comment->user" />
+                                @if ($comment->user)
+                                    <x-user-avatar size="xs" circle :user="$comment->user" />
+                                @else
+                                    <flux:avatar size="xs" circle icon="bolt" />
+                                @endif
                             </flux:timeline.indicator>
 
                             <flux:timeline.content>
                                 <flux:card size="sm" class="space-y-1">
                                     <div class="flex items-center gap-2">
-                                        <flux:text class="min-w-0 flex-1 text-sm"><strong>{{ $comment->user->name }}</strong> · {{ $comment->created_at->isoFormat('L LT') }}@if ($comment->wasEdited()) · {{ __('edited') }} @endif</flux:text>
+                                        <flux:text class="min-w-0 flex-1 text-sm"><strong>{{ $comment->authorName() }}</strong> · {{ $comment->created_at->isoFormat('L LT') }}@if ($comment->wasEdited()) · {{ __('edited') }} @endif</flux:text>
                                         @if ($editingCommentId !== $comment->id && Gate::allows('update', $comment))
                                             <flux:button size="xs" variant="ghost" icon="pencil-square" wire:click="startEditComment({{ $comment->id }})" :aria-label="__('Edit comment')" :tooltip="__('Edit comment')" />
                                         @endif
@@ -1242,7 +1246,7 @@ new class extends Component
                             </flux:timeline.indicator>
 
                             <flux:timeline.content>
-                                <flux:text size="sm"><strong class="font-medium text-zinc-800 dark:text-white">{{ $activity->user?->name ?? __('Someone') }}</strong> {{ $activity->sentence() }} · {{ $activity->created_at->isoFormat('L LT') }}</flux:text>
+                                <flux:text size="sm"><strong class="font-medium text-zinc-800 dark:text-white">{{ $activity->actorName() }}</strong> {{ $activity->sentence() }} · {{ $activity->created_at->isoFormat('L LT') }}@if ($activity->triggeredBy()) · {{ __('triggered by :name', ['name' => $activity->triggeredBy()]) }}@endif</flux:text>
                             </flux:timeline.content>
                         </flux:timeline.item>
                     @endif

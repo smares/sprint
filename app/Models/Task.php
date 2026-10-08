@@ -9,6 +9,7 @@ use App\Enums\RepeatUnit;
 use App\Notifications\TasksStatusChanged;
 use App\Notifications\TaskStatusChanged;
 use App\Notifications\UserMentioned;
+use App\Services\AutomationService;
 use App\Services\MarkdownService;
 use App\Services\RealtimeService;
 use App\Services\TaskSearchService;
@@ -118,6 +119,8 @@ class Task extends Model
             }
 
             $actor = auth()->user();
+            $automation = app(AutomationService::class)->running();
+            $actorName = $automation?->label() ?? $actor?->name;
 
             if ($task->wasChanged('status_id')) {
                 $task->setRelation('status', $task->statusById($task->status_id));
@@ -131,8 +134,8 @@ class Task extends Model
                 foreach ($task->usersToNotify($actor) as $recipient) {
                     $change = ['task' => $task, 'from' => $old?->name ?? '–', 'to' => $task->status->name];
 
-                    if (self::$bundledStatusChanges === null) {
-                        Notification::send($recipient, new TaskStatusChanged($task, $change['from'], $change['to'], $actor?->name));
+                    if (self::$bundledStatusChanges === null || $automation !== null) {
+                        Notification::send($recipient, new TaskStatusChanged($task, $change['from'], $change['to'], $actorName));
                     } else {
                         self::$bundledStatusChanges[$recipient->id]['user'] = $recipient;
                         self::$bundledStatusChanges[$recipient->id]['changes'][] = $change;
@@ -155,6 +158,8 @@ class Task extends Model
                     new UserMentioned($task, 'description', (string) $task->description, $actor?->name),
                 );
             }
+
+            app(AutomationService::class)->flush();
         });
     }
 
@@ -605,11 +610,20 @@ class Task extends Model
      */
     public function logActivity(ActivityType $type, array $data = []): void
     {
+        $automation = app(AutomationService::class)->running();
+
+        if ($automation !== null) {
+            $data += ['automation' => $automation->name, 'by' => auth()->user()?->name];
+        }
+
         $this->activities()->create([
-            'user_id' => auth()->id(),
+            'user_id' => $automation === null ? auth()->id() : null,
+            'automation_id' => $automation?->id,
             'type' => $type,
             'data' => $data === [] ? null : $data,
         ]);
+
+        app(AutomationService::class)->record($this, $type, $data);
     }
 
     /**
@@ -622,9 +636,13 @@ class Task extends Model
     {
         foreach ([[$added, 'attached'], [$removed, 'detached']] as [$type, $key]) {
             if (($changes[$key] ?? []) !== []) {
-                $this->logActivity($type, ['names' => $names(array_values(array_map(intval(...), $changes[$key])))]);
+                $ids = array_values(array_map(intval(...), $changes[$key]));
+
+                $this->logActivity($type, ['names' => $names($ids), 'ids' => $ids]);
             }
         }
+
+        app(AutomationService::class)->flush();
     }
 
     /**

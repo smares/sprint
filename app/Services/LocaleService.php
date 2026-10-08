@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Carbon\Translator;
 use Illuminate\Support\Facades\Date;
 
 /**
@@ -58,6 +59,27 @@ class LocaleService
         }
 
         return null;
+    }
+
+    /**
+     * Dates appear as YYYY-MM-DD and times in 24 hours in every language; only month and weekday names
+     * and relative times ("2 hours ago") stay in the person's language. Changes the short formats
+     * (L, LT, LTS) that the views use with isoFormat().
+     */
+    public static function useIsoDateFormats(): void
+    {
+        $global = Date::getTranslator();
+
+        foreach (self::codes() as $code) {
+            // Carbon keeps one translator for Date::setLocale() and one per language for ->locale().
+            foreach ([$global, Translator::get($code)] as $translator) {
+                if ($translator instanceof Translator) {
+                    $translator->setMessages($code, []);
+                    $formats = ['L' => 'YYYY-MM-DD', 'LT' => 'HH:mm', 'LTS' => 'HH:mm:ss'] + ($translator->getMessages($code)['formats'] ?? []);
+                    $translator->setMessages($code, ['formats' => $formats]);
+                }
+            }
+        }
     }
 
     /**

@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Events\InboxUpdated;
 use App\Models\User;
+use App\Services\LocaleService;
 use App\Services\RealtimeService;
 use App\Services\TaskSearchService;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -37,6 +38,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Model::preventLazyLoading(! $this->app->isProduction());
+
+        LocaleService::useIsoDateFormats();
 
         Gate::define('administer', fn (User $user) => $user->is_admin);
 

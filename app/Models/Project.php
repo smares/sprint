@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Color;
 use App\Enums\CustomFieldType;
 use App\Enums\ProjectRole;
 use App\Services\TaskSearchService;
@@ -309,6 +310,31 @@ class Project extends Model
     public function tags(): HasMany
     {
         return $this->hasMany(Tag::class);
+    }
+
+    /**
+     * The tag with this name, whatever its upper and lower case ("bug" finds "Bug"). Compared in PHP,
+     * because SQLite's lower() only knows ASCII letters.
+     */
+    public function findTag(string $name, ?int $exceptId = null): ?Tag
+    {
+        $name = mb_strtolower(trim($name));
+
+        return $this->tags()
+            ->when($exceptId !== null, fn ($tags) => $tags->whereKeyNot($exceptId))
+            ->get()
+            ->first(fn (Tag $tag) => mb_strtolower($tag->name) === $name);
+    }
+
+    /**
+     * The existing tag with this name or a new one in the next free color.
+     */
+    public function findOrCreateTag(string $name): Tag
+    {
+        return $this->findTag($name) ?? $this->tags()->create([
+            'name' => trim($name),
+            'color' => Color::next($this->tags()->count()),
+        ]);
     }
 
     /**

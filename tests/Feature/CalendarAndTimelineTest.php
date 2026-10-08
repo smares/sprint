@@ -40,7 +40,7 @@ class CalendarAndTimelineTest extends TestCase
             ->assertHasNoErrors();
 
         $this->assertSame('2026-10-10', $task->fresh()->start_date->toDateString());
-        $this->assertContains('hat den Beginn von – auf 10.10.2026 geändert', $task->activities()->get()->map->sentence()->all());
+        $this->assertContains('hat den Beginn von – auf 2026-10-10 geändert', $task->activities()->get()->map->sentence()->all());
     }
 
     public function test_start_date_must_not_be_after_the_due_date(): void

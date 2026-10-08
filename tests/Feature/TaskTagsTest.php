@@ -47,6 +47,20 @@ class TaskTagsTest extends TestCase
         $this->assertSame(1, Tag::where('name', 'Bug')->count());
     }
 
+    public function test_tag_names_are_reused_whatever_their_case_also_with_umlauts(): void
+    {
+        $task = Task::factory()->create();
+        $bug = Tag::factory()->for($task->project)->create(['name' => 'Bug']);
+        $review = Tag::factory()->for($task->project)->create(['name' => 'Überprüfung']);
+
+        Livewire::test('pages::tasks.show', ['task' => $task])
+            ->set('newTag', ' bug ')->call('createTag')
+            ->set('newTag', 'überprüfung')->call('createTag')
+            ->assertSet('tagIds', [(string) $bug->id, (string) $review->id]);
+
+        $this->assertSame(2, $task->project->tags()->count());
+    }
+
     public function test_same_tag_name_can_exist_in_different_projects(): void
     {
         $first = Task::factory()->create();

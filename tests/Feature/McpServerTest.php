@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\CustomFieldType;
 use App\Enums\ProjectRole;
 use App\Mcp\Servers\SprintServer;
 use App\Mcp\Tools\AddComment;
@@ -11,6 +12,7 @@ use App\Mcp\Tools\ListProjects;
 use App\Mcp\Tools\ListTasks;
 use App\Mcp\Tools\UpdateTask;
 use App\Models\Comment;
+use App\Models\CustomField;
 use App\Models\Project;
 use App\Models\Tag;
 use App\Models\Task;
@@ -147,6 +149,21 @@ class McpServerTest extends TestCase
         Project::factory()->count(5)->create()->each(fn (Project $project) => $project->setTeamRole($team, ProjectRole::Editor));
 
         $this->assertSame($forTwo, $queries());
+    }
+
+    public function test_date_and_number_fields_only_take_clean_values(): void
+    {
+        CustomField::factory()->for($this->project)->create(['name' => 'Review am', 'type' => CustomFieldType::Date]);
+        CustomField::factory()->for($this->project)->create(['name' => 'Aufwand', 'type' => CustomFieldType::Number]);
+
+        foreach (['next friday', '12/31/2026', '2026-02-30', '31.12.2026'] as $value) {
+            $this->tool(CreateTask::class, ['project_id' => $this->project->id, 'title' => 'X', 'fields' => ['Review am' => $value]])->assertSee('needs a date as YYYY-MM-DD');
+        }
+
+        $this->tool(CreateTask::class, ['project_id' => $this->project->id, 'title' => 'Y', 'fields' => ['Aufwand' => 'viel']])->assertSee('needs a number');
+        $this->tool(CreateTask::class, ['project_id' => $this->project->id, 'title' => 'Z', 'fields' => ['Review am' => '2026-12-31', 'Aufwand' => '3.5']])->assertOk();
+
+        $this->assertEqualsCanonicalizing(['2026-12-31', '3.5'], Task::where('title', 'Z')->firstOrFail()->fieldValues()->pluck('value')->all());
     }
 
     public function test_tasks_can_be_listed_filtered_and_searched(): void

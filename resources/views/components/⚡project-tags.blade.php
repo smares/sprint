@@ -90,10 +90,7 @@ new class extends Component
 
     private function nameTaken(string $name, ?int $exceptId = null): bool
     {
-        return $this->project->tags()
-            ->when($exceptId, fn ($tags) => $tags->whereKeyNot($exceptId))
-            ->whereRaw('lower(name) = ?', [mb_strtolower($name)])
-            ->exists();
+        return $this->project->findTag($name, $exceptId) !== null;
     }
 
     public function add(): void
@@ -107,10 +104,7 @@ new class extends Component
             return;
         }
 
-        $this->project->tags()->create([
-            'name' => $name,
-            'color' => Color::next($this->project->tags()->count()),
-        ]);
+        $this->project->findOrCreateTag($name);
 
         $this->reset('newName');
         $this->changed();

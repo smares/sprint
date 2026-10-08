@@ -91,7 +91,7 @@ class CalendarDragDropTest extends TestCase
 
         $this->calendar()->call('moveToDay', $task->id, '2026-10-10', '2026-10-11');
 
-        $this->assertContains('hat die Fälligkeit von 10.10.2026 auf 11.10.2026 geändert', $task->activities()->get()->map->sentence()->all());
+        $this->assertContains('hat die Fälligkeit von 2026-10-10 auf 2026-10-11 geändert', $task->activities()->get()->map->sentence()->all());
     }
 
     public function test_invalid_dates_and_foreign_tasks_are_rejected(): void

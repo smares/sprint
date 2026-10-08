@@ -79,7 +79,7 @@ class CustomFieldsInListTest extends TestCase
         $task->fieldValues()->create(['custom_field_id' => $date->id, 'value' => '2026-12-24']);
         $task->fieldValues()->create(['custom_field_id' => $text->id, 'value' => 'Müller AG']);
 
-        $this->list()->assertSee('Aufwand')->assertSee('13')->assertSee('24.12.2026')->assertSee('Müller AG');
+        $this->list()->assertSee('Aufwand')->assertSee('13')->assertSee('2026-12-24')->assertSee('Müller AG');
     }
 
     public function test_list_can_be_filtered_by_a_select_field(): void

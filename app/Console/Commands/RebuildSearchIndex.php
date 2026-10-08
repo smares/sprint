@@ -8,7 +8,7 @@ use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
 #[Signature('search:rebuild')]
-#[Description('Baut den Suchindex für Aufgaben neu auf (nur SQLite mit FTS5)')]
+#[Description('Rebuilds the task search index (SQLite with FTS5 only)')]
 class RebuildSearchIndex extends Command
 {
     /**
@@ -17,12 +17,12 @@ class RebuildSearchIndex extends Command
     public function handle(TaskSearch $search): int
     {
         if (! $search->usesFullText() && ! $search->createIndexTable()) {
-            $this->components->info('Kein FTS5 verfügbar – die Suche nutzt LIKE und braucht keinen Index.');
+            $this->components->info('FTS5 is not available; the search uses LIKE and needs no index.');
 
             return self::SUCCESS;
         }
 
-        $this->components->info($search->rebuild().' Aufgaben indiziert.');
+        $this->components->info($search->rebuild().' tasks indexed.');
 
         return self::SUCCESS;
     }

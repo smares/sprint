@@ -8,7 +8,7 @@ use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
 #[Signature('sprint:health')]
-#[Description('Prüft Datenbank, Speicher, Cache, Scheduler und Queue-Worker')]
+#[Description('Checks the database, storage, cache, scheduler and queue worker')]
 class CheckHealth extends Command
 {
     public function handle(HealthCheck $health): int
@@ -27,7 +27,7 @@ class CheckHealth extends Command
 
         $overall = $health->overall($checks);
         $this->newLine();
-        $this->line("Gesamt: {$overall}");
+        $this->line("Overall: {$overall}");
 
         return $overall === 'down' ? self::FAILURE : self::SUCCESS;
     }

@@ -9,8 +9,8 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
-#[Signature('digest:send {--user= : Nur an diese E-Mail-Adresse senden}')]
-#[Description('Schickt die Tageszusammenfassung mit überfälligen und bald fälligen Aufgaben')]
+#[Signature('digest:send {--user= : Only send to this email address}')]
+#[Description('Sends the daily summary of overdue and upcoming tasks')]
 class SendDailyDigest extends Command
 {
     public function handle(DailyDigest $digest): int
@@ -32,7 +32,7 @@ class SendDailyDigest extends Command
                 $sent++;
             });
 
-        $this->components->info("{$sent} Zusammenfassung(en) verschickt.");
+        $this->components->info("{$sent} summary mail(s) sent.");
 
         return self::SUCCESS;
     }

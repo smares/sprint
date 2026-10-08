@@ -7,8 +7,8 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
-#[Signature('user:admin {email} {--revoke : Admin-Rechte wieder entziehen}')]
-#[Description('Macht einen Benutzer zum Administrator der ganzen Anwendung (sieht und verwaltet alle Projekte)')]
+#[Signature('user:admin {email} {--revoke : Remove the administrator rights again}')]
+#[Description('Makes a user an administrator of the whole application (sees and manages all projects)')]
 class MakeUserAdmin extends Command
 {
     public function handle(): int
@@ -16,7 +16,7 @@ class MakeUserAdmin extends Command
         $user = User::where('email', $this->argument('email'))->first();
 
         if ($user === null) {
-            $this->components->error('Es gibt keinen Benutzer mit dieser E-Mail-Adresse.');
+            $this->components->error('There is no user with this email address.');
 
             return self::FAILURE;
         }
@@ -24,8 +24,8 @@ class MakeUserAdmin extends Command
         $user->update(['is_admin' => ! $this->option('revoke')]);
 
         $this->components->info($this->option('revoke')
-            ? "{$user->name} ist kein Administrator mehr."
-            : "{$user->name} ist jetzt Administrator.");
+            ? "{$user->name} is no longer an administrator."
+            : "{$user->name} is now an administrator.");
 
         return self::SUCCESS;
     }

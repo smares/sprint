@@ -88,6 +88,20 @@ new class extends Component
     /**
      * A project always keeps somebody who may manage it: a member or a team with that role.
      */
+    /**
+     * Whether somebody can still manage the project without the given member or team; says so when not.
+     */
+    private function stillManaged(?int $exceptUserId = null, ?int $exceptTeamId = null): bool
+    {
+        if ($this->keepsAManager(exceptUserId: $exceptUserId, exceptTeamId: $exceptTeamId)) {
+            return true;
+        }
+
+        Flux::toast(variant: 'danger', text: __('A project needs at least one member who can manage it.'));
+
+        return false;
+    }
+
     private function keepsAManager(?int $exceptUserId = null, ?int $exceptTeamId = null): bool
     {
         $member = $this->project->members()
@@ -120,12 +134,8 @@ new class extends Component
         $member = $this->project->members()->where('users.id', $userId)->firstOrFail();
         $role = ProjectRole::tryFrom($value);
 
-        if ($role === null || ($member->pivot->role === ProjectRole::Admin->value && $role !== ProjectRole::Admin && ! $this->keepsAManager(exceptUserId: $member->id))) {
+        if ($role === null || ($member->pivot->role === ProjectRole::Admin->value && $role !== ProjectRole::Admin && ! $this->stillManaged(exceptUserId: $member->id))) {
             $this->roles[$userId] = $member->pivot->role;
-
-            if ($role !== null) {
-                Flux::toast(variant: 'danger', text: __('A project needs at least one member who can manage it.'));
-            }
 
             return;
         }
@@ -138,9 +148,7 @@ new class extends Component
     {
         $member = $this->project->members()->where('users.id', $userId)->firstOrFail();
 
-        if ($member->pivot->role === ProjectRole::Admin->value && ! $this->keepsAManager(exceptUserId: $member->id)) {
-            Flux::toast(variant: 'danger', text: __('A project needs at least one member who can manage it.'));
-
+        if ($member->pivot->role === ProjectRole::Admin->value && ! $this->stillManaged(exceptUserId: $member->id)) {
             return;
         }
 
@@ -166,12 +174,8 @@ new class extends Component
         $team = $this->project->teams()->where('teams.id', $teamId)->firstOrFail();
         $role = ProjectRole::tryFrom($value);
 
-        if ($role === null || ($team->pivot->role === ProjectRole::Admin->value && $role !== ProjectRole::Admin && ! $this->keepsAManager(exceptTeamId: $team->id))) {
+        if ($role === null || ($team->pivot->role === ProjectRole::Admin->value && $role !== ProjectRole::Admin && ! $this->stillManaged(exceptTeamId: $team->id))) {
             $this->teamRoles[$teamId] = $team->pivot->role;
-
-            if ($role !== null) {
-                Flux::toast(variant: 'danger', text: __('A project needs at least one member who can manage it.'));
-            }
 
             return;
         }
@@ -184,9 +188,7 @@ new class extends Component
     {
         $team = $this->project->teams()->where('teams.id', $teamId)->firstOrFail();
 
-        if ($team->pivot->role === ProjectRole::Admin->value && ! $this->keepsAManager(exceptTeamId: $team->id)) {
-            Flux::toast(variant: 'danger', text: __('A project needs at least one member who can manage it.'));
-
+        if ($team->pivot->role === ProjectRole::Admin->value && ! $this->stillManaged(exceptTeamId: $team->id)) {
             return;
         }
 

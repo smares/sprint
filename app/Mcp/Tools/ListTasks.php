@@ -59,7 +59,7 @@ class ListTasks extends SprintTool
                 ->where('tasks.is_section', false)
                 ->visibleTo($user)
                 ->when(isset($validated['project_id']), fn ($query) => $query->where('tasks.project_id', $validated['project_id']))
-                ->unless($validated['include_subtasks'] ?? false, fn ($query) => $query->whereNull('tasks.parent_id'))
+                ->unless($validated['include_subtasks'] ?? false, fn ($query) => $query->topLevel())
                 ->when($state === 'open', fn ($query) => $query->open())
                 ->when($state === 'done', fn ($query) => $query->done())
                 ->orderBy('tasks.project_id')->orderBy('tasks.position')->orderBy('tasks.id');

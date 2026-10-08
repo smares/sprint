@@ -109,7 +109,7 @@ new class extends Component
 
         $this->project->statuses()->create([
             'name' => trim($validated['newName']),
-            'position' => ($this->project->statuses()->max('position') ?? -1) + 1,
+            'position' => TaskStatus::nextPositionIn($this->project->statuses()),
         ]);
 
         $this->reset('newName');
@@ -162,14 +162,7 @@ new class extends Component
 
     public function move(int|string $id, int $position): void
     {
-        $status = $this->statusOrFail($id);
-        $orderedIds = $this->project->statuses()->whereKeyNot($status->id)->pluck('id')->all();
-
-        array_splice($orderedIds, max(0, min($position, count($orderedIds))), 0, [$status->id]);
-
-        foreach ($orderedIds as $index => $statusId) {
-            TaskStatus::whereKey($statusId)->update(['position' => $index]);
-        }
+        $this->statusOrFail($id)->moveTo($position);
 
         $this->changed();
     }

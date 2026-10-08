@@ -22,7 +22,7 @@ new class extends Component
             ->whereNull('archived_at')
             ->withCount([
                 'tasks',
-                'tasks as open_tasks_count' => fn ($query) => $query->whereHas('status', fn ($status) => $status->where('is_done', false)),
+                'tasks as open_tasks_count' => fn ($query) => $query->open(),
             ])
             ->orderBy('name')
             ->get();

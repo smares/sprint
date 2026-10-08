@@ -3,8 +3,10 @@
 namespace App\Models;
 
 use App\Casts\ColorCast;
+use App\Concerns\HasPosition;
 use Database\Factories\TaskStatusFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,6 +17,8 @@ class TaskStatus extends Model
 {
     /** @use HasFactory<TaskStatusFactory> */
     use HasFactory;
+
+    use HasPosition;
 
     protected function casts(): array
     {
@@ -49,5 +53,13 @@ class TaskStatus extends Model
     public function tasks(): HasMany
     {
         return $this->hasMany(Task::class, 'status_id');
+    }
+
+    /**
+     * @return Builder<static>
+     */
+    protected function positionSiblings(): Builder
+    {
+        return static::query()->where('project_id', $this->project_id);
     }
 }

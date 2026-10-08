@@ -90,7 +90,7 @@ new class extends Component
         $this->project->customFields()->create([
             'name' => trim($validated['newName']),
             'type' => $validated['newType'],
-            'position' => ($this->project->customFields()->max('position') ?? -1) + 1,
+            'position' => CustomField::nextPositionIn($this->project->customFields()),
         ]);
 
         $this->reset('newName');
@@ -120,14 +120,7 @@ new class extends Component
 
     public function moveField(int|string $id, int $position): void
     {
-        $field = $this->fieldOrFail($id);
-        $orderedIds = $this->project->customFields()->whereKeyNot($field->id)->pluck('id')->all();
-
-        array_splice($orderedIds, max(0, min($position, count($orderedIds))), 0, [$field->id]);
-
-        foreach ($orderedIds as $index => $fieldId) {
-            CustomField::whereKey($fieldId)->update(['position' => $index]);
-        }
+        $this->fieldOrFail($id)->moveTo($position);
 
         $this->refresh();
     }
@@ -159,7 +152,7 @@ new class extends Component
         $field->options()->create([
             'name' => trim($this->newOptions[$fieldId]),
             'color' => Color::next($field->options()->count()),
-            'position' => ($field->options()->max('position') ?? -1) + 1,
+            'position' => CustomFieldOption::nextPositionIn($field->options()),
         ]);
 
         unset($this->newOptions[$fieldId]);
@@ -200,13 +193,7 @@ new class extends Component
         $option = $this->optionOrFail($id);
         abort_unless($option->custom_field_id === (int) $fieldId, 404);
 
-        $orderedIds = $option->field->options()->whereKeyNot($option->id)->pluck('id')->all();
-
-        array_splice($orderedIds, max(0, min($position, count($orderedIds))), 0, [$option->id]);
-
-        foreach ($orderedIds as $index => $optionId) {
-            CustomFieldOption::whereKey($optionId)->update(['position' => $index]);
-        }
+        $option->moveTo($position);
 
         $this->refresh();
     }

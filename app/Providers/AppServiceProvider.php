@@ -11,6 +11,7 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
+use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Notifications\Events\NotificationSent;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -51,6 +52,14 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(function (NotificationSent $sent) {
             if ($sent->channel === 'database' && $sent->notifiable instanceof User && $this->app->make(RealtimeService::class)->enabled()) {
                 broadcast(new InboxUpdated($sent->notifiable->id));
+            }
+        });
+
+        // The mail header (resources/views/vendor/mail/html/header.blade.php) shows the logo as cid:sprint-logo.png:
+        // embedded in the mail, it shows without a public APP_URL and is not blocked like data: URLs are in Gmail and Outlook.
+        Event::listen(function (MessageSending $sending) {
+            if (str_contains((string) $sending->message->getHtmlBody(), 'cid:sprint-logo.png')) {
+                $sending->message->embedFromPath(resource_path('images/mail-logo.png'), 'sprint-logo.png', 'image/png');
             }
         });
 

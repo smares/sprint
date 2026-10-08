@@ -4,7 +4,10 @@ namespace Tests\Feature;
 
 use App\Models\Project;
 use App\Models\User;
+use App\Notifications\EmailChanged;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Symfony\Component\Mime\Email;
+use Symfony\Component\Mime\Part\DataPart;
 use Tests\TestCase;
 
 class BrandingTest extends TestCase
@@ -45,5 +48,24 @@ class BrandingTest extends TestCase
         }
 
         $this->assertStringContainsString('M32 18l14 14-14 14', (string) file_get_contents(public_path('favicon.svg')));
+    }
+
+    public function test_mails_carry_the_mark_as_an_embedded_image(): void
+    {
+        User::factory()->create(['name' => 'Anna'])->notify(new EmailChanged('alt@example.com'));
+
+        $messages = app('mailer')->getSymfonyTransport()->messages();
+        $this->assertCount(1, $messages);
+        $email = $messages->first()->getOriginalMessage();
+        $this->assertInstanceOf(Email::class, $email);
+
+        $logo = collect($email->getAttachments())->sole(fn (DataPart $part) => $part->getFilename() === 'sprint-logo.png');
+        $this->assertSame('inline', $logo->getDisposition());
+        $this->assertSame('image/png', $logo->getMediaType().'/'.$logo->getMediaSubtype());
+
+        $sent = quoted_printable_decode($messages->first()->toString());
+        $this->assertStringContainsString('src="cid:'.$logo->getContentId().'"', $sent);
+        $this->assertStringContainsString('Content-ID: <'.$logo->getContentId().'>', $sent);
+        $this->assertStringNotContainsString('laravel.com', $sent);
     }
 }

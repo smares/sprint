@@ -101,7 +101,7 @@ new class extends Component
 };
 ?>
 
-<div class="max-w-3xl">
+<div class="max-w-4xl">
     <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
         <flux:heading size="xl">{{ __('Inbox') }}</flux:heading>
         @if ($this->hasUnread)
@@ -126,8 +126,8 @@ new class extends Component
                             <flux:text size="sm">{{ $notification->created_at->diffForHumans() }}</flux:text>
                         @endif
                     </div>
-                    <flux:button size="xs" variant="ghost" :icon="$notification->read_at === null ? 'envelope-open' : 'envelope'" wire:click="toggleRead('{{ $notification->id }}')" aria-label="{{ $notification->read_at === null ? __('Mark as read') : __('Mark as unread') }}" />
-                    <flux:button size="xs" variant="ghost" icon="x-mark" wire:click="remove('{{ $notification->id }}')" aria-label="{{ __('Remove') }}" />
+                    <flux:button size="xs" variant="ghost" :icon="$notification->read_at === null ? 'envelope-open' : 'envelope'" wire:click="toggleRead('{{ $notification->id }}')" :aria-label="$notification->read_at === null ? __('Mark as read') : __('Mark as unread')" :tooltip="$notification->read_at === null ? __('Mark as read') : __('Mark as unread')" />
+                    <flux:button size="xs" variant="ghost" icon="x-mark" wire:click="remove('{{ $notification->id }}')" :aria-label="__('Remove')" :tooltip="__('Remove')" />
                 </li>
             @endforeach
         </ul>

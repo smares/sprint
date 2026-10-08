@@ -100,7 +100,7 @@ new class extends Component
     <flux:heading size="xl" class="mb-6">{{ __('Search') }}</flux:heading>
 
     <div class="space-y-4">
-        <flux:input wire:model.live.debounce.300ms="query" type="search" icon="magnifying-glass" :placeholder="__('Title, description, comments, attachments …')" autofocus clearable />
+        <flux:input wire:model.live.debounce.300ms="query" icon="magnifying-glass" :placeholder="__('Title, description, comments, attachments …')" autofocus clearable />
 
         <div class="grid gap-4 sm:grid-cols-3">
             <flux:select variant="listbox" wire:model.live="projectId" :label="__('Project')">

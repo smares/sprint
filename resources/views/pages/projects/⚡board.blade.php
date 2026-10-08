@@ -189,17 +189,33 @@ new class extends Component
                                 </div>
                             @endif
 
-                            <div class="mt-2 flex items-center justify-between gap-2">
-                                <flux:text size="sm" title="{{ $task->collaborators->pluck('name')->join(', ') }}">
-                                    {{ $task->assignee?->name ?? __('Nobody') }}@if ($task->collaborators->isNotEmpty()) +{{ $task->collaborators->count() }}@endif
-                                </flux:text>
-                                @if ($task->due_date)
-                                    <flux:text size="sm" :class="$task->isOverdue() ? 'text-red-500' : ''">{{ $task->due_date->isoFormat('L') }}</flux:text>
-                                @endif
-                            </div>
+                            @if ($task->assignee || $task->collaborators->isNotEmpty() || $task->due_date)
+                                <div class="mt-2 flex items-center justify-between gap-2">
+                                    <div class="flex min-w-0 items-center gap-1.5" title="{{ collect([$task->assignee?->name, ...$task->collaborators->pluck('name')])->filter()->join(', ') }}">
+                                        @if ($task->assignee)
+                                            <flux:avatar size="xs" circle :name="$task->assignee->name" />
+                                            <flux:text size="sm" class="truncate">{{ $task->assignee->name }}</flux:text>
+                                        @endif
+                                        @if ($task->collaborators->isNotEmpty())
+                                            <flux:text size="sm">+{{ $task->collaborators->count() }}</flux:text>
+                                        @endif
+                                    </div>
+                                    @if ($task->due_date)
+                                        <flux:text size="sm" @class(['shrink-0', 'text-red-500' => $task->isOverdue()])>{{ $task->due_date->isoFormat('L') }}</flux:text>
+                                    @endif
+                                </div>
+                            @endif
                         </flux:kanban.card>
                     @endforeach
+
+                    @if ($this->columns[$status->id]->isEmpty())
+                        <flux:text size="sm" class="px-2 py-3 text-center" wire:key="empty-{{ $status->id }}">{{ __('No tasks') }}</flux:text>
+                    @endif
                 </flux:kanban.column.cards>
+
+                @if ($this->canEdit)
+                    <flux:button size="sm" variant="subtle" icon="plus" class="mt-1 w-full" x-on:click="$wire.$dispatch('new-task', { statusId: {{ $status->id }} })">{{ __('Add task') }}</flux:button>
+                @endif
 
                 @if ($this->columnTotals[$status->id] > $this->columns[$status->id]->count())
                     <flux:button size="sm" variant="ghost" class="mt-2 w-full" wire:click="loadMoreInColumn({{ $status->id }})">

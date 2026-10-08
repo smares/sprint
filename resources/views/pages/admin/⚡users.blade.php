@@ -161,7 +161,7 @@ new class extends Component
 };
 ?>
 
-<div class="max-w-3xl">
+<div class="max-w-4xl">
     <flux:heading size="xl" class="mb-1">{{ __('Users') }}</flux:heading>
     <flux:text class="mb-6">{!! __('Create people here and decide who the administrators are. Who has access to which projects is set in the project under <em>Members</em>.') !!}</flux:text>
 
@@ -182,18 +182,25 @@ new class extends Component
                     <flux:heading class="truncate">{{ $user->name }} @if ($user->is(auth()->user())) <flux:badge size="sm">{{ __('You') }}</flux:badge> @endif @unless ($user->isActive()) <flux:badge size="sm" color="zinc">{{ __('Deactivated') }}</flux:badge> @endunless</flux:heading>
                     <flux:text size="sm" class="truncate">{{ $user->email }}</flux:text>
                 </div>
-                <flux:checkbox wire:model.live="admins.{{ $user->id }}" :label="__('Administrator')" />
-                <flux:button size="xs" variant="ghost" icon="key" wire:click="resetPassword({{ $user->id }})" wire:confirm="{{ __('Generate a new password for :name? The old one will no longer work, and all sessions and API tokens are signed out.', ['name' => $user->name]) }}" aria-label="{{ __('Generate new password') }}" />
-                @if ($user->two_factor_secret || $user->passkeys_count)
-                    <flux:button size="xs" variant="ghost" icon="shield-exclamation" wire:click="resetSecondFactors({{ $user->id }})" wire:confirm="{{ __('Reset two-factor authentication and passkeys for :name? Afterwards the password alone is enough again.', ['name' => $user->name]) }}" aria-label="{{ __('Reset second factor') }}" title="{{ __('Reset two-factor and passkeys') }}" />
-                @endif
-                @if ($user->isActive())
-                    @unless ($user->is(auth()->user()))
-                        <flux:button size="xs" variant="ghost" icon="no-symbol" wire:click="deactivate({{ $user->id }})" wire:confirm="{{ __('Deactivate :name? They will no longer be able to sign in or receive assignments or emails; tasks, comments and history are kept.', ['name' => $user->name]) }}" aria-label="{{ __('Deactivate') }}" title="{{ __('Deactivate') }}" />
-                    @endunless
-                @else
-                    <flux:button size="xs" variant="ghost" icon="arrow-uturn-left" wire:click="reactivate({{ $user->id }})" aria-label="{{ __('Reactivate') }}" title="{{ __('Reactivate') }}" />
-                @endif
+                {{-- On phones the actions get their own line under the name; the buttons keep their places in every row. --}}
+                <div class="flex items-center gap-1 max-sm:w-full max-sm:ps-11">
+                    <flux:checkbox wire:model.live="admins.{{ $user->id }}" :label="__('Administrator')" class="me-2" />
+                    <flux:button size="xs" variant="ghost" icon="key" wire:click="resetPassword({{ $user->id }})" wire:confirm="{{ __('Generate a new password for :name? The old one will no longer work, and all sessions and API tokens are signed out.', ['name' => $user->name]) }}" :aria-label="__('Generate new password')" :tooltip="__('Generate new password')" />
+                    @if ($user->two_factor_secret || $user->passkeys_count)
+                        <flux:button size="xs" variant="ghost" icon="shield-exclamation" wire:click="resetSecondFactors({{ $user->id }})" wire:confirm="{{ __('Reset two-factor authentication and passkeys for :name? Afterwards the password alone is enough again.', ['name' => $user->name]) }}" :aria-label="__('Reset two-factor and passkeys')" :tooltip="__('Reset two-factor and passkeys')" />
+                    @else
+                        <span class="inline-block size-6" aria-hidden="true"></span>
+                    @endif
+                    @if ($user->isActive())
+                        @if ($user->is(auth()->user()))
+                            <span class="inline-block size-6" aria-hidden="true"></span>
+                        @else
+                            <flux:button size="xs" variant="ghost" icon="no-symbol" wire:click="deactivate({{ $user->id }})" wire:confirm="{{ __('Deactivate :name? They will no longer be able to sign in or receive assignments or emails; tasks, comments and history are kept.', ['name' => $user->name]) }}" :aria-label="__('Deactivate')" :tooltip="__('Deactivate')" />
+                        @endif
+                    @else
+                        <flux:button size="xs" variant="ghost" icon="arrow-uturn-left" wire:click="reactivate({{ $user->id }})" :aria-label="__('Reactivate')" :tooltip="__('Reactivate')" />
+                    @endif
+                </div>
             </li>
         @endforeach
     </ul>

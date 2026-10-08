@@ -17,7 +17,7 @@
             <flux:header container class="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
                 <flux:sidebar.toggle class="lg:hidden" icon="bars-2" inset="left" aria-label="{{ __('Menu') }}" />
 
-                <flux:brand href="{{ route('projects.index') }}" name="{{ config('app.name') }}" class="max-lg:hidden" />
+                <x-app-brand class="max-lg:hidden" />
 
                 <flux:navbar class="ms-4 max-lg:hidden">
                     <flux:navbar.item href="{{ route('projects.index') }}" :current="request()->routeIs('projects.*')" wire:navigate>{{ __('Projects') }}</flux:navbar.item>
@@ -35,7 +35,7 @@
                 </flux:modal.trigger>
 
                 <flux:modal.trigger name="command-palette">
-                    <flux:button variant="ghost" icon="magnifying-glass" aria-label="{{ __('Find') }}" class="sm:hidden" />
+                    <flux:button variant="ghost" icon="magnifying-glass" aria-label="{{ __('Find') }}" tooltip="{{ __('Find') }}" class="sm:hidden" />
                 </flux:modal.trigger>
 
                 <flux:modal.trigger name="command-palette" shortcut="ctrl.k">
@@ -68,7 +68,7 @@
             <flux:sidebar stashable sticky class="border-e border-zinc-200 bg-zinc-50 lg:hidden dark:border-zinc-700 dark:bg-zinc-900">
                 <flux:sidebar.toggle class="lg:hidden" icon="x-mark" aria-label="{{ __('Close menu') }}" />
 
-                <flux:brand href="{{ route('projects.index') }}" name="{{ config('app.name') }}" class="px-2" />
+                <x-app-brand class="px-2" />
 
                 <flux:navlist variant="outline">
                     <flux:navlist.item icon="folder" href="{{ route('projects.index') }}" :current="request()->routeIs('projects.*')" wire:navigate>{{ __('Projects') }}</flux:navlist.item>

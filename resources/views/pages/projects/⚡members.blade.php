@@ -203,7 +203,7 @@ new class extends Component
 };
 ?>
 
-<div class="max-w-2xl">
+<div class="max-w-4xl">
     <flux:breadcrumbs class="mb-4">
         <flux:breadcrumbs.item href="{{ route('projects.index') }}" wire:navigate>{{ __('Projects') }}</flux:breadcrumbs.item>
         <flux:breadcrumbs.item href="{{ route('projects.show', $project) }}" wire:navigate>{{ $project->name }}</flux:breadcrumbs.item>

@@ -268,7 +268,7 @@ class Task extends Model
             'repeat_until' => $this->repeat_until,
         ], $offset);
 
-        $this->logActivity('recurrence_created', ['to' => $next->isoFormat('L')]);
+        $this->logActivity('recurrence_created', ['to' => $next->toDateString()]);
 
         return $copy;
     }
@@ -279,8 +279,10 @@ class Task extends Model
      */
     public function duplicate(): self
     {
+        // The copy is marked in the language of the person duplicating it; the title stays within 255 characters.
+        $room = 255 - mb_strlen(__(':title (copy)', ['title' => '']));
         $copy = $this->makeCopy([
-            'title' => Str::limit($this->title, 247, '').' (Kopie)',
+            'title' => __(':title (copy)', ['title' => Str::limit($this->title, $room, '')]),
         ]);
 
         $this->logActivity('duplicated');
@@ -588,7 +590,7 @@ class Task extends Model
      */
     private function logChanges(): void
     {
-        $date = fn (mixed $value) => $value === null ? '–' : Carbon::parse($value)->format('d.m.Y');
+        $date = fn (mixed $value) => $value === null ? '–' : Carbon::parse($value)->toDateString();
         $userName = fn (mixed $id) => $id === null ? '–' : ($this->userById((int) $id)?->name ?? '–');
 
         if ($this->wasChanged('status_id')) {

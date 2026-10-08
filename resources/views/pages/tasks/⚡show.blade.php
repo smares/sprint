@@ -1,7 +1,6 @@
 <?php
 
 use App\Concerns\ListensForRealtime;
-use App\Color;
 use App\Enums\CustomFieldType;
 use App\Enums\RepeatMode;
 use App\Enums\RepeatUnit;
@@ -181,7 +180,7 @@ new class extends Component
             CustomFieldType::Select => ['nullable', Rule::in($field->options->pluck('id')->map(fn ($id) => (string) $id)->all())],
             CustomFieldType::Text => ['nullable', 'string', 'max:500'],
             CustomFieldType::Number => ['nullable', 'numeric'],
-            CustomFieldType::Date => ['nullable', 'date'],
+            CustomFieldType::Date => ['nullable', 'date_format:Y-m-d'],
         }])->all();
     }
 
@@ -564,12 +563,7 @@ new class extends Component
             'newTag' => ['required', 'string', 'max:50'],
         ]);
 
-        $project = $this->task->project;
-        $name = trim($validated['newTag']);
-
-        $tag = $project->tags()->firstOrCreate(['name' => $name], [
-            'color' => Color::next($project->tags()->count()),
-        ]);
+        $tag = $this->task->project->findOrCreateTag($validated['newTag']);
 
         $this->tagIds = array_values(array_unique([...$this->tagIds, (string) $tag->id]));
         $this->reset('newTag');

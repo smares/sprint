@@ -150,7 +150,7 @@ class DailyDigestTest extends TestCase
         $this->assertSame('Deine Aufgaben: 1 überfällig, 1 heute fällig, 1 demnächst', $mail->subject);
         $text = preg_replace('/\s+/', ' ', strip_tags($html));
         $this->assertStringContainsString('Überfällig', $text);
-        $this->assertStringContainsString($overdue->title.' · Website · 05.10.2026', $text);
+        $this->assertStringContainsString($overdue->title.' · Website · 2026-10-05', $text);
         $this->assertStringContainsString('Heute fällig', $text);
         $this->assertStringContainsString('In den nächsten Tagen', $text);
         $this->assertStringContainsString('href="'.route('tasks.show', $overdue).'"', $html);

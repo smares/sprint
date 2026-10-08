@@ -262,7 +262,7 @@ class RecurringTasksTest extends TestCase
 
         $task->toggleDone();
 
-        $this->assertContains('hat die nächste Wiederholung für den 16.10.2026 angelegt', $task->activities()->get()->map->sentence()->all());
+        $this->assertContains('hat die nächste Wiederholung für den 2026-10-16 angelegt', $task->activities()->get()->map->sentence()->all());
     }
 
     public function test_the_rule_can_be_set_and_removed_on_the_task_page(): void
@@ -277,7 +277,7 @@ class RecurringTasksTest extends TestCase
         $this->assertSame(RepeatUnit::Month, $task->repeat_unit);
         $this->assertSame(3, $task->repeat_interval);
         $this->assertSame(RepeatMode::Completion, $task->repeat_mode);
-        $this->assertSame('alle 3 Monate (nach Erledigung) bis 31.12.2027', $task->recurrenceLabel());
+        $this->assertSame('alle 3 Monate (nach Erledigung) bis 2027-12-31', $task->recurrenceLabel());
 
         Livewire::test('pages::tasks.show', ['task' => $task->fresh()])
             ->assertSet('repeatUnit', 'month')->assertSet('repeatInterval', '3')
@@ -288,7 +288,7 @@ class RecurringTasksTest extends TestCase
         $this->assertNull($task->repeat_until);
 
         $sentences = $task->activities()->get()->map->sentence()->all();
-        $this->assertContains('hat die Wiederholung auf „alle 3 Monate (nach Erledigung) bis 31.12.2027“ gesetzt', $sentences);
+        $this->assertContains('hat die Wiederholung auf „alle 3 Monate (nach Erledigung) bis 2027-12-31“ gesetzt', $sentences);
         $this->assertContains('hat die Wiederholung entfernt', $sentences);
     }
 

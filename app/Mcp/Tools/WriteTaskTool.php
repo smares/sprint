@@ -9,6 +9,7 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -149,7 +150,9 @@ abstract class WriteTaskTool extends SprintTool
                 CustomFieldType::Select => ['option_id' => $field->options->first(fn ($option) => mb_strtolower($option->name) === mb_strtolower($value))?->id
                     ?? throw new ToolFailure("Unknown option \"{$value}\" for \"{$field->name}\". Available: ".$field->options->pluck('name')->implode(', ').'.'), 'value' => null],
                 CustomFieldType::Number => ['option_id' => null, 'value' => is_numeric($value) ? $value : throw new ToolFailure("\"{$field->name}\" needs a number.")],
-                CustomFieldType::Date => ['option_id' => null, 'value' => strtotime($value) !== false ? $value : throw new ToolFailure("\"{$field->name}\" needs a date as YYYY-MM-DD.")],
+                CustomFieldType::Date => ['option_id' => null, 'value' => Carbon::canBeCreatedFromFormat($value, 'Y-m-d') && Carbon::createFromFormat('!Y-m-d', $value)->toDateString() === $value
+                    ? $value
+                    : throw new ToolFailure("\"{$field->name}\" needs a date as YYYY-MM-DD.")],
                 CustomFieldType::Text => ['option_id' => null, 'value' => mb_strlen($value) <= 500 ? $value : throw new ToolFailure("\"{$field->name}\" is limited to 500 characters.")],
             };
 

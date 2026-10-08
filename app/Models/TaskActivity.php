@@ -38,13 +38,29 @@ class TaskActivity extends Model
     }
 
     /**
+     * Dates are stored as YYYY-MM-DD; entries written before that still hold DD.MM.YYYY or MM/DD/YYYY.
+     */
+    private function isoDate(mixed $value): mixed
+    {
+        if (! is_string($value)) {
+            return $value;
+        }
+
+        return match (true) {
+            (bool) preg_match('/^(\d{2})\.(\d{2})\.(\d{4})$/', $value, $parts) => "{$parts[3]}-{$parts[2]}-{$parts[1]}",
+            (bool) preg_match('/^(\d{2})\/(\d{2})\/(\d{4})$/', $value, $parts) => "{$parts[3]}-{$parts[1]}-{$parts[2]}",
+            default => $value,
+        };
+    }
+
+    /**
      * What happened, as a sentence that continues after the person's name.
      */
     public function sentence(): string
     {
         $data = $this->data ?? [];
-        $from = $data['from'] ?? '–';
-        $to = $data['to'] ?? '–';
+        $from = $this->isoDate($data['from'] ?? '–');
+        $to = $this->isoDate($data['to'] ?? '–');
         $names = implode(', ', $data['names'] ?? []);
 
         return match ($this->type) {

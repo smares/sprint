@@ -205,7 +205,7 @@ new class extends Component
                         @endif
                         @php($clippedStart = $task->spanStart()->startOfDay() < $this->start)
                         @php($clippedEnd = $task->spanEnd()->startOfDay() > $this->end->copy()->startOfDay())
-                        <a href="{{ route('tasks.show', $task) }}" wire:navigate title="{{ $task->title }}: {{ $task->spanStart()->isoFormat(__('MM/DD')) }} – {{ $task->spanEnd()->isoFormat('L') }}"
+                        <a href="{{ route('tasks.show', $task) }}" wire:navigate title="{{ $task->title }}: {{ $task->spanStart()->isoFormat('L') }} – {{ $task->spanEnd()->isoFormat('L') }}"
                            @if ($this->canEdit)
                                draggable="false"
                                x-data="timelineBar({{ $task->id }})"

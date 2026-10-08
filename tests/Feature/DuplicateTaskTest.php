@@ -131,6 +131,13 @@ class DuplicateTaskTest extends TestCase
         $this->assertStringEndsWith(' (Kopie)', $copy->title);
     }
 
+    public function test_the_copy_is_marked_in_the_language_of_the_person_duplicating_it(): void
+    {
+        app()->setLocale('en');
+
+        $this->assertSame('Angebot (copy)', $this->original(['title' => 'Angebot'])->duplicate()->title);
+    }
+
     public function test_the_original_logs_that_it_was_duplicated(): void
     {
         $original = $this->original();

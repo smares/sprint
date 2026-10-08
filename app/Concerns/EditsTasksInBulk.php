@@ -25,7 +25,7 @@ use Livewire\Attributes\Computed;
  */
 trait EditsTasksInBulk
 {
-    private const MAX_SELECTION = 500;
+    public const MAX_SELECTION = 500;
 
     public bool $selecting = false;
 

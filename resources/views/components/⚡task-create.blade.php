@@ -114,8 +114,8 @@ new class extends Component
                 </flux:select>
             </div>
             <div class="grid grid-cols-2 gap-4">
-                <flux:date-picker wire:model="startDate" :label="__('Starts on')" locale="{{ app()->getLocale() }}" :placeholder="__('Select date')" clearable />
-                <flux:date-picker wire:model="dueDate" :label="__('Due on')" locale="{{ app()->getLocale() }}" :placeholder="__('Select date')" clearable />
+                <flux:date-picker wire:model="startDate" :label="__('Starts on')" locale="{{ app()->getLocale() }}" :placeholder="__('Select a date')" clearable />
+                <flux:date-picker wire:model="dueDate" :label="__('Due on')" locale="{{ app()->getLocale() }}" :placeholder="__('Select a date')" clearable />
             </div>
             <div class="flex">
                 <flux:spacer />

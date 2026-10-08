@@ -39,7 +39,7 @@ class HealthCheckService
     }
 
     /**
-     * ok, wenn alles läuft; degraded, wenn nur Warnungen übrig sind; down, wenn etwas Wesentliches ausfällt.
+     * ok when everything runs; degraded when only warnings are left; down when something essential fails.
      *
      * @param  array<string, array{status: string, detail: string}>  $checks
      */

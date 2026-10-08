@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Concerns\HasPosition;
 use App\Enums\CustomFieldType;
+use App\Services\DateService;
 use Database\Factories\CustomFieldFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -93,9 +94,7 @@ class CustomField extends Model
                 ? ['option_id' => $option->id, 'value' => null]
                 : null,
             CustomFieldType::Number => is_numeric($input) ? ['option_id' => null, 'value' => $input] : null,
-            CustomFieldType::Date => Carbon::canBeCreatedFromFormat($input, 'Y-m-d') && Carbon::createFromFormat('!Y-m-d', $input)->toDateString() === $input
-                ? ['option_id' => null, 'value' => $input]
-                : null,
+            CustomFieldType::Date => DateService::parseIsoDate($input) instanceof Carbon ? ['option_id' => null, 'value' => $input] : null,
             CustomFieldType::Text => mb_strlen($input) <= 500 ? ['option_id' => null, 'value' => $input] : null,
         };
     }

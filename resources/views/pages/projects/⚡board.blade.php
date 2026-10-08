@@ -65,7 +65,7 @@ new class extends Component
     }
 
     /**
-     * How many tasks each column has in total, shown in the header and used to offer "Mehr laden".
+     * How many tasks each column has in total, shown in the header and used to offer "Load more".
      *
      * @return array<int, int>
      */

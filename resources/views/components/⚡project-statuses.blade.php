@@ -123,6 +123,7 @@ new class extends Component
 
         if ($name === '' || mb_strlen($name) > 50) {
             $this->names[$id] = $status->name;
+            Flux::toast(variant: 'danger', text: __('The name must not be empty and may have at most :max characters.', ['max' => 50]));
 
             return;
         }
@@ -225,7 +226,7 @@ new class extends Component
                             <flux:icon.bars-2 variant="micro" class="shrink-0 text-zinc-400" />
                             <x-color-badge size="sm" :color="$status->color" class="shrink-0" title="{{ __('Tasks with this status') }}">{{ $status->tasks_count }}</x-color-badge>
                             <flux:input size="sm" wire:model.blur="names.{{ $status->id }}" aria-label="{{ __('Name') }}" class="min-w-0 flex-1" />
-                            <flux:color-picker type="button" size="sm" with-confirmation :swatches="\App\Color::SWATCHES" wire:model.live="colors.{{ $status->id }}" aria-label="{{ __('Color') }}" />
+                            <flux:color-picker type="button" size="sm" with-confirmation :swatches="\App\Color::swatches()" wire:model.live="colors.{{ $status->id }}" aria-label="{{ __('Color') }}" />
                             <flux:checkbox wire:model.live="done.{{ $status->id }}" :label="__('Done')" />
                             <flux:button size="xs" variant="ghost" icon="trash" wire:click="confirmDelete({{ $status->id }})" aria-label="{{ __('Delete status') }}" />
                         </div>
@@ -239,7 +240,7 @@ new class extends Component
                                             <flux:select.option value="{{ $candidate->id }}">{{ $candidate->name }}</flux:select.option>
                                         @endforeach
                                     </flux:select>
-                                    @error('replacementId') <flux:text size="sm" class="text-red-500">{{ $message }}</flux:text> @enderror
+                                    <flux:error name="replacementId" />
                                 @else
                                     <flux:text size="sm">{{ __('The status will be deleted.') }}</flux:text>
                                 @endif
@@ -257,7 +258,7 @@ new class extends Component
                 <flux:input wire:model="newName" :label="__('New status')" :placeholder="__('e.g. In testing')" class="flex-1" />
                 <flux:button type="submit" icon="plus">{{ __('Create') }}</flux:button>
             </form>
-            @error('newName') <flux:text class="-mt-4 text-red-500">{{ $message }}</flux:text> @enderror
+            <flux:error name="newName" class="-mt-4" />
         </div>
     </flux:modal>
 </div>

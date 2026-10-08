@@ -3,6 +3,7 @@
 use App\Concerns\ShowsProject;
 use App\Models\Project;
 use App\Models\Task;
+use App\Services\DateService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -17,6 +18,9 @@ new class extends Component
 
     /** Days shown at once. */
     public const DAYS = 42;
+
+    /** Width of one day column. */
+    public const DAY_WIDTH = '2rem';
 
     public Project $project;
 
@@ -36,7 +40,7 @@ new class extends Component
 
         $task = $this->project->tasks()->topLevel()->where('is_section', false)->findOrFail($taskId);
 
-        if ($days === 0 || abs($days) > 3650) {
+        if ($days === 0 || abs($days) > Task::MAX_SHIFT_DAYS) {
             return;
         }
 
@@ -48,9 +52,7 @@ new class extends Component
     #[Computed]
     public function start(): Carbon
     {
-        $parsed = Carbon::hasFormat($this->from, 'Y-m-d') ? Carbon::createFromFormat('Y-m-d', $this->from) : null;
-
-        return ($parsed ?? now())->startOfWeek()->startOfDay();
+        return (DateService::parseIsoDate($this->from) ?? now())->startOfWeek()->startOfDay();
     }
 
     #[Computed]
@@ -143,7 +145,7 @@ new class extends Component
         <div class="min-w-max">
             <div class="flex border-b border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
                 <div class="sticky start-0 z-10 w-56 shrink-0 border-e border-zinc-200 bg-zinc-50 p-2 text-sm font-medium dark:border-zinc-700 dark:bg-zinc-900">{{ __('Task') }}</div>
-                <div class="grid" style="grid-template-columns: repeat({{ $days->count() }}, 2rem)">
+                <div class="grid" style="grid-template-columns: repeat({{ $days->count() }}, {{ $this::DAY_WIDTH }})">
                     @foreach ($days as $day)
                         <div wire:key="head-{{ $day->toDateString() }}" @class([
                             'py-1 text-center text-xs leading-tight',
@@ -170,7 +172,7 @@ new class extends Component
                             <flux:icon.lock-closed variant="micro" class="shrink-0 text-amber-500" title="{{ __('Blocked') }}" />
                         @endif
                     </div>
-                    <div class="relative grid items-center" data-days="{{ $days->count() }}" style="grid-template-columns: repeat({{ $days->count() }}, 2rem)">
+                    <div class="relative grid items-center" data-days="{{ $days->count() }}" style="grid-template-columns: repeat({{ $days->count() }}, {{ $this::DAY_WIDTH }})">
                         @if ($todayColumn)
                             <div class="pointer-events-none absolute inset-y-0 w-px bg-blue-400" style="inset-inline-start: {{ ($todayColumn - 1) * 2 + 1 }}rem"></div>
                         @endif
@@ -186,8 +188,8 @@ new class extends Component
                                x-on:pointercancel="cancel()"
                                x-on:click.capture="suppressClick($event)"
                            @endif
-                           class="relative my-1.5 block h-5 truncate rounded px-1 text-xs leading-5 {{ $task->isDone() ? 'opacity-50' : '' }} {{ $this->canEdit ? 'cursor-grab touch-none select-none' : '' }}"
-                           style="grid-column: {{ $row['first'] }} / {{ $row['last'] + 1 }}; grid-row: 1; background-color: {{ $task->status->color }}; color: {{ \App\Color::textOn($task->status->color) }}">{{ $row['last'] - $row['first'] >= 2 ? $task->title : '' }}
+                           class="color-chip relative my-1.5 block h-5 truncate rounded px-1 text-xs leading-5 {{ $task->isDone() ? 'opacity-50' : '' }} {{ $this->canEdit ? 'cursor-grab touch-none select-none' : '' }}"
+                           style="grid-column: {{ $row['first'] }} / {{ $row['last'] + 1 }}; grid-row: 1; --badge: {{ $task->status->color }}">{{ $row['last'] - $row['first'] >= 2 ? $task->title : '' }}
                             @if ($this->canEdit)
                                 @unless ($clippedStart)
                                     <span class="absolute inset-y-0 start-0 w-1.5 cursor-ew-resize" aria-hidden="true" x-on:pointerdown.stop="begin($event, 'start')"></span>

@@ -3,6 +3,7 @@
 use App\Concerns\ShowsProject;
 use App\Models\Project;
 use App\Models\Task;
+use App\Services\DateService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
@@ -14,6 +15,9 @@ new class extends Component
 {
     use ShowsProject;
 
+    /** How many tasks a day shows before "+ n more". */
+    public const TASKS_PER_DAY = 3;
+
     public Project $project;
 
     #[Url]
@@ -22,9 +26,7 @@ new class extends Component
     #[Computed]
     public function monthStart(): Carbon
     {
-        $parsed = preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $this->month) ? Carbon::createFromFormat('Y-m-d', $this->month.'-01') : null;
-
-        return ($parsed ?? now())->startOfMonth()->startOfDay();
+        return (DateService::parseIsoDate($this->month.'-01') ?? now())->startOfMonth()->startOfDay();
     }
 
     /**
@@ -34,13 +36,14 @@ new class extends Component
     {
         Gate::authorize('edit', $this->project);
 
-        $isDate = fn (string $value) => preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) === 1 && Carbon::hasFormat($value, 'Y-m-d');
-        abort_unless($isDate($from) && $isDate($to), 422);
+        $fromDay = DateService::parseIsoDate($from);
+        $toDay = DateService::parseIsoDate($to);
+        abort_unless($fromDay !== null && $toDay !== null, 422);
 
         $task = $this->project->tasks()->topLevel()->where('is_section', false)->findOrFail($taskId);
-        $days = (int) Carbon::parse($from)->startOfDay()->diffInDays(Carbon::parse($to)->startOfDay(), false);
+        $days = (int) $fromDay->diffInDays($toDay, false);
 
-        if ($days !== 0 && abs($days) <= 3650) {
+        if ($days !== 0 && abs($days) <= Task::MAX_SHIFT_DAYS) {
             $task->shiftDates($days);
         }
 
@@ -158,7 +161,7 @@ new class extends Component
                             'inline-flex size-6 items-center justify-center rounded-full bg-blue-600 font-semibold text-white' => $day['date']->isToday(),
                         ])>{{ $day['date']->day }}</div>
 
-                        @foreach ($day['tasks']->take(3) as $task)
+                        @foreach ($day['tasks']->take($this::TASKS_PER_DAY) as $task)
                             <a wire:key="chip-{{ $day['date']->toDateString() }}-{{ $task->id }}" href="{{ route('tasks.show', $task) }}" wire:navigate
                                style="--badge: {{ $task->status->color }}"
                                @if ($this->canEdit)
@@ -168,8 +171,8 @@ new class extends Component
                                class="color-chip block truncate rounded px-1.5 py-0.5 text-xs hover:underline {{ $task->isDone() ? 'line-through opacity-60' : '' }}">{{ $task->title }}</a>
                         @endforeach
 
-                        @if ($day['tasks']->count() > 3)
-                            <flux:text size="sm" class="px-1">{{ __('+ :count more', ['count' => $day['tasks']->count() - 3]) }}</flux:text>
+                        @if ($day['tasks']->count() > $this::TASKS_PER_DAY)
+                            <flux:text size="sm" class="px-1">{{ __('+ :count more', ['count' => $day['tasks']->count() - $this::TASKS_PER_DAY]) }}</flux:text>
                         @endif
                     </div>
                 @endforeach

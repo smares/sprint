@@ -164,7 +164,7 @@ new class extends Component
                     </flux:select>
                     <flux:button size="sm" type="submit" icon="plus">{{ __('Add') }}</flux:button>
                 </form>
-                @error('newMembers.'.$team->id) <flux:text class="text-red-500">{{ $message }}</flux:text> @enderror
+                <flux:error :name="'newMembers.'.$team->id" />
             </flux:card>
         @empty
             <flux:text>{{ __('There are no teams yet.') }}</flux:text>
@@ -175,7 +175,7 @@ new class extends Component
         <flux:input wire:model="newName" :label="__('New team')" placeholder="{{ __('e.g. Engineering') }}" class="max-w-xs" />
         <flux:button type="submit" icon="plus">{{ __('Create team') }}</flux:button>
     </form>
-    @error('newName') <flux:text class="mt-1 text-red-500">{{ $message }}</flux:text> @enderror
+    <flux:error name="newName" class="mt-1" />
 
     <flux:modal name="delete-team" class="min-w-[22rem]">
         <div class="space-y-6">

@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use App\CustomFieldType;
-use App\ProjectRole;
+use App\Enums\CustomFieldType;
+use App\Enums\ProjectRole;
 use App\Services\TaskSearch;
 use Database\Factories\ProjectFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;

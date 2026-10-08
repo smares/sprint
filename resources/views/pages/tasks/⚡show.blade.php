@@ -1,12 +1,12 @@
 <?php
 
 use App\Color;
-use App\CustomFieldType;
+use App\Enums\CustomFieldType;
 use App\Services\Markdown;
 use App\Models\Attachment;
 use App\Models\CustomField;
-use App\RepeatMode;
-use App\RepeatUnit;
+use App\Enums\RepeatMode;
+use App\Enums\RepeatUnit;
 use App\Models\Tag;
 use App\Models\Task;
 use App\Models\User;
@@ -838,14 +838,14 @@ new class extends Component
                 <div class="flex flex-wrap items-center gap-2">
                     <flux:select size="sm" variant="listbox" wire:model.live="repeatUnit" :aria-label="__('Repeat')" placeholder="{{ __('Never') }}" class="!w-36">
                         <flux:select.option value="">{{ __('Never') }}</flux:select.option>
-                        @foreach (\App\RepeatUnit::cases() as $unit)
+                        @foreach (\App\Enums\RepeatUnit::cases() as $unit)
                             <flux:select.option value="{{ $unit->value }}">{{ $unit->label() }}</flux:select.option>
                         @endforeach
                     </flux:select>
                     @if ($repeatUnit !== '')
                         <flux:input size="sm" wire:model="repeatInterval" type="number" min="1" max="365" :aria-label="__('Every')" :placeholder="__('Every')" class="!w-20" />
                         <flux:select size="sm" variant="listbox" wire:model="repeatMode" :aria-label="__('Calculated')" class="!w-44">
-                            @foreach (\App\RepeatMode::cases() as $mode)
+                            @foreach (\App\Enums\RepeatMode::cases() as $mode)
                                 <flux:select.option value="{{ $mode->value }}">{{ $mode->label() }}</flux:select.option>
                             @endforeach
                         </flux:select>
@@ -860,17 +860,17 @@ new class extends Component
             @foreach ($this->customFields as $field)
                 <x-task-field :label="$field->name" wire:key="field-{{ $field->id }}">
                     @switch($field->type)
-                        @case(\App\CustomFieldType::Select)
+                        @case(\App\Enums\CustomFieldType::Select)
                             <flux:select size="sm" variant="listbox" wire:model="fieldValues.{{ $field->id }}" :aria-label="$field->name" placeholder="–" clearable>
                                 @foreach ($field->options as $option)
                                     <flux:select.option value="{{ $option->id }}">{{ $option->name }}</flux:select.option>
                                 @endforeach
                             </flux:select>
                             @break
-                        @case(\App\CustomFieldType::Number)
+                        @case(\App\Enums\CustomFieldType::Number)
                             <flux:input size="sm" wire:model="fieldValues.{{ $field->id }}" type="number" step="any" :aria-label="$field->name" />
                             @break
-                        @case(\App\CustomFieldType::Date)
+                        @case(\App\Enums\CustomFieldType::Date)
                             <flux:date-picker size="sm" wire:model="fieldValues.{{ $field->id }}" :aria-label="$field->name" locale="{{ app()->getLocale() }}" :placeholder="__('Select a date')" clearable />
                             @break
                         @default

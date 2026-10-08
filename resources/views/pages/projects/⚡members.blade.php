@@ -3,7 +3,7 @@
 use App\Models\Project;
 use App\Models\Team;
 use App\Models\User;
-use App\ProjectRole;
+use App\Enums\ProjectRole;
 use Flux\Flux;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;

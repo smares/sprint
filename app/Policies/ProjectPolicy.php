@@ -2,9 +2,9 @@
 
 namespace App\Policies;
 
+use App\Enums\ProjectRole;
 use App\Models\Project;
 use App\Models\User;
-use App\ProjectRole;
 
 class ProjectPolicy
 {

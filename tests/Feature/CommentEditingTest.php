@@ -2,12 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ProjectRole;
 use App\Models\Comment;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
 use App\Notifications\UserMentioned;
-use App\ProjectRole;
 use App\Services\TaskSearch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;

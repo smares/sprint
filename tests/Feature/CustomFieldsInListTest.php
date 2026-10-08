@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\CustomFieldType;
+use App\Enums\CustomFieldType;
 use App\Models\CustomField;
 use App\Models\Project;
 use App\Models\Tag;

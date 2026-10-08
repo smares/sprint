@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
-use App\CustomFieldType;
 use App\Color;
+use App\Enums\CustomFieldType;
 use App\Models\CustomField;
 use App\Models\Project;
 use App\Models\Tag;

@@ -2,9 +2,9 @@
 
 namespace Database\Factories;
 
+use App\Enums\ProjectRole;
 use App\Models\Project;
 use App\Models\User;
-use App\ProjectRole;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**

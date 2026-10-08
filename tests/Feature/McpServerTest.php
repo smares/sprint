@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ProjectRole;
 use App\Mcp\Servers\SprintServer;
 use App\Mcp\Tools\AddComment;
 use App\Mcp\Tools\CreateTask;
@@ -14,7 +15,6 @@ use App\Models\Project;
 use App\Models\Tag;
 use App\Models\Task;
 use App\Models\User;
-use App\ProjectRole;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use Symfony\Component\HttpFoundation\Response;

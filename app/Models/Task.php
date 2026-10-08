@@ -2,11 +2,11 @@
 
 namespace App\Models;
 
+use App\Enums\RepeatMode;
+use App\Enums\RepeatUnit;
 use App\Notifications\TasksStatusChanged;
 use App\Notifications\TaskStatusChanged;
 use App\Notifications\UserMentioned;
-use App\RepeatMode;
-use App\RepeatUnit;
 use App\Services\Markdown;
 use App\Services\TaskSearch;
 use Closure;

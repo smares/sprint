@@ -12,6 +12,7 @@ vendor/bin/pint   # Code-Stil
 
 | Pfad | Inhalt |
 | --- | --- |
+| `app/Enums` | Aufzählungen: `ProjectRole`, `CustomFieldType`, `RepeatUnit`, `RepeatMode` |
 | `app/Models` | Eloquent-Modelle: `Project`, `Task`, `TaskStatus`, `Tag`, `Comment`, `Team`, `User` |
 | `app/Services` | Dienste ohne eigenes Modell: `Markdown` (Markdown samt Erwähnungen und Bildern zu sicherem HTML), `TaskSearch`, `TaskCsv`, `DailyDigest`, `HealthCheck`, `InboxText`, `Locale` |
 | `resources/views/pages` | Seiten als Livewire-Komponenten (Projekte, Board, Status, Mitglieder, Aufgaben, Administration, Login) |

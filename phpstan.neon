@@ -21,3 +21,10 @@ parameters:
     # The baseline is shared by all PHP versions of the CI; a version that no longer
     # reports an old error must not fail because of it.
     reportUnmatchedIgnoredErrors: false
+
+    ignoreErrors:
+        # The traits are used by the Livewire single-file components in resources/views,
+        # which PHPStan does not analyse.
+        -
+            identifier: trait.unused
+            path: app/Concerns/*

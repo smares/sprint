@@ -225,6 +225,18 @@ class TeamsAndUsersTest extends TestCase
         $this->assertTrue(Hash::check($password, $this->member->fresh()->password));
     }
 
+    public function test_resetting_a_password_signs_the_person_out_everywhere(): void
+    {
+        $this->actingAs($this->appAdmin);
+        $this->member->forceFill(['remember_token' => 'alt'])->save();
+        $this->member->createToken('Laptop');
+
+        Livewire::test('pages::admin.users')->call('resetPassword', $this->member->id);
+
+        $this->assertNotSame('alt', $this->member->fresh()->remember_token);
+        $this->assertSame(0, $this->member->tokens()->count());
+    }
+
     public function test_an_admin_manages_teams_and_their_people(): void
     {
         $this->actingAs($this->appAdmin);

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -78,6 +79,35 @@ class ProfileTest extends TestCase
 
         $this->assertTrue(Hash::check('neues-passwort', $this->user->fresh()->password));
         $this->assertNotSame('alt', $this->user->fresh()->remember_token);
+    }
+
+    public function test_changing_the_password_signs_out_other_sessions_and_api_tokens(): void
+    {
+        config(['session.driver' => 'database']);
+        $this->user->createToken('Laptop');
+        DB::table('sessions')->insert([
+            ['id' => 'fremd', 'user_id' => $this->user->id, 'payload' => '', 'last_activity' => time()],
+            ['id' => session()->getId(), 'user_id' => $this->user->id, 'payload' => '', 'last_activity' => time()],
+        ]);
+
+        Livewire::test('pages::profile')
+            ->set('currentPassword', 'altes-passwort')->set('newPassword', 'neues-passwort')->set('newPasswordConfirmation', 'neues-passwort')
+            ->call('changePassword')->assertHasNoErrors();
+
+        $this->assertSame([session()->getId()], DB::table('sessions')->pluck('id')->all());
+        $this->assertSame(0, $this->user->tokens()->count());
+    }
+
+    public function test_the_password_for_an_email_change_is_throttled(): void
+    {
+        $page = Livewire::test('pages::profile')->set('email', 'neu@example.com');
+
+        foreach (range(1, 5) as $attempt) {
+            $page->set('emailPassword', 'falsch')->call('saveProfile')->assertHasErrors('emailPassword');
+        }
+
+        $page->set('emailPassword', 'altes-passwort')->call('saveProfile')->assertHasErrors('emailPassword');
+        $this->assertSame('anna@example.com', $this->user->fresh()->email);
     }
 
     public function test_the_password_change_checks_everything(): void

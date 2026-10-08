@@ -73,10 +73,7 @@ new class extends Component
 
         if (Str::lower($validated['email']) !== Str::lower($user->email)) {
             $this->validate(['emailPassword' => ['required']], attributes: ['emailPassword' => __('Password')]);
-
-            if (! Hash::check($this->emailPassword, $user->password)) {
-                throw ValidationException::withMessages(['emailPassword' => __('The password is incorrect.')]);
-            }
+            $this->checkPasswordThrottled('change-email', $this->emailPassword, 'emailPassword', __('The password is incorrect.'));
         }
 
         $user->update(['name' => trim($validated['name']), 'email' => $validated['email']]);
@@ -99,24 +96,33 @@ new class extends Component
             'newPasswordConfirmation' => __('Password confirmation'),
         ]);
 
-        $throttleKey = 'change-password|'.$user->id.'|'.request()->ip();
+        $this->checkPasswordThrottled('change-password', $this->currentPassword, 'currentPassword', __('The current password is incorrect.'));
+
+        $user->forceFill(['password' => $this->newPassword])->save();
+        $user->signOutEverywhere(session()->getId());
+
+        $this->reset('currentPassword', 'newPassword', 'newPasswordConfirmation');
+        Flux::toast(variant: 'success', text: __('Password changed. All other sessions and API tokens have been signed out.'));
+    }
+
+    /**
+     * Compares a password with the stored one and allows five wrong attempts per minute.
+     */
+    private function checkPasswordThrottled(string $purpose, string $password, string $field, string $wrongMessage): void
+    {
+        $throttleKey = $purpose.'|'.auth()->id().'|'.request()->ip();
 
         if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
-            throw ValidationException::withMessages(['currentPassword' => __('Too many attempts. Please try again in :seconds seconds.', ['seconds' => RateLimiter::availableIn($throttleKey)])]);
+            throw ValidationException::withMessages([$field => __('Too many attempts. Please try again in :seconds seconds.', ['seconds' => RateLimiter::availableIn($throttleKey)])]);
         }
 
-        if (! Hash::check($this->currentPassword, $user->password)) {
+        if (! Hash::check($password, auth()->user()->password)) {
             RateLimiter::hit($throttleKey);
 
-            throw ValidationException::withMessages(['currentPassword' => __('The current password is incorrect.')]);
+            throw ValidationException::withMessages([$field => $wrongMessage]);
         }
 
         RateLimiter::clear($throttleKey);
-
-        $user->forceFill(['password' => $this->newPassword, 'remember_token' => Str::random(60)])->save();
-
-        $this->reset('currentPassword', 'newPassword', 'newPasswordConfirmation');
-        Flux::toast(variant: 'success', text: __('Password changed.'));
     }
 
     public function rendering(View $view): void

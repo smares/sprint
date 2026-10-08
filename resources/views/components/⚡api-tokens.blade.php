@@ -1,5 +1,6 @@
 <?php
 
+use App\Concerns\ConfirmsPassword;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\Computed;
@@ -7,6 +8,8 @@ use Livewire\Component;
 
 new class extends Component
 {
+    use ConfirmsPassword;
+
     public string $name = '';
 
     public bool $readOnly = false;
@@ -25,15 +28,19 @@ new class extends Component
     {
         $validated = $this->validate([
             'name' => ['required', 'string', 'max:100'],
-            'expiry' => ['required', 'in:30,90,365,never'],
+            'expiry' => ['required', 'in:30,90,365'],
         ], attributes: ['name' => __('Name'), 'expiry' => __('Validity')]);
 
         abort_unless(auth()->user()->isActive(), 403);
 
+        if (! $this->confirmed) {
+            $this->confirmPassword();
+        }
+
         $this->createdToken = auth()->user()->createToken(
             trim($validated['name']),
             $this->readOnly ? ['read'] : ['read', 'write'],
-            $validated['expiry'] === 'never' ? null : now()->addDays((int) $validated['expiry']),
+            now()->addDays((int) $validated['expiry']),
         )->plainTextToken;
 
         $this->reset('name', 'readOnly');
@@ -82,9 +89,11 @@ new class extends Component
             <flux:select.option value="30">{{ __('30 days') }}</flux:select.option>
             <flux:select.option value="90">{{ __('90 days') }}</flux:select.option>
             <flux:select.option value="365">{{ __('1 year') }}</flux:select.option>
-            <flux:select.option value="never">{{ __('Unlimited') }}</flux:select.option>
         </flux:select>
         <flux:switch wire:model="readOnly" :label="__('Read only')" :description="__('The agent can view tasks but not create or change anything.')" />
+        @unless ($this->confirmed)
+            <flux:input wire:model="password" type="password" :label="__('Current password')" :description="__('A token acts in your name, so creating one needs your password.')" autocomplete="current-password" />
+        @endunless
         <flux:button type="submit">{{ __('Create token') }}</flux:button>
     </form>
 

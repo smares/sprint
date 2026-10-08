@@ -94,11 +94,23 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
      */
     public function deactivate(): void
     {
-        $this->forceFill(['deactivated_at' => now(), 'remember_token' => null])->save();
+        $this->forceFill(['deactivated_at' => now()])->save();
+        $this->signOutEverywhere();
+    }
+
+    /**
+     * End all sessions, "stay signed in" cookies and API tokens, except the given session (the person's current one).
+     */
+    public function signOutEverywhere(?string $exceptSessionId = null): void
+    {
+        $this->forceFill(['remember_token' => Str::random(60)])->save();
         $this->tokens()->delete();
 
         if (config('session.driver') === 'database') {
-            DB::table(config('session.table', 'sessions'))->where('user_id', $this->getKey())->delete();
+            DB::table(config('session.table', 'sessions'))
+                ->where('user_id', $this->getKey())
+                ->when($exceptSessionId !== null, fn ($query) => $query->where('id', '!=', $exceptSessionId))
+                ->delete();
         }
     }
 

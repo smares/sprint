@@ -28,14 +28,13 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Flux Pro credentials as build secret
+      - name: Flux Pro credentials as build secret (auth.json is ignored by git and the build context)
         env:
           FLUX_USERNAME: ${{ secrets.FLUX_USERNAME }}
           FLUX_LICENSE_KEY: ${{ secrets.FLUX_LICENSE_KEY }}
         run: |
           jq -n --arg user "$FLUX_USERNAME" --arg key "$FLUX_LICENSE_KEY" \
-            '{"http-basic": {"composer.fluxui.dev": {"username": $user, "password": $key}}}' > "$RUNNER_TEMP/auth.json"
-          echo "COMPOSER_AUTH_FILE=$RUNNER_TEMP/auth.json" >> "$GITHUB_ENV"
+            '{"http-basic": {"composer.fluxui.dev": {"username": $user, "password": $key}}}' > auth.json
 
       - name: Build image
         run: docker compose build

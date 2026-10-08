@@ -23,7 +23,7 @@ Dauerhaft liegt alles im Volume `storage`: SQLite-Datenbank (`storage/database/d
    ```json
    {"http-basic": {"composer.fluxui.dev": {"username": "<E-Mail der Lizenz>", "password": "<Lizenzschlüssel>"}}}
    ```
-   Liegt sie woanders, nennst du den Pfad in `COMPOSER_AUTH_FILE`.
+   Die Datei muss im Projektordner liegen; für einen Pfad außerhalb (`COMPOSER_AUTH_FILE`) verlangt `docker compose build` eine Freigabe per `--allow fs.read=<Pfad>`.
 2. **`.env`** aus `.env.example` anlegen und mindestens `APP_URL`, `APP_ENV=production`, `APP_DEBUG=false` und die Mail-Einstellungen eintragen (siehe [Checkliste](deployment.md#checkliste-für-jeden-host)). Die Datenbank musst du nicht eintragen, ohne Angabe nutzt Compose SQLite im Volume.
 3. **Bauen und Schlüssel erzeugen**, die Ausgabe als `APP_KEY=…` in `.env` eintragen:
    ```bash

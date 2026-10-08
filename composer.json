@@ -9,7 +9,7 @@
     ],
     "license": "proprietary",
     "require": {
-        "php": "^8.3",
+        "php": "^8.4",
         "laravel/fortify": "^1.41",
         "laravel/framework": "^13.17",
         "laravel/mcp": "^1.0",

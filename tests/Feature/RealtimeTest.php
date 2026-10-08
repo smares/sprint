@@ -243,6 +243,22 @@ class RealtimeTest extends TestCase
             ->assertSee('Frisch eingetroffen');
     }
 
+    public function test_changes_to_other_tasks_do_not_render_the_task_page_again_but_changes_to_subtasks_do(): void
+    {
+        $this->switchOnReverb();
+        $task = Task::factory()->for($this->project)->create();
+        $other = Task::factory()->for($this->project)->create();
+        $page = Livewire::test('pages::tasks.show', ['task' => $task]);
+
+        $subtask = Task::factory()->for($this->project)->create(['parent_id' => $task->id, 'title' => 'Neue Unteraufgabe']);
+
+        $page->call('projectChangedElsewhere', ['project_id' => $this->project->id, 'task_id' => $other->id, 'kind' => 'task'])
+            ->assertDontSee('Neue Unteraufgabe')
+            ->call('projectChangedElsewhere', ['project_id' => $this->project->id, 'task_id' => $subtask->id, 'kind' => 'task'])
+            ->assertSee('Neue Unteraufgabe')
+            ->assertSet('changedElsewhere', false);
+    }
+
     public function test_the_bell_and_the_inbox_listen_for_new_entries_only_when_on(): void
     {
         $this->assertSame([], $this->listenersOf('notification-bell', []));

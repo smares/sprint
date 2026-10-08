@@ -14,7 +14,7 @@ use Throwable;
  * Searches tasks. On SQLite with FTS5 an index table is used (ranked, prefix and diacritics
  * aware); everywhere else the search falls back to plain LIKE queries.
  */
-class TaskSearch
+class TaskSearchService
 {
     public const TABLE = 'task_search';
 

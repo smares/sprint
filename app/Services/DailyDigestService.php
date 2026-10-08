@@ -11,7 +11,7 @@ use Illuminate\Support\Collection;
 /**
  * Picks the tasks that go into somebody's morning summary: overdue, due today and due in the next days.
  */
-class DailyDigest
+class DailyDigestService
 {
     /**
      * @return array{overdue: Collection<int, Task>, today: Collection<int, Task>, upcoming: Collection<int, Task>}

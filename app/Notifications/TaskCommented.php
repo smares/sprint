@@ -4,7 +4,7 @@ namespace App\Notifications;
 
 use App\Models\Comment;
 use App\Notifications\Concerns\BuildsLocalizedMail;
-use App\Services\Markdown;
+use App\Services\MarkdownService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -35,7 +35,7 @@ class TaskCommented extends Notification implements ShouldQueue
             'who' => $this->comment->user->name,
             'title' => $task->title,
             'project' => $task->project->name,
-            'excerpt' => Str::limit(Markdown::plainText($this->comment->body), 500),
+            'excerpt' => Str::limit(MarkdownService::plainText($this->comment->body), 500),
             'url' => route('tasks.show', $task),
             'unsubscribeUrl' => self::unsubscribeUrl($task, $notifiable),
         ]);

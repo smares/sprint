@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Services\Locale;
+use App\Services\LocaleService;
 use Illuminate\Support\Facades\File;
 use Tests\TestCase;
 
@@ -79,7 +79,7 @@ class TranslationCompletenessTest extends TestCase
     {
         $english = array_keys(require base_path('lang/en/validation.php'));
 
-        foreach (Locale::codes() as $code) {
+        foreach (LocaleService::codes() as $code) {
             $this->assertDirectoryExists(base_path("lang/{$code}"));
             $this->assertSame([], array_values(array_diff($english, array_keys(require base_path("lang/{$code}/validation.php")))), "validation texts missing for {$code}");
 

@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Project;
-use App\Services\TaskCsv;
+use App\Services\TaskCsvService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
@@ -11,7 +11,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ProjectExportController extends Controller
 {
-    public function __invoke(Request $request, Project $project, TaskCsv $csv): StreamedResponse
+    public function __invoke(Request $request, Project $project, TaskCsvService $csv): StreamedResponse
     {
         Gate::authorize('view', $project);
 

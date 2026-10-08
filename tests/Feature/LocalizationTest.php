@@ -10,8 +10,8 @@ use App\Models\User;
 use App\Notifications\TaskCommented;
 use App\Notifications\TaskStatusChanged;
 use App\Notifications\UserMentioned;
-use App\Services\InboxText;
-use App\Services\Locale;
+use App\Services\InboxTextService;
+use App\Services\LocaleService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -47,11 +47,11 @@ class LocalizationTest extends TestCase
 
     public function test_the_supported_languages_are_listed(): void
     {
-        $this->assertSame(['de', 'en'], Locale::codes());
-        $this->assertSame('Deutsch', Locale::available()['de']);
-        $this->assertTrue(Locale::isSupported('en'));
-        $this->assertFalse(Locale::isSupported('fr'));
-        $this->assertFalse(Locale::isSupported(null));
+        $this->assertSame(['de', 'en'], LocaleService::codes());
+        $this->assertSame('Deutsch', LocaleService::available()['de']);
+        $this->assertTrue(LocaleService::isSupported('en'));
+        $this->assertFalse(LocaleService::isSupported('fr'));
+        $this->assertFalse(LocaleService::isSupported(null));
     }
 
     public function test_new_people_get_the_default_language_unless_told_otherwise(): void
@@ -62,13 +62,13 @@ class LocalizationTest extends TestCase
 
     public function test_the_best_language_is_picked_from_the_browser_header(): void
     {
-        $this->assertSame('en', Locale::fromHeader('en-US,en;q=0.9,de;q=0.8'));
-        $this->assertSame('de', Locale::fromHeader('de-DE,de;q=0.9,en;q=0.8'));
-        $this->assertSame('de', Locale::fromHeader('fr-FR,fr;q=0.9,de;q=0.7,en;q=0.5'));
-        $this->assertSame('en', Locale::fromHeader('fr;q=0.9, en;q=0.4'));
-        $this->assertNull(Locale::fromHeader('fr-FR,fr;q=0.9'));
-        $this->assertNull(Locale::fromHeader(''));
-        $this->assertNull(Locale::fromHeader(null));
+        $this->assertSame('en', LocaleService::fromHeader('en-US,en;q=0.9,de;q=0.8'));
+        $this->assertSame('de', LocaleService::fromHeader('de-DE,de;q=0.9,en;q=0.8'));
+        $this->assertSame('de', LocaleService::fromHeader('fr-FR,fr;q=0.9,de;q=0.7,en;q=0.5'));
+        $this->assertSame('en', LocaleService::fromHeader('fr;q=0.9, en;q=0.4'));
+        $this->assertNull(LocaleService::fromHeader('fr-FR,fr;q=0.9'));
+        $this->assertNull(LocaleService::fromHeader(''));
+        $this->assertNull(LocaleService::fromHeader(null));
     }
 
     public function test_visitors_see_the_language_of_their_browser_or_their_choice(): void
@@ -112,20 +112,20 @@ class LocalizationTest extends TestCase
 
     public function test_the_interface_follows_the_language(): void
     {
-        Locale::apply('en');
+        LocaleService::apply('en');
         $this->assertSame('No results found', __('No results found'));
 
-        Locale::apply('de');
+        LocaleService::apply('de');
         $this->assertSame('Nichts gefunden', __('No results found'));
     }
 
     public function test_validation_messages_follow_the_language(): void
     {
-        Locale::apply('de');
+        LocaleService::apply('de');
         $this->assertSame('Das Feld Name ist erforderlich.', Validator::make([], ['name' => 'required'])->messages()->first('name'));
         $this->assertSame('Das Feld E-Mail muss eine gültige E-Mail-Adresse sein.', Validator::make(['email' => 'x'], ['email' => 'email'])->messages()->first('email'));
 
-        Locale::apply('en');
+        LocaleService::apply('en');
         $this->assertSame('The name field is required.', Validator::make([], ['name' => 'required'])->messages()->first('name'));
         $this->assertSame('The provided password is incorrect.', __('auth.password'));
     }
@@ -213,12 +213,12 @@ class LocalizationTest extends TestCase
         $recipient->notifications()->create(['id' => 'b', 'type' => TaskStatusChanged::class, 'data' => ['task_id' => $task->id, 'kind' => 'status_changed', 'by' => null, 'from' => 'Offen', 'to' => 'Erledigt']]);
         $recipient->notifications()->create(['id' => 'c', 'type' => UserMentioned::class, 'data' => ['task_id' => $task->id, 'kind' => 'mentioned', 'by' => 'Otto', 'where' => 'description']]);
         $recipient->notifications()->create(['id' => 'd', 'type' => TaskCommented::class, 'data' => ['task_id' => $task->id, 'summary' => 'Otto hat kommentiert']]);
-        $sentences = fn () => $recipient->notifications()->orderBy('id')->get()->map(fn ($n) => InboxText::sentence($n))->all();
+        $sentences = fn () => $recipient->notifications()->orderBy('id')->get()->map(fn ($n) => InboxTextService::sentence($n))->all();
 
-        Locale::apply('de');
+        LocaleService::apply('de');
         $this->assertSame(['Otto hat kommentiert', 'Jemand hat den Status von „Offen“ auf „Erledigt“ geändert', 'Otto hat dich in der Beschreibung erwähnt', 'Otto hat kommentiert'], $sentences());
 
-        Locale::apply('en');
+        LocaleService::apply('en');
         $this->assertSame(['Otto commented', 'Someone changed the status from “Offen” to “Erledigt”', 'Otto mentioned you in the description', 'Otto hat kommentiert'], $sentences());
     }
 

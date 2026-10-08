@@ -2,7 +2,7 @@
 
 use App\Color;
 use App\Enums\CustomFieldType;
-use App\Services\Markdown;
+use App\Services\MarkdownService;
 use App\Models\Attachment;
 use App\Models\CustomField;
 use App\Enums\RepeatMode;
@@ -435,7 +435,7 @@ new class extends Component
 
     public function previewMarkdown(string $text): string
     {
-        return (string) Markdown::render(mb_substr($text, 0, 10000));
+        return (string) MarkdownService::render(mb_substr($text, 0, 10000));
     }
 
     #[Computed]

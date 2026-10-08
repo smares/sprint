@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\User;
-use App\Services\Locale;
+use App\Services\LocaleService;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -18,7 +18,7 @@ class CreateUser extends Command
         $validator = Validator::make([...$this->arguments(), 'locale' => $this->option('locale') ?: config('app.locale')], [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'unique:users,email'],
-            'locale' => ['required', 'in:'.implode(',', Locale::codes())],
+            'locale' => ['required', 'in:'.implode(',', LocaleService::codes())],
         ]);
 
         if ($validator->fails()) {

@@ -8,8 +8,8 @@ use App\Models\Task;
 use App\Models\User;
 use App\Notifications\TasksStatusChanged;
 use App\Notifications\TaskStatusChanged;
-use App\Services\InboxText;
-use App\Services\Locale;
+use App\Services\InboxTextService;
+use App\Services\LocaleService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
@@ -148,7 +148,7 @@ class BundledStatusNotificationsTest extends TestCase
         $changes = array_map(fn ($n) => ['id' => $n, 'title' => "Aufgabe {$n}", 'project' => 'Website', 'from' => 'Offen', 'to' => 'Erledigt'], range(1, TasksStatusChanged::LISTED + 5));
         $notification = new TasksStatusChanged($changes, 'Otto');
 
-        Locale::apply('de');
+        LocaleService::apply('de');
         $mail = $notification->toMail($this->anna);
         $text = preg_replace('/\s+/', ' ', strip_tags((string) $mail->render()));
         $this->assertSame('Status geändert bei 30 Aufgaben', $mail->subject);
@@ -158,7 +158,7 @@ class BundledStatusNotificationsTest extends TestCase
         $this->assertStringNotContainsString('Aufgabe 26 ', $text);
         $this->assertStringContainsString('… und 5 weitere', $text);
 
-        Locale::apply('en');
+        LocaleService::apply('en');
         $mail = $notification->toMail($this->anna);
         $this->assertSame('Status changed on 30 tasks', $mail->subject);
         $this->assertStringContainsString('… and 5 more', preg_replace('/\s+/', ' ', strip_tags((string) $mail->render())));
@@ -169,10 +169,10 @@ class BundledStatusNotificationsTest extends TestCase
         $this->anna->notifications()->create(['id' => 'x', 'type' => TasksStatusChanged::class, 'data' => (new TasksStatusChanged([['id' => 7, 'title' => 'A', 'project' => 'P', 'from' => 'a', 'to' => 'b'], ['id' => 8, 'title' => 'B', 'project' => 'P', 'from' => 'a', 'to' => 'b']], 'Otto'))->toArray($this->anna)]);
         $entry = $this->anna->notifications()->firstOrFail();
 
-        Locale::apply('de');
-        $this->assertSame('Otto hat den Status von 2 Aufgaben geändert', InboxText::sentence($entry));
-        Locale::apply('en');
-        $this->assertSame('Otto changed the status of 2 tasks', InboxText::sentence($entry));
+        LocaleService::apply('de');
+        $this->assertSame('Otto hat den Status von 2 Aufgaben geändert', InboxTextService::sentence($entry));
+        LocaleService::apply('en');
+        $this->assertSame('Otto changed the status of 2 tasks', InboxTextService::sentence($entry));
         $this->assertSame(7, $entry->data['task_id']);
     }
 }

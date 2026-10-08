@@ -4,7 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\User;
 use App\Notifications\DailyDigest as DailyDigestNotification;
-use App\Services\DailyDigest;
+use App\Services\DailyDigestService;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -13,7 +13,7 @@ use Illuminate\Console\Command;
 #[Description('Sends the daily summary of overdue and upcoming tasks')]
 class SendDailyDigest extends Command
 {
-    public function handle(DailyDigest $digest): int
+    public function handle(DailyDigestService $digest): int
     {
         $sent = 0;
 

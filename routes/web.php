@@ -3,7 +3,7 @@
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\ProjectExportController;
-use App\Services\Locale;
+use App\Services\LocaleService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -12,7 +12,7 @@ use Laravel\Passkeys\Http\Controllers\PasskeyLoginController;
 use Laravel\Passkeys\Http\Controllers\PasskeyRegistrationController;
 
 Route::post('/locale', function (Request $request) {
-    $locale = $request->validate(['locale' => ['required', Rule::in(Locale::codes())]])['locale'];
+    $locale = $request->validate(['locale' => ['required', Rule::in(LocaleService::codes())]])['locale'];
 
     $request->session()->put('locale', $locale);
     $request->user()?->update(['locale' => $locale]);

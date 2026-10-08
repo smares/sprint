@@ -9,7 +9,7 @@ use App\Models\Tag;
 use App\Models\Task;
 use App\Models\Team;
 use App\Models\User;
-use App\Services\Locale;
+use App\Services\LocaleService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -30,7 +30,7 @@ class EnglishInterfaceTest extends TestCase
     {
         parent::setUp();
 
-        Locale::apply('en');
+        LocaleService::apply('en');
         $this->withHeader('Accept-Language', 'en');
 
         $this->user = User::factory()->admin()->create(['name' => 'Alice Archer', 'email' => 'alice@example.com', 'locale' => 'en']);

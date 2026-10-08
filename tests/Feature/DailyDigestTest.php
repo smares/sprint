@@ -7,7 +7,7 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
 use App\Notifications\DailyDigest as DailyDigestNotification;
-use App\Services\DailyDigest;
+use App\Services\DailyDigestService;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
@@ -42,7 +42,7 @@ class DailyDigestTest extends TestCase
      */
     private function digest(?User $user = null): array
     {
-        return collect(app(DailyDigest::class)->tasksFor($user ?? $this->user))->map(fn ($tasks) => $tasks->pluck('title')->all())->all();
+        return collect(app(DailyDigestService::class)->tasksFor($user ?? $this->user))->map(fn ($tasks) => $tasks->pluck('title')->all())->all();
     }
 
     public function test_tasks_are_sorted_into_overdue_today_and_upcoming(): void
@@ -144,7 +144,7 @@ class DailyDigestTest extends TestCase
         $this->task('Angebot prüfen', '2026-10-07');
         $this->task('Planung', '2026-10-09');
 
-        $mail = (new DailyDigestNotification(app(DailyDigest::class)->tasksFor($this->user)))->toMail($this->user);
+        $mail = (new DailyDigestNotification(app(DailyDigestService::class)->tasksFor($this->user)))->toMail($this->user);
         $html = (string) $mail->render();
 
         $this->assertSame('Deine Aufgaben: 1 überfällig, 1 heute fällig, 1 demnächst', $mail->subject);
@@ -161,7 +161,7 @@ class DailyDigestTest extends TestCase
     {
         $this->task('Nur heute', '2026-10-07');
 
-        $text = strip_tags((string) (new DailyDigestNotification(app(DailyDigest::class)->tasksFor($this->user)))->toMail($this->user)->render());
+        $text = strip_tags((string) (new DailyDigestNotification(app(DailyDigestService::class)->tasksFor($this->user)))->toMail($this->user)->render());
 
         $this->assertStringNotContainsString('Überfällig', $text);
         $this->assertStringNotContainsString('In den nächsten Tagen', $text);

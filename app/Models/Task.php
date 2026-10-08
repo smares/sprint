@@ -7,8 +7,8 @@ use App\Enums\RepeatUnit;
 use App\Notifications\TasksStatusChanged;
 use App\Notifications\TaskStatusChanged;
 use App\Notifications\UserMentioned;
-use App\Services\Markdown;
-use App\Services\TaskSearch;
+use App\Services\MarkdownService;
+use App\Services\TaskSearchService;
 use Closure;
 use Database\Factories\TaskFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -85,12 +85,12 @@ class Task extends Model
 
         static::saved(function (self $task) {
             if ($task->wasRecentlyCreated || $task->wasChanged(['title', 'description'])) {
-                app(TaskSearch::class)->index($task);
+                app(TaskSearchService::class)->index($task);
             }
         });
 
         static::deleting(function (self $task) {
-            app(TaskSearch::class)->forget($task->id);
+            app(TaskSearchService::class)->forget($task->id);
             $task->deleteAttachmentFiles();
         });
 
@@ -128,8 +128,8 @@ class Task extends Model
 
             if ($task->wasChanged('description')) {
                 $added = array_diff(
-                    Markdown::mentionedUserIds($task->description),
-                    Markdown::mentionedUserIds($task->getOriginal('description')),
+                    MarkdownService::mentionedUserIds($task->description),
+                    MarkdownService::mentionedUserIds($task->getOriginal('description')),
                 );
 
                 Notification::send(

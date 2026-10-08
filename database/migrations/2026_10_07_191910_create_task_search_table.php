@@ -1,6 +1,6 @@
 <?php
 
-use App\Services\TaskSearch;
+use App\Services\TaskSearchService;
 use Illuminate\Database\Migrations\Migration;
 
 return new class extends Migration
@@ -10,7 +10,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        $search = app(TaskSearch::class);
+        $search = app(TaskSearchService::class);
 
         if ($search->createIndexTable()) {
             $search->rebuild();
@@ -22,6 +22,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        app(TaskSearch::class)->dropIndexTable();
+        app(TaskSearchService::class)->dropIndexTable();
     }
 };

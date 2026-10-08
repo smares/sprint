@@ -8,7 +8,7 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
 use App\Notifications\UserMentioned;
-use App\Services\TaskSearch;
+use App\Services\TaskSearchService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
@@ -186,7 +186,7 @@ class CommentEditingTest extends TestCase
     public function test_the_search_index_follows_edits_and_deletes(): void
     {
         $comment = $this->comment('Zebrastreifen');
-        $search = fn (string $query) => app(TaskSearch::class)->search($this->author, $query)->count();
+        $search = fn (string $query) => app(TaskSearchService::class)->search($this->author, $query)->count();
         $this->assertSame(1, $search('zebrastreifen'));
 
         $this->page()->call('startEditComment', $comment->id)->set('editingBody', 'Giraffenfleck')->call('saveComment');

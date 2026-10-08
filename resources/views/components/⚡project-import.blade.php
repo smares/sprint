@@ -1,7 +1,7 @@
 <?php
 
 use App\Models\Project;
-use App\Services\TaskCsv;
+use App\Services\TaskCsvService;
 use Flux\Flux;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
@@ -37,7 +37,7 @@ new class extends Component
      */
     private function planFromFile(): array
     {
-        $csv = app(TaskCsv::class);
+        $csv = app(TaskCsvService::class);
         $parsed = $csv->parse((string) file_get_contents($this->file->getRealPath()));
 
         if ($parsed['error'] !== null) {
@@ -52,7 +52,7 @@ new class extends Component
         Gate::authorize('edit', $this->project);
 
         $this->imported = null;
-        $this->validate(['file' => ['required', 'file', 'max:'.TaskCsv::MAX_KILOBYTES]], [], ['file' => __('File')]);
+        $this->validate(['file' => ['required', 'file', 'max:'.TaskCsvService::MAX_KILOBYTES]], [], ['file' => __('File')]);
 
         ['plan' => $plan, 'error' => $error] = $this->planFromFile();
 
@@ -72,7 +72,7 @@ new class extends Component
         ['plan' => $plan] = $this->planFromFile();
         abort_if($plan === null || $plan['tasks'] === [], 422);
 
-        $this->imported = app(TaskCsv::class)->import($this->project, auth()->user(), $plan['tasks']);
+        $this->imported = app(TaskCsvService::class)->import($this->project, auth()->user(), $plan['tasks']);
         $this->reset('file', 'report');
     }
 
@@ -92,7 +92,7 @@ new class extends Component
         $text = match ($code) {
             'no-title' => __('No title'),
             'title-too-long' => __('Title longer than 255 characters'),
-            'too-many-rows' => __('More than :max rows, the rest is not imported', ['max' => TaskCsv::MAX_ROWS]),
+            'too-many-rows' => __('More than :max rows, the rest is not imported', ['max' => TaskCsvService::MAX_ROWS]),
             'unknown-status' => __('Status “:value” does not exist, the first open one applies', ['value' => $detail]),
             'unknown-person' => __('“:value” is not an active member of the project and is ignored', ['value' => $detail]),
             'bad-date' => __('Date “:value” is not readable and is ignored', ['value' => $detail]),
@@ -122,7 +122,7 @@ new class extends Component
             </div>
         @else
             <flux:file-upload wire:model="file" :label="__('CSV file')">
-                <flux:file-upload.dropzone :heading="__('Drag a file here or click')" text="{{ __('CSV up to :size MB, at most :rows rows', ['size' => intdiv(TaskCsv::MAX_KILOBYTES, 1024), 'rows' => TaskCsv::MAX_ROWS]) }}" inline />
+                <flux:file-upload.dropzone :heading="__('Drag a file here or click')" text="{{ __('CSV up to :size MB, at most :rows rows', ['size' => intdiv(TaskCsvService::MAX_KILOBYTES, 1024), 'rows' => TaskCsvService::MAX_ROWS]) }}" inline />
             </flux:file-upload>
             @error('file') <flux:text class="text-red-500">{{ $message }}</flux:text> @enderror
 

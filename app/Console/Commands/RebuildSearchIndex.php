@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Services\TaskSearch;
+use App\Services\TaskSearchService;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -14,7 +14,7 @@ class RebuildSearchIndex extends Command
     /**
      * Execute the console command.
      */
-    public function handle(TaskSearch $search): int
+    public function handle(TaskSearchService $search): int
     {
         if (! $search->usesFullText() && ! $search->createIndexTable()) {
             $this->components->info('FTS5 is not available; the search uses LIKE and needs no index.');

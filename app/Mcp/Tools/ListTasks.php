@@ -5,7 +5,7 @@ namespace App\Mcp\Tools;
 use App\Mcp\TaskData;
 use App\Models\Task;
 use App\Models\User;
-use App\Services\TaskSearch;
+use App\Services\TaskSearchService;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -53,7 +53,7 @@ class ListTasks extends SprintTool
         }
 
         if ($search !== '') {
-            $tasks = app(TaskSearch::class)->search($user, $search, ['project_id' => $validated['project_id'] ?? null, 'state' => $state]);
+            $tasks = app(TaskSearchService::class)->search($user, $search, ['project_id' => $validated['project_id'] ?? null, 'state' => $state]);
         } else {
             $tasks = Task::query()
                 ->where('tasks.is_section', false)

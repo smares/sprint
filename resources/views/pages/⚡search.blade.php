@@ -2,7 +2,7 @@
 
 use App\Models\Project;
 use App\Models\Task;
-use App\Services\TaskSearch;
+use App\Services\TaskSearchService;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
@@ -48,7 +48,7 @@ new class extends Component
     #[Computed]
     public function terms(): array
     {
-        return app(TaskSearch::class)->terms($this->query);
+        return app(TaskSearchService::class)->terms($this->query);
     }
 
     #[Computed]
@@ -64,7 +64,7 @@ new class extends Component
             return collect();
         }
 
-        return app(TaskSearch::class)
+        return app(TaskSearchService::class)
             ->search(auth()->user(), $this->query, [
                 'project_id' => $this->projectId,
                 'state' => in_array($this->state, ['open', 'done'], true) ? $this->state : 'all',
@@ -80,7 +80,7 @@ new class extends Component
      */
     public function explain(Task $task): ?array
     {
-        return app(TaskSearch::class)->explain($task, $this->terms);
+        return app(TaskSearchService::class)->explain($task, $this->terms);
     }
 
     public function rendering($view): void

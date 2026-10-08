@@ -1,6 +1,6 @@
 <?php
 
-use App\Services\Locale;
+use App\Services\LocaleService;
 use Flux\Flux;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -44,11 +44,11 @@ new class extends Component
 
     public function updatedLocale(string $value): void
     {
-        $this->validate(['locale' => ['required', Rule::in(Locale::codes())]]);
+        $this->validate(['locale' => ['required', Rule::in(LocaleService::codes())]]);
 
         auth()->user()->update(['locale' => $value]);
         session()->put('locale', $value);
-        Locale::apply($value);
+        LocaleService::apply($value);
 
         $this->redirectRoute('profile', navigate: true);
     }
@@ -145,7 +145,7 @@ new class extends Component
             <flux:separator />
 
             <flux:select variant="listbox" wire:model.live="locale" :label="__('Language')" :description="__('The interface and emails appear in this language.')">
-                @foreach (\App\Services\Locale::available() as $code => $name)
+                @foreach (\App\Services\LocaleService::available() as $code => $name)
                     <flux:select.option value="{{ $code }}">{{ $name }}</flux:select.option>
                 @endforeach
             </flux:select>

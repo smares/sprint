@@ -7,7 +7,7 @@ use App\Models\Task;
 use App\Models\User;
 use App\Notifications\TaskCommented;
 use App\Notifications\UserMentioned;
-use App\Services\Markdown;
+use App\Services\MarkdownService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
@@ -175,8 +175,8 @@ class MentionNotificationsTest extends TestCase
     {
         $text = "{$this->mention($this->actor)} {$this->mention($this->actor)} {$this->mention($this->outsider)} @[Aufgabe](task:5)";
 
-        $this->assertSame([$this->actor->id, $this->outsider->id], Markdown::mentionedUserIds($text));
-        $this->assertSame([], Markdown::mentionedUserIds(null));
-        $this->assertSame('@Anna Autorin und @Olaf Außenstehend', Markdown::plainText("{$this->mention($this->actor)} und {$this->mention($this->outsider)}"));
+        $this->assertSame([$this->actor->id, $this->outsider->id], MarkdownService::mentionedUserIds($text));
+        $this->assertSame([], MarkdownService::mentionedUserIds(null));
+        $this->assertSame('@Anna Autorin und @Olaf Außenstehend', MarkdownService::plainText("{$this->mention($this->actor)} und {$this->mention($this->outsider)}"));
     }
 }

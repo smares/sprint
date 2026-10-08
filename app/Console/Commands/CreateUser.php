@@ -15,9 +15,10 @@ class CreateUser extends Command
 {
     public function handle(): int
     {
-        $validator = Validator::make([...$this->arguments(), 'locale' => $this->option('locale') ?: config('app.locale')], [
+        $validator = Validator::make([...$this->arguments(), 'password' => $this->option('password'), 'locale' => $this->option('locale') ?: config('app.locale')], [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'unique:users,email'],
+            'password' => ['nullable', 'string', 'min:8', 'max:255'],
             'locale' => ['required', 'in:'.implode(',', LocaleService::codes())],
         ]);
 

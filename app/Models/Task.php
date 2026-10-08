@@ -373,7 +373,9 @@ class Task extends Model
             $ids = [...$ids, ...$frontier];
         }
 
-        Storage::disk()->delete(Attachment::whereIn('task_id', $ids)->pluck('path')->all());
+        foreach (array_chunk($ids, 500) as $chunk) {
+            Storage::disk()->delete(Attachment::whereIn('task_id', $chunk)->pluck('path')->all());
+        }
     }
 
     public function attachments(): HasMany

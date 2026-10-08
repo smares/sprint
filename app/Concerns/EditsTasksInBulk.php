@@ -6,6 +6,7 @@ use App\Models\Project;
 use App\Models\Task;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -112,9 +113,9 @@ trait EditsTasksInBulk
     }
 
     /**
-     * @return \Illuminate\Database\Eloquent\Collection<int, Task>
+     * @return EloquentCollection<int, Task>
      */
-    private function selectedTasks()
+    private function selectedTasks(): EloquentCollection
     {
         Gate::authorize('edit', $this->project);
 
@@ -213,7 +214,7 @@ trait EditsTasksInBulk
      * @param  list<int|string>  $remove
      * @param  Collection<int, string>  $names
      */
-    private function syncBulkTags(Task $task, array $add, array $remove, $names): void
+    private function syncBulkTags(Task $task, array $add, array $remove, Collection $names): void
     {
         if ($add !== []) {
             $attached = $task->tags()->syncWithoutDetaching(array_map('intval', $add))['attached'];

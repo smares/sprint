@@ -5,11 +5,11 @@ namespace App\Notifications;
 use App\Models\Task;
 use App\Notifications\Concerns\BuildsLocalizedMail;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class TaskStatusChanged extends Notification implements ShouldQueue
+class TaskStatusChanged extends Notification implements ShouldQueueAfterCommit
 {
     use BuildsLocalizedMail, Queueable;
 

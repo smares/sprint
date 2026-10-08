@@ -11,6 +11,12 @@ new class extends Component
     use WithPagination;
 
     #[Computed]
+    public function hasUnread(): bool
+    {
+        return auth()->user()->unreadNotifications()->exists();
+    }
+
+    #[Computed]
     public function notifications()
     {
         return auth()->user()->notifications()->paginate(30);
@@ -44,7 +50,7 @@ new class extends Component
         $task = $this->tasks->get($notification->data['task_id'] ?? null);
 
         if ($task === null) {
-            unset($this->notifications);
+            unset($this->notifications, $this->hasUnread);
 
             return;
         }
@@ -57,21 +63,21 @@ new class extends Component
         $notification = $this->ownNotification($id);
         $notification->read_at === null ? $notification->markAsRead() : $notification->markAsUnread();
 
-        unset($this->notifications);
+        unset($this->notifications, $this->hasUnread);
     }
 
     public function markAllRead(): void
     {
         auth()->user()->unreadNotifications()->update(['read_at' => now()]);
 
-        unset($this->notifications);
+        unset($this->notifications, $this->hasUnread);
     }
 
     public function remove(string $id): void
     {
         $this->ownNotification($id)->delete();
 
-        unset($this->notifications);
+        unset($this->notifications, $this->hasUnread);
     }
 
     public function rendering($view): void
@@ -84,7 +90,7 @@ new class extends Component
 <div class="max-w-3xl">
     <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
         <flux:heading size="xl">{{ __('Inbox') }}</flux:heading>
-        @if (auth()->user()->unreadNotifications()->exists())
+        @if ($this->hasUnread)
             <flux:button size="sm" icon="check" wire:click="markAllRead">{{ __('Mark all as read') }}</flux:button>
         @endif
     </div>

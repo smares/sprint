@@ -34,10 +34,10 @@ composer setup
 Den ersten Benutzer legst du so an:
 
 ```bash
-php artisan user:create "Anna Beispiel" anna@example.com --password=geheim
+php artisan user:create "Anna Beispiel" anna@example.com --password=geheim1234
 ```
 
-Ohne `--password` erzeugt das Kommando ein Passwort und gibt es aus. Mit `--admin` wird die Person Administrator der ganzen Anwendung; bestehende Benutzer machst du so dazu (oder mit `--revoke` wieder zum normalen Benutzer):
+Das Passwort braucht mindestens 8 Zeichen. Ohne `--password` erzeugt das Kommando ein Passwort und gibt es aus. Mit `--admin` wird die Person Administrator der ganzen Anwendung; bestehende Benutzer machst du so dazu (oder mit `--revoke` wieder zum normalen Benutzer):
 
 ```bash
 php artisan user:admin anna@example.com

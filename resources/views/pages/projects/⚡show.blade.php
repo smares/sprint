@@ -3,15 +3,14 @@
 use App\Concerns\EditsTasksInBulk;
 use App\Concerns\OpensTaskPanel;
 use App\Enums\CustomFieldType;
-use App\Models\CustomField;
 use App\Models\CustomFieldValue;
 use App\Models\Project;
-use App\Models\SavedFilter;
 use App\Models\Task;
 use App\Models\TaskStatus;
 use Flux\Flux;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
@@ -120,6 +119,14 @@ new class extends Component
     }
 
     /**
+     * The sort direction from the address, limited to the two valid values.
+     */
+    protected function direction(): string
+    {
+        return $this->sortDirection === 'desc' ? 'desc' : 'asc';
+    }
+
+    /**
      * The first page of the list; more is loaded when the end of the list comes into view.
      */
     #[Computed]
@@ -128,9 +135,9 @@ new class extends Component
         return $this->filteredTasks()
             ->with(['assignee', 'collaborators', 'tags', 'status', 'blockers.status', 'fieldValues'])
             ->tap(fn ($q) => $this->applyFieldSort($q))
-            ->when($this->sortBy === 'due', fn ($q) => $q->orderByRaw('due_date is null')->orderBy('due_date', $this->sortDirection))
-            ->when($this->sortBy === 'title', fn ($q) => $q->orderBy('title', $this->sortDirection))
-            ->when($this->sortBy === 'status', fn ($q) => $q->orderBy(TaskStatus::select('position')->whereColumn('task_statuses.id', 'tasks.status_id'), $this->sortDirection))
+            ->when($this->sortBy === 'due', fn ($q) => $q->orderByRaw('due_date is null')->orderBy('due_date', $this->direction()))
+            ->when($this->sortBy === 'title', fn ($q) => $q->orderBy('title', $this->direction()))
+            ->when($this->sortBy === 'status', fn ($q) => $q->orderBy(TaskStatus::select('position')->whereColumn('task_statuses.id', 'tasks.status_id'), $this->direction()))
             ->orderBy('position')
             ->orderBy('id')
             ->limit($this->limit)
@@ -232,7 +239,7 @@ new class extends Component
         };
 
         $query->orderByRaw("({$value->toSql()}) is null", $value->getBindings())
-            ->orderBy($value, $this->sortDirection);
+            ->orderBy($value, $this->direction());
     }
 
     #[Computed]
@@ -263,7 +270,7 @@ new class extends Component
         $validated = $this->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:10000'],
-            'assigneeId' => ['nullable', 'exists:users,id'],
+            'assigneeId' => ['nullable', Rule::in($this->users->pluck('id')->map(fn ($id) => (string) $id)->all())],
             'dueDate' => ['nullable', 'date'],
             'startDate' => ['nullable', 'date', 'before_or_equal:dueDate'],
         ]);

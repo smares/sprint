@@ -3,6 +3,7 @@
 use App\Models\Project;
 use Flux\Flux;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 use Livewire\Component;
 
 new class extends Component
@@ -67,7 +68,7 @@ new class extends Component
     {
         Gate::authorize('manage', $this->project);
 
-        $this->validate(['confirmName' => ['required', 'in:'.$this->project->name]], [
+        $this->validate(['confirmName' => ['required', Rule::in([$this->project->name])]], [
             'confirmName.in' => __('The name does not match.'),
             'confirmName.required' => __('Type the project name to confirm.'),
         ], ['confirmName' => __('Confirmation')]);

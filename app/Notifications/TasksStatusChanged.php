@@ -4,14 +4,14 @@ namespace App\Notifications;
 
 use App\Notifications\Concerns\BuildsLocalizedMail;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 /**
  * One message for many status changes, sent when somebody changes several tasks at once.
  */
-class TasksStatusChanged extends Notification implements ShouldQueue
+class TasksStatusChanged extends Notification implements ShouldQueueAfterCommit
 {
     use BuildsLocalizedMail, Queueable;
 

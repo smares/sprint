@@ -3,6 +3,7 @@
 use App\Services\LocaleService;
 use Flux\Flux;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -97,9 +98,19 @@ new class extends Component
             'newPasswordConfirmation' => __('Password confirmation'),
         ]);
 
+        $throttleKey = 'change-password|'.$user->id.'|'.request()->ip();
+
+        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            throw ValidationException::withMessages(['currentPassword' => __('Too many attempts. Please try again in :seconds seconds.', ['seconds' => RateLimiter::availableIn($throttleKey)])]);
+        }
+
         if (! Hash::check($this->currentPassword, $user->password)) {
+            RateLimiter::hit($throttleKey);
+
             throw ValidationException::withMessages(['currentPassword' => __('The current password is incorrect.')]);
         }
+
+        RateLimiter::clear($throttleKey);
 
         $user->forceFill(['password' => $this->newPassword, 'remember_token' => Str::random(60)])->save();
 

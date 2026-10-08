@@ -21,6 +21,12 @@ class MakeUserAdmin extends Command
             return self::FAILURE;
         }
 
+        if ($this->option('revoke') && $user->isLastActiveAdmin()) {
+            $this->components->error('The last active administrator cannot be revoked.');
+
+            return self::FAILURE;
+        }
+
         $user->update(['is_admin' => ! $this->option('revoke')]);
 
         $this->components->info($this->option('revoke')

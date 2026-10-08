@@ -318,7 +318,7 @@ class ProjectRolesTest extends TestCase
 
     public function test_commands_create_and_revoke_admins(): void
     {
-        $this->artisan('user:create', ['name' => 'Chefin', 'email' => 'chefin@example.com', '--admin' => true, '--password' => 'geheim'])
+        $this->artisan('user:create', ['name' => 'Chefin', 'email' => 'chefin@example.com', '--admin' => true, '--password' => 'geheim1234'])
             ->assertSuccessful();
         $this->assertTrue(User::where('email', 'chefin@example.com')->firstOrFail()->is_admin);
 

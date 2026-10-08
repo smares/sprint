@@ -242,7 +242,7 @@ new class extends Component
                     class="space-y-3"
                     x-on:submit.prevent="
                         busy = true; failed = false
-                        window.Passkeys.register({ name: $wire.passkeyName })
+                        window.passkeys().then((passkeys) => passkeys.register({ name: $wire.passkeyName }))
                             .then(() => $wire.passkeysChanged())
                             .catch(() => { failed = true })
                             .finally(() => { busy = false })

@@ -212,7 +212,7 @@ new class extends Component
                 x-bind:disabled="busy"
                 x-on:click="
                     busy = true; failed = false
-                    window.Passkeys.verify({ remember: $wire.remember })
+                    window.passkeys().then((passkeys) => passkeys.verify({ remember: $wire.remember }))
                         .then((response) => { window.location.href = response.redirect })
                         .catch(() => { failed = true })
                         .finally(() => { busy = false })

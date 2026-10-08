@@ -32,7 +32,8 @@ new class extends Component
 };
 ?>
 
-<div wire:poll.60s class="relative">
+{{-- With live updates the count arrives over the socket; without them it is fetched every minute. --}}
+<div @unless (app(RealtimeService::class)->enabled()) wire:poll.60s @endunless class="relative">
     <flux:button href="{{ route('inbox') }}" wire:navigate variant="ghost" icon="bell" aria-label="{{ $this->unread > 0 ? __('Inbox, :count unread', ['count' => $this->unread]) : __('Inbox') }}" />
 
     @if ($this->unread > 0)

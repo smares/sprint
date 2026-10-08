@@ -153,13 +153,18 @@ class RealtimeTest extends TestCase
         $this->get(route('projects.index'))
             ->assertOk()
             ->assertSee('window.sprintRealtime', false)
+            ->assertSee('/build/assets/realtime-', false)
             ->assertSee('test-key', false)
-            ->assertDontSee('test-secret', false);
+            ->assertDontSee('test-secret', false)
+            ->assertDontSee('wire:poll.60s', false);
     }
 
     public function test_the_pages_do_not_load_the_connection_while_live_updates_are_off(): void
     {
-        $this->get(route('projects.index'))->assertOk()->assertDontSee('window.sprintRealtime', false);
+        $this->get(route('projects.index'))->assertOk()
+            ->assertDontSee('window.sprintRealtime', false)
+            ->assertDontSee('/build/assets/realtime-', false)
+            ->assertSee('wire:poll.60s', false);
     }
 
     public function test_the_project_pages_listen_to_their_channel_and_show_who_else_is_there_only_when_on(): void

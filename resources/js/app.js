@@ -1,24 +1,5 @@
-import { Passkeys } from '@laravel/passkeys'
-import Echo from 'laravel-echo'
-import Pusher from 'pusher-js'
-
-window.Passkeys = Passkeys
-
-// Live updates: the server only passes the connection settings when Reverb is switched on (see docs/configuration.md).
-if (window.sprintRealtime) {
-    const { key, host, port, scheme } = window.sprintRealtime
-
-    window.Pusher = Pusher
-    window.Echo = new Echo({
-        broadcaster: 'reverb',
-        key,
-        wsHost: host,
-        wsPort: port,
-        wssPort: port,
-        forceTLS: scheme === 'https',
-        enabledTransports: ['ws', 'wss'],
-    })
-}
+// Passkeys are only needed on the login page and in the profile; the library is loaded on first use.
+window.passkeys = () => import('@laravel/passkeys').then((module) => module.Passkeys)
 
 const registerMentionable = () => {
     // People come with the page; tasks are looked up on the server while typing (options.searchTasks).

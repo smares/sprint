@@ -15,6 +15,7 @@
     </flux:menu>
 </flux:dropdown>
 
-<livewire:project-settings :project="$project" />
-<livewire:project-statuses :project="$project" />
-<livewire:project-tags :project="$project" />
+{{-- The dialogs load right after the page in one shared request, not as part of it. --}}
+<livewire:project-settings :project="$project" defer.bundle />
+<livewire:project-statuses :project="$project" defer.bundle />
+<livewire:project-tags :project="$project" defer.bundle />

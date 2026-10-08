@@ -20,6 +20,9 @@ class CustomFieldOption extends Model
         return ['color' => ColorCast::class];
     }
 
+    /**
+     * @return BelongsTo<CustomField, $this>
+     */
     public function field(): BelongsTo
     {
         return $this->belongsTo(CustomField::class, 'custom_field_id');

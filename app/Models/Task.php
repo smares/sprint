@@ -9,8 +9,10 @@ use App\Notifications\TaskStatusChanged;
 use App\Notifications\UserMentioned;
 use App\Services\MarkdownService;
 use App\Services\TaskSearchService;
+use Carbon\CarbonInterface;
 use Closure;
 use Database\Factories\TaskFactory;
+use Illuminate\Contracts\Database\Query\Builder as QueryBuilder;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -18,6 +20,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\Pivot;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -152,11 +155,17 @@ class Task extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<Project, $this>
+     */
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
     }
 
+    /**
+     * @return BelongsTo<TaskStatus, $this>
+     */
     public function status(): BelongsTo
     {
         return $this->belongsTo(TaskStatus::class, 'status_id');
@@ -226,7 +235,7 @@ class Task extends Model
         }
 
         $interval = max(1, (int) $this->repeat_interval);
-        $today = now()->startOfDay();
+        $today = today();
         $next = $this->repeat_mode === RepeatMode::Completion
             ? $unit->addTo($today, $interval)
             : $unit->addTo($due->copy()->startOfDay(), $interval);
@@ -330,31 +339,49 @@ class Task extends Model
         }
     }
 
+    /**
+     * @return BelongsTo<Task, $this>
+     */
     public function parent(): BelongsTo
     {
         return $this->belongsTo(self::class, 'parent_id');
     }
 
+    /**
+     * @return HasMany<Task, $this>
+     */
     public function children(): HasMany
     {
         return $this->hasMany(self::class, 'parent_id')->orderBy('position')->orderBy('id');
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function assignee(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assignee_id');
     }
 
+    /**
+     * @return BelongsToMany<User, $this>
+     */
     public function collaborators(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'task_collaborators');
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'creator_id');
     }
 
+    /**
+     * @return HasMany<Comment, $this>
+     */
     public function comments(): HasMany
     {
         return $this->hasMany(Comment::class);
@@ -378,11 +405,17 @@ class Task extends Model
         }
     }
 
+    /**
+     * @return HasMany<Attachment, $this>
+     */
     public function attachments(): HasMany
     {
         return $this->hasMany(Attachment::class);
     }
 
+    /**
+     * @return BelongsToMany<Tag, $this>
+     */
     public function tags(): BelongsToMany
     {
         return $this->belongsToMany(Tag::class);
@@ -390,6 +423,8 @@ class Task extends Model
 
     /**
      * Tasks that must be finished before this one.
+     *
+     * @return BelongsToMany<Task, $this, Pivot>
      */
     public function blockers(): BelongsToMany
     {
@@ -398,6 +433,8 @@ class Task extends Model
 
     /**
      * Tasks that are waiting for this one.
+     *
+     * @return BelongsToMany<Task, $this, Pivot>
      */
     public function blocking(): BelongsToMany
     {
@@ -422,6 +459,9 @@ class Task extends Model
         });
     }
 
+    /**
+     * @return BelongsToMany<User, $this>
+     */
     public function notificationMutes(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'task_notification_mutes');
@@ -479,11 +519,17 @@ class Task extends Model
         return $candidates->filter(fn (User $user) => in_array($user->id, $viewers, true))->values();
     }
 
+    /**
+     * @return HasMany<CustomFieldValue, $this>
+     */
     public function fieldValues(): HasMany
     {
         return $this->hasMany(CustomFieldValue::class);
     }
 
+    /**
+     * @return HasMany<TaskActivity, $this>
+     */
     public function activities(): HasMany
     {
         return $this->hasMany(TaskActivity::class);
@@ -563,7 +609,7 @@ class Task extends Model
             return $this->blockers->contains(fn (self $blocker) => ! $blocker->isDone());
         }
 
-        return $this->blockers()->whereHas('status', fn ($status) => $status->where('is_done', false))->exists();
+        return $this->blockers()->whereHas('status', fn (QueryBuilder $status) => $status->where('is_done', false))->exists();
     }
 
     /**
@@ -632,7 +678,7 @@ class Task extends Model
     /**
      * First day of the task's time span; tasks with only a due date last a single day.
      */
-    public function spanStart(): ?Carbon
+    public function spanStart(): ?CarbonInterface
     {
         return $this->start_date ?? $this->due_date;
     }
@@ -640,15 +686,17 @@ class Task extends Model
     /**
      * Last day of the task's time span.
      */
-    public function spanEnd(): ?Carbon
+    public function spanEnd(): ?CarbonInterface
     {
         return $this->due_date ?? $this->start_date;
     }
 
     /**
      * Tasks whose time span touches the given days.
+     *
+     * @param  Builder<static>  $query
      */
-    public function scopeOverlapping(Builder $query, Carbon $from, Carbon $to): void
+    protected function scopeOverlapping(Builder $query, Carbon $from, Carbon $to): void
     {
         $query->whereRaw('coalesce(tasks.start_date, tasks.due_date) <= ?', [$to->copy()->endOfDay()->toDateTimeString()])
             ->whereRaw('coalesce(tasks.due_date, tasks.start_date) >= ?', [$from->copy()->startOfDay()->toDateTimeString()]);

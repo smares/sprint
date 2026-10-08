@@ -66,8 +66,10 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
 
     /**
      * People who can still sign in and be assigned work.
+     *
+     * @param  Builder<static>  $query
      */
-    public function scopeActive(Builder $query): void
+    protected function scopeActive(Builder $query): void
     {
         $query->whereNull('deactivated_at');
     }
@@ -114,11 +116,17 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
         $this->forceFill(['deactivated_at' => null])->save();
     }
 
+    /**
+     * @return BelongsToMany<Project, $this>
+     */
     public function projects(): BelongsToMany
     {
         return $this->belongsToMany(Project::class, 'project_members')->withPivot('role')->withTimestamps();
     }
 
+    /**
+     * @return BelongsToMany<Team, $this>
+     */
     public function teams(): BelongsToMany
     {
         return $this->belongsToMany(Team::class);

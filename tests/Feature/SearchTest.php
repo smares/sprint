@@ -10,6 +10,7 @@ use App\Models\Task;
 use App\Models\User;
 use App\Services\TaskSearchService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
@@ -132,7 +133,7 @@ class SearchTest extends TestCase
 
         $task->delete();
         $this->assertSame([], $this->titles('neuer'));
-        $this->assertSame(0, \DB::table(TaskSearchService::TABLE)->count());
+        $this->assertSame(0, DB::table(TaskSearchService::TABLE)->count());
     }
 
     public function test_deleting_a_parent_leaves_no_search_hits_for_its_subtasks(): void
@@ -218,7 +219,7 @@ class SearchTest extends TestCase
     public function test_rebuild_restores_the_index(): void
     {
         $task = $this->task('Wiederfinden', ['description' => 'Beschreibung X']);
-        \DB::table(TaskSearchService::TABLE)->delete();
+        DB::table(TaskSearchService::TABLE)->delete();
         $this->assertSame([], $this->titles('wiederfinden'));
 
         $this->artisan('search:rebuild')->assertSuccessful();

@@ -42,16 +42,25 @@ class CustomField extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<Project, $this>
+     */
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
     }
 
+    /**
+     * @return HasMany<CustomFieldOption, $this>
+     */
     public function options(): HasMany
     {
         return $this->hasMany(CustomFieldOption::class)->orderBy('position')->orderBy('id');
     }
 
+    /**
+     * @return HasMany<CustomFieldValue, $this>
+     */
     public function values(): HasMany
     {
         return $this->hasMany(CustomFieldValue::class);

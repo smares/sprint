@@ -67,6 +67,6 @@ class TaskData
      */
     public static function person(?User $user): ?array
     {
-        return $user === null ? null : ['id' => $user->id, 'name' => $user->name, 'email' => $user->email];
+        return $user instanceof User ? ['id' => $user->id, 'name' => $user->name, 'email' => $user->email] : null;
     }
 }

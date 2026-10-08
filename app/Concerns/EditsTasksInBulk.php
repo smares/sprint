@@ -80,7 +80,7 @@ trait EditsTasksInBulk
 
         return $this->filteredTasks()
             ->where('is_section', false)
-            ->whereIn('id', array_slice(array_map('intval', $this->selected), 0, self::MAX_SELECTION))
+            ->whereIn('id', array_slice(array_map(intval(...), $this->selected), 0, self::MAX_SELECTION))
             ->pluck('id')
             ->map(fn ($id) => (int) $id)
             ->all();
@@ -91,7 +91,7 @@ trait EditsTasksInBulk
         Gate::authorize('edit', $this->project);
 
         $page = $this->tasks->pluck('id')->map(fn ($id) => (string) $id)->all();
-        $current = array_map('strval', $this->selected);
+        $current = array_map(strval(...), $this->selected);
 
         $this->selected = array_diff($page, $current) === []
             ? array_values(array_diff($current, $page))
@@ -217,7 +217,7 @@ trait EditsTasksInBulk
     private function syncBulkTags(Task $task, array $add, array $remove, Collection $names): void
     {
         if ($add !== []) {
-            $attached = $task->tags()->syncWithoutDetaching(array_map('intval', $add))['attached'];
+            $attached = $task->tags()->syncWithoutDetaching(array_map(intval(...), $add))['attached'];
 
             if ($attached !== []) {
                 $task->logActivity('tags_added', ['names' => collect($attached)->map(fn ($id) => $names[$id])->sort()->values()->all()]);
@@ -225,7 +225,7 @@ trait EditsTasksInBulk
         }
 
         if ($remove !== []) {
-            $detached = $task->tags()->whereKey(array_map('intval', $remove))->pluck('tags.id')->all();
+            $detached = $task->tags()->whereKey(array_map(intval(...), $remove))->pluck('tags.id')->all();
 
             if ($detached !== []) {
                 $task->tags()->detach($detached);

@@ -4,6 +4,7 @@ use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\ProjectExportController;
 use App\Services\LocaleService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -11,7 +12,7 @@ use Illuminate\Validation\Rule;
 use Laravel\Passkeys\Http\Controllers\PasskeyLoginController;
 use Laravel\Passkeys\Http\Controllers\PasskeyRegistrationController;
 
-Route::post('/locale', function (Request $request) {
+Route::post('/locale', function (Request $request): RedirectResponse {
     $locale = $request->validate(['locale' => ['required', Rule::in(LocaleService::codes())]])['locale'];
 
     $request->session()->put('locale', $locale);
@@ -39,7 +40,7 @@ Route::post('/logout', function (Request $request) {
     $request->session()->invalidate();
     $request->session()->regenerateToken();
 
-    return redirect()->route('login');
+    return to_route('login');
 })->middleware('auth')->name('logout');
 
 Route::livewire('/tasks/{task}/notifications/{user}', 'pages::tasks.notifications')

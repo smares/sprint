@@ -56,11 +56,17 @@ class Project extends Model
         return ['archived_at' => 'datetime'];
     }
 
+    /**
+     * @return BelongsToMany<User, $this>
+     */
     public function members(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'project_members')->withPivot('role')->withTimestamps()->orderBy('users.name');
     }
 
+    /**
+     * @return BelongsToMany<Team, $this>
+     */
     public function teams(): BelongsToMany
     {
         return $this->belongsToMany(Team::class, 'project_team')->withPivot('role')->withTimestamps()->orderBy('teams.name');
@@ -71,7 +77,7 @@ class Project extends Model
      */
     public function roleFor(?User $user): ?ProjectRole
     {
-        if ($user === null) {
+        if (! $user instanceof User) {
             return null;
         }
 
@@ -95,7 +101,7 @@ class Project extends Model
 
     public function canBeViewedBy(?User $user): bool
     {
-        return $this->roleFor($user) !== null;
+        return $this->roleFor($user) instanceof ProjectRole;
     }
 
     /**
@@ -134,8 +140,10 @@ class Project extends Model
 
     /**
      * Projects the person may open.
+     *
+     * @param  Builder<static>  $query
      */
-    public function scopeVisibleTo(Builder $query, User $user): void
+    protected function scopeVisibleTo(Builder $query, User $user): void
     {
         if ($user->is_admin) {
             return;
@@ -149,6 +157,8 @@ class Project extends Model
 
     /**
      * People who can be assigned, mentioned or made collaborators: members and application admins.
+     *
+     * @return Builder<User>
      */
     public function eligibleUsers(): Builder
     {
@@ -161,11 +171,17 @@ class Project extends Model
             );
     }
 
+    /**
+     * @return HasMany<CustomField, $this>
+     */
     public function customFields(): HasMany
     {
         return $this->hasMany(CustomField::class)->orderBy('position')->orderBy('id');
     }
 
+    /**
+     * @return HasMany<TaskStatus, $this>
+     */
     public function statuses(): HasMany
     {
         return $this->hasMany(TaskStatus::class)->orderBy('position')->orderBy('id');
@@ -187,11 +203,17 @@ class Project extends Model
         return $this->statuses()->where('is_done', true)->firstOrFail();
     }
 
+    /**
+     * @return HasMany<SavedFilter, $this>
+     */
     public function savedFilters(): HasMany
     {
         return $this->hasMany(SavedFilter::class);
     }
 
+    /**
+     * @return HasMany<Tag, $this>
+     */
     public function tags(): HasMany
     {
         return $this->hasMany(Tag::class);
@@ -273,6 +295,9 @@ class Project extends Model
         });
     }
 
+    /**
+     * @return HasMany<Task, $this>
+     */
     public function tasks(): HasMany
     {
         return $this->hasMany(Task::class);

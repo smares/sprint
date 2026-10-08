@@ -2,7 +2,7 @@
 
 namespace App\Enums;
 
-use Illuminate\Support\Carbon;
+use Carbon\CarbonInterface;
 
 enum RepeatUnit: string
 {
@@ -24,7 +24,7 @@ enum RepeatUnit: string
     /**
      * The date that is the given number of units later; month ends are kept (31 January + 1 month = 28 February).
      */
-    public function addTo(Carbon $date, int $interval): Carbon
+    public function addTo(CarbonInterface $date, int $interval): CarbonInterface
     {
         $date = $date->copy();
 

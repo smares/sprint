@@ -12,16 +12,16 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class CustomFieldFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
     public function select(): static
     {
         return $this->state(['type' => CustomFieldType::Select]);
     }
 
+    /**
+     * Define the model's default state.
+     *
+     * @return array<string, mixed>
+     */
     public function definition(): array
     {
         return [

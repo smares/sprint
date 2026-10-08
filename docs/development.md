@@ -4,9 +4,17 @@
 composer dev      # Server, Queue, Logs und Vite
 composer test     # Testsuite (PHPUnit)
 vendor/bin/pint   # Code-Stil
+composer analyse  # Statische Analyse (Larastan)
+composer refactor:check  # Rector prüfen (ohne Änderungen); composer refactor wendet sie an
 ```
 
 Änderungen an Views, CSS oder JavaScript erscheinen im Browser erst nach `npm run dev` (oder `npm run build`).
+
+## Statische Analyse und Rector
+
+- **Larastan** (`phpstan.neon`) prüft `app`, `config`, `database` und `routes` auf Stufe 5. Die 13 Funde, die sich nicht sinnvoll beheben lassen (Larastan-Fehlmeldungen bei `first()` mit Closure und bei Pivot-Zugriffen, Traits, die nur Livewire-Komponenten nutzen), stehen in `phpstan-baseline.neon`; neue Fehler dürfen nicht dazukommen. Wer alte Fehler behebt, erzeugt die Baseline neu: `vendor/bin/phpstan analyse --generate-baseline`. Die PHP-Blöcke in den Livewire-Blade-Dateien prüft das Werkzeug nicht
+- **Rector** (`rector.php`) enthält die PHP-8.3-Regeln, Totcode, Code-Qualität, Typdeklarationen, frühe Rückgaben und die Laravel-Regeln. Ausgeschaltet sind Regeln, die Konventionen des Projekts ändern würden (`strict_types`, `resolve()` statt `app()`, Typen an jeder Closure, `Date` statt `Carbon`, `#[Scope]` statt `scopeName()`). Nach `composer refactor` immer `vendor/bin/pint` und die Tests laufen lassen
+- Beides läuft in der CI vor den Tests
 
 ## Aufbau
 

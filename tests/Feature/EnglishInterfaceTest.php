@@ -20,7 +20,7 @@ class EnglishInterfaceTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const GERMAN = '/[äöüÄÖÜß]|\b(Aufgabe|Aufgaben|Projekt|Projekte|Speichern|Abbrechen|Löschen|Neue|Neuer|Neues|Fällig|Zuständig|Beschreibung|Hinzufügen|Entfernen|Anlegen|Bitte|Keine|Noch|Mitglieder|Felder|Einstellungen|Erledigt|Offen|Anmelden|Passwort|Sprache|Suche|Alle|Zeitleiste|Kalender|Hinweis|Ansicht|Ansichten|Filter zurücksetzen|Zurücksetzen|Fertig|Beteiligte|Kommentar|Kommentare|Anhänge|Datei|Dateien|nicht|oder|und|für|mit|ist|wird|werden|dein|deine|Gespeichert|Sicherheit|Zugang)\b/u';
+    private const string GERMAN = '/[äöüÄÖÜß]|\b(Aufgabe|Aufgaben|Projekt|Projekte|Speichern|Abbrechen|Löschen|Neue|Neuer|Neues|Fällig|Zuständig|Beschreibung|Hinzufügen|Entfernen|Anlegen|Bitte|Keine|Noch|Mitglieder|Felder|Einstellungen|Erledigt|Offen|Anmelden|Passwort|Sprache|Suche|Alle|Zeitleiste|Kalender|Hinweis|Ansicht|Ansichten|Filter zurücksetzen|Zurücksetzen|Fertig|Beteiligte|Kommentar|Kommentare|Anhänge|Datei|Dateien|nicht|oder|und|für|mit|ist|wird|werden|dein|deine|Gespeichert|Sicherheit|Zugang)\b/u';
 
     private User $user;
 

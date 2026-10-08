@@ -16,13 +16,13 @@ use League\CommonMark\Extension\ExternalLink\ExternalLinkExtension;
  */
 class MarkdownService
 {
-    private const MENTION_PATTERN = '/@\[([^\]\n]{1,255})\]\((user|task):(\d+)\)/u';
+    private const string MENTION_PATTERN = '/@\[([^\]\n]{1,255})\]\((user|task):(\d+)\)/u';
 
-    private const IMAGE_PATTERN = '/!\[([^\]\n]{0,255})\]\(attachment:(\d+)\)/u';
+    private const string IMAGE_PATTERN = '/!\[([^\]\n]{0,255})\]\(attachment:(\d+)\)/u';
 
-    private const PLACEHOLDER_START = "\u{E000}";
+    private const string PLACEHOLDER_START = "\u{E000}";
 
-    private const PLACEHOLDER_END = "\u{E001}";
+    private const string PLACEHOLDER_END = "\u{E001}";
 
     public static function render(?string $text): HtmlString
     {
@@ -34,13 +34,13 @@ class MarkdownService
 
         $mentions = [];
 
-        $withPlaceholders = preg_replace_callback(self::MENTION_PATTERN, function (array $match) use (&$mentions) {
+        $withPlaceholders = preg_replace_callback(self::MENTION_PATTERN, function (array $match) use (&$mentions): string {
             $mentions[] = ['name' => $match[1], 'type' => $match[2], 'id' => (int) $match[3]];
 
             return self::PLACEHOLDER_START.(count($mentions) - 1).self::PLACEHOLDER_END;
         }, $text);
 
-        $withPlaceholders = preg_replace_callback(self::IMAGE_PATTERN, function (array $match) use (&$mentions) {
+        $withPlaceholders = preg_replace_callback(self::IMAGE_PATTERN, function (array $match) use (&$mentions): string {
             $mentions[] = ['name' => $match[1], 'type' => 'image', 'id' => (int) $match[2]];
 
             return self::PLACEHOLDER_START.(count($mentions) - 1).self::PLACEHOLDER_END;
@@ -111,7 +111,7 @@ class MarkdownService
 
         return (string) preg_replace_callback(
             '/'.self::PLACEHOLDER_START.'(\d+)'.self::PLACEHOLDER_END.'/u',
-            function (array $match) use ($mentions, $users, $tasks, $images) {
+            function (array $match) use ($mentions, $users, $tasks, $images): string {
                 $mention = $mentions[(int) $match[1]];
 
                 if ($mention['type'] === 'image') {

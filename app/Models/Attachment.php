@@ -24,7 +24,7 @@ class Attachment extends Model
     public const INLINE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
 
     /**
-     * The disk the files live on: `SPRINT_ATTACHMENTS_DISK` or, if that is not set, the application's default disk
+     * The disk the files live on: `ATTACHMENTS_DISK` or, if that is not set, the application's default disk
      * (`FILESYSTEM_DISK`, locally `storage/app/private`; with an object storage bucket the bucket).
      */
     public static function disk(): string

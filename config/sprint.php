@@ -42,7 +42,7 @@ return [
     |
     */
 
-    'attachments_disk' => env('SPRINT_ATTACHMENTS_DISK'),
+    'attachments_disk' => env('ATTACHMENTS_DISK'),
 
     /** How many days ahead the digest looks, besides today and overdue tasks. */
     'digest_days_ahead' => 3,

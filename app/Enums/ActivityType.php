@@ -32,6 +32,27 @@ enum ActivityType: string
     case BlockingRemoved = 'blocking_removed';
 
     /**
+     * The symbol of the entry in the history timeline.
+     */
+    public function icon(): string
+    {
+        return match ($this) {
+            self::Created => 'plus',
+            self::Duplicated => 'document-duplicate',
+            self::StatusChanged => 'arrow-path',
+            self::AssigneeChanged, self::CollaboratorsAdded, self::CollaboratorsRemoved => 'user',
+            self::DueDateChanged, self::StartDateChanged => 'calendar',
+            self::TitleChanged, self::DescriptionChanged => 'pencil',
+            self::ParentChanged => 'arrow-turn-down-right',
+            self::RecurrenceChanged, self::RecurrenceCreated, self::RecurrenceEnded => 'arrow-path-rounded-square',
+            self::FieldChanged => 'adjustments-horizontal',
+            self::AttachmentsAdded, self::AttachmentsRemoved => 'paper-clip',
+            self::TagsAdded, self::TagsRemoved => 'tag',
+            self::BlockersAdded, self::BlockersRemoved, self::BlockingAdded, self::BlockingRemoved => 'lock-closed',
+        };
+    }
+
+    /**
      * The sentence after the person's name, e.g. "changed the status from “Open” to “Done”".
      *
      * @param  array<string, mixed>  $data

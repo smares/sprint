@@ -77,7 +77,7 @@ new class extends Component
                 <code class="mt-2 block break-all rounded bg-zinc-100 p-2 text-xs dark:bg-zinc-800">claude mcp add --transport http sprint {{ url('/mcp') }} --header "Authorization: Bearer {{ $createdToken }}"</code>
             </flux:callout.text>
             <x-slot name="actions">
-                <flux:button size="sm" x-on:click="navigator.clipboard.writeText(@js($createdToken)); copied = true" x-text="copied ? @js(__('Copied')) : @js(__('Copy token'))">{{ __('Copy token') }}</flux:button>
+                <flux:button size="sm" x-on:click="navigator.clipboard.writeText({{ Js::from($createdToken) }}); copied = true" x-text="copied ? {{ Js::from(__('Copied')) }} : {{ Js::from(__('Copy token')) }}">{{ __('Copy token') }}</flux:button>
                 <flux:button size="sm" variant="ghost" wire:click="dismissToken">{{ __('Finish') }}</flux:button>
             </x-slot>
         </flux:callout>

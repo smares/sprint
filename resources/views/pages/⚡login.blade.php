@@ -191,7 +191,7 @@ new class extends Component
             @if ($useRecoveryCode)
                 <flux:input wire:model="recoveryCode" :label="__('Recovery code')" :description="__('Each code can only be used once.')" autofocus autocomplete="off" />
             @else
-                <flux:input wire:model="code" :label="__('Code from the authenticator app')" inputmode="numeric" autofocus autocomplete="one-time-code" />
+                <flux:otp wire:model="code" length="6" submit="auto" :label="__('Code from the authenticator app')" x-init="$nextTick(() => $el.querySelector('input')?.focus())" />
             @endif
             <flux:button type="submit" variant="primary" class="w-full">{{ __('Confirm') }}</flux:button>
             <div class="flex justify-between">

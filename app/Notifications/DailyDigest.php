@@ -14,6 +14,9 @@ class DailyDigest extends Notification implements ShouldQueueAfterCommit
 {
     use BuildsLocalizedMail, Queueable;
 
+    /** At most this many tasks per section; the rest is only counted, the link leads to all of them. */
+    public const PER_SECTION = 25;
+
     /**
      * @param  array{overdue: Collection<int, Task>, today: Collection<int, Task>, upcoming: Collection<int, Task>}  $tasks
      */
@@ -32,6 +35,7 @@ class DailyDigest extends Notification implements ShouldQueueAfterCommit
         return $this->localizedMail('daily-digest', [
             'name' => $notifiable->name,
             'tasks' => $this->tasks,
+            'limit' => self::PER_SECTION,
             'url' => route('tasks.mine'),
         ]);
     }

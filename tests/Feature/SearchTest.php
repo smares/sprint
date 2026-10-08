@@ -208,6 +208,18 @@ class SearchTest extends TestCase
         $this->assertSame([], $this->titles('%'));
     }
 
+    public function test_the_like_fallback_needs_one_word_with_three_letters(): void
+    {
+        $this->withoutFullText();
+        $this->task('QA Abnahme');
+
+        $this->assertSame([], $this->titles('qa'));
+        $this->assertSame(['QA Abnahme'], $this->titles('qa abn'));
+        $this->assertTrue(app(TaskSearchService::class)->isTooShort(['qa']));
+
+        Livewire::test('pages::search')->set('query', 'qa')->assertSee('Gib mindestens 3 Zeichen ein.');
+    }
+
     public function test_the_fallback_respects_visibility(): void
     {
         $this->withoutFullText();

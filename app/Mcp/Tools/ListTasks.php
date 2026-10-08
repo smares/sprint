@@ -6,7 +6,6 @@ use App\Mcp\TaskData;
 use App\Models\Task;
 use App\Models\User;
 use App\Services\TaskSearchService;
-use Illuminate\Contracts\Database\Query\Builder;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -58,10 +57,11 @@ class ListTasks extends SprintTool
         } else {
             $tasks = Task::query()
                 ->where('tasks.is_section', false)
-                ->whereHas('project', fn (Builder $projects) => $projects->visibleTo($user))
+                ->visibleTo($user)
                 ->when(isset($validated['project_id']), fn ($query) => $query->where('tasks.project_id', $validated['project_id']))
                 ->unless($validated['include_subtasks'] ?? false, fn ($query) => $query->whereNull('tasks.parent_id'))
-                ->when($state !== 'all', fn ($query) => $query->whereHas('status', fn (Builder $status) => $status->where('is_done', $state === 'done')))
+                ->when($state === 'open', fn ($query) => $query->open())
+                ->when($state === 'done', fn ($query) => $query->done())
                 ->orderBy('tasks.project_id')->orderBy('tasks.position')->orderBy('tasks.id');
         }
 
@@ -74,8 +74,7 @@ class ListTasks extends SprintTool
         }
 
         if (! empty($validated['overdue'])) {
-            $tasks->whereDate('tasks.due_date', '<', today())
-                ->whereHas('status', fn (Builder $status) => $status->where('is_done', false));
+            $tasks->whereDate('tasks.due_date', '<', today())->open();
         }
 
         $page = $tasks->with(['project', 'status', 'assignee', 'tags'])

@@ -157,6 +157,19 @@ class DailyDigestTest extends TestCase
         $this->assertStringContainsString('href="'.route('tasks.mine').'"', $html);
     }
 
+    public function test_long_sections_are_cut_off_with_a_count(): void
+    {
+        foreach (range(1, 30) as $number) {
+            $this->task(sprintf('Alt %02d', $number), '2026-09-'.sprintf('%02d', $number));
+        }
+
+        $text = preg_replace('/\s+/', ' ', strip_tags((string) (new DailyDigestNotification(app(DailyDigestService::class)->tasksFor($this->user)))->toMail($this->user)->render()));
+
+        $this->assertStringContainsString('Alt 25', $text);
+        $this->assertStringNotContainsString('Alt 26', $text);
+        $this->assertStringContainsString('… und 5 weitere', $text);
+    }
+
     public function test_sections_without_tasks_do_not_appear_in_the_mail(): void
     {
         $this->task('Nur heute', '2026-10-07');

@@ -14,8 +14,10 @@ use App\Models\Comment;
 use App\Models\Project;
 use App\Models\Tag;
 use App\Models\Task;
+use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Tests\TestCase;
@@ -119,6 +121,32 @@ class McpServerTest extends TestCase
             ->assertDontSee('Fremd')->assertDontSee($archived->name);
 
         $this->tool(ListProjects::class, ['include_archived' => true])->assertSee($archived->name);
+    }
+
+    public function test_project_roles_and_members_come_from_memberships_and_teams_in_a_fixed_number_of_queries(): void
+    {
+        $team = Team::factory()->create();
+        $team->users()->attach([$this->user->id, User::factory()->create(['email' => 'teamkollegin@example.com'])->id]);
+        $viaTeam = Project::factory()->create(['name' => 'Über das Team']);
+        $viaTeam->setTeamRole($team, ProjectRole::Viewer);
+        User::factory()->admin()->create(['email' => 'chefin@example.com']);
+        User::factory()->create(['email' => 'aussen@example.com']);
+
+        $queries = function (): int {
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            $this->tool(ListProjects::class)->assertOk()
+                ->assertSee(['Über das Team', 'viewer', 'teamkollegin@example.com', 'chefin@example.com'])
+                ->assertDontSee('aussen@example.com');
+            DB::disableQueryLog();
+
+            return count(DB::getQueryLog());
+        };
+
+        $forTwo = $queries();
+        Project::factory()->count(5)->create()->each(fn (Project $project) => $project->setTeamRole($team, ProjectRole::Editor));
+
+        $this->assertSame($forTwo, $queries());
     }
 
     public function test_tasks_can_be_listed_filtered_and_searched(): void

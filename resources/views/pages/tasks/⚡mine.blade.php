@@ -23,12 +23,9 @@ new class extends Component
     private function mine(): Builder
     {
         return Task::query()
-            ->whereHas('project', fn ($projects) => $projects->visibleTo(auth()->user()))
-            ->where(fn ($query) => $query
-                ->where('assignee_id', auth()->id())
-                ->orWhereHas('collaborators', fn ($collaborators) => $collaborators->whereKey(auth()->id()))
-            )
-            ->whereHas('status', fn ($status) => $status->where('is_done', false));
+            ->visibleTo(auth()->user())
+            ->involving(auth()->user())
+            ->open();
     }
 
     #[Computed]

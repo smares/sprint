@@ -110,13 +110,13 @@ class Task extends Model
             $actor = auth()->user();
 
             if ($task->wasChanged('status_id')) {
-                $task->setRelation('status', TaskStatus::find($task->status_id));
+                $task->setRelation('status', $task->statusById($task->status_id));
             }
 
             $task->logChanges();
 
             if ($task->wasChanged('status_id')) {
-                $old = TaskStatus::find($task->getOriginal('status_id'));
+                $old = $task->statusById($task->getOriginal('status_id'));
 
                 foreach ($task->usersToNotify($actor) as $recipient) {
                     $change = ['task' => $task, 'from' => $old?->name ?? '–', 'to' => $task->status->name];
@@ -472,6 +472,35 @@ class Task extends Model
         return $this->belongsToMany(User::class, 'task_notification_mutes');
     }
 
+    /**
+     * A status of this task's project, taken from the loaded statuses where possible (bulk changes load them once).
+     */
+    private function statusById(mixed $id): ?TaskStatus
+    {
+        if ($id === null) {
+            return null;
+        }
+
+        if ($this->relationLoaded('project') && $this->project->relationLoaded('statuses')) {
+            return $this->project->statuses->firstWhere('id', (int) $id) ?? TaskStatus::find($id);
+        }
+
+        return TaskStatus::find($id);
+    }
+
+    /**
+     * A person, taken from the loaded assignee or collaborators where possible.
+     */
+    private function userById(int $id): ?User
+    {
+        $loaded = collect([
+            $this->relationLoaded('assignee') ? $this->assignee : null,
+            ...($this->relationLoaded('collaborators') ? $this->collaborators : []),
+        ])->filter()->firstWhere('id', $id);
+
+        return $loaded ?? User::find($id);
+    }
+
     public function isMutedBy(User $user): bool
     {
         return $this->notificationMutes()->whereKey($user->getKey())->exists();
@@ -494,9 +523,11 @@ class Task extends Model
      */
     public function usersToNotify(?User $except = null): Collection
     {
-        $muted = $this->notificationMutes()->pluck('users.id');
+        $muted = $this->relationLoaded('notificationMutes') ? $this->notificationMutes->pluck('id') : $this->notificationMutes()->pluck('users.id');
+        $collaborators = $this->relationLoaded('collaborators') ? $this->collaborators : $this->collaborators()->get();
+        $assignee = $this->assignee_id === null ? null : $this->userById($this->assignee_id);
 
-        $candidates = collect([$this->assignee, ...$this->collaborators()->get()])
+        $candidates = collect([$assignee, ...$collaborators])
             ->filter()
             ->unique('id')
             ->reject(fn (User $user) => $muted->contains($user->id) || $user->id === $except?->id)
@@ -558,11 +589,11 @@ class Task extends Model
     private function logChanges(): void
     {
         $date = fn (mixed $value) => $value === null ? '–' : Carbon::parse($value)->format('d.m.Y');
-        $userName = fn (mixed $id) => $id === null ? '–' : (User::find($id)?->name ?? '–');
+        $userName = fn (mixed $id) => $id === null ? '–' : ($this->userById((int) $id)?->name ?? '–');
 
         if ($this->wasChanged('status_id')) {
             $this->logActivity('status_changed', [
-                'from' => TaskStatus::find($this->getOriginal('status_id'))?->name ?? '–',
+                'from' => $this->statusById($this->getOriginal('status_id'))?->name ?? '–',
                 'to' => $this->loadMissing('status')->status->name,
             ]);
         }
@@ -705,6 +736,52 @@ class Task extends Model
     {
         $query->whereRaw('coalesce(tasks.start_date, tasks.due_date) <= ?', [$to->copy()->endOfDay()->toDateTimeString()])
             ->whereRaw('coalesce(tasks.due_date, tasks.start_date) >= ?', [$from->copy()->startOfDay()->toDateTimeString()]);
+    }
+
+    /**
+     * Tasks in projects the person may open. The projects are found once by a plain subquery
+     * instead of a check per task.
+     *
+     * @param  Builder<static>  $query
+     */
+    protected function scopeVisibleTo(Builder $query, User $user): void
+    {
+        if (! $user->is_admin) {
+            $query->whereIn('tasks.project_id', Project::query()->visibleTo($user)->select('projects.id'));
+        }
+    }
+
+    /**
+     * Tasks whose status is not a done status.
+     *
+     * @param  Builder<static>  $query
+     */
+    protected function scopeOpen(Builder $query): void
+    {
+        $query->whereIn('tasks.status_id', TaskStatus::query()->where('is_done', false)->select('id'));
+    }
+
+    /**
+     * Tasks whose status is a done status.
+     *
+     * @param  Builder<static>  $query
+     */
+    protected function scopeDone(Builder $query): void
+    {
+        $query->whereIn('tasks.status_id', TaskStatus::query()->where('is_done', true)->select('id'));
+    }
+
+    /**
+     * Tasks the person is assigned to or collaborates on.
+     *
+     * @param  Builder<static>  $query
+     */
+    protected function scopeInvolving(Builder $query, User $user): void
+    {
+        $query->where(fn (Builder $tasks) => $tasks
+            ->where('tasks.assignee_id', $user->getKey())
+            ->orWhereIn('tasks.id', DB::table('task_collaborators')->where('user_id', $user->getKey())->select('task_id'))
+        );
     }
 
     public function isOverdue(): bool

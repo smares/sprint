@@ -26,7 +26,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Sanctum\HasApiTokens;
 use SensitiveParameter;
 
-#[Fillable(['name', 'email', 'password', 'is_admin', 'locale', 'deactivated_at', 'digest_enabled', 'reminders_enabled'])]
+#[Fillable(['name', 'email', 'password', 'is_admin', 'locale', 'deactivated_at', 'digest_enabled', 'reminders_enabled', 'celebrations_enabled'])]
 #[Hidden(['password', 'remember_token', 'two_factor_secret', 'two_factor_recovery_codes'])]
 class User extends Authenticatable implements HasLocalePreference, PasskeyUser
 {
@@ -36,7 +36,7 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
     /**
      * @var array<string, mixed>
      */
-    protected $attributes = ['digest_enabled' => true, 'reminders_enabled' => true];
+    protected $attributes = ['digest_enabled' => true, 'reminders_enabled' => true, 'celebrations_enabled' => true];
 
     /**
      * Get the attributes that should be cast.
@@ -53,6 +53,7 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
             'two_factor_confirmed_at' => 'datetime',
             'digest_enabled' => 'boolean',
             'reminders_enabled' => 'boolean',
+            'celebrations_enabled' => 'boolean',
             'avatar_updated_at' => 'datetime',
         ];
     }

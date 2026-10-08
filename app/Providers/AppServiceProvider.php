@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Events\InboxUpdated;
 use App\Models\User;
 use App\Services\AutomationService;
+use App\Services\CelebrationService;
 use App\Services\LocaleService;
 use App\Services\RealtimeService;
 use App\Services\TaskSearchService;
@@ -21,6 +22,9 @@ use Illuminate\Support\ServiceProvider;
 use Laravel\Fortify\Fortify;
 use Laravel\Passkeys\Contracts\PasskeyUser;
 use Laravel\Passkeys\Passkeys;
+use Livewire\Component;
+
+use function Livewire\on;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -32,6 +36,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(TaskSearchService::class);
         $this->app->singleton(RealtimeService::class);
         $this->app->singleton(AutomationService::class);
+        $this->app->singleton(CelebrationService::class);
 
         Fortify::ignoreRoutes();
     }
@@ -63,6 +68,15 @@ class AppServiceProvider extends ServiceProvider
             if (str_contains((string) $sending->message->getHtmlBody(), 'cid:sprint-logo.png')) {
                 $sending->message->embedFromPath(resource_path('images/mail-logo.png'), 'sprint-logo.png', 'image/png');
             }
+        });
+
+        // After each Livewire action: tell the browser when a task was completed and the dice say unicorn
+        on('call', fn (Component $component) => function (mixed $return) use ($component): mixed {
+            if ($this->app->make(CelebrationService::class)->consume()) {
+                $component->dispatch('task-completed');
+            }
+
+            return $return;
         });
 
         Passkeys::authorizeLoginUsing(fn (Request $request, PasskeyUser $user) => $user instanceof User && $user->isActive());

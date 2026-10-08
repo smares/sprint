@@ -62,11 +62,11 @@ class ProjectsAndTasksTest extends TestCase
         $project = Project::factory()->create();
         $assignee = User::factory()->admin()->create();
 
-        Livewire::test('pages::projects.show', ['project' => $project])
+        Livewire::test('task-create', ['project' => $project])
             ->set('title', 'Angebot schreiben')
             ->set('assigneeId', (string) $assignee->id)
             ->set('dueDate', '2026-12-24')
-            ->call('createTask')
+            ->call('create')
             ->assertHasNoErrors();
 
         $task = $project->tasks()->firstOrFail();
@@ -77,13 +77,45 @@ class ProjectsAndTasksTest extends TestCase
         $this->assertSame($project->defaultStatus()->id, $task->status_id);
     }
 
+    public function test_every_project_view_has_the_same_header_with_new_task(): void
+    {
+        $project = Project::factory()->create(['description' => 'Worum es geht']);
+
+        foreach (['projects.show', 'projects.board', 'projects.calendar', 'projects.timeline'] as $route) {
+            $this->get(route($route, $project))->assertOk()
+                ->assertSee('Worum es geht')
+                ->assertSee('Neue Aufgabe')
+                ->assertSee('wire:name="task-create"', false)
+                ->assertSee(__('Set up project'));
+        }
+    }
+
+    public function test_the_new_task_dialog_can_start_with_a_status_and_due_date(): void
+    {
+        $project = Project::factory()->create();
+        $done = $project->doneStatus();
+
+        Livewire::test('task-create', ['project' => $project])
+            ->dispatch('new-task', statusId: $done->id, dueDate: '2026-11-03')
+            ->assertSet('statusId', (string) $done->id)
+            ->assertSet('dueDate', '2026-11-03')
+            ->set('title', 'Schon fertig')
+            ->call('create')
+            ->assertHasNoErrors()
+            ->assertDispatched('task-created');
+
+        $task = $project->tasks()->firstOrFail();
+        $this->assertSame($done->id, $task->status_id);
+        $this->assertSame('2026-11-03', $task->due_date->toDateString());
+    }
+
     public function test_task_without_optional_fields_stores_nulls(): void
     {
         $project = Project::factory()->create();
 
-        Livewire::test('pages::projects.show', ['project' => $project])
+        Livewire::test('task-create', ['project' => $project])
             ->set('title', 'Nur Titel')
-            ->call('createTask')
+            ->call('create')
             ->assertHasNoErrors();
 
         $task = $project->tasks()->firstOrFail();

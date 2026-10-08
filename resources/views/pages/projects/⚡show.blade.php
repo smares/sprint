@@ -1,8 +1,8 @@
 <?php
 
-use App\Concerns\ListensForRealtime;
 use App\Concerns\EditsTasksInBulk;
 use App\Concerns\OpensTaskPanel;
+use App\Concerns\ShowsProject;
 use App\Enums\CustomFieldType;
 use App\Models\CustomFieldValue;
 use App\Models\Project;
@@ -24,7 +24,7 @@ use Livewire\Component;
 
 new class extends Component
 {
-    use ListensForRealtime;
+    use ShowsProject;
     use EditsTasksInBulk;
     use OpensTaskPanel;
 
@@ -54,24 +54,6 @@ new class extends Component
     #[Url(as: 'dir')]
     public string $sortDirection = 'asc';
 
-    public string $title = '';
-
-    public function mount(): void
-    {
-        Gate::authorize('view', $this->project);
-    }
-
-    public function hydrate(): void
-    {
-        Gate::authorize('view', $this->project);
-    }
-
-    #[Computed]
-    public function canEdit(): bool
-    {
-        return Gate::allows('edit', $this->project);
-    }
-
     /**
      * Statuses and tags are edited in modals; the list re-renders itself, and a filter on a deleted tag is dropped.
      */
@@ -90,24 +72,11 @@ new class extends Component
      * Tasks were imported from a CSV file in the import window.
      */
     #[On('tasks-imported')]
+    #[On('task-created')]
     public function tasksImported(): void
     {
         unset($this->tasks, $this->totalTasks, $this->progress, $this->tagOptions);
     }
-
-    #[Computed]
-    public function canManage(): bool
-    {
-        return Gate::allows('manage', $this->project);
-    }
-
-    public string $description = '';
-
-    public string $assigneeId = '';
-
-    public string $dueDate = '';
-
-    public string $startDate = '';
 
     /**
      * Top-level tasks matching the filters, without order and limit.
@@ -267,33 +236,6 @@ new class extends Component
     public function users(): Collection
     {
         return $this->project->eligibleUsers()->orderBy('name')->get(['id', 'name']);
-    }
-
-    public function createTask(): void
-    {
-        Gate::authorize('edit', $this->project);
-
-        $validated = $this->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string', 'max:10000'],
-            'assigneeId' => ['nullable', Rule::in($this->users->pluck('id')->map(fn ($id) => (string) $id)->all())],
-            'dueDate' => ['nullable', 'date'],
-            'startDate' => ['nullable', 'date', 'before_or_equal:dueDate'],
-        ]);
-
-        $this->project->tasks()->create([
-            'title' => $validated['title'],
-            'description' => $validated['description'] ?: null,
-            'assignee_id' => $validated['assigneeId'] ?: null,
-            'due_date' => $validated['dueDate'] ?: null,
-            'start_date' => $validated['startDate'] ?: null,
-            'creator_id' => auth()->id(),
-            'position' => $this->project->nextRootPosition(),
-        ]);
-
-        $this->reset('title', 'description', 'assigneeId', 'dueDate', 'startDate');
-        unset($this->tasks);
-        Flux::modal('create-task')->close();
     }
 
     /**
@@ -503,11 +445,6 @@ new class extends Component
         unset($this->tasks);
     }
 
-    public function presenceChannel(): string
-    {
-        return "project.{$this->project->getKey()}.presence";
-    }
-
     public function rendering(View $view): void
     {
         $view->title($this->project->name);
@@ -516,37 +453,7 @@ new class extends Component
 ?>
 
 <div @class(['lg:pe-[39rem]' => $this->panelTask, 'pb-28' => $selecting])>
-    <flux:breadcrumbs class="mb-4">
-        <flux:breadcrumbs.item href="{{ route('projects.index') }}" wire:navigate>{{ __('Projects') }}</flux:breadcrumbs.item>
-        <flux:breadcrumbs.item>{{ $project->name }}</flux:breadcrumbs.item>
-    </flux:breadcrumbs>
-
-    @if ($project->archived_at)
-        <flux:callout class="mb-4" icon="archive-box" :heading="__('Archived')" :text="__('This project is archived and read-only.')" />
-    @endif
-
-    <div @class(['mb-6 flex flex-col gap-4', 'lg:flex-row lg:items-center lg:justify-between' => ! $this->panelTask])>
-        <div>
-            <flux:heading size="xl">{{ $project->name }}</flux:heading>
-            @if ($project->description)
-                <flux:text class="mt-1">{{ $project->description }}</flux:text>
-            @endif
-        </div>
-
-        <div class="flex flex-wrap items-center gap-2">
-            <x-project-views :project="$project" active="list" :presence="$this->presenceChannel()" />
-
-            @if ($this->canEdit)
-                <flux:modal.trigger name="create-task">
-                    <flux:button variant="primary" icon="plus">{{ __('New task') }}</flux:button>
-                </flux:modal.trigger>
-            @endif
-
-            @if ($this->canManage)
-                <x-project-menu :project="$project" />
-            @endif
-        </div>
-    </div>
+    <x-project-header :project="$project" active="list" :presence="$this->presenceChannel()" :stacked="(bool) $this->panelTask" />
 
     <div class="mb-4 flex flex-wrap items-center gap-2">
         <flux:modal.trigger name="filters">
@@ -714,13 +621,7 @@ new class extends Component
                             @endif
                         </flux:table.cell>
                         <flux:table.cell class="min-w-44 whitespace-normal">
-                            <span class="me-1.5 inline-block min-w-4 select-none text-end align-baseline text-xs tabular-nums text-zinc-300 dark:text-zinc-600" data-row-number="{{ $loop->iteration }}" title="{{ __('Row :number', ['number' => $loop->iteration]) }}">{{ $loop->iteration }}</span><a href="{{ route('tasks.show', $task) }}" x-on:click="if ($event.metaKey || $event.ctrlKey || $event.shiftKey || $event.button !== 0) return; $event.preventDefault(); $wire.openTask({{ $task->id }})" @class(['font-medium hover:underline', 'text-blue-600 dark:text-blue-400' => (string) $task->id === $openTaskId])>{{ $task->title }}</a>
-                            @if ($task->isBlocked())
-                                <flux:icon.lock-closed variant="micro" class="ms-1 inline text-amber-500" title="{{ __('Blocked') }}" />
-                            @endif
-                            @if ($task->isRecurring())
-                                <flux:icon.arrow-path variant="micro" class="ms-1 inline text-zinc-400" title="{{ __('Repeats :schedule', ['schedule' => $task->recurrenceLabel()]) }}" />
-                            @endif
+                            <span class="me-1.5 inline-block min-w-4 select-none text-end align-baseline text-xs tabular-nums text-zinc-300 dark:text-zinc-600" data-row-number="{{ $loop->iteration }}" title="{{ __('Row :number', ['number' => $loop->iteration]) }}">{{ $loop->iteration }}</span><x-task-title-link :task="$task" :open="(string) $task->id === $openTaskId" />
                             @if ($progress = $this->progress[$task->id] ?? null)
                                 <flux:badge size="sm" icon="list-bullet" class="ms-1">{{ $progress['done'] }}/{{ $progress['total'] }}</flux:badge>
                             @endif
@@ -841,27 +742,6 @@ new class extends Component
     @endif
 
     @if ($this->canEdit)
-        <flux:modal name="create-task" class="md:w-[28rem]">
-            <form wire:submit="createTask" class="space-y-6">
-                <flux:heading size="lg">{{ __('New task') }}</flux:heading>
-                <flux:input wire:model="title" :label="__('Title')" autofocus />
-                <flux:textarea wire:model="description" :label="__('Description')" rows="3" />
-                <flux:select variant="listbox" wire:model="assigneeId" :label="__('Assignee')">
-                    <flux:select.option value="">{{ __('Nobody') }}</flux:select.option>
-                    @foreach ($this->users as $user)
-                        <flux:select.option value="{{ $user->id }}">{{ $user->name }}</flux:select.option>
-                    @endforeach
-                </flux:select>
-                <div class="grid grid-cols-2 gap-4">
-                    <flux:date-picker wire:model="startDate" label="{{ __('Starts on') }}" locale="{{ app()->getLocale() }}" placeholder="{{ __('Select date') }}" clearable />
-                    <flux:date-picker wire:model="dueDate" label="{{ __('Due on') }}" locale="{{ app()->getLocale() }}" placeholder="{{ __('Select date') }}" clearable />
-                </div>
-                <div class="flex">
-                    <flux:spacer />
-                    <flux:button type="submit" variant="primary">{{ __('Create') }}</flux:button>
-                </div>
-            </form>
-        </flux:modal>
     @endif
 
     <x-task-panel :task="$this->panelTask" />

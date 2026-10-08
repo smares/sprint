@@ -1,6 +1,6 @@
 <?php
 
-use App\Concerns\ListensForRealtime;
+use App\Concerns\ShowsProject;
 use App\Models\Project;
 use App\Models\Task;
 use Illuminate\Contracts\View\View;
@@ -13,7 +13,7 @@ use Livewire\Component;
 
 new class extends Component
 {
-    use ListensForRealtime;
+    use ShowsProject;
 
     /** Days shown at once. */
     public const DAYS = 42;
@@ -22,22 +22,6 @@ new class extends Component
 
     #[Url]
     public string $from = '';
-
-    public function mount(): void
-    {
-        Gate::authorize('view', $this->project);
-    }
-
-    public function hydrate(): void
-    {
-        Gate::authorize('view', $this->project);
-    }
-
-    #[Computed]
-    public function canEdit(): bool
-    {
-        return Gate::allows('edit', $this->project);
-    }
 
     /**
      * A bar was dragged: moved as a whole, or one of its edges stretched or shrunk.
@@ -135,11 +119,6 @@ new class extends Component
         return ['dated' => $dated - $this->rows->count(), 'undated' => $undated];
     }
 
-    public function presenceChannel(): string
-    {
-        return "project.{$this->project->getKey()}.presence";
-    }
-
     public function rendering(View $view): void
     {
         $view->title(__('Timeline – :project', ['project' => $this->project->name]));
@@ -148,15 +127,7 @@ new class extends Component
 ?>
 
 <div>
-    <flux:breadcrumbs class="mb-4">
-        <flux:breadcrumbs.item href="{{ route('projects.index') }}" wire:navigate>{{ __('Projects') }}</flux:breadcrumbs.item>
-        <flux:breadcrumbs.item>{{ $project->name }}</flux:breadcrumbs.item>
-    </flux:breadcrumbs>
-
-    <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <flux:heading size="xl">{{ $project->name }}</flux:heading>
-        <x-project-views :project="$project" active="timeline" :presence="$this->presenceChannel()" />
-    </div>
+    <x-project-header :project="$project" active="timeline" :presence="$this->presenceChannel()" />
 
     <div class="mb-4 flex items-center gap-2">
         <flux:button icon="chevron-left" wire:click="earlier" aria-label="{{ __('Earlier') }}" />

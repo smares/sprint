@@ -1,7 +1,7 @@
 <?php
 
-use App\Concerns\ListensForRealtime;
 use App\Concerns\OpensTaskPanel;
+use App\Concerns\ShowsProject;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskStatus;
@@ -17,7 +17,7 @@ use Livewire\Component;
 
 new class extends Component
 {
-    use ListensForRealtime;
+    use ShowsProject;
     use OpensTaskPanel;
 
     private const PAGE_SIZE = 30;
@@ -28,32 +28,10 @@ new class extends Component
 
     public Project $project;
 
-    public function mount(): void
-    {
-        Gate::authorize('view', $this->project);
-    }
-
-    public function hydrate(): void
-    {
-        Gate::authorize('view', $this->project);
-    }
-
     #[On('statuses-changed')]
     public function statusesChanged(): void
     {
         unset($this->statuses, $this->columns, $this->columnTotals);
-    }
-
-    #[Computed]
-    public function canEdit(): bool
-    {
-        return Gate::allows('edit', $this->project);
-    }
-
-    #[Computed]
-    public function canManage(): bool
-    {
-        return Gate::allows('manage', $this->project);
     }
 
     /**
@@ -166,11 +144,6 @@ new class extends Component
         unset($this->columns, $this->columnTotals);
     }
 
-    public function presenceChannel(): string
-    {
-        return "project.{$this->project->getKey()}.presence";
-    }
-
     public function rendering(View $view): void
     {
         $view->title($this->project->name);
@@ -179,26 +152,7 @@ new class extends Component
 ?>
 
 <div @class(['lg:pe-[39rem]' => $this->panelTask])>
-    <flux:breadcrumbs class="mb-4">
-        <flux:breadcrumbs.item href="{{ route('projects.index') }}" wire:navigate>{{ __('Projects') }}</flux:breadcrumbs.item>
-        <flux:breadcrumbs.item>{{ $project->name }}</flux:breadcrumbs.item>
-    </flux:breadcrumbs>
-
-    @if ($project->archived_at)
-        <flux:callout class="mb-4" icon="archive-box" :heading="__('Archived')" :text="__('This project is archived and read-only.')" />
-    @endif
-
-    <div @class(['mb-6 flex flex-col gap-4', 'lg:flex-row lg:items-center lg:justify-between' => ! $this->panelTask])>
-        <flux:heading size="xl">{{ $project->name }}</flux:heading>
-
-        <div class="flex flex-wrap items-center gap-2">
-            <x-project-views :project="$project" active="board" :presence="$this->presenceChannel()" />
-
-            @if ($this->canManage)
-                <x-project-menu :project="$project" />
-            @endif
-        </div>
-    </div>
+    <x-project-header :project="$project" active="board" :presence="$this->presenceChannel()" :stacked="(bool) $this->panelTask" />
 
     <flux:kanban class="items-start overflow-x-auto pb-4">
         @foreach ($this->statuses as $status)
@@ -213,13 +167,7 @@ new class extends Component
                 >
                     @foreach ($this->columns[$status->id] as $task)
                         <flux:kanban.card wire:key="task-{{ $task->id }}" :wire:sort:item="$this->canEdit ? $task->id : null">
-                            <a href="{{ route('tasks.show', $task) }}" x-on:click="if ($event.metaKey || $event.ctrlKey || $event.shiftKey || $event.button !== 0) return; $event.preventDefault(); $wire.openTask({{ $task->id }})" @class(['font-medium hover:underline', 'text-blue-600 dark:text-blue-400' => (string) $task->id === $openTaskId])>{{ $task->title }}</a>
-                            @if ($task->isBlocked())
-                                <flux:icon.lock-closed variant="micro" class="ms-1 inline text-amber-500" title="{{ __('Blocked') }}" />
-                            @endif
-                            @if ($task->isRecurring())
-                                <flux:icon.arrow-path variant="micro" class="ms-1 inline text-zinc-400" title="{{ __('Repeats :interval', ['interval' => $task->recurrenceLabel()]) }}" />
-                            @endif
+                            <x-task-title-link :task="$task" :open="(string) $task->id === $openTaskId" />
 
                             @if ($progress = $this->progress[$task->id] ?? null)
                                 <flux:badge size="sm" icon="list-bullet" class="mt-2">{{ $progress['done'] }}/{{ $progress['total'] }}</flux:badge>

@@ -1,6 +1,6 @@
 <?php
 
-use App\Concerns\ListensForRealtime;
+use App\Concerns\ShowsProject;
 use App\Models\Project;
 use App\Models\Task;
 use Illuminate\Contracts\View\View;
@@ -12,22 +12,12 @@ use Livewire\Component;
 
 new class extends Component
 {
-    use ListensForRealtime;
+    use ShowsProject;
 
     public Project $project;
 
     #[Url]
     public string $month = '';
-
-    public function mount(): void
-    {
-        Gate::authorize('view', $this->project);
-    }
-
-    public function hydrate(): void
-    {
-        Gate::authorize('view', $this->project);
-    }
 
     #[Computed]
     public function monthStart(): Carbon
@@ -35,12 +25,6 @@ new class extends Component
         $parsed = preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $this->month) ? Carbon::createFromFormat('Y-m-d', $this->month.'-01') : null;
 
         return ($parsed ?? now())->startOfMonth()->startOfDay();
-    }
-
-    #[Computed]
-    public function canEdit(): bool
-    {
-        return Gate::allows('edit', $this->project);
     }
 
     /**
@@ -130,11 +114,6 @@ new class extends Component
             ->count();
     }
 
-    public function presenceChannel(): string
-    {
-        return "project.{$this->project->getKey()}.presence";
-    }
-
     public function rendering(View $view): void
     {
         $view->title(__('Calendar – :project', ['project' => $this->project->name]));
@@ -143,15 +122,7 @@ new class extends Component
 ?>
 
 <div>
-    <flux:breadcrumbs class="mb-4">
-        <flux:breadcrumbs.item href="{{ route('projects.index') }}" wire:navigate>{{ __('Projects') }}</flux:breadcrumbs.item>
-        <flux:breadcrumbs.item>{{ $project->name }}</flux:breadcrumbs.item>
-    </flux:breadcrumbs>
-
-    <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <flux:heading size="xl">{{ $project->name }}</flux:heading>
-        <x-project-views :project="$project" active="calendar" :presence="$this->presenceChannel()" />
-    </div>
+    <x-project-header :project="$project" active="calendar" :presence="$this->presenceChannel()" />
 
     <div class="mb-4 flex items-center gap-2">
         <flux:button icon="chevron-left" wire:click="previousMonth" aria-label="{{ __('Previous month') }}" />

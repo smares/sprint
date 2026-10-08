@@ -24,7 +24,8 @@ composer refactor:check  # Rector prüfen (ohne Änderungen); composer refactor 
 | `app/Models` | Eloquent-Modelle: `Project`, `Task`, `TaskStatus`, `Tag`, `Comment`, `Team`, `User` |
 | `app/Services` | Dienste (Klassen mit Endung `Service`): `MarkdownService` (Markdown samt Erwähnungen und Bildern zu sicherem HTML), `TaskSearchService`, `TaskCsvService`, `DailyDigestService`, `HealthCheckService`, `InboxTextService`, `LocaleService` |
 | `resources/views/pages` | Seiten als Livewire-Komponenten (Projekte, Board, Status, Mitglieder, Aufgaben, Administration, Login) |
-| `resources/views/components` | Blade-Komponenten (`x-markdown`, `x-markdown-editor`, `x-task-subtree`) |
+| `app/Concerns` | Traits der Livewire-Seiten: `ShowsProject` (gemeinsamer Teil von Liste, Board, Kalender, Zeitleiste), `ListensForRealtime`, `OpensTaskPanel`, `EditsTasksInBulk`, `ConfirmsPassword` |
+| `resources/views/components` | Blade-Komponenten (u. a. `x-project-header`, `x-task-title-link`, `x-markdown`, `x-markdown-editor`, `x-task-subtree`) und kleine Livewire-Komponenten mit ⚡ (`task-create`, Projekt-Dialoge, Glocke, Befehlspalette) |
 | `resources/js/app.js` | Alpine-Komponenten (`@`-Auswahl, Zeitleistenbalken, Anwesenheit), Bildvorschau; Passkeys werden erst bei Bedarf geladen |
 | `resources/js/realtime.js` | Echo/Reverb-Verbindung; das Layout lädt die Datei nur, wenn Live-Updates eingeschaltet sind |
 | `routes/web.php` | Routen (alles hinter dem Login, außer `/login`) |

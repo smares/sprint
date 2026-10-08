@@ -55,14 +55,14 @@ class AuditFixesTest extends TestCase
         $member = User::factory()->create();
         $this->project->setRole($member, ProjectRole::Editor);
 
-        Livewire::test('pages::projects.show', ['project' => $this->project])
+        Livewire::test('task-create', ['project' => $this->project])
             ->set('title', 'Neu')->set('assigneeId', (string) $outsider->id)
-            ->call('createTask')
+            ->call('create')
             ->assertHasErrors('assigneeId');
 
-        Livewire::test('pages::projects.show', ['project' => $this->project])
+        Livewire::test('task-create', ['project' => $this->project])
             ->set('title', 'Neu')->set('assigneeId', (string) $member->id)
-            ->call('createTask')
+            ->call('create')
             ->assertHasNoErrors();
 
         $this->assertSame($member->id, Task::where('title', 'Neu')->firstOrFail()->assignee_id);

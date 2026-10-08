@@ -58,15 +58,15 @@ class CalendarAndTimelineTest extends TestCase
 
     public function test_start_date_can_be_set_when_creating_a_task(): void
     {
-        Livewire::test('pages::projects.show', ['project' => $this->project])
+        Livewire::test('task-create', ['project' => $this->project])
             ->set('title', 'Neu')->set('startDate', '2026-10-01')->set('dueDate', '2026-10-05')
-            ->call('createTask')->assertHasNoErrors();
+            ->call('create')->assertHasNoErrors();
 
         $this->assertSame('2026-10-01', Task::where('title', 'Neu')->firstOrFail()->start_date->toDateString());
 
-        Livewire::test('pages::projects.show', ['project' => $this->project])
+        Livewire::test('task-create', ['project' => $this->project])
             ->set('title', 'Falsch')->set('startDate', '2026-10-09')->set('dueDate', '2026-10-05')
-            ->call('createTask')->assertHasErrors('startDate');
+            ->call('create')->assertHasErrors('startDate');
     }
 
     public function test_task_span_uses_whatever_dates_exist(): void

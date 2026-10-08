@@ -594,5 +594,6 @@
     ":count people are looking at this task too": ":count Personen sehen sich diese Aufgabe auch gerade an",
     "Changed by someone else": "Von jemand anderem geändert",
     "This task was saved by another person. Reload to see their changes; what you typed is kept until then.": "Eine andere Person hat diese Aufgabe gespeichert. Lade neu, um die Änderungen zu sehen; deine Eingaben bleiben bis dahin erhalten.",
-    "Reload": "Neu laden"
+    "Reload": "Neu laden",
+    "Search tasks …": "Aufgaben suchen …"
 }

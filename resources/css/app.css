@@ -159,3 +159,12 @@
 .dark .markdown img.attachment-image {
     border-color: var(--color-zinc-700);
 }
+
+/*
+ * The pickers with a search that is answered by the server (parent task, dependencies) replace their options
+ * while Flux keeps the "No results found" line from before; show it only when no option is left.
+ */
+ui-options:has(ui-option:not([data-hidden])) ui-option-empty,
+ui-options:has(ui-option:not([data-hidden])) ui-empty {
+    display: none;
+}

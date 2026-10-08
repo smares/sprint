@@ -23,6 +23,9 @@ class Attachment extends Model
     /** Image types that may be shown inline; everything else is always downloaded. */
     public const INLINE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
 
+    /** Text types that may be previewed; they are always delivered as plain text. */
+    public const TEXT_MIME_TYPES = ['text/plain', 'text/csv', 'text/markdown', 'application/json'];
+
     protected static function booted(): void
     {
         static::saved(fn (self $attachment) => app(TaskSearch::class)->index($attachment->task_id));
@@ -46,6 +49,19 @@ class Attachment extends Model
     public function isInlineImage(): bool
     {
         return in_array($this->mime_type, self::INLINE_MIME_TYPES, true);
+    }
+
+    /**
+     * How the file can be previewed in the browser: `image`, `pdf`, `text` or null (download only).
+     */
+    public function previewKind(): ?string
+    {
+        return match (true) {
+            $this->isInlineImage() => 'image',
+            $this->mime_type === 'application/pdf' => 'pdf',
+            in_array($this->mime_type, self::TEXT_MIME_TYPES, true) => 'text',
+            default => null,
+        };
     }
 
     public function humanSize(): string

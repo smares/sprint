@@ -28,6 +28,17 @@ jobs:
         with:
           persist-credentials: false
 
+      # Pull requests from Dependabot only see Dependabot secrets, not the Actions secrets
+      - name: Flux Pro credentials available
+        env:
+          FLUX_USERNAME: ${{ secrets.FLUX_USERNAME }}
+          FLUX_LICENSE_KEY: ${{ secrets.FLUX_LICENSE_KEY }}
+        run: |
+          if [ -z "$FLUX_USERNAME" ] || [ -z "$FLUX_LICENSE_KEY" ]; then
+            echo "::error::FLUX_USERNAME and FLUX_LICENSE_KEY are missing. Add them under Settings → Secrets and variables → Actions, and for Dependabot pull requests also under → Dependabot (see docs/development.md)."
+            exit 1
+          fi
+
       # Only in .env, as on a host like Dokploy: Compose reads the build secret from there
       - name: Flux Pro credentials in .env
         env:

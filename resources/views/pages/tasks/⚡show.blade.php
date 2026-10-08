@@ -56,6 +56,9 @@ new class extends Component
     /** @var list<\Livewire\Features\SupportFileUploads\TemporaryUploadedFile> */
     public array $uploads = [];
 
+    /** @var \Livewire\Features\SupportFileUploads\TemporaryUploadedFile|null Image pasted or dropped into a text. */
+    public $inlineUpload = null;
+
     /** @var list<string> */
     public array $tagIds = [];
 
@@ -717,6 +720,50 @@ new class extends Component
         unset($this->attachments, $this->activityFeed);
     }
 
+    /**
+     * Stores the image pasted or dropped into a text as an attachment and returns what the text needs to refer to it.
+     *
+     * @return array{id: int, name: string}|null
+     */
+    public function storeInlineImage(): ?array
+    {
+        $this->authorizeEdit();
+
+        $this->validate(['inlineUpload' => ['required', 'file', 'mimes:png,jpg,jpeg,gif,webp', 'max:'.Attachment::MAX_KILOBYTES]], [], ['inlineUpload' => __('File')]);
+
+        $upload = $this->inlineUpload;
+        $name = $upload->getClientOriginalName();
+
+        $attachment = $this->task->attachments()->create([
+            'user_id' => auth()->id(),
+            'name' => $name,
+            'path' => $upload->store("attachments/{$this->task->project_id}/{$this->task->id}"),
+            'mime_type' => $upload->getMimeType(),
+            'size' => $upload->getSize(),
+        ]);
+
+        $this->reset('inlineUpload');
+        $this->task->logActivity('attachments_added', ['names' => [$name]]);
+        unset($this->attachments, $this->activityFeed);
+
+        return ['id' => $attachment->id, 'name' => $attachment->name];
+    }
+
+    /**
+     * Image attachments the texts of this task can show.
+     *
+     * @return list<array{id: int, name: string}>
+     */
+    #[Computed]
+    public function imageAttachments(): array
+    {
+        return $this->attachments
+            ->filter(fn (Attachment $attachment) => $attachment->previewKind() === 'image')
+            ->map(fn (Attachment $attachment) => ['id' => $attachment->id, 'name' => $attachment->name])
+            ->values()
+            ->all();
+    }
+
     public function deleteAttachment(int $attachmentId): void
     {
         $this->authorizeEdit();
@@ -807,7 +854,7 @@ new class extends Component
 
     <form wire:submit="save" class="space-y-4">
         <flux:input wire:model="title" :label="__('Title')" />
-        <x-markdown-editor wire:model="description" :label="__('Description')" :rows="3" :mentions="$this->mentionOptions" />
+        <x-markdown-editor wire:model="description" :label="__('Description')" :rows="3" :mentions="$this->mentionOptions" :images="$this->canEdit ? $this->imageAttachments : null" />
 
         <div class="divide-y divide-zinc-100 rounded-lg border border-zinc-200 px-3 dark:divide-zinc-800 dark:border-zinc-700">
             <x-task-field :label="__('Status')">
@@ -978,7 +1025,7 @@ new class extends Component
 
     <flux:heading size="lg" class="mb-2">{{ __('Attachments') }}</flux:heading>
 
-    <div x-data="{ preview: null }" x-on:keydown.escape.window="preview = null">
+    <div>
         <ul class="space-y-3">
             @foreach ($this->attachments as $attachment)
                 @php($kind = $attachment->previewKind())
@@ -988,14 +1035,14 @@ new class extends Component
                         <flux:icon.paper-clip class="size-5 shrink-0 text-zinc-400" />
                         <div class="min-w-0 flex-1">
                             @if ($kind)
-                                <button type="button" class="block max-w-full truncate text-left font-medium hover:underline" x-on:click="preview = @js(['url' => $inlineUrl, 'download' => route('attachments.show', $attachment), 'name' => $attachment->name, 'kind' => $kind])">{{ $attachment->name }}</button>
+                                <button type="button" class="block max-w-full truncate text-left font-medium hover:underline" x-on:click="$dispatch('preview-file', @js(['url' => $inlineUrl, 'download' => route('attachments.show', $attachment), 'name' => $attachment->name, 'kind' => $kind]))">{{ $attachment->name }}</button>
                             @else
                                 <a href="{{ route('attachments.show', $attachment) }}" class="block truncate font-medium hover:underline">{{ $attachment->name }}</a>
                             @endif
                             <flux:text size="sm">{{ $attachment->humanSize() }} · {{ $attachment->user?->name ?? __('Someone') }} · {{ $attachment->created_at->isoFormat('L LT') }}</flux:text>
                         </div>
                         @if ($kind && $kind !== 'image')
-                            <flux:button size="sm" variant="ghost" icon="eye" inset x-on:click="preview = @js(['url' => $inlineUrl, 'download' => route('attachments.show', $attachment), 'name' => $attachment->name, 'kind' => $kind])" aria-label="{{ __('Preview') }}" />
+                            <flux:button size="sm" variant="ghost" icon="eye" inset x-on:click="$dispatch('preview-file', @js(['url' => $inlineUrl, 'download' => route('attachments.show', $attachment), 'name' => $attachment->name, 'kind' => $kind]))" aria-label="{{ __('Preview') }}" />
                         @endif
                         <flux:button size="sm" variant="ghost" icon="arrow-down-tray" inset href="{{ route('attachments.show', $attachment) }}" aria-label="{{ __('Download') }}" />
                         @if ($this->canEdit)
@@ -1003,31 +1050,13 @@ new class extends Component
                         @endif
                     </div>
                     @if ($kind === 'image')
-                        <button type="button" class="mt-2 ml-8 block" x-on:click="preview = @js(['url' => $inlineUrl, 'download' => route('attachments.show', $attachment), 'name' => $attachment->name, 'kind' => $kind])" aria-label="{{ __('Preview') }}">
+                        <button type="button" class="mt-2 ml-8 block" x-on:click="$dispatch('preview-file', @js(['url' => $inlineUrl, 'download' => route('attachments.show', $attachment), 'name' => $attachment->name, 'kind' => $kind]))" aria-label="{{ __('Preview') }}">
                             <img src="{{ $inlineUrl }}" alt="{{ $attachment->name }}" class="max-h-64 max-w-full rounded-lg border border-zinc-200 object-contain dark:border-zinc-700" loading="lazy">
                         </button>
                     @endif
                 </li>
             @endforeach
         </ul>
-
-        <template x-teleport="body">
-            <div x-show="preview" x-cloak x-transition.opacity class="fixed inset-0 z-50 flex flex-col bg-black/80 p-4" x-on:click.self="preview = null" role="dialog" aria-modal="true">
-                <div class="mb-3 flex items-center gap-3 text-white" x-on:click.self="preview = null">
-                    <span class="min-w-0 flex-1 truncate font-medium" x-text="preview?.name"></span>
-                    <a :href="preview?.download" class="inline-flex items-center gap-1.5 rounded-md bg-white/10 px-3 py-1.5 text-sm hover:bg-white/20"><flux:icon.arrow-down-tray variant="micro" />{{ __('Download') }}</a>
-                    <button type="button" class="rounded-md bg-white/10 p-1.5 hover:bg-white/20" x-on:click="preview = null" aria-label="{{ __('Close') }}" title="{{ __('Close') }}"><flux:icon.x-mark variant="mini" /></button>
-                </div>
-                <div class="flex min-h-0 flex-1 items-center justify-center" x-on:click.self="preview = null">
-                    <template x-if="preview?.kind === 'image'">
-                        <img :src="preview.url" :alt="preview.name" class="max-h-full max-w-full rounded object-contain">
-                    </template>
-                    <template x-if="preview && preview.kind !== 'image'">
-                        <iframe :src="preview.url" :title="preview.name" class="h-full w-full max-w-5xl rounded bg-white"></iframe>
-                    </template>
-                </div>
-            </div>
-        </template>
     </div>
 
     @if ($this->attachments->isEmpty())
@@ -1065,7 +1094,7 @@ new class extends Component
 
                     @if ($editingCommentId === $comment->id)
                         <form wire:submit="saveComment" class="space-y-2">
-                            <x-markdown-editor wire:model="editingBody" :rows="3" :mentions="$this->mentionOptions" />
+                            <x-markdown-editor wire:model="editingBody" :rows="3" :mentions="$this->mentionOptions" :images="$this->canEdit ? $this->imageAttachments : null" />
                             @error('editingBody') <flux:text class="text-red-500">{{ $message }}</flux:text> @enderror
                             <div class="flex gap-2">
                                 <flux:button size="sm" type="submit" variant="primary">{{ __('Save') }}</flux:button>
@@ -1089,7 +1118,7 @@ new class extends Component
 
     @if ($this->canEdit)
         <form wire:submit="addComment" class="mt-6 space-y-3">
-            <x-markdown-editor wire:model="comment" :placeholder="__('Write a comment … (Markdown, @ for mentions)')" :rows="3" :mentions="$this->mentionOptions" />
+            <x-markdown-editor wire:model="comment" :placeholder="__('Write a comment … (Markdown, @ for mentions)')" :rows="3" :mentions="$this->mentionOptions" :images="$this->canEdit ? $this->imageAttachments : null" />
             <flux:button type="submit">{{ __('Post comment') }}</flux:button>
         </form>
     @endif

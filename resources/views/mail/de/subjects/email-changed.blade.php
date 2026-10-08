@@ -1,0 +1,1 @@
+Deine E-Mail-Adresse in {{ config('app.name') }} wurde geändert

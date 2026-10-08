@@ -28,24 +28,25 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Flux Pro credentials as build secret (auth.json is ignored by git and the build context)
+      # Only in .env, as on a host like Dokploy: Compose reads the build secret from there
+      - name: Flux Pro credentials in .env
         env:
           FLUX_USERNAME: ${{ secrets.FLUX_USERNAME }}
           FLUX_LICENSE_KEY: ${{ secrets.FLUX_LICENSE_KEY }}
         run: |
-          jq -n --arg user "$FLUX_USERNAME" --arg key "$FLUX_LICENSE_KEY" \
-            '{"http-basic": {"composer.fluxui.dev": {"username": $user, "password": $key}}}' > auth.json
+          cp .env.example .env
+          echo "COMPOSER_AUTH='$(jq -cn --arg user "$FLUX_USERNAME" --arg key "$FLUX_LICENSE_KEY" '{"http-basic": {"composer.fluxui.dev": {"username": $user, "password": $key}}}')'" >> .env
 
       - name: Build image
         run: docker compose build
 
       - name: Configure
         run: |
-          cp .env.example .env
           echo "APP_KEY=$(docker compose run --rm --no-deps app php artisan key:generate --show)" >> .env
           cat >> .env <<'EOF'
           APP_ENV=production
           APP_DEBUG=false
+          COMPOSE_PROFILES=realtime
           BROADCAST_CONNECTION=reverb
           REVERB_APP_ID=sprint
           REVERB_APP_KEY=ci-key
@@ -55,8 +56,9 @@ jobs:
           REVERB_SCHEME=http
           EOF
 
+      # Reverb comes in through COMPOSE_PROFILES in .env, as on Dokploy
       - name: Start app, queue, scheduler and Reverb
-        run: docker compose --profile realtime up -d --wait --wait-timeout 120
+        run: docker compose up -d --wait --wait-timeout 120
 
       - name: Check the running stack
         run: |

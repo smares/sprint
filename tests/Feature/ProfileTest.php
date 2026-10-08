@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -18,6 +19,8 @@ class ProfileTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        Notification::fake();
 
         $this->user = User::factory()->create(['name' => 'Anna Alt', 'email' => 'anna@example.com', 'password' => 'altes-passwort']);
         $this->actingAs($this->user);
@@ -49,7 +52,8 @@ class ProfileTest extends TestCase
         $this->assertSame('anna@example.com', $this->user->fresh()->email);
 
         $page->set('emailPassword', 'altes-passwort')->call('saveProfile')->assertHasNoErrors();
-        $this->assertSame('neu@example.com', $this->user->fresh()->email);
+        $this->assertSame('anna@example.com', $this->user->fresh()->email, 'the new address only counts once it is confirmed');
+        $this->assertSame('neu@example.com', $this->user->fresh()->pending_email);
     }
 
     public function test_the_email_must_be_valid_and_unique(): void

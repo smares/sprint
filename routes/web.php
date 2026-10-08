@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\AvatarController;
+use App\Http\Controllers\ConfirmEmailController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\ProjectExportController;
 use App\Services\LocaleService;
@@ -37,6 +38,8 @@ Route::middleware(['auth', 'password.confirm', 'throttle:6,1'])->group(function 
     Route::get('/user/passkeys/options', [PasskeyRegistrationController::class, 'index'])->name('passkey.registration-options');
     Route::post('/user/passkeys', [PasskeyRegistrationController::class, 'store'])->name('passkey.store');
 });
+
+Route::get('/email/confirm/{user}/{hash}', ConfirmEmailController::class)->middleware(['signed', 'throttle:6,1'])->name('email.confirm');
 
 Route::post('/logout', function (Request $request) {
     Auth::logout();

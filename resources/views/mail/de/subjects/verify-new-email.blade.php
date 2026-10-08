@@ -1,0 +1,1 @@
+Neue E-Mail-Adresse für {{ config('app.name') }} bestätigen

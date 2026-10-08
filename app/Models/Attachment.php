@@ -23,21 +23,12 @@ class Attachment extends Model
     /** Image types that may be shown inline; everything else is always downloaded. */
     public const INLINE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
 
-    /**
-     * The disk the files live on: `ATTACHMENTS_DISK` or, if that is not set, the application's default disk
-     * (`FILESYSTEM_DISK`, locally `storage/app/private`; with an object storage bucket the bucket).
-     */
-    public static function disk(): string
-    {
-        return config('sprint.attachments_disk') ?: config('filesystems.default');
-    }
-
     protected static function booted(): void
     {
         static::saved(fn (self $attachment) => app(TaskSearch::class)->index($attachment->task_id));
 
         static::deleted(function (self $attachment) {
-            Storage::disk(self::disk())->delete($attachment->path);
+            Storage::disk()->delete($attachment->path);
             app(TaskSearch::class)->index($attachment->task_id);
         });
     }

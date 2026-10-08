@@ -31,19 +31,6 @@ return [
         'en' => 'English',
     ],
 
-    /*
-    |--------------------------------------------------------------------------
-    | Attachment storage
-    |--------------------------------------------------------------------------
-    |
-    | Files attached to tasks are stored on this disk. Leave it empty to use the
-    | default disk (`FILESYSTEM_DISK`): the private local folder on a server of
-    | your own, an object storage bucket on hosts with a temporary file system.
-    |
-    */
-
-    'attachments_disk' => env('ATTACHMENTS_DISK'),
-
     /** How many days ahead the digest looks, besides today and overdue tasks. */
     'digest_days_ahead' => 3,
 

@@ -24,7 +24,7 @@ class ProjectSettingsTest extends TestCase
     {
         parent::setUp();
 
-        Storage::fake(Attachment::disk());
+        Storage::fake();
         $this->actingAs(User::factory()->admin()->create());
         $this->project = Project::factory()->create(['name' => 'Website', 'description' => 'Alt']);
     }
@@ -93,7 +93,7 @@ class ProjectSettingsTest extends TestCase
     {
         $task = Task::factory()->for($this->project)->create(['title' => 'Suchbegriff Zebra']);
         $path = 'attachments/'.$this->project->id.'/datei.pdf';
-        Storage::disk(Attachment::disk())->put($path, 'x');
+        Storage::disk()->put($path, 'x');
         Attachment::factory()->for($task)->create(['path' => $path]);
         $other = Task::factory()->for(Project::factory()->create())->create(['title' => 'Zebra bleibt']);
 
@@ -101,7 +101,7 @@ class ProjectSettingsTest extends TestCase
 
         $this->settings()->set('confirmName', 'Website')->call('delete');
 
-        Storage::disk(Attachment::disk())->assertMissing($path);
+        Storage::disk()->assertMissing($path);
         $this->assertSame(0, Attachment::count());
         $this->assertSame(0, Task::where('project_id', $this->project->id)->count());
         $this->assertSame(1, DB::table(TaskSearch::TABLE)->count());

@@ -14,7 +14,7 @@ class AttachmentController extends Controller
     {
         Gate::authorize('view', $attachment->task->project);
 
-        $disk = Storage::disk(Attachment::disk());
+        $disk = Storage::disk();
         abort_unless($disk->exists($attachment->path), 404);
 
         $inline = $request->boolean('inline') && $attachment->isInlineImage();

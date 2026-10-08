@@ -27,7 +27,7 @@ class SearchTest extends TestCase
     {
         parent::setUp();
 
-        Storage::fake(Attachment::disk());
+        Storage::fake();
         $this->user = User::factory()->admin()->create();
         $this->actingAs($this->user);
         $this->project = Project::factory()->create(['name' => 'Website']);

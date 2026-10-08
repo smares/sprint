@@ -2,7 +2,6 @@
 
 namespace App;
 
-use App\Models\Attachment;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -75,11 +74,11 @@ class HealthCheck
     protected function storage(): array
     {
         try {
-            $disk = Storage::disk(Attachment::disk());
+            $disk = Storage::disk();
             $disk->put('.health', (string) now()->timestamp);
             $disk->delete('.health');
 
-            return $this->result(self::OK, __('Attachment storage (:disk) is writable', ['disk' => Attachment::disk()]));
+            return $this->result(self::OK, __('Attachment storage (:disk) is writable', ['disk' => config('filesystems.default')]));
         } catch (Throwable $e) {
             return $this->result(self::FAIL, $e->getMessage());
         }

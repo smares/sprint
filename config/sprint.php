@@ -34,4 +34,7 @@ return [
     /** How many days ahead the digest looks, besides today and overdue tasks. */
     'digest_days_ahead' => 3,
 
+    /** Read notifications older than this many days are removed from the inbox every night. */
+    'keep_read_notifications_days' => 90,
+
 ];

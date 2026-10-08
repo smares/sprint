@@ -19,7 +19,7 @@ Updates, Gesundheitsprüfung und Backups.
 Gesichert werden müssen drei Dinge, sonst nichts (Logs, Caches und der Suchindex lassen sich neu erzeugen):
 
 1. **Die Datenbank**, am besten mit dem Werkzeug des Datenbanksystems statt per Dateikopie, damit der Stand konsistent ist:
-   - SQLite: `sqlite3 database/database.sqlite ".backup '/backup/sprint-$(date +%F).sqlite'"` (nicht einfach `cp`, solange die Anwendung läuft)
+   - SQLite: `sqlite3 database/database.sqlite ".backup '/backup/sprint-$(date +%F).sqlite'"` (nicht einfach `cp`, solange die Anwendung läuft: im WAL-Modus stehen die letzten Änderungen noch in `database.sqlite-wal`)
    - MySQL/MariaDB: `mysqldump --single-transaction --routines sprint > /backup/sprint-$(date +%F).sql`
    - PostgreSQL: `pg_dump -Fc sprint > /backup/sprint-$(date +%F).dump`
 2. **Die Anhänge** auf der Standard-Disk, lokal in `storage/app/private`: `tar czf /backup/sprint-files-$(date +%F).tar.gz -C storage/app private`

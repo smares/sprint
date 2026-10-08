@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\ActivityType;
 use App\Models\Task;
 use App\Models\TaskActivity;
 use App\Models\User;
@@ -22,7 +23,7 @@ class TaskActivityFactory extends Factory
         return [
             'task_id' => Task::factory(),
             'user_id' => User::factory(),
-            'type' => 'description_changed',
+            'type' => ActivityType::DescriptionChanged,
             'data' => null,
         ];
     }

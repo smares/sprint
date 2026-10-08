@@ -2,7 +2,6 @@
 
 namespace App\Mcp;
 
-use App\Enums\CustomFieldType;
 use App\Models\Comment;
 use App\Models\Task;
 use App\Models\User;
@@ -39,14 +38,12 @@ class TaskData
      */
     public static function detail(Task $task): array
     {
-        $task->loadMissing('collaborators', 'fieldValues.field', 'fieldValues.option', 'comments.user', 'children.status');
+        $task->loadMissing('collaborators', 'fieldValues.field.options', 'comments.user', 'children.status');
 
         return self::summary($task) + [
             'description' => $task->description,
             'collaborators' => $task->collaborators->map(fn (User $user) => self::person($user))->all(),
-            'fields' => $task->fieldValues->mapWithKeys(fn ($value) => [
-                $value->field->name => $value->field->type === CustomFieldType::Select ? $value->option?->name : $value->value,
-            ])->all(),
+            'fields' => $task->fieldValues->mapWithKeys(fn ($value) => [$value->field->name => $value->field->text($value->stored())])->all(),
             'subtasks' => $task->children->where('is_section', false)->map(fn (Task $child) => [
                 'id' => $child->id,
                 'title' => $child->title,

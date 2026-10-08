@@ -3,11 +3,7 @@
 @php
     $fieldValue = $task->fieldValues->firstWhere('custom_field_id', $field->id);
     $option = $fieldValue?->option_id ? $field->options->firstWhere('id', $fieldValue->option_id) : null;
-    $text = match (true) {
-        $fieldValue === null || $fieldValue->value === null => null,
-        $field->type === \App\Enums\CustomFieldType::Date => \Illuminate\Support\Carbon::parse($fieldValue->value)->isoFormat('L'),
-        default => $fieldValue->value,
-    };
+    $text = $field->text($fieldValue?->value);
 @endphp
 
 @if ($option)

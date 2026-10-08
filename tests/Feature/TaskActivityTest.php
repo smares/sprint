@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ActivityType;
 use App\Models\Comment;
 use App\Models\Tag;
 use App\Models\Task;
@@ -38,7 +39,7 @@ class TaskActivityTest extends TestCase
         $task = Task::factory()->create();
 
         $activity = $task->activities()->firstOrFail();
-        $this->assertSame('created', $activity->type);
+        $this->assertSame(ActivityType::Created, $activity->type);
         $this->assertSame($this->user->id, $activity->user_id);
         $this->assertSame('hat die Aufgabe angelegt', $activity->sentence());
     }

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ActivityType;
 use App\Enums\RepeatMode;
 use App\Enums\RepeatUnit;
 use App\Notifications\TasksStatusChanged;
@@ -83,7 +84,7 @@ class Task extends Model
 
         static::created(function (self $task) {
             if (! $task->is_section) {
-                $task->logActivity('created');
+                $task->logActivity(ActivityType::Created);
             }
         });
 
@@ -252,7 +253,7 @@ class Task extends Model
         $this->updateQuietly(['repeat_unit' => null]);
 
         if ($this->repeat_until !== null && $next->startOfDay() > $this->repeat_until->copy()->startOfDay()) {
-            $this->logActivity('recurrence_ended');
+            $this->logActivity(ActivityType::RecurrenceEnded);
 
             return null;
         }
@@ -268,7 +269,7 @@ class Task extends Model
             'repeat_until' => $this->repeat_until,
         ], $offset);
 
-        $this->logActivity('recurrence_created', ['to' => $next->toDateString()]);
+        $this->logActivity(ActivityType::RecurrenceCreated, ['to' => $next->toDateString()]);
 
         return $copy;
     }
@@ -285,7 +286,7 @@ class Task extends Model
             'title' => __(':title (copy)', ['title' => Str::limit($this->title, $room, '')]),
         ]);
 
-        $this->logActivity('duplicated');
+        $this->logActivity(ActivityType::Duplicated);
 
         return $copy;
     }
@@ -576,12 +577,55 @@ class Task extends Model
     /**
      * @param  array<string, mixed>  $data
      */
-    public function logActivity(string $type, array $data = []): void
+    public function logActivity(ActivityType $type, array $data = []): void
     {
         $this->activities()->create([
             'user_id' => auth()->id(),
             'type' => $type,
             'data' => $data === [] ? null : $data,
+        ]);
+    }
+
+    /**
+     * Record what a sync of tags, collaborators or dependencies added and removed, with the names.
+     *
+     * @param  array{attached?: array<int, int|string>, detached?: array<int, int|string>}  $changes
+     * @param  Closure(list<int>): list<string>  $names  The names for the given ids, sorted.
+     */
+    public function logSyncChanges(ActivityType $added, ActivityType $removed, array $changes, Closure $names): void
+    {
+        foreach ([[$added, 'attached'], [$removed, 'detached']] as [$type, $key]) {
+            if (($changes[$key] ?? []) !== []) {
+                $this->logActivity($type, ['names' => $names(array_values(array_map(intval(...), $changes[$key])))]);
+            }
+        }
+    }
+
+    /**
+     * Store, change or (with null) remove the value of a custom field and record the change.
+     *
+     * @param  array{option_id: ?int, value: ?string}|null  $attributes
+     */
+    public function setFieldValue(CustomField $field, ?array $attributes): void
+    {
+        $current = $this->fieldValues()->where('custom_field_id', $field->id)->first();
+        $old = $current?->stored();
+        $new = $attributes === null ? null : ($attributes['option_id'] ?? $attributes['value']);
+
+        if ((string) $old === (string) $new) {
+            return;
+        }
+
+        if ($attributes === null) {
+            $current?->delete();
+        } else {
+            $this->fieldValues()->updateOrCreate(['custom_field_id' => $field->id], $attributes);
+        }
+
+        $this->logActivity(ActivityType::FieldChanged, [
+            'name' => $field->name,
+            'from' => $field->text($old) ?? '–',
+            'to' => $field->text($new) ?? '–',
         ]);
     }
 
@@ -594,47 +638,47 @@ class Task extends Model
         $userName = fn (mixed $id) => $id === null ? '–' : ($this->userById((int) $id)?->name ?? '–');
 
         if ($this->wasChanged('status_id')) {
-            $this->logActivity('status_changed', [
+            $this->logActivity(ActivityType::StatusChanged, [
                 'from' => $this->statusById($this->getOriginal('status_id'))?->name ?? '–',
                 'to' => $this->loadMissing('status')->status->name,
             ]);
         }
 
         if ($this->wasChanged('assignee_id')) {
-            $this->logActivity('assignee_changed', [
+            $this->logActivity(ActivityType::AssigneeChanged, [
                 'from' => $userName($this->getOriginal('assignee_id')),
                 'to' => $userName($this->assignee_id),
             ]);
         }
 
         if ($this->wasChanged('due_date')) {
-            $this->logActivity('due_date_changed', [
+            $this->logActivity(ActivityType::DueDateChanged, [
                 'from' => $date($this->getOriginal('due_date')),
                 'to' => $date($this->due_date),
             ]);
         }
 
         if ($this->wasChanged('start_date')) {
-            $this->logActivity('start_date_changed', [
+            $this->logActivity(ActivityType::StartDateChanged, [
                 'from' => $date($this->getOriginal('start_date')),
                 'to' => $date($this->start_date),
             ]);
         }
 
         if ($this->wasChanged(['repeat_unit', 'repeat_interval', 'repeat_mode', 'repeat_until'])) {
-            $this->logActivity('recurrence_changed', ['to' => $this->recurrenceLabel() ?? '–']);
+            $this->logActivity(ActivityType::RecurrenceChanged, ['to' => $this->recurrenceLabel() ?? '–']);
         }
 
         if ($this->wasChanged('title')) {
-            $this->logActivity('title_changed', ['from' => $this->getOriginal('title'), 'to' => $this->title]);
+            $this->logActivity(ActivityType::TitleChanged, ['from' => $this->getOriginal('title'), 'to' => $this->title]);
         }
 
         if ($this->wasChanged('description')) {
-            $this->logActivity('description_changed');
+            $this->logActivity(ActivityType::DescriptionChanged);
         }
 
         if ($this->wasChanged('parent_id')) {
-            $this->logActivity('parent_changed', [
+            $this->logActivity(ActivityType::ParentChanged, [
                 'from' => self::find($this->getOriginal('parent_id'))?->title,
                 'to' => $this->parent?->title,
             ]);

@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 #[Fillable(['project_id', 'name', 'type', 'position', 'show_in_list'])]
 class CustomField extends Model
@@ -56,6 +57,43 @@ class CustomField extends Model
     public function options(): HasMany
     {
         return $this->hasMany(CustomFieldOption::class)->orderBy('position')->orderBy('id');
+    }
+
+    /**
+     * A stored value written out: the option's name for selection fields (given the option id),
+     * otherwise the value itself (dates are stored as YYYY-MM-DD); null when there is none.
+     */
+    public function text(int|string|null $stored): ?string
+    {
+        if ($stored === null || $stored === '') {
+            return null;
+        }
+
+        return $this->type === CustomFieldType::Select
+            ? $this->options->firstWhere('id', (int) $stored)?->name
+            : (string) $stored;
+    }
+
+    /**
+     * What to store for typed text (an option's name in any case, a number, a date as YYYY-MM-DD
+     * or a text of up to 500 characters); null when the text does not fit the field.
+     *
+     * @return array{option_id: ?int, value: ?string}|null
+     */
+    public function parse(string $input): ?array
+    {
+        $input = trim($input);
+
+        return match ($this->type) {
+            CustomFieldType::Select => ($option = $this->options->first(fn (CustomFieldOption $option) => mb_strtolower($option->name) === mb_strtolower($input)))
+                ? ['option_id' => $option->id, 'value' => null]
+                : null,
+            CustomFieldType::Number => is_numeric($input) ? ['option_id' => null, 'value' => $input] : null,
+            CustomFieldType::Date => Carbon::canBeCreatedFromFormat($input, 'Y-m-d') && Carbon::createFromFormat('!Y-m-d', $input)->toDateString() === $input
+                ? ['option_id' => null, 'value' => $input]
+                : null,
+            CustomFieldType::Text => mb_strlen($input) <= 500 ? ['option_id' => null, 'value' => $input] : null,
+        };
     }
 
     /**

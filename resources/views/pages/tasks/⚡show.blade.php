@@ -28,6 +28,9 @@ new class extends Component
     use ListensForRealtime;
     use WithFileUploads;
 
+    /** How many tasks the pickers for parent task and dependencies list at most besides the chosen ones. */
+    private const PICKER_LIMIT = 50;
+
     public Task $task;
 
     /** Shown as a side panel next to a list or board instead of as a page of its own. */
@@ -72,6 +75,13 @@ new class extends Component
     public bool $notificationsOn = true;
 
     public string $parentId = '';
+
+    /** What was typed into the search of the pickers for parent task and dependencies. */
+    public string $parentSearch = '';
+
+    public string $blockerSearch = '';
+
+    public string $blockingSearch = '';
 
     /** @var array<int|string, string> */
     public array $newSubtaskTitles = [];
@@ -307,17 +317,57 @@ new class extends Component
         return $this->subtreeTasks->where('is_section', true)->pluck('id')->all();
     }
 
-    #[Computed]
-    public function possibleParents(): Collection
+    /**
+     * What the pickers for parent task and dependencies offer: what is already chosen plus the first matches of
+     * the search, so a project with thousands of tasks does not send them all to the browser.
+     *
+     * @param  list<int|string>  $selectedIds
+     * @param  list<int>  $excludedIds
+     * @return Collection<int, Task>
+     */
+    private function pickerTasks(string $search, array $selectedIds, array $excludedIds, bool $withoutHeadings = false): Collection
     {
-        $excluded = [$this->task->getKey(), ...$this->descendantIds];
+        $tasks = fn () => $this->task->project->tasks()
+            ->whereNotIn('id', $excludedIds)
+            ->when($withoutHeadings, fn ($query) => $query->where('is_section', false));
+        $search = trim($search);
 
-        return $this->task->project->tasks()
-            ->where('is_section', false)
-            ->whereNotIn('id', $excluded)
-            ->orderBy('position')
-            ->orderBy('id')
+        $chosen = $selectedIds === [] ? new Collection : $tasks()->whereKey($selectedIds)->get(['id', 'title']);
+        $matches = $tasks()
+            ->when($search !== '', fn ($query) => $query->whereLike('title', '%'.$search.'%'))
+            ->orderBy('title')
+            ->limit(self::PICKER_LIMIT)
             ->get(['id', 'title']);
+
+        return $chosen->concat($matches)->unique('id')->values();
+    }
+
+    /**
+     * Tasks that cannot become the parent of this one: itself and everything below it.
+     *
+     * @return list<int>
+     */
+    private function parentExclusions(): array
+    {
+        return [$this->task->getKey(), ...$this->descendantIds];
+    }
+
+    #[Computed]
+    public function parentOptions(): Collection
+    {
+        return $this->pickerTasks($this->parentSearch, $this->parentId === '' ? [] : [$this->parentId], $this->parentExclusions(), withoutHeadings: true);
+    }
+
+    #[Computed]
+    public function blockerOptions(): Collection
+    {
+        return $this->pickerTasks($this->blockerSearch, $this->blockerIds, [$this->task->getKey()]);
+    }
+
+    #[Computed]
+    public function blockingOptions(): Collection
+    {
+        return $this->pickerTasks($this->blockingSearch, $this->blockingIds, [$this->task->getKey()]);
     }
 
     /**
@@ -477,15 +527,6 @@ new class extends Component
     }
 
     #[Computed]
-    public function otherTasks(): Collection
-    {
-        return $this->task->project->tasks()
-            ->whereKeyNot($this->task->getKey())
-            ->orderBy('title')
-            ->get(['id', 'title']);
-    }
-
-    #[Computed]
     public function projectTags(): Collection
     {
         return $this->task->project->tags()->orderBy('name')->get();
@@ -541,7 +582,7 @@ new class extends Component
             ...$this->fieldRules(),
             'tagIds' => ['array'],
             'tagIds.*' => ['integer', Rule::exists('tags', 'id')->where('project_id', $this->task->project_id)],
-            'parentId' => ['nullable', Rule::in($this->possibleParents->pluck('id')->map(fn ($id) => (string) $id)->all())],
+            'parentId' => ['nullable', Rule::exists('tasks', 'id')->where('project_id', $this->task->project_id)->where('is_section', false)->whereNotIn('id', $this->parentExclusions())],
             'collaboratorIds' => ['array'],
             'collaboratorIds.*' => ['integer', Rule::in($this->users->pluck('id')->all())],
             'blockerIds' => ['array'],
@@ -995,9 +1036,12 @@ new class extends Component
             @endforeach
 
             <x-task-field :label="__('Parent task')">
-                <flux:select size="sm" variant="listbox" wire:model="parentId" :aria-label="__('Parent task')">
+                <flux:select size="sm" variant="listbox" wire:model="parentId" searchable :aria-label="__('Parent task')">
+                    <x-slot name="search">
+                        <flux:select.search wire:model.live.debounce.300ms="parentSearch" :placeholder="__('Search tasks …')" />
+                    </x-slot>
                     <flux:select.option value="">{{ __('None') }}</flux:select.option>
-                    @foreach ($this->possibleParents as $candidate)
+                    @foreach ($this->parentOptions as $candidate)
                         <flux:select.option value="{{ $candidate->id }}">{{ $candidate->title }}</flux:select.option>
                     @endforeach
                 </flux:select>
@@ -1021,7 +1065,10 @@ new class extends Component
 
             <x-task-field :label="__('Blocked by')">
                 <flux:pillbox size="sm" wire:model="blockerIds" multiple searchable :aria-label="__('Blocked by')" :placeholder="__('Choose tasks …')">
-                    @foreach ($this->otherTasks as $other)
+                    <x-slot name="search">
+                        <flux:pillbox.search wire:model.live.debounce.300ms="blockerSearch" :placeholder="__('Search tasks …')" />
+                    </x-slot>
+                    @foreach ($this->blockerOptions as $other)
                         <flux:pillbox.option wire:key="blocker-{{ $other->id }}" value="{{ $other->id }}">{{ $other->title }}</flux:pillbox.option>
                     @endforeach
                 </flux:pillbox>
@@ -1029,7 +1076,10 @@ new class extends Component
 
             <x-task-field :label="__('Blocking')">
                 <flux:pillbox size="sm" wire:model="blockingIds" multiple searchable :aria-label="__('Blocking')" :placeholder="__('Choose tasks …')">
-                    @foreach ($this->otherTasks as $other)
+                    <x-slot name="search">
+                        <flux:pillbox.search wire:model.live.debounce.300ms="blockingSearch" :placeholder="__('Search tasks …')" />
+                    </x-slot>
+                    @foreach ($this->blockingOptions as $other)
                         <flux:pillbox.option wire:key="blocking-{{ $other->id }}" value="{{ $other->id }}">{{ $other->title }}</flux:pillbox.option>
                     @endforeach
                 </flux:pillbox>

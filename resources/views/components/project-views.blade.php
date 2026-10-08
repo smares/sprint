@@ -1,4 +1,4 @@
-@props(['project', 'active'])
+@props(['project', 'active', 'present' => []])
 
 @php
     $views = [
@@ -8,6 +8,8 @@
         'timeline' => [__('Timeline'), 'arrow-turn-down-right', 'projects.timeline'],
     ];
 @endphp
+
+<x-presence :users="$present" :label="count($present) === 1 ? __(':name is here too', ['name' => collect($present)->first()['name']]) : null" class="max-sm:hidden" />
 
 {{-- Two separate groups, because the button group rounds only its first and last child. --}}
 <flux:button.group class="sm:hidden">

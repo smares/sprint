@@ -4,6 +4,7 @@ namespace App\Concerns;
 
 use App\Models\Project;
 use App\Models\Task;
+use App\Services\RealtimeService;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -238,7 +239,7 @@ trait EditsTasksInBulk
     {
         $tasks = $this->selectedTasks();
 
-        DB::transaction(fn () => $tasks->each->delete());
+        app(RealtimeService::class)->bundling(fn () => DB::transaction(fn () => $tasks->each->delete()));
 
         if (ctype_digit($this->openTaskId) && $tasks->contains('id', (int) $this->openTaskId)) {
             $this->openTaskId = '';

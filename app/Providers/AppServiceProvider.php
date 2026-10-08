@@ -2,11 +2,15 @@
 
 namespace App\Providers;
 
+use App\Events\InboxUpdated;
 use App\Models\User;
+use App\Services\RealtimeService;
 use App\Services\TaskSearchService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Notifications\Events\NotificationSent;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -22,6 +26,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(TaskSearchService::class);
+        $this->app->singleton(RealtimeService::class);
 
         Fortify::ignoreRoutes();
     }
@@ -34,6 +39,12 @@ class AppServiceProvider extends ServiceProvider
         Model::preventLazyLoading(! $this->app->isProduction());
 
         Gate::define('administer', fn (User $user) => $user->is_admin);
+
+        Event::listen(function (NotificationSent $sent) {
+            if ($sent->channel === 'database' && $sent->notifiable instanceof User && $this->app->make(RealtimeService::class)->enabled()) {
+                broadcast(new InboxUpdated($sent->notifiable->id));
+            }
+        });
 
         Passkeys::authorizeLoginUsing(fn (Request $request, PasskeyUser $user) => $user instanceof User && $user->isActive());
 

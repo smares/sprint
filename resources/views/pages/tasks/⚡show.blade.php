@@ -1,5 +1,6 @@
 <?php
 
+use App\Concerns\ListensForRealtime;
 use App\Color;
 use App\Enums\CustomFieldType;
 use App\Enums\RepeatMode;
@@ -24,6 +25,7 @@ use Livewire\WithFileUploads;
 
 new class extends Component
 {
+    use ListensForRealtime;
     use WithFileUploads;
 
     public Task $task;
@@ -85,6 +87,9 @@ new class extends Component
 
     /** @var list<string> */
     public array $blockingIds = [];
+
+    /** Somebody else saved this task while it is open here; the form keeps what was typed until it is reloaded. */
+    public bool $changedElsewhere = false;
 
     public function hydrate(): void
     {
@@ -841,6 +846,29 @@ new class extends Component
         $this->redirectRoute('projects.show', $projectId, navigate: true);
     }
 
+    /**
+     * @param  array<string, mixed>  $event
+     */
+    public function projectChangedElsewhere(array $event = []): void
+    {
+        if (($event['kind'] ?? null) === 'task' && ($event['task_id'] ?? null) === $this->task->getKey()) {
+            $this->changedElsewhere = true;
+        }
+    }
+
+    public function reloadFromServer(): void
+    {
+        $this->task->refresh();
+        $this->mount();
+        $this->changedElsewhere = false;
+        $this->resetErrorBag();
+    }
+
+    protected function presenceChannel(): string
+    {
+        return "task.{$this->task->getKey()}.presence";
+    }
+
     public function rendering(View $view): void
     {
         if (! $this->panel) {
@@ -851,6 +879,16 @@ new class extends Component
 ?>
 
 <div @class(['max-w-3xl' => ! $panel])>
+    <x-presence :users="$presentUsers" :label="count($presentUsers) === 1 ? __(':name is looking at this task too', ['name' => collect($presentUsers)->first()['name']]) : (count($presentUsers) > 1 ? __(':count people are looking at this task too', ['count' => count($presentUsers)]) : null)" class="mb-3" />
+
+    @if ($changedElsewhere)
+        <flux:callout class="mb-4" variant="warning" icon="arrow-path" :heading="__('Changed by someone else')" :text="__('This task was saved by another person. Reload to see their changes; what you typed is kept until then.')">
+            <x-slot name="actions">
+                <flux:button size="sm" wire:click="reloadFromServer">{{ __('Reload') }}</flux:button>
+            </x-slot>
+        </flux:callout>
+    @endif
+
     @if ($panel)
         <div class="mb-4 flex items-center gap-2">
             <flux:text size="sm" class="min-w-0 flex-1 truncate">

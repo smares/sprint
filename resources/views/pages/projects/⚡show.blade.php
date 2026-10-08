@@ -1,5 +1,6 @@
 <?php
 
+use App\Concerns\ListensForRealtime;
 use App\Concerns\EditsTasksInBulk;
 use App\Concerns\OpensTaskPanel;
 use App\Enums\CustomFieldType;
@@ -23,6 +24,7 @@ use Livewire\Component;
 
 new class extends Component
 {
+    use ListensForRealtime;
     use EditsTasksInBulk;
     use OpensTaskPanel;
 
@@ -501,6 +503,11 @@ new class extends Component
         unset($this->tasks);
     }
 
+    protected function presenceChannel(): string
+    {
+        return "project.{$this->project->getKey()}.presence";
+    }
+
     public function rendering(View $view): void
     {
         $view->title($this->project->name);
@@ -527,7 +534,7 @@ new class extends Component
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
-            <x-project-views :project="$project" active="list" />
+            <x-project-views :project="$project" active="list" :present="$presentUsers" />
 
             @if ($this->canEdit)
                 <flux:modal.trigger name="create-task">

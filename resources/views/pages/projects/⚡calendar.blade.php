@@ -1,5 +1,6 @@
 <?php
 
+use App\Concerns\ListensForRealtime;
 use App\Models\Project;
 use App\Models\Task;
 use Illuminate\Contracts\View\View;
@@ -11,6 +12,8 @@ use Livewire\Component;
 
 new class extends Component
 {
+    use ListensForRealtime;
+
     public Project $project;
 
     #[Url]
@@ -127,6 +130,11 @@ new class extends Component
             ->count();
     }
 
+    protected function presenceChannel(): string
+    {
+        return "project.{$this->project->getKey()}.presence";
+    }
+
     public function rendering(View $view): void
     {
         $view->title(__('Calendar – :project', ['project' => $this->project->name]));
@@ -142,7 +150,7 @@ new class extends Component
 
     <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <flux:heading size="xl">{{ $project->name }}</flux:heading>
-        <x-project-views :project="$project" active="calendar" />
+        <x-project-views :project="$project" active="calendar" :present="$presentUsers" />
     </div>
 
     <div class="mb-4 flex items-center gap-2">

@@ -33,4 +33,6 @@ Auf einem Forge-Server liegen Datenbank und Dateien dauerhaft auf der Platte, es
 8. **Ersten Administrator** anlegen (Forge-Terminal oder SSH): `php artisan user:create "Anna Beispiel" anna@example.com --admin`.
 9. **Backups:** Datenbank-Backups in Forge einrichten und `storage/app/private` (Anhänge) sowie die `.env` zusätzlich sichern, siehe [Backup und Wiederherstellung](maintenance.md#backup-und-wiederherstellung). Die Adresse `/health` kannst du in einen externen Uptime-Dienst eintragen.
 
+**Live-Updates (optional):** Für Reverb unter *Daemons* einen Daemon mit `php8.3 artisan reverb:start` anlegen, die `REVERB_*`-Werte eintragen und in Forge den Reverb-Dienst der Site einschalten (Nginx leitet `/app` und `/apps` weiter); im Deployment-Skript `php artisan reverb:restart` ergänzen. Einzelheiten: [Konfiguration](configuration.md#live-updates-reverb).
+
 Aktualisieren: Code auf `main` pushen und in Forge *Deploy now* (oder Quick Deploy aktivieren).

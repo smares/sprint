@@ -1,5 +1,6 @@
 <?php
 
+use App\Concerns\ListensForRealtime;
 use App\Models\Project;
 use App\Models\Task;
 use Illuminate\Contracts\View\View;
@@ -12,6 +13,8 @@ use Livewire\Component;
 
 new class extends Component
 {
+    use ListensForRealtime;
+
     /** Days shown at once. */
     public const DAYS = 42;
 
@@ -132,6 +135,11 @@ new class extends Component
         return ['dated' => $dated - $this->rows->count(), 'undated' => $undated];
     }
 
+    protected function presenceChannel(): string
+    {
+        return "project.{$this->project->getKey()}.presence";
+    }
+
     public function rendering(View $view): void
     {
         $view->title(__('Timeline – :project', ['project' => $this->project->name]));
@@ -147,7 +155,7 @@ new class extends Component
 
     <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <flux:heading size="xl">{{ $project->name }}</flux:heading>
-        <x-project-views :project="$project" active="timeline" />
+        <x-project-views :project="$project" active="timeline" :present="$presentUsers" />
     </div>
 
     <div class="mb-4 flex items-center gap-2">

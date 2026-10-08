@@ -1,10 +1,29 @@
 <?php
 
+use App\Services\RealtimeService;
+use Flux\Flux;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
 new class extends Component
 {
+    /**
+     * @return array<string, string>
+     */
+    protected function getListeners(): array
+    {
+        return app(RealtimeService::class)->enabled()
+            ? ['echo-private:user.'.auth()->id().',.InboxUpdated' => 'inboxUpdated']
+            : [];
+    }
+
+    public function inboxUpdated(): void
+    {
+        unset($this->unread);
+
+        Flux::toast(text: __('There is something new in your inbox.'));
+    }
+
     #[Computed]
     public function unread(): int
     {

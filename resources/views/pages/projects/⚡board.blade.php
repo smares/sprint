@@ -1,5 +1,6 @@
 <?php
 
+use App\Concerns\ListensForRealtime;
 use App\Concerns\OpensTaskPanel;
 use App\Models\Project;
 use App\Models\Task;
@@ -16,6 +17,7 @@ use Livewire\Component;
 
 new class extends Component
 {
+    use ListensForRealtime;
     use OpensTaskPanel;
 
     private const PAGE_SIZE = 30;
@@ -148,6 +150,11 @@ new class extends Component
         unset($this->columns, $this->columnTotals);
     }
 
+    protected function presenceChannel(): string
+    {
+        return "project.{$this->project->getKey()}.presence";
+    }
+
     public function rendering(View $view): void
     {
         $view->title($this->project->name);
@@ -169,7 +176,7 @@ new class extends Component
         <flux:heading size="xl">{{ $project->name }}</flux:heading>
 
         <div class="flex flex-wrap items-center gap-2">
-            <x-project-views :project="$project" active="board" />
+            <x-project-views :project="$project" active="board" :present="$presentUsers" />
 
             @if ($this->canManage)
                 <x-project-menu :project="$project" />

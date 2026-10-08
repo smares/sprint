@@ -8,6 +8,7 @@ use App\Notifications\TasksStatusChanged;
 use App\Notifications\TaskStatusChanged;
 use App\Notifications\UserMentioned;
 use App\Services\MarkdownService;
+use App\Services\RealtimeService;
 use App\Services\TaskSearchService;
 use Carbon\CarbonInterface;
 use Closure;
@@ -50,7 +51,7 @@ class Task extends Model
         self::$bundledStatusChanges = [];
 
         try {
-            $changes();
+            app(RealtimeService::class)->bundling($changes);
             $bundled = self::$bundledStatusChanges;
         } finally {
             self::$bundledStatusChanges = null;
@@ -91,6 +92,10 @@ class Task extends Model
                 app(TaskSearchService::class)->index($task);
             }
         });
+
+        static::saved(fn (self $task) => app(RealtimeService::class)->taskChanged($task->project_id, $task->id, 'task'));
+
+        static::deleted(fn (self $task) => app(RealtimeService::class)->taskChanged($task->project_id, $task->id, 'task'));
 
         static::deleting(function (self $task) {
             app(TaskSearchService::class)->forget($task->id);

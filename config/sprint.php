@@ -30,6 +30,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Celebration
+    |--------------------------------------------------------------------------
+    |
+    | The chance, from 0 to 1, that a unicorn flies across the screen when
+    | someone completes a task: about one in sixteen by default. 0 turns it off
+    | for everyone; people can also turn it off in their profile.
+    |
+    */
+
+    'celebration_chance' => (float) env('SPRINT_CELEBRATION_CHANCE', 0.06),
+
+    /*
+    |--------------------------------------------------------------------------
     | Languages
     |--------------------------------------------------------------------------
     |

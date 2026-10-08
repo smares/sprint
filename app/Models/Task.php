@@ -10,6 +10,7 @@ use App\Notifications\TasksStatusChanged;
 use App\Notifications\TaskStatusChanged;
 use App\Notifications\UserMentioned;
 use App\Services\AutomationService;
+use App\Services\CelebrationService;
 use App\Services\MarkdownService;
 use App\Services\RealtimeService;
 use App\Services\TaskSearchService;
@@ -127,6 +128,10 @@ class Task extends Model
             }
 
             $task->logChanges();
+
+            if ($task->wasChanged('status_id') && $task->isDone() && ! $task->statusById($task->getOriginal('status_id'))?->is_done) {
+                app(CelebrationService::class)->taskCompleted();
+            }
 
             if ($task->wasChanged('status_id')) {
                 $old = $task->statusById($task->getOriginal('status_id'));

@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 110" role="img" aria-label="Unicorn">
+  <!-- trail in the colors of the Sprint mark -->
+  <g stroke-linecap="round" fill="none" stroke-width="7">
+    <path d="M66 54C50 54 38 50 8 54" stroke="#f97316"/>
+    <path d="M66 64C50 64 38 62 14 66" stroke="#fb923c" opacity=".85"/>
+    <path d="M68 74C54 74 44 74 22 78" stroke="#a1a1aa" opacity=".85"/>
+    <path d="M70 84C58 84 48 86 30 90" stroke="#d4d4d8" opacity=".8"/>
+  </g>
+  <!-- legs -->
+  <g stroke="#18181b" stroke-width="7" stroke-linecap="round">
+    <path d="M94 80l-10 18"/>
+    <path d="M106 82l2 18"/>
+    <path d="M128 82l12 16"/>
+    <path d="M140 78l16 8"/>
+  </g>
+  <!-- neck, then the body over its lower end -->
+  <path d="M132 58C140 44 146 34 154 28L174 42C168 56 160 66 148 72Z" fill="#fafafa" stroke="#18181b" stroke-width="3.5" stroke-linejoin="round"/>
+  <path d="M82 54C72 46 66 60 70 70C74 62 80 60 88 62Z" fill="#f97316"/>
+  <ellipse cx="112" cy="64" rx="36" ry="22" fill="#fafafa" stroke="#18181b" stroke-width="3.5"/>
+  <!-- wing -->
+  <path d="M98 54C90 32 106 20 124 22C120 32 122 44 128 54Z" fill="#fff" stroke="#18181b" stroke-width="3.5" stroke-linejoin="round"/>
+  <path d="M106 50C104 40 110 32 118 29" stroke="#a1a1aa" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <!-- head over the top of the neck -->
+  <path d="M150 28C164 16 186 24 190 42C190 52 182 56 172 54L156 46Z" fill="#fafafa" stroke="#18181b" stroke-width="3.5" stroke-linejoin="round"/>
+  <!-- mane -->
+  <path d="M154 24C140 24 134 36 138 46C142 38 146 36 152 36Z" fill="#f97316"/>
+  <path d="M146 34C134 38 132 50 138 58C140 50 144 46 150 44Z" fill="#fb923c"/>
+  <!-- horn -->
+  <path d="M170 22L186 2L181 27Z" fill="#f97316" stroke="#18181b" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M175 17l5 3M178 11l4 3" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+  <!-- eye and nostril -->
+  <circle cx="176" cy="37" r="3" fill="#18181b"/>
+  <circle cx="187" cy="47" r="1.6" fill="#18181b"/>
+</svg>

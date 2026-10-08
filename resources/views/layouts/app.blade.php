@@ -103,6 +103,7 @@
 
         @persist('toast')
             <flux:toast />
+            <x-celebration />
         @endpersist
 
         <x-file-preview />

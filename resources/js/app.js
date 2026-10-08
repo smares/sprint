@@ -225,10 +225,54 @@ const registerTimelineBar = () => {
     }))
 }
 
+// Crops a picture to the centre square and shrinks it, as WebP or (where the browser cannot encode it) JPEG on white.
+const squareImage = async (file, size) => {
+    const bitmap = await createImageBitmap(file)
+    const side = Math.min(bitmap.width, bitmap.height)
+    const canvas = document.createElement('canvas')
+    canvas.width = canvas.height = Math.min(size, side)
+    canvas.getContext('2d').drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, canvas.width, canvas.height)
+    bitmap.close()
+
+    const encode = (target, type) => new Promise((resolve) => target.toBlob(resolve, type, 0.85))
+    let blob = await encode(canvas, 'image/webp')
+
+    if (! blob || blob.type !== 'image/webp') {
+        const flat = document.createElement('canvas')
+        flat.width = flat.height = canvas.width
+        const context = flat.getContext('2d')
+        context.fillStyle = '#ffffff'
+        context.fillRect(0, 0, flat.width, flat.height)
+        context.drawImage(canvas, 0, 0)
+        blob = await encode(flat, 'image/jpeg')
+    }
+
+    return new File([blob], blob.type === 'image/webp' ? 'avatar.webp' : 'avatar.jpg', { type: blob.type })
+}
+
+const registerAvatarPicker = () => {
+    window.Alpine.data('avatarPicker', (size) => ({
+        busy: false,
+
+        async pick(file) {
+            if (! file) {
+                return
+            }
+
+            this.busy = true
+            // Pictures the browser cannot read go up unchanged; the server then decides.
+            const upload = await squareImage(file, size).catch(() => file)
+            const done = () => { this.busy = false }
+            this.$wire.upload('avatarUpload', upload, done, done)
+        },
+    }))
+}
+
 const registerAll = () => {
     registerMentionable()
     registerTimelineBar()
     registerPresence()
+    registerAvatarPicker()
 }
 
 if (window.Alpine) {

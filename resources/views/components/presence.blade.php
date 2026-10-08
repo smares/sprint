@@ -13,10 +13,12 @@
         <div class="flex -space-x-2">
             <template x-for="user in users.slice(0, 5)" x-bind:key="user.id">
                 <span
-                    class="inline-flex size-6 items-center justify-center rounded-full bg-zinc-200 text-[0.625rem] font-medium text-zinc-800 ring-2 ring-white dark:bg-zinc-600 dark:text-white dark:ring-zinc-900"
+                    class="inline-flex size-6 items-center justify-center overflow-hidden rounded-full bg-zinc-200 text-[0.625rem] font-medium text-zinc-800 ring-2 ring-white dark:bg-zinc-600 dark:text-white dark:ring-zinc-900"
                     x-bind:title="user.name"
-                    x-text="user.initials"
-                ></span>
+                >
+                    <template x-if="user.avatar"><img x-bind:src="user.avatar" alt="" class="size-full object-cover"></template>
+                    <template x-if="! user.avatar"><span x-text="user.initials"></span></template>
+                </span>
             </template>
         </div>
 

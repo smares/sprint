@@ -192,7 +192,7 @@ new class extends Component
                 <div class="inline-block rounded-lg bg-white p-2">{!! $user->twoFactorQrCodeSvg() !!}</div>
                 <flux:text size="sm">{{ __('Or type in the key:') }} <code class="font-mono">{{ \Laravel\Fortify\Fortify::currentEncrypter()->decrypt($user->two_factor_secret) }}</code></flux:text>
                 <form wire:submit="confirmTwoFactor" class="space-y-3">
-                    <flux:input wire:model="code" :label="__('Code from the app')" inputmode="numeric" autocomplete="one-time-code" />
+                    <flux:otp wire:model="code" length="6" :label="__('Code from the app')" />
                     <div class="flex gap-2">
                         <flux:button type="submit" variant="primary">{{ __('Confirm and turn on') }}</flux:button>
                         <flux:button type="button" variant="ghost" wire:click="disableTwoFactor">{{ __('Cancel') }}</flux:button>

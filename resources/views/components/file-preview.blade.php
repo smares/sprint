@@ -1,19 +1,22 @@
-<div x-data="{ preview: null }" x-on:preview-file.window="preview = $event.detail" x-on:keydown.escape.window="preview = null">
-    <template x-teleport="body">
-        <div x-show="preview" x-cloak x-transition.opacity class="fixed inset-0 z-50 flex flex-col bg-black/80 p-4" x-on:click.self="preview = null" role="dialog" aria-modal="true">
-            <div class="mb-3 flex items-center gap-3 text-white" x-on:click.self="preview = null">
-                <span class="min-w-0 flex-1 truncate font-medium" x-text="preview?.name"></span>
-                <a :href="preview?.download" class="inline-flex items-center gap-1.5 rounded-md bg-white/10 px-3 py-1.5 text-sm hover:bg-white/20"><flux:icon.arrow-down-tray variant="micro" />{{ __('Download') }}</a>
-                <button type="button" class="rounded-md bg-white/10 p-1.5 hover:bg-white/20" x-on:click="preview = null" aria-label="{{ __('Close') }}" title="{{ __('Close') }}"><flux:icon.x-mark variant="mini" /></button>
-            </div>
-            <div class="flex min-h-0 flex-1 items-center justify-center" x-on:click.self="preview = null">
+{{-- Preview of images, PDFs and text files in a Flux modal; opened by dispatching `preview-file` with url, download, name and kind. --}}
+<div x-data="{ preview: null }" x-on:preview-file.window="preview = $event.detail; $flux.modal('file-preview').show()">
+    <flux:modal name="file-preview" class="w-full max-w-5xl" x-on:close="preview = null">
+        <div class="space-y-4">
+            <flux:heading size="lg" class="truncate pe-8" x-text="preview?.name"></flux:heading>
+
+            <div class="flex items-center justify-center">
                 <template x-if="preview?.kind === 'image'">
-                    <img :src="preview.url" :alt="preview.name" class="max-h-full max-w-full rounded object-contain">
+                    <img :src="preview.url" :alt="preview.name" class="max-h-[75vh] max-w-full rounded object-contain">
                 </template>
                 <template x-if="preview && preview.kind !== 'image'">
-                    <iframe :src="preview.url" :title="preview.name" class="h-full w-full max-w-5xl rounded bg-white"></iframe>
+                    <iframe :src="preview.url" :title="preview.name" class="h-[75vh] w-full rounded border border-zinc-200 bg-white dark:border-zinc-700"></iframe>
                 </template>
             </div>
+
+            <div class="flex">
+                <flux:spacer />
+                <flux:button icon="arrow-down-tray" href="#" x-bind:href="preview?.download">{{ __('Download') }}</flux:button>
+            </div>
         </div>
-    </template>
+    </flux:modal>
 </div>

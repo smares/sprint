@@ -13,11 +13,11 @@ use Illuminate\Support\Facades\Gate;
 Broadcast::channel('project.{project}', fn (User $user, Project $project) => Gate::forUser($user)->allows('view', $project));
 
 Broadcast::channel('project.{project}.presence', fn (User $user, Project $project) => Gate::forUser($user)->allows('view', $project)
-    ? ['id' => $user->id, 'name' => $user->name, 'initials' => $user->initials()]
+    ? $user->presenceData()
     : false);
 
 Broadcast::channel('task.{task}.presence', fn (User $user, Task $task) => Gate::forUser($user)->allows('view', $task->project)
-    ? ['id' => $user->id, 'name' => $user->name, 'initials' => $user->initials()]
+    ? $user->presenceData()
     : false);
 
 Broadcast::channel('user.{id}', fn (User $user, int $id) => $user->id === $id);

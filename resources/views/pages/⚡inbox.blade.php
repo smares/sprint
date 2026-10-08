@@ -132,6 +132,8 @@ new class extends Component
             @endforeach
         </ul>
 
-        <div class="mt-4">{{ $this->notifications->links() }}</div>
+        @if ($this->notifications->hasPages())
+            <flux:pagination :paginator="$this->notifications" class="mt-4" />
+        @endif
     @endif
 </div>

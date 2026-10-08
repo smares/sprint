@@ -190,7 +190,8 @@ class AttachmentsTest extends TestCase
         Livewire::test('pages::tasks.show', ['task' => $this->task])
             ->assertSeeHtml(route('attachments.show', [$image, 'inline' => 1]))
             ->assertSee('Vorschau')
-            ->assertSee('Herunterladen');
+            ->assertSee('Herunterladen')
+            ->assertDontSee('@js(', false);
     }
 
     public function test_a_missing_file_gives_404(): void

@@ -1033,10 +1033,22 @@ new class extends Component
             </x-task-field>
 
             <x-task-field :label="__('Tags')">
-                <flux:pillbox size="sm" wire:model="tagIds" multiple :aria-label="__('Tags')" :placeholder="__('Select tags …')">
+                <flux:pillbox size="sm" variant="combobox" wire:model="tagIds" multiple :aria-label="__('Tags')" :placeholder="__('Select tags …')">
+                    @if ($this->canEdit)
+                        <x-slot name="input">
+                            <flux:pillbox.input wire:model="newTag" :placeholder="__('Select or create tags …')" />
+                        </x-slot>
+                    @endif
+
                     @foreach ($this->projectTags as $tag)
                         <flux:pillbox.option wire:key="tag-{{ $tag->id }}" value="{{ $tag->id }}">{{ $tag->name }}</flux:pillbox.option>
                     @endforeach
+
+                    @if ($this->canEdit)
+                        <flux:pillbox.option.create wire:click="createTag" min-length="1">
+                            {!! __('Create tag “:name”', ['name' => '<span wire:text="newTag"></span>']) !!}
+                        </flux:pillbox.option.create>
+                    @endif
                 </flux:pillbox>
             </x-task-field>
 
@@ -1084,13 +1096,6 @@ new class extends Component
         @endif
     </form>
 
-    @if ($this->canEdit)
-        <form wire:submit="createTag" class="mt-3 flex items-center gap-2">
-            <flux:input size="sm" :aria-label="__('New tag')" :placeholder="__('New tag')" wire:model="newTag" class="max-w-xs" />
-            <flux:button size="sm" type="submit" icon="plus">{{ __('Create') }}</flux:button>
-        </form>
-    @endif
-
     <flux:separator class="my-6" />
 
     <flux:heading size="lg" class="mb-2">{{ __('Subtasks') }}</flux:heading>
@@ -1125,27 +1130,25 @@ new class extends Component
             @foreach ($this->attachments as $attachment)
                 @php($kind = $attachment->previewKind())
                 @php($inlineUrl = route('attachments.show', [$attachment, 'inline' => 1]))
-                <li wire:key="attachment-{{ $attachment->id }}">
-                    <div class="flex items-center gap-3">
-                        <flux:icon.paper-clip class="size-5 shrink-0 text-zinc-400" />
-                        <div class="min-w-0 flex-1">
+                @php($preview = ['url' => $inlineUrl, 'download' => route('attachments.show', $attachment), 'name' => $attachment->name, 'kind' => $kind])
+                <li wire:key="attachment-{{ $attachment->id }}" class="space-y-2">
+                    <flux:file-item
+                        :heading="$attachment->name"
+                        :text="$attachment->humanSize().' · '.($attachment->user?->name ?? __('Someone')).' · '.$attachment->created_at->isoFormat('L LT')"
+                        :icon="match ($kind) { 'image' => 'photo', 'pdf' => 'document-text', 'text' => 'document', default => 'paper-clip' }"
+                    >
+                        <x-slot name="actions">
                             @if ($kind)
-                                <button type="button" class="block max-w-full truncate text-left font-medium hover:underline" x-on:click="$dispatch('preview-file', @js(['url' => $inlineUrl, 'download' => route('attachments.show', $attachment), 'name' => $attachment->name, 'kind' => $kind]))">{{ $attachment->name }}</button>
-                            @else
-                                <a href="{{ route('attachments.show', $attachment) }}" class="block truncate font-medium hover:underline">{{ $attachment->name }}</a>
+                                <flux:button size="sm" variant="ghost" icon="eye" inset x-on:click="$dispatch('preview-file', {{ Js::from($preview) }})" :aria-label="__('Preview')" :tooltip="__('Preview')" />
                             @endif
-                            <flux:text size="sm">{{ $attachment->humanSize() }} · {{ $attachment->user?->name ?? __('Someone') }} · {{ $attachment->created_at->isoFormat('L LT') }}</flux:text>
-                        </div>
-                        @if ($kind && $kind !== 'image')
-                            <flux:button size="sm" variant="ghost" icon="eye" inset x-on:click="$dispatch('preview-file', @js(['url' => $inlineUrl, 'download' => route('attachments.show', $attachment), 'name' => $attachment->name, 'kind' => $kind]))" aria-label="{{ __('Preview') }}" />
-                        @endif
-                        <flux:button size="sm" variant="ghost" icon="arrow-down-tray" inset href="{{ route('attachments.show', $attachment) }}" aria-label="{{ __('Download') }}" tooltip="{{ __('Download') }}" />
-                        @if ($this->canEdit)
-                            <flux:button size="sm" variant="ghost" icon="trash" inset wire:click="deleteAttachment({{ $attachment->id }})" wire:confirm="{{ __('Delete attachment “:name”?', ['name' => $attachment->name]) }}" aria-label="{{ __('Delete attachment') }}" />
-                        @endif
-                    </div>
+                            <flux:button size="sm" variant="ghost" icon="arrow-down-tray" inset :href="route('attachments.show', $attachment)" :aria-label="__('Download')" :tooltip="__('Download')" />
+                            @if ($this->canEdit)
+                                <flux:button size="sm" variant="ghost" icon="trash" inset wire:click="deleteAttachment({{ $attachment->id }})" wire:confirm="{{ __('Delete attachment “:name”?', ['name' => $attachment->name]) }}" :aria-label="__('Delete attachment')" :tooltip="__('Delete attachment')" />
+                            @endif
+                        </x-slot>
+                    </flux:file-item>
                     @if ($kind === 'image')
-                        <button type="button" class="mt-2 ml-8 block" x-on:click="$dispatch('preview-file', @js(['url' => $inlineUrl, 'download' => route('attachments.show', $attachment), 'name' => $attachment->name, 'kind' => $kind]))" aria-label="{{ __('Preview') }}">
+                        <button type="button" class="block" x-on:click="$dispatch('preview-file', @js($preview))" aria-label="{{ __('Preview') }}">
                             <img src="{{ $inlineUrl }}" alt="{{ $attachment->name }}" class="max-h-64 max-w-full rounded-lg border border-zinc-200 object-contain dark:border-zinc-700" loading="lazy">
                         </button>
                     @endif
@@ -1176,42 +1179,60 @@ new class extends Component
             <flux:button size="sm" variant="ghost" icon="chevron-up" wire:click="showEarlierFeed">{{ __('Show earlier entries') }}</flux:button>
         @endif
 
-        @forelse ($this->activityFeed as $entry)
-            @if ($entry['comment'])
-                @php($comment = $entry['comment'])
-                <flux:card wire:key="comment-{{ $comment->id }}" class="space-y-1">
-                    <div class="flex items-center gap-2">
-                        <flux:text class="min-w-0 flex-1 text-sm"><strong>{{ $comment->user->name }}</strong> · {{ $comment->created_at->isoFormat('L LT') }}@if ($comment->wasEdited()) · {{ __('edited') }} @endif</flux:text>
-                        @if ($editingCommentId !== $comment->id && Gate::allows('update', $comment))
-                            <flux:button size="xs" variant="ghost" icon="pencil-square" wire:click="startEditComment({{ $comment->id }})" aria-label="{{ __('Edit comment') }}" />
-                        @endif
-                        @can('delete', $comment)
-                            <flux:button size="xs" variant="ghost" icon="trash" wire:click="deleteComment({{ $comment->id }})" wire:confirm="{{ __('Delete comment?') }}" aria-label="{{ __('Delete comment') }}" />
-                        @endcan
-                    </div>
-
-                    @if ($editingCommentId === $comment->id)
-                        <form wire:submit="saveComment" class="space-y-2">
-                            <x-markdown-editor wire:model="editingBody" :rows="3" :mentions="$this->mentionOptions" :images="$this->canEdit ? $this->imageAttachments : null" />
-                            <flux:error name="editingBody" />
-                            <div class="flex gap-2">
-                                <flux:button size="sm" type="submit" variant="primary">{{ __('Save') }}</flux:button>
-                                <flux:button size="sm" type="button" variant="ghost" wire:click="cancelEditComment">{{ __('Cancel') }}</flux:button>
-                            </div>
-                        </form>
-                    @else
-                        <x-markdown :text="$comment->body" />
-                    @endif
-                </flux:card>
-            @else
-                @php($activity = $entry['activity'])
-                <flux:text wire:key="activity-{{ $activity->id }}" size="sm" class="px-1">
-                    <strong>{{ $activity->user?->name ?? __('Someone') }}</strong> {{ $activity->sentence() }} · {{ $activity->created_at->isoFormat('L LT') }}
-                </flux:text>
-            @endif
-        @empty
+        @if ($this->activityFeed->isEmpty())
             <flux:text>{{ __('No activity yet.') }}</flux:text>
-        @endforelse
+        @else
+            <flux:timeline size="sm">
+                @foreach ($this->activityFeed as $entry)
+                    @if ($entry['comment'])
+                        @php($comment = $entry['comment'])
+                        <flux:timeline.item wire:key="comment-{{ $comment->id }}" align="start">
+                            <flux:timeline.indicator variant="bare">
+                                <x-user-avatar size="xs" circle :user="$comment->user" />
+                            </flux:timeline.indicator>
+
+                            <flux:timeline.content>
+                                <flux:card size="sm" class="space-y-1">
+                                    <div class="flex items-center gap-2">
+                                        <flux:text class="min-w-0 flex-1 text-sm"><strong>{{ $comment->user->name }}</strong> · {{ $comment->created_at->isoFormat('L LT') }}@if ($comment->wasEdited()) · {{ __('edited') }} @endif</flux:text>
+                                        @if ($editingCommentId !== $comment->id && Gate::allows('update', $comment))
+                                            <flux:button size="xs" variant="ghost" icon="pencil-square" wire:click="startEditComment({{ $comment->id }})" :aria-label="__('Edit comment')" :tooltip="__('Edit comment')" />
+                                        @endif
+                                        @can('delete', $comment)
+                                            <flux:button size="xs" variant="ghost" icon="trash" wire:click="deleteComment({{ $comment->id }})" wire:confirm="{{ __('Delete comment?') }}" :aria-label="__('Delete comment')" :tooltip="__('Delete comment')" />
+                                        @endcan
+                                    </div>
+
+                                    @if ($editingCommentId === $comment->id)
+                                        <form wire:submit="saveComment" class="space-y-2">
+                                            <x-markdown-editor wire:model="editingBody" :rows="3" :mentions="$this->mentionOptions" :images="$this->canEdit ? $this->imageAttachments : null" />
+                                            <flux:error name="editingBody" />
+                                            <div class="flex gap-2">
+                                                <flux:button size="sm" type="submit" variant="primary">{{ __('Save') }}</flux:button>
+                                                <flux:button size="sm" type="button" variant="ghost" wire:click="cancelEditComment">{{ __('Cancel') }}</flux:button>
+                                            </div>
+                                        </form>
+                                    @else
+                                        <x-markdown :text="$comment->body" />
+                                    @endif
+                                </flux:card>
+                            </flux:timeline.content>
+                        </flux:timeline.item>
+                    @else
+                        @php($activity = $entry['activity'])
+                        <flux:timeline.item wire:key="activity-{{ $activity->id }}">
+                            <flux:timeline.indicator>
+                                <flux:icon :name="$activity->type->icon()" variant="micro" />
+                            </flux:timeline.indicator>
+
+                            <flux:timeline.content>
+                                <flux:text size="sm"><strong class="font-medium text-zinc-800 dark:text-white">{{ $activity->user?->name ?? __('Someone') }}</strong> {{ $activity->sentence() }} · {{ $activity->created_at->isoFormat('L LT') }}</flux:text>
+                            </flux:timeline.content>
+                        </flux:timeline.item>
+                    @endif
+                @endforeach
+            </flux:timeline>
+        @endif
     </div>
 
     @if ($this->canEdit)

@@ -209,6 +209,7 @@
     "ended the repetition (end date reached)": "hat die Wiederholung beendet (Enddatum erreicht)",
     "Enter a color": "Farbe eingeben",
     "Enter a search term. All words must appear; word beginnings are enough.": "Gib einen Suchbegriff ein. Alle Wörter müssen vorkommen, Wortanfänge reichen.",
+    "Enter at least :count characters.": "Gib mindestens :count Zeichen ein.",
     "Every": "Alle",
     "every :interval days": "alle :interval Tage",
     "every :interval months": "alle :interval Monate",

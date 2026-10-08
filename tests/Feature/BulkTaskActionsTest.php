@@ -8,6 +8,7 @@ use App\Models\Tag;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -39,6 +40,33 @@ class BulkTaskActionsTest extends TestCase
         $page = Livewire::test('pages::projects.show', ['project' => $this->project])->call('startSelecting');
 
         return $selected === [] ? $page : $page->set('selected', array_map(fn (Task $task) => (string) $task->id, $selected));
+    }
+
+    public function test_completing_many_tasks_costs_a_fixed_number_of_queries_per_task(): void
+    {
+        $collaborator = User::factory()->create();
+        $this->project->setRole($collaborator, ProjectRole::Editor);
+        $queriesFor = function (int $count) use ($collaborator): int {
+            $tasks = collect(range(1, $count))->map(function (int $number) use ($collaborator): Task {
+                $task = $this->task("Aufgabe $number", ['assignee_id' => $collaborator->id]);
+                $task->collaborators()->attach($collaborator);
+
+                return $task;
+            });
+            $page = $this->list($tasks->all());
+
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            $page->call('bulkComplete');
+            DB::disableQueryLog();
+
+            return count(DB::getQueryLog());
+        };
+
+        $forFive = $queriesFor(5);
+        $forFifteen = $queriesFor(15);
+
+        $this->assertLessThanOrEqual(3, ($forFifteen - $forFive) / 10, "{$forFive} queries for 5 tasks, {$forFifteen} for 15");
     }
 
     public function test_the_list_offers_selecting_to_editors_only(): void

@@ -123,6 +123,8 @@ new class extends Component
     <div class="mt-8">
         @if ($this->terms === [])
             <flux:text>{{ __('Enter a search term. All words must appear; word beginnings are enough.') }}</flux:text>
+        @elseif (app(TaskSearchService::class)->isTooShort($this->terms))
+            <flux:text>{{ __('Enter at least :count characters.', ['count' => TaskSearchService::MIN_LIKE_LENGTH]) }}</flux:text>
         @elseif ($this->results->isEmpty())
             <flux:callout icon="magnifying-glass" :heading="__('No results found')" :text="__('There are no matching tasks for “:query” that you can see.', ['query' => $query])" />
         @else

@@ -5,9 +5,12 @@
 @if ($tasks[$key]->isNotEmpty())
 **{{ $heading }}**
 
-@foreach ($tasks[$key] as $task)
+@foreach ($tasks[$key]->take($limit) as $task)
 - [{{ $task->title }}]({{ route('tasks.show', $task) }}) · {{ $task->project->name }} · {{ $task->due_date->isoFormat('L') }}
 @endforeach
+@if ($tasks[$key]->count() > $limit)
+- … und {{ $tasks[$key]->count() - $limit }} weitere
+@endif
 
 @endif
 @endforeach

@@ -8,6 +8,7 @@ use App\Services\TaskSearchService;
 use Database\Factories\ProjectFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -24,6 +25,9 @@ class Project extends Model
 
     /** @var array<int, ProjectRole|null> Roles already looked up, by user id. */
     private array $knownRoles = [];
+
+    /** @var array<int, bool> Whether people may open the project, already looked up by viewerIds(). */
+    private array $knownViewers = [];
 
     protected static function booted(): void
     {
@@ -97,6 +101,37 @@ class Project extends Model
         return $this->knownRoles[$user->getKey()];
     }
 
+    /**
+     * Look up the person's role in many projects at once (two queries) and keep it for roleFor().
+     *
+     * @param  EloquentCollection<int, self>  $projects
+     */
+    public static function rememberRolesFor(User $user, EloquentCollection $projects): void
+    {
+        if ($user->is_admin || $projects->isEmpty()) {
+            return;
+        }
+
+        $ids = $projects->modelKeys();
+        $assignments = DB::table('project_members')
+            ->where('user_id', $user->getKey())
+            ->whereIn('project_id', $ids)
+            ->get(['project_id', 'role'])
+            ->concat(DB::table('project_team')
+                ->join('team_user', 'team_user.team_id', '=', 'project_team.team_id')
+                ->where('team_user.user_id', $user->getKey())
+                ->whereIn('project_team.project_id', $ids)
+                ->get(['project_team.project_id', 'project_team.role']))
+            ->groupBy('project_id');
+
+        foreach ($projects as $project) {
+            $project->knownRoles[$user->getKey()] = collect($assignments->get($project->getKey(), []))
+                ->map(fn (object $assignment) => ProjectRole::from($assignment->role))
+                ->sortByDesc(fn (ProjectRole $role) => $role->level())
+                ->first();
+        }
+    }
+
     private function lookUpRole(User $user): ?ProjectRole
     {
         $roles = $this->teams()
@@ -126,9 +161,31 @@ class Project extends Model
      */
     public function viewerIds(Collection $users): array
     {
-        $ids = $users->pluck('id');
+        $unknown = $users->reject(fn (User $user) => $user->is_admin || array_key_exists($user->id, $this->knownViewers));
 
-        return $users->where('is_admin', true)->pluck('id')
+        if ($unknown->isNotEmpty()) {
+            $viewers = $this->lookUpViewerIds($unknown->pluck('id'));
+
+            foreach ($unknown as $user) {
+                $this->knownViewers[$user->id] = in_array($user->id, $viewers, true);
+            }
+        }
+
+        return $users
+            ->filter(fn (User $user) => $user->is_admin || $this->knownViewers[$user->id])
+            ->pluck('id')
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  Collection<int, int>  $ids
+     * @return list<int>
+     */
+    private function lookUpViewerIds(Collection $ids): array
+    {
+        return collect()
             ->merge(DB::table('project_members')->where('project_id', $this->getKey())->whereIn('user_id', $ids)->pluck('user_id'))
             ->merge(
                 DB::table('team_user')
@@ -137,6 +194,7 @@ class Project extends Model
                     ->whereIn('team_user.user_id', $ids)
                     ->pluck('team_user.user_id')
             )
+            ->map(fn (mixed $id) => (int) $id)
             ->unique()
             ->values()
             ->all();
@@ -145,25 +203,31 @@ class Project extends Model
     public function setTeamRole(Team $team, ProjectRole $role): void
     {
         $this->teams()->syncWithoutDetaching([$team->getKey() => ['role' => $role->value]]);
-        $this->knownRoles = [];
+        $this->forgetAccess();
     }
 
     public function removeTeam(Team $team): void
     {
         $this->teams()->detach($team->getKey());
-        $this->knownRoles = [];
+        $this->forgetAccess();
     }
 
     public function setRole(User $user, ProjectRole $role): void
     {
         $this->members()->syncWithoutDetaching([$user->getKey() => ['role' => $role->value]]);
-        $this->knownRoles = [];
+        $this->forgetAccess();
     }
 
     public function removeMember(User $user): void
     {
         $this->members()->detach($user->getKey());
+        $this->forgetAccess();
+    }
+
+    private function forgetAccess(): void
+    {
         $this->knownRoles = [];
+        $this->knownViewers = [];
     }
 
     /**

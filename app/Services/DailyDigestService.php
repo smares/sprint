@@ -2,11 +2,12 @@
 
 namespace App\Services;
 
+use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Picks the tasks that go into somebody's morning summary: overdue, due today and due in the next days.
@@ -25,13 +26,11 @@ class DailyDigestService
             ->where('is_section', false)
             ->whereNotNull('due_date')
             ->where('due_date', '<=', $until)
-            ->whereHas('status', fn (Builder $status) => $status->where('is_done', false))
-            ->whereHas('project', fn (Builder $projects) => $projects->visibleTo($user)->whereNull('archived_at'))
-            ->where(fn (Builder $mine) => $mine
-                ->where('assignee_id', $user->getKey())
-                ->orWhereHas('collaborators', fn (Builder $collaborators) => $collaborators->whereKey($user->getKey()))
-            )
-            ->whereDoesntHave('notificationMutes', fn (Builder $muted) => $muted->whereKey($user->getKey()))
+            ->open()
+            ->visibleTo($user)
+            ->whereIn('project_id', Project::query()->whereNull('archived_at')->select('id'))
+            ->involving($user)
+            ->whereNotIn('id', DB::table('task_notification_mutes')->where('user_id', $user->getKey())->select('task_id'))
             ->with('project:id,name')
             ->orderBy('due_date')
             ->orderBy('id')

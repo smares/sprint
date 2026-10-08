@@ -2,9 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\Attachment;
+use App\Models\Comment;
 use App\Models\Task;
 use App\Models\User;
-use Illuminate\Contracts\Database\Query\Builder as QueryBuilder;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -18,6 +19,9 @@ use Throwable;
 class TaskSearchService
 {
     public const TABLE = 'task_search';
+
+    /** Without the full-text index, at least one search word needs this many characters. */
+    public const MIN_LIKE_LENGTH = 3;
 
     private ?bool $fullText = null;
 
@@ -140,6 +144,17 @@ class TaskSearchService
     }
 
     /**
+     * Without the full-text index every word scans titles, descriptions, comments and file names,
+     * so searches made only of one- or two-letter words find nothing instead of almost everything.
+     *
+     * @param  list<string>  $terms
+     */
+    public function isTooShort(array $terms): bool
+    {
+        return $terms !== [] && ! $this->usesFullText() && max(array_map(mb_strlen(...), $terms)) < self::MIN_LIKE_LENGTH;
+    }
+
+    /**
      * Tasks matching all words and visible to the person, best match first.
      *
      * @param  array{project_id?: int|string|null, state?: string, mine?: bool}  $filters
@@ -152,7 +167,7 @@ class TaskSearchService
         $tasks = Task::query()
             ->select('tasks.*')
             ->where('tasks.is_section', false)
-            ->whereHas('project', fn (QueryBuilder $projects) => $projects->visibleTo($user));
+            ->visibleTo($user);
 
         if ($terms === []) {
             return $tasks->whereRaw('0 = 1');
@@ -165,14 +180,18 @@ class TaskSearchService
                 ->whereRaw(self::TABLE.' match ?', [$match])
                 ->orderByRaw('bm25('.self::TABLE.', 10.0, 3.0, 1.0, 1.0)');
         } else {
+            if ($this->isTooShort($terms)) {
+                return $tasks->whereRaw('0 = 1');
+            }
+
             foreach ($terms as $term) {
-                $like = '%'.$term.'%';
+                $like = '%'.addcslashes($term, '%_\\').'%';
 
                 $tasks->where(fn (Builder $any) => $any
                     ->whereLike('tasks.title', $like)
                     ->orWhereLike('tasks.description', $like)
-                    ->orWhereHas('comments', fn (QueryBuilder $comments) => $comments->whereLike('body', $like))
-                    ->orWhereHas('attachments', fn ($attachments) => $attachments->whereLike('name', $like))
+                    ->orWhereIn('tasks.id', Comment::query()->whereLike('body', $like)->select('task_id'))
+                    ->orWhereIn('tasks.id', Attachment::query()->whereLike('name', $like)->select('task_id'))
                 );
             }
 
@@ -184,16 +203,13 @@ class TaskSearchService
         }
 
         match ($filters['state'] ?? 'all') {
-            'open' => $tasks->whereHas('status', fn ($status) => $status->where('is_done', false)),
-            'done' => $tasks->whereHas('status', fn ($status) => $status->where('is_done', true)),
+            'open' => $tasks->open(),
+            'done' => $tasks->done(),
             default => null,
         };
 
         if (! empty($filters['mine'])) {
-            $tasks->where(fn (Builder $mine) => $mine
-                ->where('tasks.assignee_id', $user->id)
-                ->orWhereHas('collaborators', fn (QueryBuilder $collaborators) => $collaborators->whereKey($user->id))
-            );
+            $tasks->involving($user);
         }
 
         return $tasks->orderBy('tasks.id');

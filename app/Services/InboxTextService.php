@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Notifications\AutomationNotice;
+use App\Notifications\ReactionReceived;
 use App\Notifications\TaskCommented;
 use App\Notifications\TaskDueTomorrow;
 use App\Notifications\TasksStatusChanged;
@@ -28,6 +29,7 @@ class InboxTextService
             $notification->type === UserMentioned::class => UserMentioned::sentence($data),
             $notification->type === TaskDueTomorrow::class => TaskDueTomorrow::sentence($data),
             $notification->type === AutomationNotice::class => AutomationNotice::sentence($data),
+            $notification->type === ReactionReceived::class => ReactionReceived::sentence($data),
             default => '',
         };
     }

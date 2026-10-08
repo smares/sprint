@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\HasReactions;
 use App\Notifications\TaskCommented;
 use App\Notifications\UserMentioned;
 use App\Services\MarkdownService;
@@ -19,6 +20,8 @@ class Comment extends Model
 {
     /** @use HasFactory<CommentFactory> */
     use HasFactory;
+
+    use HasReactions;
 
     protected static function booted(): void
     {
@@ -69,6 +72,16 @@ class Comment extends Model
     public function wasEdited(): bool
     {
         return $this->updated_at !== null && $this->updated_at->gt($this->created_at->copy()->addSeconds(1));
+    }
+
+    public function reactionOwner(): ?User
+    {
+        return User::query()->find($this->user_id);
+    }
+
+    public function reactionTask(): Task
+    {
+        return $this->relationLoaded('task') ? $this->task : Task::query()->findOrFail($this->task_id);
     }
 
     /**

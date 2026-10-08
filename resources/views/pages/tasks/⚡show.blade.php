@@ -5,6 +5,7 @@ use App\Concerns\ListensForRealtime;
 use App\Enums\CustomFieldType;
 use App\Enums\RepeatMode;
 use App\Enums\RepeatUnit;
+use App\Emoji;
 use App\Models\Attachment;
 use App\Models\CustomField;
 use App\Models\Tag;
@@ -134,6 +135,33 @@ new class extends Component
         $this->task->toggleDone();
         $this->statusId = (string) $this->task->status_id;
         $this->dispatch('task-changed');
+    }
+
+    /**
+     * React to the task or to one of its comments; the same emoji again takes the reaction back.
+     */
+    public function react(string $target, int $id, string $emoji): void
+    {
+        Gate::authorize('edit', $this->task->project);
+
+        $emoji = Emoji::normalize($emoji);
+
+        if ($emoji === null) {
+            Flux::toast(variant: 'danger', text: __('That is not an emoji.'));
+
+            return;
+        }
+
+        $reactable = match ($target) {
+            'task' => $this->task,
+            'comment' => $this->task->comments()->findOrFail($id),
+            default => abort(404),
+        };
+
+        $reactable->toggleReaction(auth()->user(), $emoji);
+
+        $this->task->load('reactions.user');
+        unset($this->activityFeed);
     }
 
     #[Computed]
@@ -672,7 +700,7 @@ new class extends Component
     #[Computed]
     public function activityFeed(): SupportCollection
     {
-        $comments = $this->task->comments()->with('user')->latest()->latest('id')->limit($this->feedLimit)->get()
+        $comments = $this->task->comments()->with('user', 'reactions.user')->latest()->latest('id')->limit($this->feedLimit)->get()
             ->each(fn ($comment) => $comment->setRelation('task', $this->task))
             ->map(fn ($comment) => ['at' => $comment->created_at, 'comment' => $comment, 'activity' => null]);
 
@@ -905,6 +933,8 @@ new class extends Component
 
     public function rendering(View $view): void
     {
+        $this->task->loadMissing('reactions.user');
+
         if (! $this->panel) {
             $view->title($this->task->title);
         }
@@ -957,6 +987,8 @@ new class extends Component
     <form wire:submit="save" class="space-y-4">
         <flux:input wire:model="title" :label="__('Title')" />
         <x-markdown-editor wire:model="description" :label="__('Description')" :rows="3" :mentions="$this->mentionOptions" :images="$this->canEdit ? $this->imageAttachments : null" />
+
+        <x-reactions :reactable="$task" target="task" :can-react="$this->canEdit" />
 
         <div class="divide-y divide-zinc-100 rounded-lg border border-zinc-200 px-3 dark:divide-zinc-800 dark:border-zinc-700">
             <x-task-field :label="__('Status')">
@@ -1235,6 +1267,8 @@ new class extends Component
                                     @else
                                         <x-markdown :text="$comment->body" />
                                     @endif
+
+                                    <x-reactions :reactable="$comment" target="comment" :can-react="$this->canEdit" />
                                 </flux:card>
                             </flux:timeline.content>
                         </flux:timeline.item>

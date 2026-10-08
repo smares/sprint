@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Concerns\HasPosition;
+use App\Concerns\HasReactions;
 use App\Enums\ActivityType;
 use App\Enums\RepeatMode;
 use App\Enums\RepeatUnit;
@@ -40,6 +41,7 @@ class Task extends Model
     use HasFactory;
 
     use HasPosition;
+    use HasReactions;
 
     /** How far a task can be moved or stretched in one go (calendar and timeline), about ten years. */
     public const MAX_SHIFT_DAYS = 3650;
@@ -538,6 +540,16 @@ class Task extends Model
         ])->filter()->firstWhere('id', $id);
 
         return $loaded ?? User::find($id);
+    }
+
+    public function reactionOwner(): ?User
+    {
+        return User::query()->find($this->creator_id);
+    }
+
+    public function reactionTask(): self
+    {
+        return $this;
     }
 
     public function isMutedBy(User $user): bool

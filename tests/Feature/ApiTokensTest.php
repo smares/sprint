@@ -29,6 +29,8 @@ class ApiTokensTest extends TestCase
 
     public function test_creating_a_token_shows_it_once_with_the_connect_command(): void
     {
+        $this->freezeTime();
+
         $page = Livewire::test('api-tokens')->set('name', 'Laptop')->call('create')->assertHasNoErrors();
 
         $plain = $page->get('createdToken');

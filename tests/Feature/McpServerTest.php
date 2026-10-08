@@ -245,6 +245,17 @@ class McpServerTest extends TestCase
         $this->tool(CreateTask::class, ['project_id' => $this->project->id, 'title' => 'x', 'due_date' => 'bald'])->assertHasErrors();
     }
 
+    public function test_tasks_of_projects_one_cannot_see_cannot_be_changed_or_commented(): void
+    {
+        $foreign = Task::factory()->for(Project::factory()->create())->create(['title' => 'Fremd']);
+
+        $this->tool(UpdateTask::class, ['task_id' => $foreign->id, 'title' => 'Geändert'])->assertHasErrors(["Task {$foreign->id} not found."]);
+        $this->tool(AddComment::class, ['task_id' => $foreign->id, 'body' => 'Hallo'])->assertHasErrors(["Task {$foreign->id} not found."]);
+
+        $this->assertSame('Fremd', $foreign->fresh()->title);
+        $this->assertSame(0, $foreign->comments()->count());
+    }
+
     public function test_viewers_foreign_and_archived_projects_cannot_be_written_to(): void
     {
         $viewer = User::factory()->create();

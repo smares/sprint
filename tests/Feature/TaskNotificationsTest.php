@@ -185,6 +185,18 @@ class TaskNotificationsTest extends TestCase
         $this->get($url)->assertForbidden();
     }
 
+    public function test_the_unsubscribe_link_expires_after_a_year(): void
+    {
+        auth()->logout();
+        $url = TaskCommented::unsubscribeUrl($this->task, $this->assignee);
+
+        $this->travelTo(now()->addMonths(11));
+        $this->get($url)->assertOk();
+
+        $this->travelTo(now()->addMonths(2));
+        $this->get($url)->assertForbidden();
+    }
+
     public function test_guests_can_unsubscribe_and_resubscribe_with_the_signed_link(): void
     {
         auth()->logout();

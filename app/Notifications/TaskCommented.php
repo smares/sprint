@@ -3,6 +3,8 @@
 namespace App\Notifications;
 
 use App\Models\Comment;
+use App\Models\Task;
+use App\Models\User;
 use App\Notifications\Concerns\BuildsLocalizedMail;
 use App\Services\MarkdownService;
 use Illuminate\Bus\Queueable;
@@ -65,8 +67,11 @@ class TaskCommented extends Notification implements ShouldQueueAfterCommit
         return __(':name commented', ['name' => $data['by'] ?? __('Someone')]);
     }
 
-    public static function unsubscribeUrl(object $task, object $user): string
+    /**
+     * The signed link in the mail that mutes this task for the person; it stays valid for a year.
+     */
+    public static function unsubscribeUrl(Task $task, User $user): string
     {
-        return URL::signedRoute('tasks.notifications', ['task' => $task, 'user' => $user]);
+        return URL::temporarySignedRoute('tasks.notifications', now()->addYear(), ['task' => $task, 'user' => $user]);
     }
 }

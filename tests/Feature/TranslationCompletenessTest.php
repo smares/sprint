@@ -90,7 +90,7 @@ class TranslationCompletenessTest extends TestCase
         }
     }
 
-    public function test_the_german_file_is_valid_and_sorted_without_empty_values(): void
+    public function test_the_german_file_is_valid_without_empty_values(): void
     {
         $german = $this->german();
 

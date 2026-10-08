@@ -3,6 +3,7 @@
 use App\Models\Project;
 use App\Models\Task;
 use App\Services\TaskSearchService;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
@@ -70,7 +71,7 @@ new class extends Component
                 'state' => in_array($this->state, ['open', 'done'], true) ? $this->state : 'all',
                 'mine' => $this->mine,
             ])
-            ->with(['project', 'parent', 'status', 'comments', 'attachments'])
+            ->with(['project', 'parent', 'status', 'comments:id,task_id,body', 'attachments:id,task_id,name'])
             ->limit($this->limit + 1)
             ->get();
     }
@@ -80,6 +81,8 @@ new class extends Component
      */
     public function explain(Task $task): ?array
     {
+        Gate::authorize('view', $task->project);
+
         return app(TaskSearchService::class)->explain($task, $this->terms);
     }
 

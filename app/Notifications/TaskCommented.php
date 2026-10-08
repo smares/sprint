@@ -6,13 +6,13 @@ use App\Models\Comment;
 use App\Notifications\Concerns\BuildsLocalizedMail;
 use App\Services\MarkdownService;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 
-class TaskCommented extends Notification implements ShouldQueue
+class TaskCommented extends Notification implements ShouldQueueAfterCommit
 {
     use BuildsLocalizedMail, Queueable;
 

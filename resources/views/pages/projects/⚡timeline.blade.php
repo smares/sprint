@@ -59,7 +59,7 @@ new class extends Component
     #[Computed]
     public function start(): Carbon
     {
-        $parsed = preg_match('/^\d{4}-\d{2}-\d{2}$/', $this->from) ? Carbon::make($this->from) : null;
+        $parsed = Carbon::hasFormat($this->from, 'Y-m-d') ? Carbon::createFromFormat('Y-m-d', $this->from) : null;
 
         return ($parsed ?? now())->startOfWeek()->startOfDay();
     }

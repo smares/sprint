@@ -11,6 +11,19 @@ use Illuminate\Notifications\Messages\MailMessage;
  */
 trait BuildsLocalizedMail
 {
+    /** How often a mail that could not be sent is tried. */
+    public int $tries = 3;
+
+    /**
+     * Seconds to wait before the next try.
+     *
+     * @return list<int>
+     */
+    public function backoff(): array
+    {
+        return [60, 300];
+    }
+
     /**
      * @param  array<string, mixed>  $data
      */

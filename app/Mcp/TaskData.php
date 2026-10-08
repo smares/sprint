@@ -17,7 +17,7 @@ class TaskData
      */
     public static function summary(Task $task): array
     {
-        $task->loadMissing('project', 'status', 'assignee', 'tags', 'collaborators');
+        $task->loadMissing('project', 'status', 'assignee', 'tags');
 
         return [
             'id' => $task->id,
@@ -39,7 +39,7 @@ class TaskData
      */
     public static function detail(Task $task): array
     {
-        $task->loadMissing('fieldValues.field', 'fieldValues.option', 'comments.user', 'children.status');
+        $task->loadMissing('collaborators', 'fieldValues.field', 'fieldValues.option', 'comments.user', 'children.status');
 
         return self::summary($task) + [
             'description' => $task->description,

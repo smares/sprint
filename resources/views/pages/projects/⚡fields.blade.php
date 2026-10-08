@@ -5,7 +5,6 @@ use App\Models\CustomField;
 use App\Models\CustomFieldOption;
 use App\Color;
 use App\Models\Project;
-use App\Models\TaskStatus;
 use Flux\Flux;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;

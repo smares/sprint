@@ -12,6 +12,7 @@ use App\Models\User;
 use Generator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -99,10 +100,10 @@ class TaskCsvService
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int|string, \Illuminate\Support\Collection<int, Task>>  $byParent
+     * @param  SupportCollection<int|string, SupportCollection<int, Task>>  $byParent
      * @return Generator<int, Task>
      */
-    private function inTreeOrder($byParent, int $parentId): Generator
+    private function inTreeOrder(SupportCollection $byParent, int $parentId): Generator
     {
         foreach ($byParent->get($parentId, []) as $task) {
             yield $task;
@@ -431,7 +432,7 @@ class TaskCsvService
     /**
      * @param  Collection<int, User>  $users
      */
-    private function findUser($users, string $value): ?User
+    private function findUser(SupportCollection $users, string $value): ?User
     {
         $value = mb_strtolower(trim($value));
 

@@ -265,6 +265,14 @@ class Project extends Model
     }
 
     /**
+     * @return HasMany<Automation, $this>
+     */
+    public function automations(): HasMany
+    {
+        return $this->hasMany(Automation::class);
+    }
+
+    /**
      * @return HasMany<CustomField, $this>
      */
     public function customFields(): HasMany

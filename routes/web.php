@@ -63,6 +63,7 @@ Route::middleware('auth')->group(function () {
     Route::livewire('/projects/{project}', 'pages::projects.show')->name('projects.show');
     Route::livewire('/projects/{project}/fields', 'pages::projects.fields')->name('projects.fields');
     Route::livewire('/projects/{project}/members', 'pages::projects.members')->name('projects.members');
+    Route::livewire('/projects/{project}/automations', 'pages::projects.automations')->name('projects.automations');
     Route::livewire('/projects/{project}/board', 'pages::projects.board')->name('projects.board');
     Route::livewire('/projects/{project}/calendar', 'pages::projects.calendar')->name('projects.calendar');
     Route::livewire('/projects/{project}/timeline', 'pages::projects.timeline')->name('projects.timeline');

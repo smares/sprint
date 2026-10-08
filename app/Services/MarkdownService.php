@@ -7,8 +7,8 @@ use App\Models\Task;
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\HtmlString;
-use Illuminate\Support\Str;
 use League\CommonMark\Extension\ExternalLink\ExternalLinkExtension;
+use League\CommonMark\GithubFlavoredMarkdownConverter;
 
 /**
  * Renders user-written Markdown, including `@[Name](user:1)` / `@[Title](task:2)` mentions and
@@ -23,6 +23,8 @@ class MarkdownService
     private const string PLACEHOLDER_START = "\u{E000}";
 
     private const string PLACEHOLDER_END = "\u{E001}";
+
+    private static ?GithubFlavoredMarkdownConverter $converter = null;
 
     public static function render(?string $text): HtmlString
     {
@@ -46,7 +48,17 @@ class MarkdownService
             return self::PLACEHOLDER_START.(count($mentions) - 1).self::PLACEHOLDER_END;
         }, $withPlaceholders);
 
-        $html = Str::markdown($withPlaceholders, [
+        $html = (string) self::converter()->convert($withPlaceholders);
+
+        return new HtmlString(self::insertMentions($html, $mentions));
+    }
+
+    /**
+     * Setting up CommonMark is the expensive part, so one converter serves all texts of a request.
+     */
+    private static function converter(): GithubFlavoredMarkdownConverter
+    {
+        return self::$converter ??= tap(new GithubFlavoredMarkdownConverter([
             'html_input' => 'strip',
             'allow_unsafe_links' => false,
             'max_nesting_level' => 20,
@@ -56,9 +68,7 @@ class MarkdownService
                 'noopener' => 'external',
                 'noreferrer' => 'external',
             ],
-        ], [new ExternalLinkExtension]);
-
-        return new HtmlString(self::insertMentions($html, $mentions));
+        ]), fn (GithubFlavoredMarkdownConverter $converter) => $converter->getEnvironment()->addExtension(new ExternalLinkExtension));
     }
 
     /**

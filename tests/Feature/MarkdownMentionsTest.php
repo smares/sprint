@@ -183,10 +183,14 @@ class MarkdownMentionsTest extends TestCase
         Task::factory()->create(['title' => 'Fremdes Projekt']);
         User::factory()->admin()->create(['name' => 'Ben Muster']);
 
-        $options = Livewire::test('pages::tasks.show', ['task' => $task])->instance()->mentionOptions;
+        $page = Livewire::test('pages::tasks.show', ['task' => $task]);
+        $options = $page->instance()->mentionOptions;
 
         $this->assertContains('Ben Muster', array_column($options['users'], 'name'));
-        $this->assertEqualsCanonicalizing(['Hauptaufgabe', 'Nachbaraufgabe'], array_column($options['tasks'], 'title'));
+        $this->assertTrue($options['searchTasks']);
+        $this->assertEqualsCanonicalizing(['Hauptaufgabe', 'Nachbaraufgabe'], array_column($page->instance()->mentionTasks(''), 'title'));
+        $this->assertSame(['Nachbaraufgabe'], array_column($page->instance()->mentionTasks('nachbar'), 'title'));
+        $this->assertSame([], $page->instance()->mentionTasks('%'));
 
         $this->get(route('tasks.show', $task))->assertOk()->assertSee('mentionable', false);
     }

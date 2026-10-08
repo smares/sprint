@@ -1,4 +1,4 @@
-@props(['label' => null, 'rows' => 4, 'placeholder' => null, 'mentions' => ['users' => [], 'tasks' => []], 'images' => null])
+@props(['label' => null, 'rows' => 4, 'placeholder' => null, 'mentions' => ['users' => [], 'searchTasks' => false], 'images' => null])
 
 <div
     x-data="{

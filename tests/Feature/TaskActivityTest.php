@@ -172,6 +172,26 @@ class TaskActivityTest extends TestCase
             ->assertSee('Anna Autorin');
     }
 
+    public function test_long_feeds_show_the_latest_entries_and_load_earlier_ones_on_request(): void
+    {
+        $task = Task::factory()->create();
+
+        foreach (range(1, 55) as $number) {
+            $this->travelTo(now()->addMinute());
+            Comment::factory()->for($task)->create(['user_id' => $this->user->id, 'body' => sprintf('Kommentar %03d', $number)]);
+        }
+
+        Livewire::test('pages::tasks.show', ['task' => $task])
+            ->assertSee('Kommentar 055')
+            ->assertSee('Kommentar 006')
+            ->assertDontSee('Kommentar 005')
+            ->assertDontSee('hat die Aufgabe angelegt')
+            ->assertSee('Frühere Einträge anzeigen')
+            ->call('showEarlierFeed')
+            ->assertSeeInOrder(['hat die Aufgabe angelegt', 'Kommentar 001', 'Kommentar 055'])
+            ->assertDontSee('Frühere Einträge anzeigen');
+    }
+
     public function test_deleted_people_show_as_someone(): void
     {
         $task = Task::factory()->create();

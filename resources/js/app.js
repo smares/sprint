@@ -21,22 +21,30 @@ if (window.sprintRealtime) {
 }
 
 const registerMentionable = () => {
+    // People come with the page; tasks are looked up on the server while typing (options.searchTasks).
     window.Alpine.data('mentionable', (options) => ({
         open: false,
         query: '',
         active: 0,
         matches: [],
         start: -1,
+        searchTimer: null,
 
-        items() {
-            return [
-                ...options.users.map((user) => ({ type: 'user', id: user.id, label: user.name })),
-                ...options.tasks.map((task) => ({ type: 'task', id: task.id, label: task.title })),
-            ]
+        people(query) {
+            return options.users
+                .filter((user) => user.name.toLowerCase().includes(query))
+                .slice(0, 8)
+                .map((user) => ({ type: 'user', id: user.id, label: user.name }))
         },
 
         field() {
             return this.$el.querySelector('textarea')
+        },
+
+        show(matches) {
+            this.matches = matches
+            this.active = Math.min(this.active, Math.max(matches.length - 1, 0))
+            this.open = matches.length > 0
         },
 
         onInput(event) {
@@ -49,25 +57,36 @@ const registerMentionable = () => {
             const before = field.value.slice(0, field.selectionStart)
             const match = before.match(/(^|\s)@([^\s@[\]]{0,30})$/)
 
+            clearTimeout(this.searchTimer)
+
             if (!match) {
                 this.open = false
+                this.start = -1
 
                 return
             }
 
-            this.query = match[2].toLowerCase()
+            const query = match[2].toLowerCase()
+            const people = this.people(query)
+
+            this.query = query
             this.start = before.length - match[2].length - 1
-            this.matches = this.items()
-                .filter((item) => item.label.toLowerCase().includes(this.query))
-                .reduce((result, item) => {
-                    if (result.filter((entry) => entry.type === item.type).length < 8) {
-                        result.push(item)
+            this.active = 0
+            this.show(people)
+
+            if (!options.searchTasks) {
+                return
+            }
+
+            this.searchTimer = setTimeout(() => {
+                this.$wire.mentionTasks(query).then((tasks) => {
+                    if (this.query !== query || this.start < 0) {
+                        return
                     }
 
-                    return result
-                }, [])
-            this.active = 0
-            this.open = this.matches.length > 0
+                    this.show([...people, ...tasks.map((task) => ({ type: 'task', id: task.id, label: task.title }))])
+                })
+            }, 150)
         },
 
         onKeydown(event) {
@@ -101,6 +120,7 @@ const registerMentionable = () => {
             field.dispatchEvent(new Event('input', { bubbles: true }))
             field.focus()
             this.open = false
+            this.start = -1
         },
     }))
 }

@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Renderless;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -30,6 +31,12 @@ new class extends Component
 
     /** How many tasks the pickers for parent task and dependencies list at most besides the chosen ones. */
     private const PICKER_LIMIT = 50;
+
+    /** How many comments and changes the activity feed shows at first and adds per "show earlier". */
+    private const FEED_PAGE = 50;
+
+    /** How many tasks the @ suggestions offer at most. */
+    private const MENTION_LIMIT = 8;
 
     public Task $task;
 
@@ -101,6 +108,9 @@ new class extends Component
     /** Somebody else saved this task while it is open here; the form keeps what was typed until it is reloaded. */
     public bool $changedElsewhere = false;
 
+    /** How many of the latest feed entries are shown. */
+    public int $feedLimit = self::FEED_PAGE;
+
     public function hydrate(): void
     {
         Gate::authorize('view', $this->task->project);
@@ -142,10 +152,7 @@ new class extends Component
             ->all();
         $this->notificationsOn = ! $this->task->isMutedBy(auth()->user());
         $this->parentId = (string) ($this->task->parent_id ?? '');
-        $this->sectionTitles = $this->task->project->tasks()
-            ->where('is_section', true)
-            ->pluck('title', 'id')
-            ->all();
+        $this->sectionTitles = $this->subtreeTasks->where('is_section', true)->pluck('title', 'id')->all();
         $this->tagIds = $this->task->tags->pluck('id')->map(fn ($id) => (string) $id)->all();
         $this->collaboratorIds = $this->task->collaborators()->pluck('users.id')->map(fn ($id) => (string) $id)->all();
         $this->blockerIds = $this->task->blockers()->pluck('tasks.id')->map(fn ($id) => (string) $id)->all();
@@ -504,23 +511,40 @@ new class extends Component
     }
 
     /**
-     * @return array{users: list<array{id: int, name: string}>, tasks: list<array{id: int, title: string}>}
+     * The people offered after @; tasks are looked up while typing (mentionTasks).
+     *
+     * @return array{users: list<array{id: int, name: string}>, searchTasks: bool}
      */
     #[Computed]
     public function mentionOptions(): array
     {
         return [
             'users' => $this->users->filter(fn ($user) => $user->isActive())->map(fn ($user) => ['id' => $user->id, 'name' => $user->name])->values()->all(),
-            'tasks' => $this->task->project->tasks()
-                ->where('is_section', false)
-                ->orderByDesc('id')
-                ->limit(500)
-                ->get(['id', 'title'])
-                ->map(fn ($task) => ['id' => $task->id, 'title' => $task->title])
-                ->all(),
+            'searchTasks' => true,
         ];
     }
 
+    /**
+     * Tasks of this project whose title contains the typed text, newest first.
+     *
+     * @return list<array{id: int, title: string}>
+     */
+    #[Renderless]
+    public function mentionTasks(string $query): array
+    {
+        $query = mb_substr(trim($query), 0, 50);
+
+        return $this->task->project->tasks()
+            ->where('is_section', false)
+            ->when($query !== '', fn ($tasks) => $tasks->whereLike('title', '%'.addcslashes($query, '%_\\').'%'))
+            ->orderByDesc('id')
+            ->limit(self::MENTION_LIMIT)
+            ->get(['id', 'title'])
+            ->map(fn (Task $task) => ['id' => $task->id, 'title' => $task->title])
+            ->all();
+    }
+
+    #[Renderless]
     public function previewMarkdown(string $text): string
     {
         return (string) MarkdownService::render(mb_substr($text, 0, 10000));
@@ -671,20 +695,35 @@ new class extends Component
     }
 
     /**
-     * Comments and recorded changes, oldest first.
+     * The latest comments and recorded changes (feedLimit of them), oldest first.
      *
      * @return \Illuminate\Support\Collection<int, array{at: \Illuminate\Support\Carbon, comment: ?\App\Models\Comment, activity: ?\App\Models\TaskActivity}>
      */
     #[Computed]
     public function activityFeed(): SupportCollection
     {
-        $comments = $this->task->comments()->with('user')->get()
+        $comments = $this->task->comments()->with('user')->latest()->latest('id')->limit($this->feedLimit)->get()
             ->map(fn ($comment) => ['at' => $comment->created_at, 'comment' => $comment, 'activity' => null]);
 
-        $activities = $this->task->activities()->with('user')->get()
+        $activities = $this->task->activities()->with('user')->latest()->latest('id')->limit($this->feedLimit)->get()
             ->map(fn ($activity) => ['at' => $activity->created_at, 'comment' => null, 'activity' => $activity]);
 
-        return $comments->concat($activities)->sortBy('at')->values();
+        return $comments->concat($activities)->sortByDesc('at')->take($this->feedLimit)->reverse()->values();
+    }
+
+    /**
+     * Whether there are older entries than the ones shown.
+     */
+    #[Computed]
+    public function hasEarlierFeed(): bool
+    {
+        return $this->task->comments()->count() + $this->task->activities()->count() > $this->feedLimit;
+    }
+
+    public function showEarlierFeed(): void
+    {
+        $this->feedLimit += self::FEED_PAGE;
+        unset($this->activityFeed, $this->hasEarlierFeed);
     }
 
     public function addComment(): void
@@ -892,8 +931,17 @@ new class extends Component
      */
     public function projectChangedElsewhere(array $event = []): void
     {
-        if (($event['kind'] ?? null) === 'task' && ($event['task_id'] ?? null) === $this->task->getKey()) {
+        $taskId = $event['task_id'] ?? null;
+
+        if (($event['kind'] ?? null) === 'task' && $taskId === $this->task->getKey()) {
             $this->changedElsewhere = true;
+
+            return;
+        }
+
+        // Only changes to this task, its comments and attachments, its subtasks or many tasks at once concern this page.
+        if ($taskId !== null && $taskId !== $this->task->getKey() && ! in_array($taskId, $this->descendantIds, true)) {
+            $this->skipRender();
         }
     }
 
@@ -1196,6 +1244,10 @@ new class extends Component
     <flux:heading size="lg" class="mb-4">{{ __('Activity and comments') }}</flux:heading>
 
     <div class="space-y-3">
+        @if ($this->hasEarlierFeed)
+            <flux:button size="sm" variant="ghost" icon="chevron-up" wire:click="showEarlierFeed">{{ __('Show earlier entries') }}</flux:button>
+        @endif
+
         @forelse ($this->activityFeed as $entry)
             @if ($entry['comment'])
                 @php($comment = $entry['comment'])

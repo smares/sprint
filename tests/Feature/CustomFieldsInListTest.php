@@ -111,6 +111,16 @@ class CustomFieldsInListTest extends TestCase
         $this->get(route('projects.show', $this->project).'?f['.$this->priority->id.'][]=x')->assertOk()->assertSee('Sichtbar');
     }
 
+    public function test_tasks_can_be_filtered_by_whether_they_have_dates(): void
+    {
+        $this->task('Ohne Termin');
+        $this->task('Mit Termin')->update(['due_date' => '2026-12-01']);
+
+        $this->list()->set('dateFilter', 'none')->assertSee('Ohne Termin')->assertDontSee('Mit Termin')->assertSee('Ohne Datum')
+            ->set('dateFilter', 'dated')->assertSee('Mit Termin')->assertDontSee('Ohne Termin')
+            ->call('clearFilter', 'dates')->assertSet('dateFilter', '')->assertSee('Ohne Termin')->assertSee('Mit Termin');
+    }
+
     public function test_only_select_fields_offer_a_filter(): void
     {
         CustomField::factory()->for($this->project)->create(['name' => 'Kunde']);

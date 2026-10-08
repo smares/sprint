@@ -132,8 +132,8 @@ new class extends Component
     <x-project-header :project="$project" active="timeline" :presence="$this->presenceChannel()" />
 
     <div class="mb-4 flex items-center gap-2">
-        <flux:button icon="chevron-left" wire:click="earlier" aria-label="{{ __('Earlier') }}" />
-        <flux:button icon="chevron-right" wire:click="later" aria-label="{{ __('Later') }}" />
+        <flux:button icon="chevron-left" wire:click="earlier" aria-label="{{ __('Earlier') }}" tooltip="{{ __('Earlier') }}" />
+        <flux:button icon="chevron-right" wire:click="later" aria-label="{{ __('Later') }}" tooltip="{{ __('Later') }}" />
         <flux:button wire:click="today">{{ __('Today') }}</flux:button>
         <flux:text class="ms-2">{{ $this->start->isoFormat('L') }} – {{ $this->end->isoFormat('L') }}</flux:text>
     </div>
@@ -214,6 +214,7 @@ new class extends Component
             @endif
             @if ($this->outside['undated'] > 0)
                 {{ trans_choice('{1} :count task has no date.|[2,*] :count tasks have no date.', $this->outside['undated']) }}
+                <flux:link :href="route('projects.show', [$project, 'dates' => 'none', 'status' => 'all'])" wire:navigate>{{ __('Show them in the list') }}</flux:link>
             @endif
         </flux:text>
     @endif

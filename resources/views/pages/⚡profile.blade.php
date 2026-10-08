@@ -132,7 +132,7 @@ new class extends Component
 };
 ?>
 
-<div class="max-w-xl space-y-6">
+<div class="max-w-2xl space-y-6">
     <div>
         <flux:heading size="xl">{{ __('Profile') }}</flux:heading>
         <flux:text class="mt-1">{{ __('Your account, its security and access for AI agents.') }}</flux:text>

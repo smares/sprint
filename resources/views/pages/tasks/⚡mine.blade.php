@@ -71,20 +71,18 @@ new class extends Component
                 @foreach ($this->tasks as $task)
                     <flux:table.row wire:key="task-{{ $task->id }}">
                         <flux:table.cell class="min-w-44 whitespace-normal">
-                            <a href="{{ route('tasks.show', $task) }}" wire:navigate class="font-medium hover:underline">{{ $task->title }}</a>
+                            <a href="{{ route('tasks.show', $task) }}" wire:navigate class="font-medium text-zinc-800 hover:underline dark:text-white">{{ $task->title }}</a>
                             @if ($task->parent)
                                 <flux:text size="sm" class="block">{{ __('in :title', ['title' => $task->parent->title]) }}</flux:text>
                             @endif
                         </flux:table.cell>
-                        <flux:table.cell class="max-md:hidden">{{ $task->project->name }}</flux:table.cell>
+                        <flux:table.cell class="max-md:hidden"><flux:link variant="subtle" :href="route('projects.show', $task->project)" wire:navigate>{{ $task->project->name }}</flux:link></flux:table.cell>
                         <flux:table.cell>
                             <x-color-badge size="sm" :color="$task->status->color">{{ $task->status->name }}</x-color-badge>
                         </flux:table.cell>
                         <flux:table.cell>
                             @if ($task->due_date)
                                 <flux:text :class="$task->isOverdue() ? 'text-red-500' : ''">{{ $task->due_date->isoFormat('L') }}</flux:text>
-                            @else
-                                –
                             @endif
                         </flux:table.cell>
                     </flux:table.row>

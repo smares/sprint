@@ -51,7 +51,7 @@ class SavedFiltersTest extends TestCase
         $this->assertSame($this->editor->id, $saved->user_id);
         $this->assertFalse($saved->isShared());
         $this->assertSame([
-            'status' => 'all', 'assignee' => 'me', 'tag' => (string) $tag->id,
+            'status' => 'all', 'assignee' => 'me', 'tag' => (string) $tag->id, 'dates' => '',
             'fields' => [(string) $priority->id => (string) $option->id], 'sort' => 'due', 'direction' => 'asc',
         ], $saved->filters);
     }

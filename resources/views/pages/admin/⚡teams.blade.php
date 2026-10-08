@@ -132,7 +132,7 @@ new class extends Component
 };
 ?>
 
-<div class="max-w-3xl">
+<div class="max-w-4xl">
     <flux:heading size="xl" class="mb-1">{{ __('Teams') }}</flux:heading>
     <flux:text class="mb-6">{!! __('A team is a group of people. In a project under <em>Members</em> you give a whole team access at once.') !!}</flux:text>
 

@@ -33,6 +33,18 @@ class ProjectBoardTest extends TestCase
             ->assertSee('In Arbeit');
     }
 
+    public function test_empty_columns_say_so_and_every_column_offers_a_new_task(): void
+    {
+        $project = Project::factory()->create();
+        Task::factory()->for($project)->create(['title' => 'Ohne Person']);
+
+        $this->get(route('projects.board', $project))
+            ->assertOk()
+            ->assertSee('Keine Aufgaben')
+            ->assertSee('Aufgabe hinzufügen')
+            ->assertSee("new-task', { statusId: {$project->statuses()->first()->id} }", false);
+    }
+
     public function test_moving_a_task_changes_status_and_position(): void
     {
         $project = Project::factory()->create();

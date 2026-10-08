@@ -896,7 +896,7 @@ new class extends Component
 };
 ?>
 
-<div @class(['max-w-3xl' => ! $panel])>
+<div @class(['max-w-4xl' => ! $panel])>
     <x-presence :channel="$this->presenceChannel()" :one="__(':name is looking at this task too')" :many="__(':count people are looking at this task too')" class="mb-3" />
 
     @if ($changedElsewhere)
@@ -916,8 +916,8 @@ new class extends Component
                     <button type="button" wire:key="ancestor-{{ $ancestor->id }}" x-on:click="$dispatch('open-task', { id: {{ $ancestor->id }} })" class="hover:underline">{{ $ancestor->title }}</button>
                 @endforeach
             </flux:text>
-            <flux:button size="sm" variant="ghost" icon="arrow-top-right-on-square" href="{{ route('tasks.show', $task) }}" wire:navigate aria-label="{{ __('Open as page') }}" title="{{ __('Open as page') }}" />
-            <flux:button size="sm" variant="ghost" icon="x-mark" x-on:click="$dispatch('close-task')" aria-label="{{ __('Close') }}" title="{{ __('Close') }}" />
+            <flux:button size="sm" variant="ghost" icon="arrow-top-right-on-square" href="{{ route('tasks.show', $task) }}" wire:navigate aria-label="{{ __('Open as page') }}" tooltip="{{ __('Open as page') }}" />
+            <flux:button size="sm" variant="ghost" icon="x-mark" x-on:click="$dispatch('close-task')" aria-label="{{ __('Close') }}" tooltip="{{ __('Close') }}" />
         </div>
     @else
         <flux:breadcrumbs class="mb-4">
@@ -1139,7 +1139,7 @@ new class extends Component
                         @if ($kind && $kind !== 'image')
                             <flux:button size="sm" variant="ghost" icon="eye" inset x-on:click="$dispatch('preview-file', @js(['url' => $inlineUrl, 'download' => route('attachments.show', $attachment), 'name' => $attachment->name, 'kind' => $kind]))" aria-label="{{ __('Preview') }}" />
                         @endif
-                        <flux:button size="sm" variant="ghost" icon="arrow-down-tray" inset href="{{ route('attachments.show', $attachment) }}" aria-label="{{ __('Download') }}" />
+                        <flux:button size="sm" variant="ghost" icon="arrow-down-tray" inset href="{{ route('attachments.show', $attachment) }}" aria-label="{{ __('Download') }}" tooltip="{{ __('Download') }}" />
                         @if ($this->canEdit)
                             <flux:button size="sm" variant="ghost" icon="trash" inset wire:click="deleteAttachment({{ $attachment->id }})" wire:confirm="{{ __('Delete attachment “:name”?', ['name' => $attachment->name]) }}" aria-label="{{ __('Delete attachment') }}" />
                         @endif

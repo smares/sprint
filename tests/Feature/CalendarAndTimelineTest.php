@@ -212,6 +212,18 @@ class CalendarAndTimelineTest extends TestCase
         $this->get(route('projects.timeline', $this->project))->assertOk()->assertSee('Blockiert');
     }
 
+    public function test_phones_get_the_days_with_tasks_as_a_list_and_undated_tasks_are_linked(): void
+    {
+        $this->travelTo('2026-10-08');
+        Task::factory()->for($this->project)->create(['title' => 'Termin', 'due_date' => '2026-10-20']);
+        Task::factory()->for($this->project)->create(['title' => 'Irgendwann']);
+
+        $this->get(route('projects.calendar', $this->project))->assertOk()
+            ->assertSeeInOrder(['Di, 2026-10-20', 'Termin'])
+            ->assertSee('In der Liste zeigen')
+            ->assertSee(route('projects.show', [$this->project, 'dates' => 'none', 'status' => 'all']));
+    }
+
     public function test_the_view_switcher_links_to_the_other_three_views(): void
     {
         $routes = ['projects.show', 'projects.board', 'projects.calendar', 'projects.timeline'];
@@ -224,7 +236,7 @@ class CalendarAndTimelineTest extends TestCase
                 $response->assertSee('href="'.route($other, $this->project).'"', false);
             }
 
-            $response->assertDontSee('href="'.route($current, $this->project).'"', false);
+            $response->assertSee('aria-current="page"', false);
         }
     }
 

@@ -44,6 +44,10 @@ new class extends Component
     #[Url(as: 'tag')]
     public string $tagFilter = '';
 
+    /** '' for all tasks, 'none' for tasks without start and due date, 'dated' for tasks with one of them. */
+    #[Url(as: 'dates')]
+    public string $dateFilter = '';
+
     /** @var array<int|string, string> */
     #[Url(as: 'f')]
     public array $fieldFilters = [];
@@ -94,6 +98,8 @@ new class extends Component
             ->when($this->assigneeFilter === 'me', fn ($q) => $q->where('assignee_id', auth()->id()))
             ->when(ctype_digit($this->assigneeFilter), fn ($q) => $q->where('assignee_id', (int) $this->assigneeFilter))
             ->when(ctype_digit($this->tagFilter), fn ($q) => $q->whereHas('tags', fn ($tags) => $tags->whereKey((int) $this->tagFilter)))
+            ->when($this->dateFilter === 'none', fn ($q) => $q->whereNull('start_date')->whereNull('due_date'))
+            ->when($this->dateFilter === 'dated', fn ($q) => $q->where(fn ($dated) => $dated->whereNotNull('start_date')->orWhereNotNull('due_date')))
             ->tap(fn ($q) => $this->applyFieldFilters($q));
     }
 
@@ -139,11 +145,11 @@ new class extends Component
      */
     public function updated(string $name): void
     {
-        if (in_array(explode('.', $name)[0], ['statusFilter', 'assigneeFilter', 'tagFilter', 'fieldFilters', 'sortBy', 'sortDirection'], true)) {
+        if (in_array(explode('.', $name)[0], ['statusFilter', 'assigneeFilter', 'tagFilter', 'dateFilter', 'fieldFilters', 'sortBy', 'sortDirection'], true)) {
             $this->limit = self::PAGE_SIZE;
         }
 
-        if (in_array(explode('.', $name)[0], ['statusFilter', 'assigneeFilter', 'tagFilter', 'fieldFilters'], true)) {
+        if (in_array(explode('.', $name)[0], ['statusFilter', 'assigneeFilter', 'tagFilter', 'dateFilter', 'fieldFilters'], true)) {
             $this->selected = [];
         }
     }
@@ -270,6 +276,10 @@ new class extends Component
             $filters->push(['key' => 'tag', 'label' => $tag->name]);
         }
 
+        if (in_array($this->dateFilter, ['none', 'dated'], true)) {
+            $filters->push(['key' => 'dates', 'label' => $this->dateFilter === 'none' ? __('Without date') : __('With date')]);
+        }
+
         return $filters;
     }
 
@@ -290,6 +300,7 @@ new class extends Component
         match (true) {
             $key === 'assignee' => $this->assigneeFilter = '',
             $key === 'tag' => $this->tagFilter = '',
+            $key === 'dates' => $this->dateFilter = '',
             str_starts_with($key, 'field:') => $this->fieldFilters[(int) substr($key, 6)] = '',
             default => null,
         };
@@ -306,7 +317,7 @@ new class extends Component
     }
 
     /**
-     * @return array{status: string, assignee: string, tag: string, fields: array<int|string, string>, sort: string, direction: string}
+     * @return array{status: string, assignee: string, tag: string, dates: string, fields: array<int|string, string>, sort: string, direction: string}
      */
     private function currentFilters(): array
     {
@@ -314,6 +325,7 @@ new class extends Component
             'status' => $this->statusFilter,
             'assignee' => $this->assigneeFilter,
             'tag' => $this->tagFilter,
+            'dates' => $this->dateFilter,
             'fields' => array_filter($this->fieldFilters, fn ($option) => $option !== '' && $option !== null),
             'sort' => $this->sortBy,
             'direction' => $this->sortDirection,
@@ -353,6 +365,7 @@ new class extends Component
 
         $tag = (string) ($filters['tag'] ?? '');
         $this->tagFilter = $tag !== '' && ctype_digit($tag) && $this->tagOptions->contains('id', (int) $tag) ? $tag : '';
+        $this->dateFilter = in_array($filters['dates'] ?? '', ['none', 'dated'], true) ? $filters['dates'] : '';
 
         $this->fieldFilters = [];
 
@@ -390,6 +403,7 @@ new class extends Component
         $this->statusFilter = 'open';
         $this->assigneeFilter = '';
         $this->tagFilter = '';
+        $this->dateFilter = '';
         $this->fieldFilters = [];
         $this->limit = self::PAGE_SIZE;
     }
@@ -488,7 +502,7 @@ new class extends Component
         @endif
 
         <flux:dropdown align="end" class="ms-auto">
-            <flux:button icon="ellipsis-horizontal" aria-label="{{ __('More actions') }}" />
+            <flux:button icon="ellipsis-horizontal" aria-label="{{ __('More actions') }}" tooltip="{{ __('More actions') }}" />
 
             <flux:menu>
                 <flux:menu.item icon="arrow-down-tray" href="{{ route('projects.export', $project) }}">{{ __('Export as CSV') }}</flux:menu.item>
@@ -571,6 +585,12 @@ new class extends Component
                 </flux:select>
             @endforeach
 
+            <flux:select variant="listbox" wire:model.live="dateFilter" :label="__('Dates')">
+                <flux:select.option value="">{{ __('With and without date') }}</flux:select.option>
+                <flux:select.option value="dated">{{ __('With date') }}</flux:select.option>
+                <flux:select.option value="none">{{ __('Without date') }}</flux:select.option>
+            </flux:select>
+
             @if ($this->tagOptions->isNotEmpty())
                 <flux:select variant="listbox" wire:model.live="tagFilter" :label="__('Tag')">
                     <flux:select.option value="">{{ __('All tags') }}</flux:select.option>
@@ -634,7 +654,7 @@ new class extends Component
                             <x-color-badge size="sm" :color="$task->status->color">{{ $task->status->name }}</x-color-badge>
                         </flux:table.cell>
                         <flux:table.cell class="{{ $this->panelTask ? 'hidden' : 'max-md:hidden' }}">
-                            {{ $task->assignee?->name ?? '–' }}
+                            {{ $task->assignee?->name }}
                             @if ($task->collaborators->isNotEmpty())
                                 <flux:text size="sm" class="block" title="{{ $task->collaborators->pluck('name')->join(', ') }}">{{ trans_choice('{1} + :count collaborator|[2,*] + :count collaborators', $task->collaborators->count()) }}</flux:text>
                             @endif
@@ -642,13 +662,11 @@ new class extends Component
                         <flux:table.cell>
                             @if ($task->due_date)
                                 <flux:text :class="$task->isOverdue() ? 'text-red-500' : ''">{{ $task->due_date->isoFormat('L') }}</flux:text>
-                            @else
-                                –
                             @endif
                         </flux:table.cell>
                         @foreach ($this->listFields as $field)
                             <flux:table.cell wire:key="cell-{{ $task->id }}-{{ $field->id }}" class="{{ $this->panelTask ? 'hidden' : 'max-md:hidden' }}">
-                                <x-field-value :task="$task" :field="$field" />
+                                <x-field-value :task="$task" :field="$field" :show-empty="false" />
                             </flux:table.cell>
                         @endforeach
                     </flux:table.row>
@@ -675,7 +693,7 @@ new class extends Component
                         <flux:button size="sm" variant="ghost" wire:click="selectAllMatching">{{ __('Select all :count', ['count' => min($this->totalTasks, $this::MAX_SELECTION)]) }}</flux:button>
                     @endif
 
-                    <flux:button size="sm" variant="ghost" icon="x-mark" wire:click="stopSelecting" aria-label="{{ __('End selection') }}" class="ms-auto sm:hidden" />
+                    <flux:button size="sm" variant="ghost" icon="x-mark" wire:click="stopSelecting" aria-label="{{ __('End selection') }}" tooltip="{{ __('End selection') }}" class="ms-auto sm:hidden" />
                 </div>
 
                 <div class="flex flex-wrap items-center gap-2">
@@ -687,7 +705,7 @@ new class extends Component
 
                     <flux:button size="sm" variant="danger" icon="trash" wire:click="bulkDelete" wire:confirm="{{ __('Permanently delete the selected tasks including their subtasks?') }}" x-bind:disabled="$wire.selected.length === 0">{{ __('Delete') }}</flux:button>
 
-                    <flux:button size="sm" variant="ghost" icon="x-mark" wire:click="stopSelecting" aria-label="{{ __('End selection') }}" class="max-sm:hidden" />
+                    <flux:button size="sm" variant="ghost" icon="x-mark" wire:click="stopSelecting" aria-label="{{ __('End selection') }}" tooltip="{{ __('End selection') }}" class="max-sm:hidden" />
                 </div>
             </div>
         </div>

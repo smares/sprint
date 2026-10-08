@@ -174,7 +174,12 @@ new class extends Component
 };
 ?>
 
-<div class="mx-auto mt-24 max-w-sm px-4">
+<div class="mx-auto mt-16 max-w-sm px-4 sm:mt-24">
+    <div class="mb-6 flex justify-center">
+        <x-app-brand :href="route('login')" />
+    </div>
+
+    <flux:card>
     <flux:heading size="xl" class="mb-6">{{ __('Sign in') }}</flux:heading>
 
     @if ($needsCode)
@@ -221,8 +226,9 @@ new class extends Component
             <flux:text x-show="failed" class="text-red-600 dark:text-red-400">{{ __('Signing in with the passkey failed.') }}</flux:text>
         </div>
     @endif
+    </flux:card>
 
-    <form method="POST" action="{{ route('locale.update') }}" class="mt-10 flex justify-center gap-1">
+    <form method="POST" action="{{ route('locale.update') }}" class="mt-8 flex justify-center gap-1">
         @csrf
         @foreach (\App\Services\LocaleService::available() as $code => $name)
             <flux:button type="submit" name="locale" value="{{ $code }}" size="sm" :variant="app()->getLocale() === $code ? 'filled' : 'ghost'" lang="{{ $code }}">{{ $name }}</flux:button>

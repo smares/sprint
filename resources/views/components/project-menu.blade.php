@@ -2,7 +2,7 @@
 
 {{-- Setup entries for managers; Status and Tags open as modals, Felder and Mitglieder are pages. --}}
 <flux:dropdown align="end">
-    <flux:button icon="cog-6-tooth" aria-label="{{ __('Set up project') }}" />
+    <flux:button icon="cog-6-tooth" aria-label="{{ __('Set up project') }}" tooltip="{{ __('Set up project') }}" />
 
     <flux:menu>
         <flux:menu.item icon="pencil-square" x-on:click="$flux.modal('project-settings').show()">{{ __('Settings') }}</flux:menu.item>

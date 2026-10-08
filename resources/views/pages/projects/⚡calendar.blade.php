@@ -128,13 +128,31 @@ new class extends Component
     <x-project-header :project="$project" active="calendar" :presence="$this->presenceChannel()" />
 
     <div class="mb-4 flex items-center gap-2">
-        <flux:button icon="chevron-left" wire:click="previousMonth" aria-label="{{ __('Previous month') }}" />
-        <flux:button icon="chevron-right" wire:click="nextMonth" aria-label="{{ __('Next month') }}" />
+        <flux:button icon="chevron-left" wire:click="previousMonth" aria-label="{{ __('Previous month') }}" tooltip="{{ __('Previous month') }}" />
+        <flux:button icon="chevron-right" wire:click="nextMonth" aria-label="{{ __('Next month') }}" tooltip="{{ __('Next month') }}" />
         <flux:button wire:click="today">{{ __('Today') }}</flux:button>
         <flux:heading size="lg" class="ms-2">{{ $this->monthStart->isoFormat('MMMM YYYY') }}</flux:heading>
     </div>
 
-    <div class="overflow-x-auto">
+    {{-- On phones the month grid does not fit; the days with tasks are listed instead. --}}
+    @php($agenda = collect($this->weeks)->flatten(1)->filter(fn ($day) => $day['inMonth'] && $day['tasks']->isNotEmpty()))
+    <div class="space-y-4 sm:hidden">
+        @forelse ($agenda as $day)
+            <div wire:key="agenda-{{ $day['date']->toDateString() }}">
+                <flux:heading size="sm" @class(['mb-1', 'text-blue-600 dark:text-blue-400' => $day['date']->isToday()])>{{ $day['date']->isoFormat('dd, L') }}</flux:heading>
+                <div class="space-y-1">
+                    @foreach ($day['tasks'] as $task)
+                        <a wire:key="agenda-{{ $day['date']->toDateString() }}-{{ $task->id }}" href="{{ route('tasks.show', $task) }}" wire:navigate style="--badge: {{ $task->status->color }}"
+                           class="color-chip block truncate rounded px-2 py-1 text-sm {{ $task->isDone() ? 'line-through opacity-60' : '' }}">{{ $task->title }}</a>
+                    @endforeach
+                </div>
+            </div>
+        @empty
+            <flux:text>{{ __('No tasks with dates this month.') }}</flux:text>
+        @endforelse
+    </div>
+
+    <div class="overflow-x-auto max-sm:hidden">
         <div class="grid min-w-[56rem] grid-cols-7 border-s border-t border-zinc-200 dark:border-zinc-700">
             @foreach ($this->weeks[0] as $weekday)
                 <div class="border-e border-b border-zinc-200 bg-zinc-50 p-2 text-sm font-medium dark:border-zinc-700 dark:bg-zinc-900">
@@ -181,6 +199,9 @@ new class extends Component
     </div>
 
     @if ($this->undated > 0)
-        <flux:text class="mt-4">{{ trans_choice('{1} :count task has no date and therefore does not appear in the calendar.|[2,*] :count tasks have no date and therefore do not appear in the calendar.', $this->undated) }}</flux:text>
+        <flux:text class="mt-4">
+            {{ trans_choice('{1} :count task has no date and therefore does not appear in the calendar.|[2,*] :count tasks have no date and therefore do not appear in the calendar.', $this->undated) }}
+            <flux:link :href="route('projects.show', [$project, 'dates' => 'none', 'status' => 'all'])" wire:navigate>{{ __('Show them in the list') }}</flux:link>
+        </flux:text>
     @endif
 </div>

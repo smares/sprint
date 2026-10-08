@@ -60,5 +60,8 @@ ENV SERVER_NAME=:80 \
 
 VOLUME /app/storage
 
+# The base image checks Caddy, which only runs in the web container; compose.yaml checks that one itself.
+HEALTHCHECK NONE
+
 ENTRYPOINT ["/app/docker/entrypoint.sh"]
 CMD ["frankenphp", "run", "--config", "/etc/caddy/Caddyfile"]

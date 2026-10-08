@@ -104,6 +104,7 @@ new class extends Component
         $password = Str::password(16, symbols: false);
 
         $user->update(['password' => $password]);
+        $user->signOutEverywhere($user->is(auth()->user()) ? session()->getId() : null);
 
         $this->shownPassword = $password;
         $this->shownFor = $user->email;
@@ -182,7 +183,7 @@ new class extends Component
                     <flux:text size="sm" class="truncate">{{ $user->email }}</flux:text>
                 </div>
                 <flux:checkbox wire:model.live="admins.{{ $user->id }}" :label="__('Administrator')" />
-                <flux:button size="xs" variant="ghost" icon="key" wire:click="resetPassword({{ $user->id }})" wire:confirm="{{ __('Generate a new password for :name? The old one will no longer work.', ['name' => $user->name]) }}" aria-label="{{ __('Generate new password') }}" />
+                <flux:button size="xs" variant="ghost" icon="key" wire:click="resetPassword({{ $user->id }})" wire:confirm="{{ __('Generate a new password for :name? The old one will no longer work, and all sessions and API tokens are signed out.', ['name' => $user->name]) }}" aria-label="{{ __('Generate new password') }}" />
                 @if ($user->two_factor_secret || $user->passkeys_count)
                     <flux:button size="xs" variant="ghost" icon="shield-exclamation" wire:click="resetSecondFactors({{ $user->id }})" wire:confirm="{{ __('Reset two-factor authentication and passkeys for :name? Afterwards the password alone is enough again.', ['name' => $user->name]) }}" aria-label="{{ __('Reset second factor') }}" title="{{ __('Reset two-factor and passkeys') }}" />
                 @endif

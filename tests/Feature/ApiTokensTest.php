@@ -31,7 +31,7 @@ class ApiTokensTest extends TestCase
     {
         $this->freezeTime();
 
-        $page = Livewire::test('api-tokens')->set('name', 'Laptop')->call('create')->assertHasNoErrors();
+        $page = Livewire::test('api-tokens')->set('name', 'Laptop')->set('password', 'password')->call('create')->assertHasNoErrors();
 
         $plain = $page->get('createdToken');
         $this->assertNotEmpty($plain);
@@ -46,20 +46,32 @@ class ApiTokensTest extends TestCase
         $page->call('dismissToken')->assertSet('createdToken', null)->assertDontSee($plain);
     }
 
-    public function test_tokens_can_be_read_only_and_unlimited(): void
+    public function test_tokens_can_be_read_only(): void
     {
-        Livewire::test('api-tokens')->set('name', 'Lesen')->set('readOnly', true)->set('expiry', 'never')->call('create');
+        Livewire::test('api-tokens')->set('name', 'Lesen')->set('readOnly', true)->set('expiry', '365')->set('password', 'password')->call('create');
 
         $token = $this->user->tokens()->firstOrFail();
         $this->assertTrue($token->can('read'));
         $this->assertFalse($token->can('write'));
-        $this->assertNull($token->expires_at);
+        $this->assertNotNull($token->expires_at);
+    }
+
+    public function test_creating_a_token_needs_the_password_unless_it_was_just_confirmed(): void
+    {
+        Livewire::test('api-tokens')->set('name', 'Laptop')->call('create')->assertHasErrors('password');
+        Livewire::test('api-tokens')->set('name', 'Laptop')->set('password', 'falsch')->call('create')->assertHasErrors('password');
+        $this->assertSame(0, $this->user->tokens()->count());
+
+        session(['auth.password_confirmed_at' => time()]);
+        Livewire::test('api-tokens')->assertDontSee('Aktuelles Passwort')->set('name', 'Laptop')->call('create')->assertHasNoErrors();
+        $this->assertSame(1, $this->user->tokens()->count());
     }
 
     public function test_a_name_and_a_valid_lifetime_are_required(): void
     {
         Livewire::test('api-tokens')->set('name', '')->call('create')->assertHasErrors('name');
         Livewire::test('api-tokens')->set('name', 'x')->set('expiry', '9999')->call('create')->assertHasErrors('expiry');
+        Livewire::test('api-tokens')->set('name', 'x')->set('expiry', 'never')->call('create')->assertHasErrors('expiry');
 
         $this->assertSame(0, $this->user->tokens()->count());
     }

@@ -93,7 +93,7 @@ new class extends Component
             throw ValidationException::withMessages(['code' => __('Your sign-in has expired. Please start over.')]);
         }
 
-        $throttleKey = 'two-factor|'.$user->getKey().'|'.request()->ip();
+        $throttleKey = 'two-factor|'.$user->getKey();
 
         if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
             throw ValidationException::withMessages([

@@ -98,7 +98,7 @@ class TwoFactorLoginTest extends TestCase
 
         $page->set('code', $this->validCode())->call('confirmCode')->assertHasErrors('code');
         $this->assertGuest();
-        RateLimiter::clear('two-factor|'.$this->user->id.'|127.0.0.1');
+        RateLimiter::clear('two-factor|'.$this->user->id);
     }
 
     public function test_the_challenge_expires_and_can_be_cancelled(): void

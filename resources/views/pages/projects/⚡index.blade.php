@@ -1,8 +1,10 @@
 <?php
 
-use App\Models\Project;
 use App\Enums\ProjectRole;
+use App\Models\Project;
 use Flux\Flux;
+use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -13,7 +15,7 @@ new class extends Component
     public string $description = '';
 
     #[Computed]
-    public function projects()
+    public function projects(): Collection
     {
         return Project::query()
             ->visibleTo(auth()->user())
@@ -30,7 +32,7 @@ new class extends Component
      * Archived projects the person can still open (read-only).
      */
     #[Computed]
-    public function archivedProjects()
+    public function archivedProjects(): Collection
     {
         return Project::query()
             ->visibleTo(auth()->user())
@@ -55,7 +57,7 @@ new class extends Component
         $this->redirectRoute('projects.show', $project, navigate: true);
     }
 
-    public function rendering($view): void
+    public function rendering(View $view): void
     {
         $view->title(__('Projects'));
     }

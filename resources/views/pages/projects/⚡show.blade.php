@@ -8,6 +8,10 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskStatus;
 use Flux\Flux;
+use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -106,7 +110,7 @@ new class extends Component
     /**
      * Top-level tasks matching the filters, without order and limit.
      */
-    protected function filteredTasks()
+    protected function filteredTasks(): HasMany
     {
         return $this->project->tasks()
             ->whereNull('parent_id')
@@ -130,7 +134,7 @@ new class extends Component
      * The first page of the list; more is loaded when the end of the list comes into view.
      */
     #[Computed]
-    public function tasks()
+    public function tasks(): Collection
     {
         return $this->filteredTasks()
             ->with(['assignee', 'collaborators', 'tags', 'status', 'blockers.status', 'fieldValues'])
@@ -170,7 +174,7 @@ new class extends Component
     }
 
     #[Computed]
-    public function statuses()
+    public function statuses(): Collection
     {
         return $this->project->statuses()->get();
     }
@@ -179,13 +183,13 @@ new class extends Component
      * Fields shown as columns in the list.
      */
     #[Computed]
-    public function listFields()
+    public function listFields(): Collection
     {
         return $this->customFields->where('show_in_list', true)->values();
     }
 
     #[Computed]
-    public function customFields()
+    public function customFields(): Collection
     {
         return $this->project->customFields()->with('options')->get();
     }
@@ -194,7 +198,7 @@ new class extends Component
      * Fields people can filter by: the single-choice ones.
      */
     #[Computed]
-    public function filterableFields()
+    public function filterableFields(): Collection
     {
         return $this->customFields->where('type', CustomFieldType::Select)->values();
     }
@@ -243,7 +247,7 @@ new class extends Component
     }
 
     #[Computed]
-    public function tagOptions()
+    public function tagOptions(): Collection
     {
         return $this->project->tags()->orderBy('name')->get();
     }
@@ -258,7 +262,7 @@ new class extends Component
     }
 
     #[Computed]
-    public function users()
+    public function users(): Collection
     {
         return $this->project->eligibleUsers()->orderBy('name')->get(['id', 'name']);
     }
@@ -296,7 +300,7 @@ new class extends Component
      * @return \Illuminate\Support\Collection<int, array{key: string, label: string}>
      */
     #[Computed]
-    public function activeFilters()
+    public function activeFilters(): SupportCollection
     {
         $filters = collect();
 
@@ -351,7 +355,7 @@ new class extends Component
      * Saved views: the shared ones and the person's own.
      */
     #[Computed]
-    public function savedFilters()
+    public function savedFilters(): Collection
     {
         return $this->project->savedFilters()->visibleTo(auth()->user())->orderBy('name')->get();
     }
@@ -497,7 +501,7 @@ new class extends Component
         unset($this->tasks);
     }
 
-    public function rendering($view): void
+    public function rendering(View $view): void
     {
         $view->title($this->project->name);
     }

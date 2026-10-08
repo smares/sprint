@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
@@ -166,7 +167,7 @@ new class extends Component
         $this->redirectIntended(route('projects.index'), navigate: true);
     }
 
-    public function rendering($view): void
+    public function rendering(View $view): void
     {
         $view->title(__('Sign in'));
     }

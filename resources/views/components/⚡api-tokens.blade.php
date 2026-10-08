@@ -1,6 +1,7 @@
 <?php
 
 use Flux\Flux;
+use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -15,7 +16,7 @@ new class extends Component
     public ?string $createdToken = null;
 
     #[Computed]
-    public function tokens()
+    public function tokens(): Collection
     {
         return auth()->user()->tokens()->latest()->get();
     }

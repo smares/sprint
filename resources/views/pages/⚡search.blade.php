@@ -3,6 +3,9 @@
 use App\Models\Project;
 use App\Models\Task;
 use App\Services\TaskSearchService;
+use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
@@ -53,13 +56,13 @@ new class extends Component
     }
 
     #[Computed]
-    public function projects()
+    public function projects(): Collection
     {
         return Project::visibleTo(auth()->user())->orderBy('name')->get(['id', 'name']);
     }
 
     #[Computed]
-    public function results()
+    public function results(): SupportCollection
     {
         if ($this->terms === []) {
             return collect();
@@ -86,7 +89,7 @@ new class extends Component
         return app(TaskSearchService::class)->explain($task, $this->terms);
     }
 
-    public function rendering($view): void
+    public function rendering(View $view): void
     {
         $view->title(__('Search'));
     }

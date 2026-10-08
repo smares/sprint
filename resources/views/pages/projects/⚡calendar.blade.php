@@ -2,6 +2,7 @@
 
 use App\Models\Project;
 use App\Models\Task;
+use Illuminate\Contracts\View\View;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
@@ -116,7 +117,7 @@ new class extends Component
      * Tasks without any date cannot appear in the calendar.
      */
     #[Computed]
-    public function undated()
+    public function undated(): int
     {
         return $this->project->tasks()
             ->whereNull('parent_id')
@@ -126,7 +127,7 @@ new class extends Component
             ->count();
     }
 
-    public function rendering($view): void
+    public function rendering(View $view): void
     {
         $view->title(__('Calendar – :project', ['project' => $this->project->name]));
     }

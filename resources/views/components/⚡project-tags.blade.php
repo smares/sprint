@@ -4,6 +4,7 @@ use App\Color;
 use App\Models\Project;
 use App\Models\Tag;
 use Flux\Flux;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -41,7 +42,7 @@ new class extends Component
     }
 
     #[Computed]
-    public function tags()
+    public function tags(): Collection
     {
         return $this->project->tags()->withCount('tasks')->orderBy('name')->get();
     }

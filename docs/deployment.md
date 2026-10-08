@@ -2,10 +2,11 @@
 
 Sprint ist eine normale Laravel-Anwendung. Egal wo sie läuft, braucht sie dieselben fünf Dinge: **PHP mit Webserver**, **eine Datenbank**, **einen dauerhaft laufenden Queue-Worker** (Mails, Posteingang), **den Scheduler** (jede Minute `php artisan schedule:run`, für die Tageszusammenfassung und die Gesundheitsprüfung) und **dauerhaften Speicher für Anhänge**.
 
-Anleitungen für zwei typische Hosts:
+Anleitungen für typische Hosts:
 
 - [Laravel Forge](deployment-forge.md): eigener Server mit dauerhafter Platte
 - [Laravel Cloud](deployment-laravel-cloud.md): flüchtiges Dateisystem, Datenbank und Bucket als Ressourcen
+- [Docker Compose](deployment-docker.md): fertiges Image samt Worker und Scheduler, Daten im Volume
 
 ## Checkliste für jeden Host
 
@@ -32,6 +33,8 @@ Anleitungen für zwei typische Hosts:
    MAIL_FROM_ADDRESS=sprint@example.com
    MAIL_FROM_NAME=Sprint
    ```
+   Hinter einem Proxy oder Load Balancer, der TLS beendet, zusätzlich `TRUSTED_PROXIES=*` (oder die Adressen des Proxys, kommagetrennt), sonst erzeugt Laravel `http`-Links.
+
    `APP_URL` muss exakt die Adresse sein, unter der die Leute Sprint öffnen (HTTPS): Links in Mails, signierte Abbestell-Links und **Passkeys** hängen daran.
 3. **Datenbank anlegen und migrieren:** `php artisan migrate --force` bei jedem Deployment.
 4. **Queue-Worker:** `php artisan queue:work --tries=3` als dauerhafter Prozess, nach jedem Deployment neu gestartet (`php artisan queue:restart`).

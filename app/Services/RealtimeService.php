@@ -33,13 +33,13 @@ class RealtimeService
             return null;
         }
 
-        $options = config('broadcasting.connections.reverb.options');
+        $public = config('broadcasting.connections.reverb.public');
 
         return [
             'key' => (string) config('broadcasting.connections.reverb.key'),
-            'host' => (string) ($options['host'] ?: request()->getHost()),
-            'port' => (int) $options['port'],
-            'scheme' => (string) $options['scheme'],
+            'host' => (string) ($public['host'] ?: request()->getHost()),
+            'port' => (int) $public['port'],
+            'scheme' => (string) $public['scheme'],
         ];
     }
 

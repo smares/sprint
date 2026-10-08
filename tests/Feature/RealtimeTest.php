@@ -44,9 +44,12 @@ class RealtimeTest extends TestCase
             'broadcasting.connections.reverb.key' => 'test-key',
             'broadcasting.connections.reverb.secret' => 'test-secret',
             'broadcasting.connections.reverb.app_id' => 'test-app',
-            'broadcasting.connections.reverb.options.host' => 'ws.example.com',
-            'broadcasting.connections.reverb.options.port' => 443,
-            'broadcasting.connections.reverb.options.scheme' => 'https',
+            'broadcasting.connections.reverb.options.host' => 'reverb',
+            'broadcasting.connections.reverb.options.port' => 8080,
+            'broadcasting.connections.reverb.options.scheme' => 'http',
+            'broadcasting.connections.reverb.public.host' => 'ws.example.com',
+            'broadcasting.connections.reverb.public.port' => 443,
+            'broadcasting.connections.reverb.public.scheme' => 'https',
         ]);
 
         // Nothing leaves the test process; the channels are registered again for the driver that is now the default.
@@ -142,13 +145,23 @@ class RealtimeTest extends TestCase
         $this->assertSame("private-user.{$person->id}", (new InboxUpdated($person->id))->broadcastOn()[0]->name);
     }
 
+    public function test_without_a_public_host_the_browser_connects_to_the_host_of_the_page(): void
+    {
+        $this->switchOnReverb();
+        config(['broadcasting.connections.reverb.public.host' => null]);
+
+        $this->get('http://sprint.example.org/projects')->assertOk();
+
+        $this->assertSame('sprint.example.org', app(RealtimeService::class)->clientConfig()['host']);
+    }
+
     public function test_the_browser_gets_the_connection_settings_but_never_the_secret(): void
     {
         $this->switchOnReverb();
 
         $config = app(RealtimeService::class)->clientConfig();
 
-        $this->assertSame(['key' => 'test-key', 'host' => 'ws.example.com', 'port' => 443, 'scheme' => 'https'], $config);
+        $this->assertSame(['key' => 'test-key', 'host' => 'ws.example.com', 'port' => 443, 'scheme' => 'https'], $config, 'the public address, not the one the server sends to');
 
         $this->get(route('projects.index'))
             ->assertOk()

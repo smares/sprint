@@ -114,7 +114,7 @@ class McpServerTest extends TestCase
     public function test_projects_show_what_an_agent_needs_to_know(): void
     {
         Tag::factory()->for($this->project)->create(['name' => 'Bug']);
-        $archived = Project::factory()->create(['archived_at' => now()]);
+        $archived = Project::factory()->create(['name' => 'Altprojekt', 'archived_at' => now()]);
         $archived->setRole($this->user, ProjectRole::Editor);
         Project::factory()->create(['name' => 'Fremd']);
 

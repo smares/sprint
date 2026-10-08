@@ -9,6 +9,7 @@ Anleitungen für Sprint, nach Aufgabe sortiert.
 - [Bereitstellung](deployment.md): Checkliste für jeden Host
   - [Laravel Forge](deployment-forge.md): eigener Server
   - [Laravel Cloud](deployment-laravel-cloud.md): flüchtiges Dateisystem, Bucket und Datenbank als Ressourcen
+  - [Docker Compose](deployment-docker.md): ein Image für App, Worker, Scheduler und Reverb, Daten im Volume
 - [Konfiguration](configuration.md): E-Mail, Tageszusammenfassung, Anhänge, MCP, Passkeys, Suche, Sprachen
 - [Wartung](maintenance.md): Updates, Gesundheitsprüfung, Backup und Wiederherstellung
 - [Entwicklung](development.md): Befehle, Aufbau, Tests und Arbeitsweise

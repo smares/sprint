@@ -214,18 +214,24 @@ jobs:
         run: docker buildx imagetools inspect "$IMAGE:$VERSION"
 
       # The image contains the code of Flux Pro, whose license does not allow passing it on:
-      # the package must stay private. Fails the release if it can be pulled without a login.
+      # the package must stay private. Fails the release only if it can be pulled without a login;
+      # a refused request for an anonymous token or manifest (401, 403, 404) is what a private package answers.
       - name: The image must not be public
         env:
           VERSION: ${{ inputs.version }}
         run: |
           repository="${GITHUB_REPOSITORY,,}"
-          token="$(curl -fsS "https://ghcr.io/token?scope=repository:$repository:pull" | jq -r .token)"
+          token="$(curl -sS "https://ghcr.io/token?scope=repository:$repository:pull" | jq -r '.token // empty' 2>/dev/null || true)"
+          if [ -z "$token" ]; then
+            echo "No anonymous access to ghcr.io/$repository: the package is private."
+            exit 0
+          fi
           status="$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $token" -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json' "https://ghcr.io/v2/$repository/manifests/$VERSION")"
           if [ "$status" = "200" ]; then
-            echo "::error::The package ghcr.io/$repository can be pulled without a login. Set it to private (profile → Packages → sprint → Package settings → Change visibility); the Flux Pro license does not allow publishing it."
+            echo "::error::The package ghcr.io/$repository can be pulled without a login. Set it to private (profile → Packages → sprint → Package settings → Change visibility) and turn off 'Inherit access from source repository'; the Flux Pro license does not allow publishing it."
             exit 1
           fi
+          echo "The manifest is refused without a login (HTTP $status): the package is private."
 
       - name: Create the release
         env:

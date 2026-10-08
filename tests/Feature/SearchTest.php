@@ -233,7 +233,7 @@ class SearchTest extends TestCase
         $this->withoutFullText();
         $this->assertFalse(app(TaskSearch::class)->usesFullText());
 
-        $this->artisan('search:rebuild')->expectsOutputToContain('1 Aufgaben indiziert')->assertSuccessful();
+        $this->artisan('search:rebuild')->expectsOutputToContain('1 tasks indexed')->assertSuccessful();
 
         $this->assertTrue(app(TaskSearch::class)->usesFullText());
         $this->assertSame(['Egal'], $this->titles('inhalt'));

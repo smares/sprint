@@ -13,6 +13,8 @@ use App\Notifications\TaskStatusChanged;
 use App\Notifications\UserMentioned;
 use App\ProjectRole;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Validator;
 use Livewire\Livewire;
@@ -34,9 +36,17 @@ class LocalizationTest extends TestCase
         }
     }
 
-    public function test_the_default_language_is_german_and_the_supported_ones_are_listed(): void
+    public function test_english_is_the_default_of_the_application(): void
     {
-        $this->assertSame('de', config('app.locale'));
+        $this->assertStringContainsString("env('APP_LOCALE', 'en')", File::get(config_path('app.php')));
+        $this->assertStringContainsString("\nAPP_LOCALE=en\n", File::get(base_path('.env.example')));
+
+        DB::table('users')->insert(['name' => 'Raw', 'email' => 'raw@example.com', 'password' => 'x', 'created_at' => now(), 'updated_at' => now()]);
+        $this->assertSame('en', DB::table('users')->where('email', 'raw@example.com')->value('locale'));
+    }
+
+    public function test_the_supported_languages_are_listed(): void
+    {
         $this->assertSame(['de', 'en'], Locale::codes());
         $this->assertSame('Deutsch', Locale::available()['de']);
         $this->assertTrue(Locale::isSupported('en'));
@@ -64,7 +74,8 @@ class LocalizationTest extends TestCase
     public function test_visitors_see_the_language_of_their_browser_or_their_choice(): void
     {
         $this->withHeader('Accept-Language', 'en-GB,en;q=0.9')->get(route('login'))->assertOk()->assertSee('lang="en"', false);
-        $this->withHeader('Accept-Language', 'fr-FR')->get(route('login'))->assertOk()->assertSee('lang="de"', false);
+        config(['app.locale' => 'en']);
+        $this->withHeader('Accept-Language', 'fr-FR')->get(route('login'))->assertOk()->assertSee('lang="en"', false);
 
         $this->withHeader('Accept-Language', 'de')->post(route('locale.update'), ['locale' => 'en'])->assertRedirect();
         $this->withHeader('Accept-Language', 'de')->get(route('login'))->assertSee('lang="en"', false);

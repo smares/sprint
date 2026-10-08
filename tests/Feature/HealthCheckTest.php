@@ -89,7 +89,7 @@ class HealthCheckTest extends TestCase
             ->shouldReceive('database')->andReturn(['status' => HealthCheck::FAIL, 'detail' => 'weg']));
 
         $this->getJson(route('health'))->assertStatus(503)->assertJsonPath('status', 'down')->assertJsonPath('checks.database', 'fail');
-        $this->artisan('sprint:health')->expectsOutputToContain('Gesamt: down')->assertFailed();
+        $this->artisan('sprint:health')->expectsOutputToContain('Overall: down')->assertFailed();
     }
 
     public function test_a_failing_storage_or_cache_is_down_too(): void
@@ -116,10 +116,10 @@ class HealthCheckTest extends TestCase
     {
         $this->heartbeat(0);
 
-        $this->artisan('sprint:health')->expectsOutputToContain('database')->expectsOutputToContain('scheduler')->expectsOutputToContain('Gesamt: ok')->assertSuccessful();
+        $this->artisan('sprint:health')->expectsOutputToContain('database')->expectsOutputToContain('scheduler')->expectsOutputToContain('Overall: ok')->assertSuccessful();
 
         $this->heartbeat(null);
-        $this->artisan('sprint:health')->expectsOutputToContain('Gesamt: degraded')->assertSuccessful();
+        $this->artisan('sprint:health')->expectsOutputToContain('Overall: degraded')->assertSuccessful();
     }
 
     public function test_the_scheduler_stamps_the_heartbeat_every_minute(): void

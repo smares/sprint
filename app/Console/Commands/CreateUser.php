@@ -9,8 +9,8 @@ use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Validator;
 
-#[Signature('user:create {name} {email} {--password= : Passwort (sonst wird eines erzeugt)} {--admin : Als Administrator der ganzen Anwendung anlegen} {--locale= : Sprache als Kürzel, z. B. de oder en}')]
-#[Description('Legt einen neuen Benutzer an (es gibt keine öffentliche Registrierung)')]
+#[Signature('user:create {name} {email} {--password= : Password (a random one is generated if omitted)} {--admin : Create as an administrator of the whole application} {--locale= : Language as a two-letter code, e.g. de or en}')]
+#[Description('Creates a new user (there is no public registration)')]
 class CreateUser extends Command
 {
     public function handle(): int
@@ -37,7 +37,7 @@ class CreateUser extends Command
             'locale' => $this->option('locale') ?: config('app.locale'),
         ]);
 
-        $this->components->info("Benutzer angelegt. Passwort: {$password}");
+        $this->components->info("User created. Password: {$password}");
 
         return self::SUCCESS;
     }

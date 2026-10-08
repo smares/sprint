@@ -100,7 +100,7 @@ class DailyDigestTest extends TestCase
         $quiet = User::factory()->create();
         $this->project->setRole($quiet, ProjectRole::Editor);
 
-        $this->artisan('digest:send')->expectsOutputToContain('1 Zusammenfassung')->assertSuccessful();
+        $this->artisan('digest:send')->expectsOutputToContain('1 summary mail(s) sent')->assertSuccessful();
 
         Notification::assertSentTo($this->user, DailyDigestNotification::class);
         Notification::assertNotSentTo($quiet, DailyDigestNotification::class);

@@ -35,7 +35,9 @@ composer refactor:check  # Rector prüfen (ohne Änderungen); composer refactor 
 
 ## Tests und CI
 
-GitHub Actions führt die Tests auf PHP 8.3, 8.4 und 8.5 aus (`.github/workflows/tests.yml`). Ändern sich `Dockerfile`, `compose.yaml`, `docker/` oder die Lockfiles, baut `.github/workflows/docker.yml` zusätzlich das Image und startet den ganzen Stack samt Reverb. Der Workflow braucht die Repository-Secrets `FLUX_USERNAME` und `FLUX_LICENSE_KEY`, damit Composer `livewire/flux-pro` installieren kann.
+GitHub Actions führt die Tests auf PHP 8.3, 8.4 und 8.5 aus (`.github/workflows/tests.yml`). Ändern sich `Dockerfile`, `compose.yaml`, `docker/` oder die Lockfiles, baut `.github/workflows/docker.yml` zusätzlich das Image und startet den ganzen Stack samt Reverb. Die Workflows brauchen die Repository-Secrets `FLUX_USERNAME` und `FLUX_LICENSE_KEY`, damit Composer `livewire/flux-pro` installieren kann.
+
+**Abhängigkeiten:** `.github/workflows/audit.yml` prüft Composer- und npm-Pakete auf bekannte Sicherheitslücken, bei Änderungen an den Lockfiles, auf `main` und täglich (aufgegebene Pakete werden nur gemeldet). Dependabot (`.github/dependabot.yml`) öffnet wöchentlich Update-PRs für Composer, npm, GitHub Actions und das Docker-Basis-Image, kleinere Updates gebündelt. Damit Dependabot `livewire/flux-pro` auflösen kann, braucht es dieselben zwei Werte zusätzlich als **Dependabot-Secrets** (*Settings → Secrets and variables → Dependabot*); die Actions-Secrets sieht Dependabot nicht.
 
 ## Arbeitsweise
 

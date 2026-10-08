@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Events\InboxUpdated;
 use App\Models\User;
+use App\Services\AutomationService;
 use App\Services\LocaleService;
 use App\Services\RealtimeService;
 use App\Services\TaskSearchService;
@@ -30,6 +31,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->singleton(TaskSearchService::class);
         $this->app->singleton(RealtimeService::class);
+        $this->app->singleton(AutomationService::class);
 
         Fortify::ignoreRoutes();
     }

@@ -20,10 +20,10 @@ composer refactor:check  # Rector prüfen (ohne Änderungen); composer refactor 
 
 | Pfad | Inhalt |
 | --- | --- |
-| `app/Enums` | Aufzählungen: `ProjectRole`, `CustomFieldType`, `RepeatUnit`, `RepeatMode`, `ActivityType` (Einträge im Verlauf samt Satz) |
-| `app/Models` | Eloquent-Modelle: `Project`, `Task`, `TaskStatus`, `TaskActivity`, `Tag`, `Comment`, `Attachment`, `CustomField`, `CustomFieldOption`, `CustomFieldValue`, `SavedFilter`, `Team`, `User`, `UserAvatar` (Profilbild, eigene Tabelle) |
+| `app/Enums` | Aufzählungen: `ProjectRole`, `CustomFieldType`, `RepeatUnit`, `RepeatMode`, `ActivityType` (Einträge im Verlauf samt Satz), `AutomationTrigger`, `AutomationAction` |
+| `app/Models` | Eloquent-Modelle: `Project`, `Task`, `TaskStatus`, `TaskActivity`, `Tag`, `Comment`, `Attachment`, `CustomField`, `CustomFieldOption`, `CustomFieldValue`, `SavedFilter`, `Automation` (Regel eines Projekts), `Team`, `User`, `UserAvatar` (Profilbild, eigene Tabelle) |
 | `app/Policies` | Berechtigungen: `ProjectPolicy` (sehen, bearbeiten, verwalten), `CommentPolicy`, `SavedFilterPolicy` |
-| `app/Services` | Dienste (Klassen mit Endung `Service`): `MarkdownService` (Markdown samt Erwähnungen und Bildern zu sicherem HTML), `TaskSearchService`, `TaskCsvService`, `DailyDigestService`, `HealthCheckService`, `InboxTextService`, `LocaleService` (Sprachen, ISO-Datumsformate), `RealtimeService` (Reverb), `DateService`, `BackupService` |
+| `app/Services` | Dienste (Klassen mit Endung `Service`): `MarkdownService` (Markdown samt Erwähnungen und Bildern zu sicherem HTML), `TaskSearchService`, `TaskCsvService`, `DailyDigestService`, `HealthCheckService`, `InboxTextService`, `LocaleService` (Sprachen, ISO-Datumsformate), `RealtimeService` (Reverb), `DateService`, `BackupService`, `AutomationService` (führt Regeln nach einer Änderung aus) |
 | `resources/views/pages` | Seiten als Livewire-Komponenten (Projekte, Board, Status, Mitglieder, Aufgaben, Administration, Login) |
 | `app/Concerns` | Traits: `ShowsProject` (gemeinsamer Teil von Liste, Board, Kalender, Zeitleiste), `ListensForRealtime`, `OpensTaskPanel`, `EditsTasksInBulk`, `ConfirmsPassword`, `HasPosition` (manuelle Reihenfolge der Modelle) |
 | `resources/views/components` | Blade-Komponenten (u. a. `x-project-header`, `x-task-title-link`, `x-markdown`, `x-markdown-editor`, `x-task-subtree`) und kleine Livewire-Komponenten mit ⚡ (`task-create`, Projekt-Dialoge, Glocke, Befehlspalette) |
@@ -32,6 +32,15 @@ composer refactor:check  # Rector prüfen (ohne Änderungen); composer refactor 
 | `routes/web.php` | Routen; alles hinter dem Login außer `/login`, Passkey-Anmeldung, Sprachwahl (`/locale`), `/health` und dem signierten Abmeldelink aus Benachrichtigungs-Mails |
 | `app/Mcp` | MCP-Server für KI-Agenten (Tools unter `app/Mcp/Tools`) |
 | `tests/Feature` | Feature-Tests je Funktionsbereich |
+
+### Automatisierungen
+
+Eine Regel (`Automation`) gehört zu einem Projekt: **Auslöser** (Status wechselt zu X, Zuständige wechseln, Tag wird hinzugefügt), optionale **Bedingungen** (Status, Zuständige, Tag; geprüft nach der Änderung) und eine Liste von **Aktionen** (Zuständige oder Status setzen, Tag hinzufügen, Fälligkeit verschieben, kommentieren, jemanden im Posteingang benachrichtigen).
+
+- Aufgehängt ist alles in `Task::logActivity()`: Die Einträge, die einen Auslöser darstellen, merkt sich `AutomationService`, und `Task` ruft `flush()` auf, sobald das Speichern ganz abgeschlossen ist. So arbeitet die Regel auf der fertigen Aufgabe, und ein verschachteltes Speichern stört das laufende nicht.
+- **Keine Ketten:** Was eine Regel ändert, löst keine weitere aus.
+- **Akteur ist die Regel:** Der Verlauf bekommt `user_id = null`, `automation_id` und in `data` den Namen der Regel (`automation`) sowie die auslösende Person (`by`); Kommentare haben `user_id = null` und `automation_name`. Benachrichtigungen nennen die Regel als Urheber und gehen nicht an die Person, die sie ausgelöst hat.
+- **Rechte:** Die Regel handelt mit den Rechten ihres Erstellers (`created_by`). Darf er das Projekt nicht mehr bearbeiten, schaltet sie sich ab, statt zu laufen. Zuständige und Benachrichtigte müssen das Projekt sehen dürfen; Status, Tags und Personen aus anderen Projekten werden ignoriert. Eine fehlerhafte Aktion bricht weder das Speichern noch die folgenden Aktionen ab.
 
 ## Tests und CI
 

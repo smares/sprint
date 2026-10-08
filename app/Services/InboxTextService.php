@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Notifications\AutomationNotice;
 use App\Notifications\TaskCommented;
 use App\Notifications\TaskDueTomorrow;
 use App\Notifications\TasksStatusChanged;
@@ -26,6 +27,7 @@ class InboxTextService
             $notification->type === TasksStatusChanged::class => TasksStatusChanged::sentence($data),
             $notification->type === UserMentioned::class => UserMentioned::sentence($data),
             $notification->type === TaskDueTomorrow::class => TaskDueTomorrow::sentence($data),
+            $notification->type === AutomationNotice::class => AutomationNotice::sentence($data),
             default => '',
         };
     }

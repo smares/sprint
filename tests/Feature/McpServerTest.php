@@ -166,6 +166,20 @@ class McpServerTest extends TestCase
         $this->assertEqualsCanonicalizing(['2026-12-31', '3.5'], Task::where('title', 'Z')->firstOrFail()->fieldValues()->pluck('value')->all());
     }
 
+    public function test_field_changes_by_agents_show_up_in_the_history(): void
+    {
+        $task = Task::factory()->for($this->project)->create();
+
+        $this->tool(UpdateTask::class, ['task_id' => $task->id, 'fields' => ['Priorität' => 'hoch']])->assertOk();
+        $this->tool(UpdateTask::class, ['task_id' => $task->id, 'fields' => ['Priorität' => 'Hoch']])->assertOk();
+        $this->tool(UpdateTask::class, ['task_id' => $task->id, 'fields' => ['Priorität' => '']])->assertOk();
+
+        $this->assertSame([
+            'hat Priorität von „–“ auf „Hoch“ geändert',
+            'hat Priorität von „Hoch“ auf „–“ geändert',
+        ], $task->activities()->where('type', 'field_changed')->orderBy('id')->get()->map->sentence()->all());
+    }
+
     public function test_tasks_can_be_listed_filtered_and_searched(): void
     {
         $other = User::factory()->create(['email' => 'anna@example.com']);

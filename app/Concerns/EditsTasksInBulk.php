@@ -2,6 +2,7 @@
 
 namespace App\Concerns;
 
+use App\Enums\ActivityType;
 use App\Models\Project;
 use App\Models\Task;
 use App\Services\RealtimeService;
@@ -217,22 +218,16 @@ trait EditsTasksInBulk
      */
     private function syncBulkTags(Task $task, array $add, array $remove, Collection $names): void
     {
-        if ($add !== []) {
-            $attached = $task->tags()->syncWithoutDetaching(array_map(intval(...), $add))['attached'];
+        $changes = [
+            'attached' => $add === [] ? [] : $task->tags()->syncWithoutDetaching(array_map(intval(...), $add))['attached'],
+            'detached' => $remove === [] ? [] : $task->tags()->whereKey(array_map(intval(...), $remove))->pluck('tags.id')->all(),
+        ];
 
-            if ($attached !== []) {
-                $task->logActivity('tags_added', ['names' => collect($attached)->map(fn ($id) => $names[$id])->sort()->values()->all()]);
-            }
+        if ($changes['detached'] !== []) {
+            $task->tags()->detach($changes['detached']);
         }
 
-        if ($remove !== []) {
-            $detached = $task->tags()->whereKey(array_map(intval(...), $remove))->pluck('tags.id')->all();
-
-            if ($detached !== []) {
-                $task->tags()->detach($detached);
-                $task->logActivity('tags_removed', ['names' => collect($detached)->map(fn ($id) => $names[$id])->sort()->values()->all()]);
-            }
-        }
+        $task->logSyncChanges(ActivityType::TagsAdded, ActivityType::TagsRemoved, $changes, fn (array $ids) => collect($ids)->map(fn (int $id) => $names[$id])->sort()->values()->all());
     }
 
     public function bulkDelete(): void

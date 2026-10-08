@@ -84,11 +84,7 @@ class TaskCsvService
                 $task->start_date?->toDateString(),
                 $task->due_date?->toDateString(),
                 $task->tags->pluck('name')->join(', '),
-                ...$fields->map(function (CustomField $field) use ($values) {
-                    $value = $values->get($field->id);
-
-                    return $field->type === CustomFieldType::Select ? $value?->option?->name : $value?->value;
-                })->all(),
+                ...$fields->map(fn (CustomField $field) => $field->text($values->get($field->id)?->stored()))->all(),
                 $task->created_at->toIso8601String(),
                 $task->updated_at->toIso8601String(),
                 route('tasks.show', $task),
@@ -107,7 +103,7 @@ class TaskCsvService
         foreach (array_chunk($orderedIds, 200) as $chunk) {
             $loaded = $project->tasks()
                 ->whereKey($chunk)
-                ->with(['status', 'assignee', 'collaborators', 'tags', 'fieldValues.option'])
+                ->with(['status', 'assignee', 'collaborators', 'tags', 'fieldValues'])
                 ->get()
                 ->keyBy('id');
 
@@ -488,12 +484,11 @@ class TaskCsvService
      */
     private function fieldValue(CustomField $field, string $value): ?array
     {
-        return match ($field->type) {
-            CustomFieldType::Select => ($option = $field->options->first(fn ($candidate) => mb_strtolower($candidate->name) === mb_strtolower($value)))
-                ? ['option_id' => $option->id, 'value' => null] : null,
-            CustomFieldType::Number => is_numeric($value) ? ['option_id' => null, 'value' => $value] : null,
-            CustomFieldType::Date => ($date = $this->parseDate($value)) ? ['option_id' => null, 'value' => $date] : null,
-            CustomFieldType::Text => ['option_id' => null, 'value' => Str::limit($value, 500, '')],
-        };
+        // Spreadsheets bring dates in several formats and long texts; both are tidied up before the field checks them.
+        return $field->parse(match ($field->type) {
+            CustomFieldType::Date => $this->parseDate($value) ?? '',
+            CustomFieldType::Text => Str::limit($value, 500, ''),
+            default => $value,
+        });
     }
 }

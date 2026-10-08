@@ -2,15 +2,15 @@
 
 namespace App\Mcp\Tools;
 
+use App\Enums\ActivityType;
 use App\Enums\CustomFieldType;
 use App\Mcp\ToolFailure;
 use App\Models\CustomField;
 use App\Models\Project;
+use App\Models\Tag;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 
 /**
  * What creating and changing a task have in common: the same fields, resolved by name like a person would type them.
@@ -111,14 +111,14 @@ abstract class WriteTaskTool extends SprintTool
             $ids = collect($given['tags'] ?? [])->map(fn (string $name) => $task->project->tags->first(fn ($tag) => mb_strtolower($tag->name) === mb_strtolower($name))?->id
                 ?? throw new ToolFailure("Unknown tag \"{$name}\". Available: ".$task->project->tags->pluck('name')->implode(', ').'.'))->unique()->all();
 
-            $this->logSync($task, 'tags', $task->tags()->sync($ids), 'tags', 'name');
+            $task->logSyncChanges(ActivityType::TagsAdded, ActivityType::TagsRemoved, $task->tags()->sync($ids), fn (array $ids) => Tag::whereIn('id', $ids)->orderBy('name')->pluck('name')->all());
         }
 
         if (array_key_exists('collaborators', $given)) {
             $ids = collect($given['collaborators'] ?? [])->map(fn (string $email) => $this->member($task->project, $email)->id)
                 ->reject(fn (int $id) => $id === $task->assignee_id)->unique()->all();
 
-            $this->logSync($task, 'collaborators', $task->collaborators()->sync($ids), 'users', 'name');
+            $task->logSyncChanges(ActivityType::CollaboratorsAdded, ActivityType::CollaboratorsRemoved, $task->collaborators()->sync($ids), fn (array $ids) => User::whereIn('id', $ids)->orderBy('name')->pluck('name')->all());
         }
 
         if (array_key_exists('fields', $given)) {
@@ -140,37 +140,12 @@ abstract class WriteTaskTool extends SprintTool
 
             $value = trim((string) ($value ?? ''));
 
-            if ($value === '') {
-                $task->fieldValues()->where('custom_field_id', $field->id)->delete();
-
-                continue;
-            }
-
-            $attributes = match ($field->type) {
-                CustomFieldType::Select => ['option_id' => $field->options->first(fn ($option) => mb_strtolower($option->name) === mb_strtolower($value))?->id
-                    ?? throw new ToolFailure("Unknown option \"{$value}\" for \"{$field->name}\". Available: ".$field->options->pluck('name')->implode(', ').'.'), 'value' => null],
-                CustomFieldType::Number => ['option_id' => null, 'value' => is_numeric($value) ? $value : throw new ToolFailure("\"{$field->name}\" needs a number.")],
-                CustomFieldType::Date => ['option_id' => null, 'value' => Carbon::canBeCreatedFromFormat($value, 'Y-m-d') && Carbon::createFromFormat('!Y-m-d', $value)->toDateString() === $value
-                    ? $value
-                    : throw new ToolFailure("\"{$field->name}\" needs a date as YYYY-MM-DD.")],
-                CustomFieldType::Text => ['option_id' => null, 'value' => mb_strlen($value) <= 500 ? $value : throw new ToolFailure("\"{$field->name}\" is limited to 500 characters.")],
-            };
-
-            $task->fieldValues()->updateOrCreate(['custom_field_id' => $field->id], $attributes);
-        }
-    }
-
-    /**
-     * @param  array{attached: array<int, int|string>, detached: array<int, int|string>, updated: array<int, int|string>}  $changes
-     */
-    private function logSync(Task $task, string $kind, array $changes, string $table, string $nameColumn): void
-    {
-        foreach (['attached' => 'added', 'detached' => 'removed'] as $key => $suffix) {
-            if ($changes[$key] !== []) {
-                $task->logActivity("{$kind}_{$suffix}", [
-                    'names' => DB::table($table)->whereIn('id', $changes[$key])->orderBy($nameColumn)->pluck($nameColumn)->all(),
-                ]);
-            }
+            $task->setFieldValue($field, $value === '' ? null : ($field->parse($value) ?? throw new ToolFailure(match ($field->type) {
+                CustomFieldType::Select => "Unknown option \"{$value}\" for \"{$field->name}\". Available: ".$field->options->pluck('name')->implode(', ').'.',
+                CustomFieldType::Number => "\"{$field->name}\" needs a number.",
+                CustomFieldType::Date => "\"{$field->name}\" needs a date as YYYY-MM-DD.",
+                CustomFieldType::Text => "\"{$field->name}\" is limited to 500 characters.",
+            })));
         }
     }
 }

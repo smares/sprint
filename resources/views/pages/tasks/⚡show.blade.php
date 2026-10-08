@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\ActivityType;
 use App\Concerns\ListensForRealtime;
 use App\Enums\CustomFieldType;
 use App\Enums\RepeatMode;
@@ -184,47 +185,19 @@ new class extends Component
         }])->all();
     }
 
-    private function displayFieldValue(CustomField $field, ?string $value): string
-    {
-        return match (true) {
-            $value === null || $value === '' => '–',
-            $field->type === CustomFieldType::Select => $field->options->firstWhere('id', (int) $value)?->name ?? '–',
-            $field->type === CustomFieldType::Date => \Illuminate\Support\Carbon::parse($value)->isoFormat('L'),
-            default => $value,
-        };
-    }
-
     /**
      * @param  array<int|string, string|null>  $input
      */
     private function saveFieldValues(array $input): void
     {
-        $existing = $this->task->fieldValues()->get()->keyBy('custom_field_id');
-
         foreach ($this->customFields as $field) {
             $new = trim((string) ($input[$field->id] ?? ''));
-            $new = $new === '' ? null : $new;
-            $current = $existing->get($field->id);
-            $old = $current === null ? null : (string) ($current->option_id ?? $current->value);
 
-            if ($new === $old) {
-                continue;
-            }
-
-            if ($new === null) {
-                $current->delete();
-            } else {
-                $this->task->fieldValues()->updateOrCreate(
-                    ['custom_field_id' => $field->id],
-                    ['option_id' => $field->type === CustomFieldType::Select ? $new : null, 'value' => $field->type === CustomFieldType::Select ? null : $new],
-                );
-            }
-
-            $this->task->logActivity('field_changed', [
-                'name' => $field->name,
-                'from' => $this->displayFieldValue($field, $old),
-                'to' => $this->displayFieldValue($field, $new),
-            ]);
+            $this->task->setFieldValue($field, match (true) {
+                $new === '' => null,
+                $field->type === CustomFieldType::Select => ['option_id' => (int) $new, 'value' => null],
+                default => ['option_id' => null, 'value' => $new],
+            });
         }
     }
 
@@ -660,32 +633,16 @@ new class extends Component
             array_values(array_diff($validated['collaboratorIds'], [(string) $validated['assigneeId']]))
         );
 
-        $this->logSyncChanges('tags', $tagChanges, Tag::class, 'name');
-        $this->logSyncChanges('collaborators', $collaboratorChanges, User::class, 'name');
-        $this->logSyncChanges('blockers', $dependencyChanges['blockers'], Task::class, 'title');
-        $this->logSyncChanges('blocking', $dependencyChanges['blocking'], Task::class, 'title');
+        $names = fn (string $model, string $column) => fn (array $ids) => $model::whereIn('id', $ids)->orderBy($column)->pluck($column)->all();
+        $this->task->logSyncChanges(ActivityType::TagsAdded, ActivityType::TagsRemoved, $tagChanges, $names(Tag::class, 'name'));
+        $this->task->logSyncChanges(ActivityType::CollaboratorsAdded, ActivityType::CollaboratorsRemoved, $collaboratorChanges, $names(User::class, 'name'));
+        $this->task->logSyncChanges(ActivityType::BlockersAdded, ActivityType::BlockersRemoved, $dependencyChanges['blockers'], $names(Task::class, 'title'));
+        $this->task->logSyncChanges(ActivityType::BlockingAdded, ActivityType::BlockingRemoved, $dependencyChanges['blocking'], $names(Task::class, 'title'));
         unset($this->activityFeed);
 
         $this->announceChange();
 
         Flux::toast(variant: 'success', text: __('Saved.'));
-    }
-
-    /**
-     * @param  array{attached: array<int, int|string>, detached: array<int, int|string>, updated: array<int, int|string>}  $changes
-     * @param  class-string<\Illuminate\Database\Eloquent\Model>  $model
-     */
-    private function logSyncChanges(string $kind, array $changes, string $model, string $nameColumn): void
-    {
-        foreach (['attached' => 'added', 'detached' => 'removed'] as $key => $suffix) {
-            if ($changes[$key] === []) {
-                continue;
-            }
-
-            $this->task->logActivity("{$kind}_{$suffix}", [
-                'names' => $model::whereIn('id', $changes[$key])->orderBy($nameColumn)->pluck($nameColumn)->all(),
-            ]);
-        }
     }
 
     /**
@@ -825,7 +782,7 @@ new class extends Component
         }
 
         $this->reset('uploads');
-        $this->task->logActivity('attachments_added', ['names' => $names]);
+        $this->task->logActivity(ActivityType::AttachmentsAdded, ['names' => $names]);
         unset($this->attachments, $this->activityFeed);
     }
 
@@ -852,7 +809,7 @@ new class extends Component
         ]);
 
         $this->reset('inlineUpload');
-        $this->task->logActivity('attachments_added', ['names' => [$name]]);
+        $this->task->logActivity(ActivityType::AttachmentsAdded, ['names' => [$name]]);
         unset($this->attachments, $this->activityFeed);
 
         return ['id' => $attachment->id, 'name' => $attachment->name];
@@ -880,7 +837,7 @@ new class extends Component
         $attachment = $this->task->attachments()->findOrFail($attachmentId);
         $attachment->delete();
 
-        $this->task->logActivity('attachments_removed', ['names' => [$attachment->name]]);
+        $this->task->logActivity(ActivityType::AttachmentsRemoved, ['names' => [$attachment->name]]);
         unset($this->attachments, $this->activityFeed);
     }
 

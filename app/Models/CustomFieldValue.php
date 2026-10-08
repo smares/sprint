@@ -10,6 +10,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class CustomFieldValue extends Model
 {
     /**
+     * The option id for selection fields, otherwise the value; see CustomField::text().
+     */
+    public function stored(): int|string|null
+    {
+        return $this->option_id ?? $this->value;
+    }
+
+    /**
      * @return BelongsTo<Task, $this>
      */
     public function task(): BelongsTo

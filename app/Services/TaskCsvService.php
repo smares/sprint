@@ -386,7 +386,7 @@ class TaskCsvService
      */
     public function import(Project $project, User $user, array $tasks): int
     {
-        return DB::transaction(function () use ($project, $user, $tasks): int {
+        return app(RealtimeService::class)->bundling(fn () => DB::transaction(function () use ($project, $user, $tasks): int {
             $createdById = [];
             $createdByTitle = [];
             $tags = $project->tags()->get()->keyBy(fn (Tag $tag) => mb_strtolower($tag->name));
@@ -444,7 +444,7 @@ class TaskCsvService
             }
 
             return count($tasks);
-        });
+        }));
     }
 
     /**

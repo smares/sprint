@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Task;
+use App\Services\RealtimeService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
 use Illuminate\Notifications\DatabaseNotification;
@@ -12,6 +13,16 @@ use Livewire\WithPagination;
 new class extends Component
 {
     use WithPagination;
+
+    /**
+     * @return array<string, string>
+     */
+    protected function getListeners(): array
+    {
+        return app(RealtimeService::class)->enabled()
+            ? ['echo-private:user.'.auth()->id().',.InboxUpdated' => '$refresh']
+            : [];
+    }
 
     #[Computed]
     public function hasUnread(): bool

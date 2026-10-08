@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\RealtimeService;
 use App\Services\TaskSearchService;
 use Database\Factories\AttachmentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -28,11 +29,15 @@ class Attachment extends Model
 
     protected static function booted(): void
     {
-        static::saved(fn (self $attachment) => app(TaskSearchService::class)->index($attachment->task_id));
+        static::saved(function (self $attachment) {
+            app(TaskSearchService::class)->index($attachment->task_id);
+            app(RealtimeService::class)->taskContentChanged($attachment->task_id, 'attachment');
+        });
 
         static::deleted(function (self $attachment) {
             Storage::disk()->delete($attachment->path);
             app(TaskSearchService::class)->index($attachment->task_id);
+            app(RealtimeService::class)->taskContentChanged($attachment->task_id, 'attachment');
         });
     }
 

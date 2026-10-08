@@ -2,7 +2,12 @@
     "$schema": "https://www.schemastore.org/package.json",
     "name": "sprint",
     "description": "Sprint – Aufgabenverwaltung für Teams (Frontend-Build).",
-    "keywords": ["sprint", "aufgabenverwaltung", "projektmanagement", "kanban"],
+    "keywords": [
+        "sprint",
+        "aufgabenverwaltung",
+        "projektmanagement",
+        "kanban"
+    ],
     "author": "Sebastian Mares",
     "license": "UNLICENSED",
     "private": true,
@@ -22,6 +27,8 @@
         "@laravel/multiplex": "^0.4.1"
     },
     "dependencies": {
-        "@laravel/passkeys": "^0.4.0"
+        "@laravel/passkeys": "^0.4.0",
+        "laravel-echo": "^2.6.1",
+        "pusher-js": "^8.6.0"
     }
 }

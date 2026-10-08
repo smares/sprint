@@ -4,6 +4,9 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>{{ isset($title) ? $title.' – '.config('app.name') : config('app.name') }}</title>
+        @if ($realtime = app(\App\Services\RealtimeService::class)->clientConfig())
+            <script>window.sprintRealtime = @js($realtime)</script>
+        @endif
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         @fluxAppearance
     </head>

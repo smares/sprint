@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Notifications\TaskCommented;
 use App\Notifications\UserMentioned;
 use App\Services\MarkdownService;
+use App\Services\RealtimeService;
 use App\Services\TaskSearchService;
 use Database\Factories\CommentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -23,6 +24,9 @@ class Comment extends Model
     {
         static::saved(fn (self $comment) => app(TaskSearchService::class)->index($comment->task_id));
         static::deleted(fn (self $comment) => app(TaskSearchService::class)->index($comment->task_id));
+
+        static::saved(fn (self $comment) => app(RealtimeService::class)->taskContentChanged($comment->task_id, 'comment'));
+        static::deleted(fn (self $comment) => app(RealtimeService::class)->taskContentChanged($comment->task_id, 'comment'));
 
         static::updated(function (self $comment) {
             if (! $comment->wasChanged('body')) {

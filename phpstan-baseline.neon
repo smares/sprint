@@ -7,6 +7,12 @@ parameters:
 			path: app/Concerns/EditsTasksInBulk.php
 
 		-
+			message: '#^Trait App\\Concerns\\ListensForRealtime is used zero times and is not analysed\.$#'
+			identifier: trait.unused
+			count: 1
+			path: app/Concerns/ListensForRealtime.php
+
+		-
 			message: '#^Trait App\\Concerns\\OpensTaskPanel is used zero times and is not analysed\.$#'
 			identifier: trait.unused
 			count: 1

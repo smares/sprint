@@ -42,7 +42,7 @@ new class extends Component
     {
         // One query for all columns: number the tasks within each status and keep the first n per column.
         $ranked = $this->project->tasks()
-            ->whereNull('parent_id')
+            ->topLevel()
             ->select('tasks.*')
             ->selectRaw('row_number() over (partition by status_id order by position, id) as column_rank');
 
@@ -72,7 +72,7 @@ new class extends Component
     #[Computed]
     public function columnTotals(): array
     {
-        $counts = $this->project->tasks()->whereNull('parent_id')->selectRaw('status_id, count(*) as total')->groupBy('status_id')->pluck('total', 'status_id');
+        $counts = $this->project->tasks()->topLevel()->selectRaw('status_id, count(*) as total')->groupBy('status_id')->pluck('total', 'status_id');
 
         return $this->statuses->mapWithKeys(fn (TaskStatus $status) => [$status->id => (int) ($counts[$status->id] ?? 0)])->all();
     }
@@ -80,7 +80,7 @@ new class extends Component
     private function columnQuery(int $statusId): HasMany
     {
         return $this->project->tasks()
-            ->whereNull('parent_id')
+            ->topLevel()
             ->where('status_id', $statusId)
             ->orderBy('position')
             ->orderBy('id');
@@ -129,7 +129,7 @@ new class extends Component
         $status = ctype_digit($group) ? $this->project->statuses()->find((int) $group) : null;
         abort_if($status === null, 422);
 
-        $task = $this->project->tasks()->whereNull('parent_id')->findOrFail($taskId);
+        $task = $this->project->tasks()->topLevel()->findOrFail($taskId);
 
         DB::transaction(function () use ($task, $status, $position) {
             $task->update(['status_id' => $status->id]);

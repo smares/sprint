@@ -37,7 +37,7 @@ new class extends Component
         $isDate = fn (string $value) => preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) === 1 && Carbon::hasFormat($value, 'Y-m-d');
         abort_unless($isDate($from) && $isDate($to), 422);
 
-        $task = $this->project->tasks()->whereNull('parent_id')->where('is_section', false)->findOrFail($taskId);
+        $task = $this->project->tasks()->topLevel()->where('is_section', false)->findOrFail($taskId);
         $days = (int) Carbon::parse($from)->startOfDay()->diffInDays(Carbon::parse($to)->startOfDay(), false);
 
         if ($days !== 0 && abs($days) <= 3650) {
@@ -77,7 +77,7 @@ new class extends Component
         $to = $this->monthStart->copy()->endOfMonth()->endOfWeek()->startOfDay();
 
         $tasks = $this->project->tasks()
-            ->whereNull('parent_id')
+            ->topLevel()
             ->where('is_section', false)
             ->overlapping($from, $to)
             ->with('status')
@@ -107,7 +107,7 @@ new class extends Component
     public function undated(): int
     {
         return $this->project->tasks()
-            ->whereNull('parent_id')
+            ->topLevel()
             ->where('is_section', false)
             ->whereNull('start_date')
             ->whereNull('due_date')

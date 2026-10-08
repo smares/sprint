@@ -8,7 +8,9 @@ use App\Models\CustomField;
 use App\Models\Project;
 use App\Models\Tag;
 use App\Models\Task;
+use App\Models\TaskStatus;
 use App\Models\User;
+use Closure;
 use Generator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
@@ -20,6 +22,9 @@ use Throwable;
 /**
  * Tasks of a project as CSV: a complete export, and an import that understands our own export as well as
  * spreadsheets from other tools (for example Asana) by looking at the column names.
+ *
+ * @phpstan-type Message array{line: int, message: string}
+ * @phpstan-type PlannedTask array{line: int, file_id: string, title: string, description: ?string, status_id: ?int, assignee_id: ?int, collaborator_ids: list<int>, start_date: ?string, due_date: ?string, tag_ids: list<int>, new_tags: list<string>, fields: array<int, array{option_id: ?int, value: ?string}>, parent_ref: string}
  */
 class TaskCsvService
 {
@@ -235,7 +240,7 @@ class TaskCsvService
      * Check every row against the project and say what an import would do, without saving anything.
      *
      * @param  list<array<string, string>>  $rows
-     * @return array{tasks: list<array<string, mixed>>, errors: list<array{line: int, message: string}>, warnings: list<array{line: int, message: string}>}
+     * @return array{tasks: list<PlannedTask>, errors: list<Message>, warnings: list<Message>}
      */
     public function plan(Project $project, array $rows): array
     {
@@ -251,120 +256,40 @@ class TaskCsvService
 
         foreach (array_slice($rows, 0, self::MAX_ROWS) as $index => $row) {
             $line = $index + 2;
-            $task = ['line' => $line, 'file_id' => $row['id'] ?? '', 'parent_ref' => '', 'fields' => [], 'new_tags' => []];
-
             $title = trim($row['title'] ?? '');
 
-            if ($title === '') {
-                $errors[] = ['line' => $line, 'message' => 'no-title'];
+            if ($title === '' || mb_strlen($title) > 255) {
+                $errors[] = ['line' => $line, 'message' => $title === '' ? 'no-title' : 'title-too-long'];
 
                 continue;
             }
 
-            if (mb_strlen($title) > 255) {
-                $errors[] = ['line' => $line, 'message' => 'title-too-long'];
+            $warn = function (string $message) use (&$warnings, $line): void {
+                $warnings[] = ['line' => $line, 'message' => $message];
+            };
 
-                continue;
+            $fileId = $row['id'] ?? '';
+
+            if ($fileId !== '' && isset($seenIds[$fileId])) {
+                $fileId = '';
+            } elseif ($fileId !== '') {
+                $seenIds[$fileId] = true;
             }
 
-            $task['title'] = $title;
             $description = $row['description'] ?? '';
-            $task['description'] = $description === '' ? null : mb_substr($description, 0, 10000);
 
-            $statusName = $row['status'] ?? '';
-            $status = $statusName === '' ? null : $statuses->first(fn ($candidate) => mb_strtolower($candidate->name) === mb_strtolower($statusName));
-
-            if ($statusName !== '' && $status === null) {
-                $warnings[] = ['line' => $line, 'message' => 'unknown-status:'.$statusName];
-            }
-
-            $completed = ($row['completed'] ?? '') !== '' && ! in_array(mb_strtolower($row['completed']), ['no', 'nein', 'false', '0'], true);
-            $task['status_id'] = $status?->id ?? ($completed ? $statuses->firstWhere('is_done', true)?->id : null) ?? $statuses->firstWhere('is_done', false)?->id;
-
-            $task['assignee_id'] = null;
-
-            if (($row['assignee'] ?? '') !== '') {
-                $user = $this->findUser($users, $row['assignee']);
-
-                if (! $user instanceof User) {
-                    $warnings[] = ['line' => $line, 'message' => 'unknown-person:'.$row['assignee']];
-                } else {
-                    $task['assignee_id'] = $user->id;
-                }
-            }
-
-            $task['collaborator_ids'] = [];
-
-            foreach ($this->split($row['collaborators'] ?? '') as $entry) {
-                $user = $this->findUser($users, $entry);
-
-                if (! $user instanceof User) {
-                    $warnings[] = ['line' => $line, 'message' => 'unknown-person:'.$entry];
-                } elseif ($user->id !== $task['assignee_id']) {
-                    $task['collaborator_ids'][] = $user->id;
-                }
-            }
-
-            foreach (['start_date', 'due_date'] as $column) {
-                $task[$column] = null;
-
-                if (($row[$column] ?? '') === '') {
-                    continue;
-                }
-
-                $date = $this->parseDate($row[$column]);
-
-                if ($date === null) {
-                    $warnings[] = ['line' => $line, 'message' => 'bad-date:'.$row[$column]];
-                } else {
-                    $task[$column] = $date;
-                }
-            }
-
-            if ($task['start_date'] !== null && $task['due_date'] !== null && $task['start_date'] > $task['due_date']) {
-                $task['start_date'] = null;
-                $warnings[] = ['line' => $line, 'message' => 'start-after-due'];
-            }
-
-            $task['tag_ids'] = [];
-
-            foreach ($this->split($row['tags'] ?? '') as $name) {
-                $tag = $tags->first(fn (Tag $candidate) => mb_strtolower($candidate->name) === mb_strtolower($name));
-
-                if ($tag !== null) {
-                    $task['tag_ids'][] = $tag->id;
-                } elseif (mb_strlen($name) <= 50) {
-                    $task['new_tags'][] = $name;
-                }
-            }
-
-            foreach ($fields as $field) {
-                $value = $row['field:'.mb_strtolower($field->name)] ?? '';
-
-                if ($value === '') {
-                    continue;
-                }
-
-                $stored = $this->fieldValue($field, $value);
-
-                if ($stored === null) {
-                    $warnings[] = ['line' => $line, 'message' => 'bad-field:'.$field->name.'='.$value];
-                } else {
-                    $task['fields'][$field->id] = $stored;
-                }
-            }
-
-            $task['parent_ref'] = ($row['parent_id'] ?? '') !== '' ? 'id:'.$row['parent_id'] : (($row['parent'] ?? '') !== '' ? 'title:'.mb_strtolower($row['parent']) : '');
-
-            if ($task['file_id'] !== '' && isset($seenIds[$task['file_id']])) {
-                $task['file_id'] = '';
-            }
-
-            if ($task['file_id'] !== '') {
-                $seenIds[$task['file_id']] = true;
-            }
-
-            $tasks[] = $task;
+            $tasks[] = [
+                'line' => $line,
+                'file_id' => $fileId,
+                'title' => $title,
+                'description' => $description === '' ? null : mb_substr($description, 0, 10000),
+                'status_id' => $this->planStatus($row, $statuses, $warn),
+                ...$this->planPeople($row, $users, $warn),
+                ...$this->planDates($row, $warn),
+                ...$this->planTags($row, $tags),
+                'fields' => $this->planFields($row, $fields, $warn),
+                'parent_ref' => ($row['parent_id'] ?? '') !== '' ? 'id:'.$row['parent_id'] : (($row['parent'] ?? '') !== '' ? 'title:'.mb_strtolower($row['parent']) : ''),
+            ];
         }
 
         if (count($rows) > self::MAX_ROWS) {
@@ -375,9 +300,138 @@ class TaskCsvService
     }
 
     /**
+     * The named status; without one, done or open depending on the "completed" column.
+     *
+     * @param  Collection<int, TaskStatus>  $statuses
+     * @param  Closure(string): void  $warn
+     */
+    private function planStatus(array $row, Collection $statuses, Closure $warn): ?int
+    {
+        $name = $row['status'] ?? '';
+        $status = $name === '' ? null : $statuses->first(fn (TaskStatus $candidate) => mb_strtolower($candidate->name) === mb_strtolower($name));
+
+        if ($name !== '' && $status === null) {
+            $warn('unknown-status:'.$name);
+        }
+
+        $completed = ($row['completed'] ?? '') !== '' && ! in_array(mb_strtolower($row['completed']), ['no', 'nein', 'false', '0'], true);
+
+        return $status?->id ?? ($completed ? $statuses->firstWhere('is_done', true)?->id : null) ?? $statuses->firstWhere('is_done', false)?->id;
+    }
+
+    /**
+     * @param  Collection<int, User>  $users
+     * @param  Closure(string): void  $warn
+     * @return array{assignee_id: ?int, collaborator_ids: list<int>}
+     */
+    private function planPeople(array $row, Collection $users, Closure $warn): array
+    {
+        $assigneeId = null;
+
+        if (($row['assignee'] ?? '') !== '') {
+            $assigneeId = $this->findUser($users, $row['assignee'])?->id;
+
+            if ($assigneeId === null) {
+                $warn('unknown-person:'.$row['assignee']);
+            }
+        }
+
+        $collaboratorIds = [];
+
+        foreach ($this->split($row['collaborators'] ?? '') as $entry) {
+            $user = $this->findUser($users, $entry);
+
+            if (! $user instanceof User) {
+                $warn('unknown-person:'.$entry);
+            } elseif ($user->id !== $assigneeId) {
+                $collaboratorIds[] = $user->id;
+            }
+        }
+
+        return ['assignee_id' => $assigneeId, 'collaborator_ids' => $collaboratorIds];
+    }
+
+    /**
+     * @param  Closure(string): void  $warn
+     * @return array{start_date: ?string, due_date: ?string}
+     */
+    private function planDates(array $row, Closure $warn): array
+    {
+        $dates = ['start_date' => null, 'due_date' => null];
+
+        foreach (array_keys($dates) as $column) {
+            if (($row[$column] ?? '') !== '') {
+                $dates[$column] = $this->parseDate($row[$column]);
+
+                if ($dates[$column] === null) {
+                    $warn('bad-date:'.$row[$column]);
+                }
+            }
+        }
+
+        if ($dates['start_date'] !== null && $dates['due_date'] !== null && $dates['start_date'] > $dates['due_date']) {
+            $dates['start_date'] = null;
+            $warn('start-after-due');
+        }
+
+        return $dates;
+    }
+
+    /**
+     * Existing tags by name in any case, the rest to be created (up to 50 characters).
+     *
+     * @param  Collection<int, Tag>  $tags
+     * @return array{tag_ids: list<int>, new_tags: list<string>}
+     */
+    private function planTags(array $row, Collection $tags): array
+    {
+        $planned = ['tag_ids' => [], 'new_tags' => []];
+
+        foreach ($this->split($row['tags'] ?? '') as $name) {
+            $tag = $tags->first(fn (Tag $candidate) => mb_strtolower($candidate->name) === mb_strtolower($name));
+
+            if ($tag !== null) {
+                $planned['tag_ids'][] = $tag->id;
+            } elseif (mb_strlen($name) <= 50) {
+                $planned['new_tags'][] = $name;
+            }
+        }
+
+        return $planned;
+    }
+
+    /**
+     * @param  Collection<int, CustomField>  $fields
+     * @param  Closure(string): void  $warn
+     * @return array<int, array{option_id: ?int, value: ?string}>
+     */
+    private function planFields(array $row, Collection $fields, Closure $warn): array
+    {
+        $values = [];
+
+        foreach ($fields as $field) {
+            $value = $row['field:'.mb_strtolower($field->name)] ?? '';
+
+            if ($value === '') {
+                continue;
+            }
+
+            $stored = $this->fieldValue($field, $value);
+
+            if ($stored === null) {
+                $warn('bad-field:'.$field->name.'='.$value);
+            } else {
+                $values[$field->id] = $stored;
+            }
+        }
+
+        return $values;
+    }
+
+    /**
      * Create the planned tasks, parents before their subtasks as they appear in the file.
      *
-     * @param  list<array<string, mixed>>  $tasks
+     * @param  list<PlannedTask>  $tasks
      * @return int Number of tasks created.
      */
     public function import(Project $project, User $user, array $tasks): int
@@ -401,7 +455,7 @@ class TaskCsvService
                 if ($parentId === null) {
                     $position = $rootPosition++;
                 } else {
-                    $childNext[$parentId] ??= ($project->tasks()->where('parent_id', $parentId)->max('position') ?? -1) + 1;
+                    $childNext[$parentId] ??= Task::nextPositionIn($project->tasks()->where('parent_id', $parentId));
                     $position = $childNext[$parentId]++;
                 }
 

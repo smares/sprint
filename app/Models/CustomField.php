@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use App\Concerns\HasPosition;
 use App\Enums\CustomFieldType;
 use Database\Factories\CustomFieldFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -16,6 +18,8 @@ class CustomField extends Model
 {
     /** @use HasFactory<CustomFieldFactory> */
     use HasFactory;
+
+    use HasPosition;
 
     /**
      * The field every new project starts with.
@@ -102,5 +106,13 @@ class CustomField extends Model
     public function values(): HasMany
     {
         return $this->hasMany(CustomFieldValue::class);
+    }
+
+    /**
+     * @return Builder<static>
+     */
+    protected function positionSiblings(): Builder
+    {
+        return static::query()->where('project_id', $this->project_id);
     }
 }

@@ -240,13 +240,21 @@ new class extends Component
     #[Computed]
     public function descendantIds(): array
     {
+        return $this->idsBelow($this->task->getKey());
+    }
+
+    /**
+     * Ids of everything below the given task of this subtree, from the already loaded tasks.
+     *
+     * @return list<int>
+     */
+    private function idsBelow(int $taskId): array
+    {
         $ids = [];
-        $queue = [$this->task->getKey()];
+        $queue = [$taskId];
 
         while ($queue !== []) {
-            $current = array_shift($queue);
-
-            foreach ($this->childrenMap->get($current, []) as $child) {
+            foreach ($this->childrenMap->get(array_shift($queue), []) as $child) {
                 $ids[] = $child->id;
                 $queue[] = $child->id;
             }
@@ -403,7 +411,7 @@ new class extends Component
             'is_section' => $isSection,
             'title' => trim($this->newSubtaskTitles[$parentId]),
             'creator_id' => auth()->id(),
-            'position' => ($this->task->project->tasks()->where('parent_id', $parentId)->max('position') ?? -1) + 1,
+            'position' => Task::nextPositionIn($this->task->project->tasks()->where('parent_id', $parentId)),
         ]);
 
         if ($isSection) {
@@ -464,17 +472,7 @@ new class extends Component
         abort_unless(in_array($itemId, $this->descendantIds, true), 404);
         abort_unless(in_array($parentId, $this->containerIds(), true), 404);
 
-        $subtree = [$itemId];
-        $queue = [$itemId];
-
-        while ($queue !== []) {
-            foreach ($this->childrenMap->get(array_shift($queue), []) as $child) {
-                $subtree[] = $child->id;
-                $queue[] = $child->id;
-            }
-        }
-
-        abort_if(in_array($parentId, $subtree, true), 422);
+        abort_if($parentId === $itemId || in_array($parentId, $this->idsBelow($itemId), true), 422);
 
         $this->task->project->tasks()->findOrFail($parentId)
             ->placeChild($this->task->project->tasks()->findOrFail($itemId), $position);
@@ -615,7 +613,7 @@ new class extends Component
             'status_id' => $validated['statusId'],
             'parent_id' => $validated['parentId'] ?: null,
             'position' => $parentChanged
-                ? ($this->task->project->tasks()->where('parent_id', $validated['parentId'] ?: null)->max('position') ?? -1) + 1
+                ? Task::nextPositionIn($this->task->project->tasks()->where('parent_id', $validated['parentId'] ?: null))
                 : $this->task->position,
             'assignee_id' => $validated['assigneeId'] ?: null,
             'due_date' => $validated['dueDate'] ?: null,
@@ -654,6 +652,7 @@ new class extends Component
     public function activityFeed(): SupportCollection
     {
         $comments = $this->task->comments()->with('user')->latest()->latest('id')->limit($this->feedLimit)->get()
+            ->each(fn ($comment) => $comment->setRelation('task', $this->task))
             ->map(fn ($comment) => ['at' => $comment->created_at, 'comment' => $comment, 'activity' => null]);
 
         $activities = $this->task->activities()->with('user')->latest()->latest('id')->limit($this->feedLimit)->get()
@@ -698,7 +697,7 @@ new class extends Component
 
     private function commentOrFail(int $commentId): \App\Models\Comment
     {
-        return $this->task->comments()->findOrFail($commentId);
+        return $this->task->comments()->findOrFail($commentId)->setRelation('task', $this->task);
     }
 
     /**
@@ -708,7 +707,7 @@ new class extends Component
     {
         $comment = $this->commentOrFail($commentId);
 
-        abort_unless($comment->user_id === auth()->id() && $this->canEdit, 403);
+        Gate::authorize('update', $comment);
 
         $this->editingCommentId = $comment->id;
         $this->editingBody = $comment->body;
@@ -725,7 +724,7 @@ new class extends Component
 
         $comment = $this->commentOrFail((int) $this->editingCommentId);
 
-        abort_unless($comment->user_id === auth()->id(), 403);
+        Gate::authorize('update', $comment);
 
         $validated = $this->validate(['editingBody' => ['required', 'string', 'max:5000']], attributes: ['editingBody' => __('Comment')]);
 
@@ -739,10 +738,7 @@ new class extends Component
     {
         $comment = $this->commentOrFail($commentId);
 
-        abort_unless(
-            ($comment->user_id === auth()->id() && $this->canEdit) || Gate::allows('manage', $this->task->project),
-            403,
-        );
+        Gate::authorize('delete', $comment);
 
         $comment->delete();
 
@@ -768,17 +764,7 @@ new class extends Component
         $names = [];
 
         foreach ($this->uploads as $upload) {
-            $name = $upload->getClientOriginalName();
-
-            $this->task->attachments()->create([
-                'user_id' => auth()->id(),
-                'name' => $name,
-                'path' => $upload->store("attachments/{$this->task->project_id}/{$this->task->id}"),
-                'mime_type' => $upload->getMimeType(),
-                'size' => $upload->getSize(),
-            ]);
-
-            $names[] = $name;
+            $names[] = $this->task->attachUpload($upload)->name;
         }
 
         $this->reset('uploads');
@@ -797,19 +783,10 @@ new class extends Component
 
         $this->validate(['inlineUpload' => ['required', 'file', 'mimes:png,jpg,jpeg,gif,webp', 'max:'.Attachment::MAX_KILOBYTES]], [], ['inlineUpload' => __('File')]);
 
-        $upload = $this->inlineUpload;
-        $name = $upload->getClientOriginalName();
-
-        $attachment = $this->task->attachments()->create([
-            'user_id' => auth()->id(),
-            'name' => $name,
-            'path' => $upload->store("attachments/{$this->task->project_id}/{$this->task->id}"),
-            'mime_type' => $upload->getMimeType(),
-            'size' => $upload->getSize(),
-        ]);
+        $attachment = $this->task->attachUpload($this->inlineUpload);
 
         $this->reset('inlineUpload');
-        $this->task->logActivity(ActivityType::AttachmentsAdded, ['names' => [$name]]);
+        $this->task->logActivity(ActivityType::AttachmentsAdded, ['names' => [$attachment->name]]);
         unset($this->attachments, $this->activityFeed);
 
         return ['id' => $attachment->id, 'name' => $attachment->name];
@@ -1205,12 +1182,12 @@ new class extends Component
                 <flux:card wire:key="comment-{{ $comment->id }}" class="space-y-1">
                     <div class="flex items-center gap-2">
                         <flux:text class="min-w-0 flex-1 text-sm"><strong>{{ $comment->user->name }}</strong> · {{ $comment->created_at->isoFormat('L LT') }}@if ($comment->wasEdited()) · {{ __('edited') }} @endif</flux:text>
-                        @if ($comment->user_id === auth()->id() && $this->canEdit && $editingCommentId !== $comment->id)
+                        @if ($editingCommentId !== $comment->id && Gate::allows('update', $comment))
                             <flux:button size="xs" variant="ghost" icon="pencil-square" wire:click="startEditComment({{ $comment->id }})" aria-label="{{ __('Edit comment') }}" />
                         @endif
-                        @if (($comment->user_id === auth()->id() && $this->canEdit) || $this->canManage)
+                        @can('delete', $comment)
                             <flux:button size="xs" variant="ghost" icon="trash" wire:click="deleteComment({{ $comment->id }})" wire:confirm="{{ __('Delete comment?') }}" aria-label="{{ __('Delete comment') }}" />
-                        @endif
+                        @endcan
                     </div>
 
                     @if ($editingCommentId === $comment->id)

@@ -34,7 +34,7 @@ new class extends Component
 
         abort_unless(in_array($mode, ['move', 'start', 'end'], true), 422);
 
-        $task = $this->project->tasks()->whereNull('parent_id')->where('is_section', false)->findOrFail($taskId);
+        $task = $this->project->tasks()->topLevel()->where('is_section', false)->findOrFail($taskId);
 
         if ($days === 0 || abs($days) > 3650) {
             return;
@@ -88,7 +88,7 @@ new class extends Component
     public function rows(): Collection
     {
         return $this->project->tasks()
-            ->whereNull('parent_id')
+            ->topLevel()
             ->where('is_section', false)
             ->overlapping($this->start, $this->end)
             ->with(['status', 'blockers.status'])
@@ -111,7 +111,7 @@ new class extends Component
     #[Computed]
     public function outside(): array
     {
-        $tasks = $this->project->tasks()->whereNull('parent_id')->where('is_section', false);
+        $tasks = $this->project->tasks()->topLevel()->where('is_section', false);
 
         $undated = (clone $tasks)->whereNull('start_date')->whereNull('due_date')->count();
         $dated = (clone $tasks)->where(fn ($q) => $q->whereNotNull('start_date')->orWhereNotNull('due_date'))->count();

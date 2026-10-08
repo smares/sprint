@@ -84,8 +84,8 @@ new class extends Component
     protected function filteredTasks(): HasMany
     {
         return $this->project->tasks()
-            ->whereNull('parent_id')
-            ->when($this->statusFilter === 'open', fn ($q) => $q->whereHas('status', fn ($status) => $status->where('is_done', false)))
+            ->topLevel()
+            ->when($this->statusFilter === 'open', fn ($q) => $q->open())
             ->when(ctype_digit($this->statusFilter), fn ($q) => $q->where('status_id', (int) $this->statusFilter))
             ->when($this->assigneeFilter === 'me', fn ($q) => $q->where('assignee_id', auth()->id()))
             ->when(ctype_digit($this->assigneeFilter), fn ($q) => $q->where('assignee_id', (int) $this->assigneeFilter))
@@ -301,7 +301,8 @@ new class extends Component
     #[Computed]
     public function savedFilters(): Collection
     {
-        return $this->project->savedFilters()->visibleTo(auth()->user())->orderBy('name')->get();
+        return $this->project->savedFilters()->visibleTo(auth()->user())->orderBy('name')->get()
+            ->each(fn ($saved) => $saved->setRelation('project', $this->project));
     }
 
     /**
@@ -375,9 +376,9 @@ new class extends Component
 
     public function deleteFilter(int $filterId): void
     {
-        $saved = $this->project->savedFilters()->visibleTo(auth()->user())->findOrFail($filterId);
+        $saved = $this->project->savedFilters()->visibleTo(auth()->user())->findOrFail($filterId)->setRelation('project', $this->project);
 
-        abort_unless(! $saved->isShared() || Gate::allows('manage', $this->project), 403);
+        Gate::authorize('delete', $saved);
 
         $saved->delete();
         unset($this->savedFilters);
@@ -423,7 +424,7 @@ new class extends Component
 
         abort_unless($this->sortBy === '', 422);
 
-        $task = $this->project->tasks()->whereNull('parent_id')->findOrFail($taskId);
+        $task = $this->project->tasks()->topLevel()->findOrFail($taskId);
 
         $this->project->placeRootTask(
             $task,
@@ -438,7 +439,7 @@ new class extends Component
     {
         Gate::authorize('edit', $this->project);
 
-        $task = $this->project->tasks()->whereNull('parent_id')->findOrFail($taskId);
+        $task = $this->project->tasks()->topLevel()->findOrFail($taskId);
 
         $task->toggleDone();
 
@@ -519,9 +520,9 @@ new class extends Component
                     @if ($saved->isShared())
                         <flux:badge size="sm" color="blue">{{ __('Shared') }}</flux:badge>
                     @endif
-                    @if (! $saved->isShared() || $this->canManage)
+                    @can('delete', $saved)
                         <flux:button size="xs" variant="ghost" icon="trash" wire:click="deleteFilter({{ $saved->id }})" wire:confirm="{{ __('Delete view “:name”?', ['name' => $saved->name]) }}" aria-label="{{ __('Delete view') }}" />
-                    @endif
+                    @endcan
                 </div>
             @empty
                 <flux:text>{{ __('No views saved yet.') }}</flux:text>

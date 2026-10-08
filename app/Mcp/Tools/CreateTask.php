@@ -4,6 +4,7 @@ namespace App\Mcp\Tools;
 
 use App\Mcp\TaskData;
 use App\Mcp\ToolFailure;
+use App\Models\Task;
 use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Support\Facades\DB;
@@ -49,7 +50,7 @@ class CreateTask extends WriteTaskTool
                 'creator_id' => $user->id,
                 'position' => $parent === null
                     ? $project->nextRootPosition()
-                    : ($project->tasks()->where('parent_id', $parent->id)->max('position') ?? -1) + 1,
+                    : Task::nextPositionIn($project->tasks()->where('parent_id', $parent->id)),
             ]);
 
             $task->setRelation('project', $project);

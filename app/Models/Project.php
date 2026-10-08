@@ -395,7 +395,7 @@ class Project extends Model
      */
     public function nextRootPosition(): int
     {
-        return ($this->tasks()->whereNull('parent_id')->max('position') ?? -1) + 1;
+        return Task::nextPositionIn($this->tasks()->topLevel());
     }
 
     /**
@@ -407,7 +407,7 @@ class Project extends Model
     {
         DB::transaction(function () use ($task, $visibleIds, $position) {
             $currentPositions = $this->tasks()
-                ->whereNull('parent_id')
+                ->topLevel()
                 ->orderBy('position')
                 ->orderBy('id')
                 ->pluck('position', 'id')
@@ -425,14 +425,7 @@ class Project extends Model
 
             array_splice($orderedIds, $insertAt, 0, [$task->getKey()]);
 
-            // Only the rows whose place actually changes are written, usually a handful instead of all.
-            foreach ($orderedIds as $index => $id) {
-                $current = $currentPositions[$id] ?? null;
-
-                if ($current === null || (int) $current !== $index) {
-                    Task::whereKey($id)->update(['position' => $index]);
-                }
-            }
+            Task::writePositions($orderedIds, $currentPositions);
         });
     }
 

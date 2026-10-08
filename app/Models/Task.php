@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\HasPosition;
 use App\Enums\ActivityType;
 use App\Enums\RepeatMode;
 use App\Enums\RepeatUnit;
@@ -14,7 +15,6 @@ use App\Services\TaskSearchService;
 use Carbon\CarbonInterface;
 use Closure;
 use Database\Factories\TaskFactory;
-use Illuminate\Contracts\Database\Query\Builder as QueryBuilder;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -23,6 +23,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\Pivot;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -35,6 +36,8 @@ class Task extends Model
 {
     /** @use HasFactory<TaskFactory> */
     use HasFactory;
+
+    use HasPosition;
 
     /**
      * While tasks are changed in bulk: status changes per recipient, to be sent as one message.
@@ -400,17 +403,27 @@ class Task extends Model
      */
     private function deleteAttachmentFiles(): void
     {
-        $ids = [$this->getKey()];
-        $frontier = $ids;
+        foreach (array_chunk([$this->getKey(), ...$this->descendantIds()], 500) as $chunk) {
+            Storage::disk()->delete(Attachment::whereIn('task_id', $chunk)->pluck('path')->all());
+        }
+    }
+
+    /**
+     * Ids of all subtasks at every depth, one query per level.
+     *
+     * @return list<int>
+     */
+    public function descendantIds(): array
+    {
+        $ids = [];
+        $frontier = [$this->getKey()];
 
         while ($frontier !== []) {
             $frontier = self::whereIn('parent_id', $frontier)->pluck('id')->all();
             $ids = [...$ids, ...$frontier];
         }
 
-        foreach (array_chunk($ids, 500) as $chunk) {
-            Storage::disk()->delete(Attachment::whereIn('task_id', $chunk)->pluck('path')->all());
-        }
+        return $ids;
     }
 
     /**
@@ -419,6 +432,20 @@ class Task extends Model
     public function attachments(): HasMany
     {
         return $this->hasMany(Attachment::class);
+    }
+
+    /**
+     * Store an uploaded file on the default disk and attach it, recording who uploaded it.
+     */
+    public function attachUpload(UploadedFile $file): Attachment
+    {
+        return $this->attachments()->create([
+            'user_id' => auth()->id(),
+            'name' => $file->getClientOriginalName(),
+            'path' => $file->store("attachments/{$this->project_id}/{$this->getKey()}"),
+            'mime_type' => $file->getMimeType(),
+            'size' => $file->getSize(),
+        ]);
     }
 
     /**
@@ -455,15 +482,8 @@ class Task extends Model
     public function placeChild(self $child, int $position): void
     {
         DB::transaction(function () use ($child, $position) {
-            $orderedIds = $this->children()->whereKeyNot($child->getKey())->pluck('id')->all();
-
-            array_splice($orderedIds, max(0, min($position, count($orderedIds))), 0, [$child->getKey()]);
-
             $child->update(['parent_id' => $this->getKey()]);
-
-            foreach ($orderedIds as $index => $id) {
-                self::whereKey($id)->update(['position' => $index]);
-            }
+            $child->moveTo($position);
         });
     }
 
@@ -691,7 +711,7 @@ class Task extends Model
             return $this->blockers->contains(fn (self $blocker) => ! $blocker->isDone());
         }
 
-        return $this->blockers()->whereHas('status', fn (QueryBuilder $status) => $status->where('is_done', false))->exists();
+        return $this->blockers()->open()->exists();
     }
 
     /**
@@ -798,6 +818,16 @@ class Task extends Model
     }
 
     /**
+     * Tasks that are not subtasks.
+     *
+     * @param  Builder<static>  $query
+     */
+    protected function scopeTopLevel(Builder $query): void
+    {
+        $query->whereNull('tasks.parent_id');
+    }
+
+    /**
      * Tasks whose status is not a done status.
      *
      * @param  Builder<static>  $query
@@ -836,5 +866,15 @@ class Task extends Model
             && ! $this->isDone()
             && $this->due_date->isPast()
             && ! $this->due_date->isToday();
+    }
+
+    /**
+     * Subtasks share one order per parent, top-level tasks one per project.
+     *
+     * @return Builder<static>
+     */
+    protected function positionSiblings(): Builder
+    {
+        return static::query()->where('project_id', $this->project_id)->where('parent_id', $this->parent_id);
     }
 }

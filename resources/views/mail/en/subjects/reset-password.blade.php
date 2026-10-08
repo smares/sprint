@@ -1,0 +1,1 @@
+New password for {{ config('app.name') }}

@@ -10,6 +10,8 @@ Wichtige Einstellungen und Eigenheiten im laufenden Betrieb. Alle Werte stehen i
 
 ## E-Mail und Tageszusammenfassung
 
+Ohne funktionierenden Mailversand (`MAIL_*`) kommen weder Benachrichtigungen noch der Link für „Passwort vergessen“ an; dann setzt ein Administrator das Passwort unter *Benutzer* zurück.
+
 - Der Posteingang liegt in der Tabelle `notifications` und wird über dieselbe Queue befüllt wie die Mails (Worker nötig)
 - E-Mails brauchen einen Mailer: `MAIL_MAILER` und die übrigen `MAIL_*`-Variablen in `.env` (lokal reicht `log`, dann landen die Mails in `storage/logs`); `MAIL_FROM_ADDRESS` und `MAIL_FROM_NAME` bestimmen den Absender. Versendet wird über die Queue, ohne laufenden Worker kommt nichts an
 - Die **Tageszusammenfassung** (werktags 07:30, einstellbar mit `SPRINT_DIGEST_TIME`) braucht den Scheduler: ein Cron-Eintrag, der jede Minute `php artisan schedule:run` startet, z. B. `* * * * * cd /pfad/zu/sprint && php artisan schedule:run >> /dev/null 2>&1`. Die Uhrzeit gilt in der Zeitzone der Anwendung (`APP_TIMEZONE`, in `.env.example` `Europe/Berlin`); sie bestimmt auch, was „heute“ und „überfällig“ heißt. Zum Ausprobieren: `php artisan digest:send --user=anna@example.com`

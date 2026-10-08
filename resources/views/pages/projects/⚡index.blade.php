@@ -93,17 +93,21 @@ new class extends Component
     @endif
 
     @if ($this->archivedProjects->isNotEmpty())
-        <details class="mt-10">
-            <summary class="cursor-pointer text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ __('Archived projects (:count)', ['count' => $this->archivedProjects->count()]) }}</summary>
-            <ul class="mt-3 space-y-1">
-                @foreach ($this->archivedProjects as $archived)
-                    <li wire:key="archived-{{ $archived->id }}">
-                        <a href="{{ route('projects.show', $archived) }}" wire:navigate class="hover:underline">{{ $archived->name }}</a>
-                        <flux:text size="sm" class="ms-2 inline">{{ __('archived on :date', ['date' => $archived->archived_at->isoFormat('L')]) }}</flux:text>
-                    </li>
-                @endforeach
-            </ul>
-        </details>
+        <flux:accordion transition class="mt-10">
+            <flux:accordion.item>
+                <flux:accordion.heading>{{ __('Archived projects (:count)', ['count' => $this->archivedProjects->count()]) }}</flux:accordion.heading>
+                <flux:accordion.content>
+                    <ul class="space-y-1">
+                        @foreach ($this->archivedProjects as $archived)
+                            <li wire:key="archived-{{ $archived->id }}">
+                                <flux:link :href="route('projects.show', $archived)" variant="ghost" wire:navigate>{{ $archived->name }}</flux:link>
+                                <flux:text size="sm" class="ms-2 inline">{{ __('archived on :date', ['date' => $archived->archived_at->isoFormat('L')]) }}</flux:text>
+                            </li>
+                        @endforeach
+                    </ul>
+                </flux:accordion.content>
+            </flux:accordion.item>
+        </flux:accordion>
     @endif
 
     <flux:modal name="create-project" class="md:w-96">

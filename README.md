@@ -22,7 +22,7 @@ Alles Weitere steht in [`docs/`](docs/README.md):
 
 - [Funktionen](docs/features.md)
 - [Installation](docs/installation.md)
-- [Bereitstellung](docs/deployment.md) (Laravel Forge, Laravel Cloud, Docker Compose)
+- [Bereitstellung](docs/deployment.md) (Laravel Forge, Laravel Cloud, Docker Compose, Dokploy)
 - [Konfiguration](docs/configuration.md)
 - [Wartung](docs/maintenance.md) (Updates, Gesundheitsprüfung, Backup)
 - [Entwicklung](docs/development.md)

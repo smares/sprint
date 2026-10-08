@@ -14,13 +14,13 @@ COPY docker/php.ini "$PHP_INI_DIR/conf.d/zz-sprint.ini"
 
 WORKDIR /app
 
-# PHP dependencies; the Flux Pro credentials come in as a build secret (an auth.json) and never end up in a layer.
+# PHP dependencies; the Flux Pro credentials come in as a build secret (COMPOSER_AUTH, which Composer reads) and never end up in a layer.
 FROM base AS vendor
 
 COPY composer.json composer.lock ./
 
 RUN --mount=type=bind,from=composer:2,source=/usr/bin/composer,target=/usr/bin/composer \
-    --mount=type=secret,id=composer_auth,target=/app/auth.json,required=true \
+    --mount=type=secret,id=composer_auth,env=COMPOSER_AUTH,required=true \
     composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-interaction --no-progress
 
 # Front-end assets; Tailwind reads the Flux styles and Blade views from vendor.

@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Renderless;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -118,6 +119,21 @@ new class extends Component
     public function hydrate(): void
     {
         Gate::authorize('view', $this->task->project);
+    }
+
+    /**
+     * The "e" key: done or open again, without touching what is being edited in the form.
+     */
+    #[On('shortcut-toggle-done')]
+    public function toggleDoneByShortcut(): void
+    {
+        if (! $this->canEdit) {
+            return;
+        }
+
+        $this->task->toggleDone();
+        $this->statusId = (string) $this->task->status_id;
+        $this->dispatch('task-changed');
     }
 
     #[Computed]

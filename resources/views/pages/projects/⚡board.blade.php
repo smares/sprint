@@ -166,7 +166,7 @@ new class extends Component
                     wire:sort:group-id="{{ $status->id }}"
                 >
                     @foreach ($this->columns[$status->id] as $task)
-                        <flux:kanban.card wire:key="task-{{ $task->id }}" :wire:sort:item="$this->canEdit ? $task->id : null">
+                        <flux:kanban.card wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" :wire:sort:item="$this->canEdit ? $task->id : null">
                             <x-task-title-link :task="$task" :open="(string) $task->id === $openTaskId" />
 
                             @if ($progress = $this->progress[$task->id] ?? null)

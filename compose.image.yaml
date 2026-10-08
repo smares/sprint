@@ -1,0 +1,84 @@
+# Sprint from the finished image, without building anything: the same stack as compose.yaml.
+# The image is private (it contains Flux Pro): log in once on the server with
+# `docker login ghcr.io` (a token with read:packages); see docs/deployment-docker.md.
+#
+#   docker compose -f compose.image.yaml up -d                       app, queue worker and scheduler
+#   docker compose -f compose.image.yaml --profile realtime up -d    plus Reverb for live updates
+#
+# SPRINT_VERSION picks the version (a release like 0.1.0, or "latest"). Settings come from .env
+# (APP_KEY, APP_URL, mail …). The SQLite database, attachments and logs live in the "storage"
+# volume; Caddy's certificates in "caddy_data".
+
+x-environment: &environment
+  DB_CONNECTION: ${DB_CONNECTION:-sqlite}
+  DB_DATABASE: ${DB_DATABASE:-/app/storage/database/database.sqlite}
+  # Logs go to "docker compose logs"
+  LOG_CHANNEL: stderr
+  # Messages for live updates go straight to the Reverb container
+  REVERB_INTERNAL_HOST: reverb
+  REVERB_INTERNAL_PORT: 8080
+  REVERB_INTERNAL_SCHEME: http
+
+x-sprint: &sprint
+  image: ghcr.io/smares/sprint:${SPRINT_VERSION:-latest}
+  pull_policy: always
+  env_file:
+    - path: .env
+      required: false
+  environment: *environment
+  volumes:
+    - storage:/app/storage
+  restart: unless-stopped
+
+services:
+  app:
+    <<: *sprint
+    environment:
+      <<: *environment
+      # ":80" serves plain HTTP (behind your own proxy); a domain makes Caddy fetch a certificate
+      SERVER_NAME: ${SERVER_NAME:-:80}
+      # The browser's WebSocket for live updates runs over the same address as the app
+      CADDY_SERVER_EXTRA_DIRECTIVES: reverse_proxy /app/* reverb:8080
+    # Behind a reverse proxy on the same host (Traefik, nginx), HTTP_BIND=127.0.0.1 keeps the ports off the internet
+    ports:
+      - ${HTTP_BIND:-0.0.0.0}:${HTTP_PORT:-8000}:80
+      - ${HTTP_BIND:-0.0.0.0}:${HTTPS_PORT:-8443}:443
+      - ${HTTP_BIND:-0.0.0.0}:${HTTPS_PORT:-8443}:443/udp
+    volumes:
+      - storage:/app/storage
+      - caddy_data:/data
+      - caddy_config:/config
+
+  queue:
+    <<: *sprint
+    command: [php, artisan, queue:work, --tries=3, --max-time=3600]
+    stop_signal: SIGTERM
+    depends_on:
+      app:
+        condition: service_healthy
+
+  scheduler:
+    <<: *sprint
+    command: [php, artisan, schedule:work]
+    depends_on:
+      app:
+        condition: service_healthy
+
+  reverb:
+    <<: *sprint
+    profiles: [realtime]
+    command: [php, artisan, reverb:start, --host=0.0.0.0, --port=8080]
+    healthcheck:
+      test: [CMD, php, -r, "exit(@fsockopen('127.0.0.1', 8080) ? 0 : 1);"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      start_interval: 2s
+    depends_on:
+      app:
+        condition: service_healthy
+
+volumes:
+  storage:
+  caddy_data:
+  caddy_config:

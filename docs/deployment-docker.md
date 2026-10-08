@@ -62,6 +62,22 @@ REVERB_PORT=443           # Port, unter dem der Browser die App erreicht (lokal 
 REVERB_SCHEME=https       # lokal http
 ```
 
+## Fertiges Image
+
+Mit jedem Release baut GitHub das Image und legt es für `amd64` und `arm64` (Raspberry Pi, Apple-Silicon-Server, Graviton) unter `ghcr.io/smares/sprint` ab (Tags `0.1.0`, `0.1` und `latest`; `latest` zeigt auf die jüngste Version ohne Vorabkennung). Damit muss der Server nichts bauen und braucht keinen Flux-Pro-Zugang. Die Datei `compose.image.yaml` ist derselbe Stack wie `compose.yaml`, nur mit diesem Image:
+
+```bash
+docker login ghcr.io                                  # einmal; Benutzername und ein Token mit read:packages
+cp .env.example .env                                  # APP_KEY, APP_URL, Mail … wie oben
+SPRINT_VERSION=0.1.0 docker compose -f compose.image.yaml up -d
+```
+
+`SPRINT_VERSION` in die `.env` zu schreiben genügt; ohne Angabe gilt `latest`. Der Befehl für Live-Updates ist `--profile realtime`, wie beim Selbstbauen.
+
+**Das Paket ist privat.** Es enthält den Quellcode von Flux UI Pro, dessen Lizenz die Weitergabe nicht erlaubt; deshalb darf es nicht öffentlich werden (auf GitHub: Profil → Packages → `sprint` → Package settings, Sichtbarkeit *Private*). Wer Zugriff haben soll, braucht dort Leserechte und für `docker login` ein *personal access token (classic)* mit `read:packages`. Der Release-Workflow bricht ab, wenn er das Paket ohne Anmeldung ziehen kann.
+
+Die anderen Wege bleiben: `compose.yaml` baut selbst (mit eigenem Flux-Zugang), siehe oben.
+
 ## Andere Datenbank
 
 Das Image bringt die Treiber für MySQL/MariaDB und PostgreSQL mit. `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME` und `DB_PASSWORD` in `.env` setzen; die Datenbank selbst läuft dann außerhalb oder als zusätzlicher Dienst in einer eigenen `compose.override.yaml`. Ohne FTS5 sucht Sprint automatisch per LIKE (siehe [Suche](configuration.md#suche)).
@@ -73,6 +89,8 @@ git pull
 docker compose build
 docker compose up -d
 ```
+
+Mit dem fertigen Image genügt `SPRINT_VERSION` zu ändern und `docker compose -f compose.image.yaml up -d` zu wiederholen (die Datei zieht das Image selbst nach).
 
 Beim Start migriert der `app`-Container und baut die Caches neu; `queue`, `scheduler` und `reverb` starten erst, wenn `app` gesund ist. Wer Migrationen lieber selbst anstößt, setzt `MIGRATE_ON_START=false` und ruft `docker compose exec app php artisan migrate --force` auf.
 

@@ -41,6 +41,6 @@ Anleitungen für typische Hosts:
 5. **Scheduler:** jede Minute `php artisan schedule:run`.
 6. **Ersten Administrator anlegen:** `php artisan user:create "Anna Beispiel" anna@example.com --admin`.
 7. **Prüfen:** `https://sprint.example.com/health` liefert `{"status":"ok", …}` (siehe [Gesundheitsprüfung](maintenance.md#gesundheitsprüfung)); `php artisan sprint:health` zeigt Details. Nach einer Mail-Probe (Kommentar mit Erwähnung) und einem Blick ins Profil (Sprache, Passkey) ist die Installation fertig.
-8. **Backup einrichten** (siehe [Backup und Wiederherstellung](maintenance.md#backup-und-wiederherstellung)).
+8. **Backup prüfen:** Der Scheduler sichert jede Nacht Datenbank und Anhänge; Ziel (am besten ein Bucket) und Aufbewahrung stehen unter [Backup und Wiederherstellung](maintenance.md#backup-und-wiederherstellung), die `.env` sicherst du einmalig getrennt davon.
 
 Anhänge landen auf der Standard-Disk von Laravel (`FILESYSTEM_DISK`): lokal in `storage/app/private`, mit `FILESYSTEM_DISK=s3` in einem S3-kompatiblen Bucket. Der S3-Adapter ist installiert; Zugangsdaten und Bucket stehen in den `AWS_*`-Variablen.

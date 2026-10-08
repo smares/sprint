@@ -41,7 +41,7 @@ class HealthCheckTest extends TestCase
 
         $this->getJson(route('health'))->assertOk()
             ->assertHeader('Cache-Control', 'no-store, private')
-            ->assertExactJson(['status' => 'ok', 'checks' => ['database' => 'ok', 'storage' => 'ok', 'cache' => 'ok', 'scheduler' => 'ok', 'queue' => 'ok']]);
+            ->assertExactJson(['status' => 'ok', 'checks' => ['database' => 'ok', 'storage' => 'ok', 'cache' => 'ok', 'scheduler' => 'ok', 'queue' => 'ok', 'backup' => 'ok']]);
     }
 
     public function test_a_missing_scheduler_is_only_a_warning(): void

@@ -180,3 +180,15 @@ if (window.Alpine) {
 } else {
     document.addEventListener('alpine:init', registerAll)
 }
+
+document.addEventListener('click', (event) => {
+    const image = event.target.closest?.('img[data-preview-url]')
+
+    if (! image) {
+        return
+    }
+
+    window.dispatchEvent(new CustomEvent('preview-file', {
+        detail: { url: image.dataset.previewUrl, download: image.dataset.downloadUrl, name: image.dataset.name, kind: 'image' },
+    }))
+})

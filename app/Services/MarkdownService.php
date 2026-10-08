@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Attachment;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
@@ -10,11 +11,14 @@ use Illuminate\Support\Str;
 use League\CommonMark\Extension\ExternalLink\ExternalLinkExtension;
 
 /**
- * Renders user-written Markdown, including `@[Name](user:1)` / `@[Title](task:2)` mentions, to safe HTML.
+ * Renders user-written Markdown, including `@[Name](user:1)` / `@[Title](task:2)` mentions and
+ * `![Name](attachment:3)` images of attachments, to safe HTML.
  */
 class MarkdownService
 {
     private const MENTION_PATTERN = '/@\[([^\]\n]{1,255})\]\((user|task):(\d+)\)/u';
+
+    private const IMAGE_PATTERN = '/!\[([^\]\n]{0,255})\]\(attachment:(\d+)\)/u';
 
     private const PLACEHOLDER_START = "\u{E000}";
 
@@ -35,6 +39,12 @@ class MarkdownService
 
             return self::PLACEHOLDER_START.(count($mentions) - 1).self::PLACEHOLDER_END;
         }, $text);
+
+        $withPlaceholders = preg_replace_callback(self::IMAGE_PATTERN, function (array $match) use (&$mentions) {
+            $mentions[] = ['name' => $match[1], 'type' => 'image', 'id' => (int) $match[2]];
+
+            return self::PLACEHOLDER_START.(count($mentions) - 1).self::PLACEHOLDER_END;
+        }, $withPlaceholders);
 
         $html = Str::markdown($withPlaceholders, [
             'html_input' => 'strip',
@@ -73,7 +83,9 @@ class MarkdownService
      */
     public static function plainText(?string $text): string
     {
-        return (string) preg_replace(self::MENTION_PATTERN, '@$1', (string) $text);
+        $text = (string) preg_replace(self::IMAGE_PATTERN, '[$1]', (string) $text);
+
+        return (string) preg_replace(self::MENTION_PATTERN, '@$1', $text);
     }
 
     /**
@@ -91,11 +103,24 @@ class MarkdownService
             ->get()
             ->filter(fn (Task $task) => Gate::allows('view', $task->project))
             ->pluck('title', 'id');
+        $images = Attachment::with('task.project')
+            ->whereIn('id', collect($mentions)->where('type', 'image')->pluck('id'))
+            ->get()
+            ->filter(fn (Attachment $attachment) => $attachment->previewKind() === 'image' && Gate::allows('view', $attachment->task->project))
+            ->keyBy('id');
 
         return (string) preg_replace_callback(
             '/'.self::PLACEHOLDER_START.'(\d+)'.self::PLACEHOLDER_END.'/u',
-            function (array $match) use ($mentions, $users, $tasks) {
+            function (array $match) use ($mentions, $users, $tasks, $images) {
                 $mention = $mentions[(int) $match[1]];
+
+                if ($mention['type'] === 'image') {
+                    $image = $images->get($mention['id']);
+
+                    return $image === null
+                        ? '<span class="mention mention-missing">'.e(__('Image removed')).'</span>'
+                        : '<img class="attachment-image" src="'.e(route('attachments.show', [$image, 'inline' => 1])).'" alt="'.e($image->name).'" loading="lazy" data-preview-url="'.e(route('attachments.show', [$image, 'inline' => 1])).'" data-download-url="'.e(route('attachments.show', $image)).'" data-name="'.e($image->name).'">';
+                }
 
                 if ($mention['type'] === 'user') {
                     $name = $users->get($mention['id']);

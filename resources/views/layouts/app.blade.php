@@ -90,6 +90,8 @@
             <flux:toast />
         @endpersist
 
+        <x-file-preview />
+
         @fluxScripts
     </body>
 </html>

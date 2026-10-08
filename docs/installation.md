@@ -4,7 +4,7 @@ Diese Anleitung richtet Sprint für die Entwicklung oder einen einfachen Server 
 
 ## Voraussetzungen
 
-- PHP 8.4 oder neuer mit den Erweiterungen `dom`, `curl`, `libxml`, `mbstring`, `zip`, `pdo` und `pdo_sqlite` (bzw. dem Treiber deiner Datenbank)
+- PHP 8.3 oder neuer mit den Erweiterungen `dom`, `curl`, `libxml`, `mbstring`, `zip`, `pdo` und `pdo_sqlite` (bzw. dem Treiber deiner Datenbank)
 - [Composer](https://getcomposer.org) 2
 - Node.js ab Version 22 und npm
 - Eine Lizenz für **Flux UI Pro** (siehe unten)

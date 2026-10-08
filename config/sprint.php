@@ -17,6 +17,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Reminders
+    |--------------------------------------------------------------------------
+    |
+    | Time of day at which assignees and collaborators get an inbox entry for
+    | each open task that is due tomorrow (every day; people can turn it off
+    | in their profile).
+    |
+    */
+
+    'reminder_time' => env('SPRINT_REMINDER_TIME', '08:00'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Languages
     |--------------------------------------------------------------------------
     |

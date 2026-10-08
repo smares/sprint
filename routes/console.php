@@ -6,6 +6,8 @@ use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('digest:send')->weekdays()->dailyAt(config('sprint.digest_time'))->onOneServer()->withoutOverlapping();
 
+Schedule::command('reminders:send')->dailyAt(config('sprint.reminder_time'))->onOneServer()->withoutOverlapping();
+
 Schedule::command('notifications:prune')->dailyAt('03:15')->onOneServer();
 
 Schedule::command('sprint:backup')->dailyAt(config('sprint.backup.time'))->onOneServer()->withoutOverlapping()->when(fn () => config('sprint.backup.enabled'));

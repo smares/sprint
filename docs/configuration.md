@@ -6,7 +6,7 @@ Wichtige Einstellungen und Eigenheiten im laufenden Betrieb. Alle Werte stehen i
 
 - Die Datenbank wird über die Variablen `DB_*` gewählt (SQLite, MySQL, PostgreSQL). SQLite läuft im WAL-Modus mit 5 s Wartezeit bei gleichzeitigen Schreibzugriffen (`DB_JOURNAL_MODE`, `DB_BUSY_TIMEOUT`, `DB_SYNCHRONOUS`); neben der Datenbankdatei liegen deshalb `-wal`- und `-shm`-Dateien, die zur Datenbank gehören
 - Sitzungen, Cache und Queue nutzen standardmäßig die Datenbank (`SESSION_DRIVER`, `CACHE_STORE`, `QUEUE_CONNECTION`); für die Queue läuft im Betrieb ein Worker: `php artisan queue:work`
-- Der Scheduler schreibt jede Minute einen Herzschlag, den die [Gesundheitsprüfung](maintenance.md#gesundheitsprüfung) auswertet; nachts um 02:30 schreibt er ein [Backup](maintenance.md#backup-und-wiederherstellung) (`php artisan sprint:backup`) und um 03:15 entfernt er gelesene Meldungen im Posteingang, die älter als 90 Tage sind (`php artisan notifications:prune`, Frist in `config/sprint.php`)
+- Der Scheduler schreibt jede Minute einen Herzschlag, den die [Gesundheitsprüfung](maintenance.md#gesundheitsprüfung) auswertet; morgens um 08:00 legt er Erinnerungen für Aufgaben in den Posteingang, die am nächsten Tag fällig sind (`php artisan reminders:send`, Uhrzeit per `SPRINT_REMINDER_TIME`), nachts um 02:30 schreibt er ein [Backup](maintenance.md#backup-und-wiederherstellung) (`php artisan sprint:backup`) und um 03:15 entfernt er gelesene Meldungen im Posteingang, die älter als 90 Tage sind (`php artisan notifications:prune`, Frist in `config/sprint.php`)
 
 ## E-Mail und Tageszusammenfassung
 

@@ -210,7 +210,7 @@ new class extends Component
         foreach ($this->filterableFields as $field) {
             $option = $this->fieldFilters[$field->id] ?? '';
 
-            if (ctype_digit((string) $option) && $field->options->contains('id', (int) $option)) {
+            if (is_scalar($option) && ctype_digit((string) $option) && $field->options->contains('id', (int) $option)) {
                 $query->whereHas('fieldValues', fn ($values) => $values
                     ->where('custom_field_id', $field->id)
                     ->where('option_id', (int) $option));

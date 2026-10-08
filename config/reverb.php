@@ -82,7 +82,8 @@ return [
                     'scheme' => env('REVERB_SCHEME', 'https'),
                     'useTLS' => env('REVERB_SCHEME', 'https') === 'https',
                 ],
-                'allowed_origins' => ['*'],
+                // Hosts whose pages may open a socket; by default only the app's own (APP_URL).
+                'allowed_origins' => explode(',', (string) env('REVERB_ALLOWED_ORIGINS', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST) ?: '*')),
                 'ping_interval' => env('REVERB_APP_PING_INTERVAL', 60),
                 'activity_timeout' => env('REVERB_APP_ACTIVITY_TIMEOUT', 30),
                 'max_connections' => env('REVERB_APP_MAX_CONNECTIONS'),

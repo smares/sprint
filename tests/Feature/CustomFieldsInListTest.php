@@ -107,6 +107,8 @@ class CustomFieldsInListTest extends TestCase
             ->assertSee('Sichtbar')
             ->set("fieldFilters.{$this->priority->id}", 'x; drop table')
             ->assertSee('Sichtbar');
+
+        $this->get(route('projects.show', $this->project).'?f['.$this->priority->id.'][]=x')->assertOk()->assertSee('Sichtbar');
     }
 
     public function test_only_select_fields_offer_a_filter(): void

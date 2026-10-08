@@ -26,9 +26,14 @@ class AttachmentController extends Controller
             default => $attachment->mime_type,
         };
 
-        return $disk->response($attachment->path, $attachment->name, [
-            'Content-Type' => $contentType,
-            'X-Content-Type-Options' => 'nosniff',
-        ], $inline ? 'inline' : 'attachment');
+        $headers = ['Content-Type' => $contentType, 'X-Content-Type-Options' => 'nosniff'];
+
+        // Uploaded files never run scripts on the app's origin. PDFs are the exception, because
+        // the browsers' PDF viewers refuse to work in a sandbox; they only run in the viewer itself.
+        if (! $inline || $kind !== 'pdf') {
+            $headers['Content-Security-Policy'] = "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; frame-ancestors 'self'; sandbox";
+        }
+
+        return $disk->response($attachment->path, $attachment->name, $headers, $inline ? 'inline' : 'attachment');
     }
 }

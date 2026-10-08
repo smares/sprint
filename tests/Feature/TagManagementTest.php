@@ -9,6 +9,7 @@ use App\Models\Tag;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -179,7 +180,7 @@ class TagManagementTest extends TestCase
     public function test_old_color_names_are_still_understood(): void
     {
         $tag = Tag::factory()->for($this->project)->create();
-        \DB::table('tags')->where('id', $tag->id)->update(['color' => 'purple']);
+        DB::table('tags')->where('id', $tag->id)->update(['color' => 'purple']);
 
         $this->assertSame('#a855f7', $tag->fresh()->color);
         $this->page()->assertSet("colors.{$tag->id}", '#a855f7');

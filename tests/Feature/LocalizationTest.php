@@ -13,6 +13,7 @@ use App\Notifications\UserMentioned;
 use App\Services\InboxTextService;
 use App\Services\LocaleService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Notification;
@@ -122,11 +123,11 @@ class LocalizationTest extends TestCase
     public function test_validation_messages_follow_the_language(): void
     {
         LocaleService::apply('de');
-        $this->assertSame('Das Feld Name ist erforderlich.', Validator::make([], ['name' => 'required'])->messages()->first('name'));
-        $this->assertSame('Das Feld E-Mail muss eine gültige E-Mail-Adresse sein.', Validator::make(['email' => 'x'], ['email' => 'email'])->messages()->first('email'));
+        $this->assertSame('Das Feld Name ist erforderlich.', Validator::make([], ['name' => ['required']])->messages()->first('name'));
+        $this->assertSame('Das Feld E-Mail muss eine gültige E-Mail-Adresse sein.', Validator::make(['email' => 'x'], ['email' => ['email']])->messages()->first('email'));
 
         LocaleService::apply('en');
-        $this->assertSame('The name field is required.', Validator::make([], ['name' => 'required'])->messages()->first('name'));
+        $this->assertSame('The name field is required.', Validator::make([], ['name' => ['required']])->messages()->first('name'));
         $this->assertSame('The provided password is incorrect.', __('auth.password'));
     }
 
@@ -213,7 +214,7 @@ class LocalizationTest extends TestCase
         $recipient->notifications()->create(['id' => 'b', 'type' => TaskStatusChanged::class, 'data' => ['task_id' => $task->id, 'kind' => 'status_changed', 'by' => null, 'from' => 'Offen', 'to' => 'Erledigt']]);
         $recipient->notifications()->create(['id' => 'c', 'type' => UserMentioned::class, 'data' => ['task_id' => $task->id, 'kind' => 'mentioned', 'by' => 'Otto', 'where' => 'description']]);
         $recipient->notifications()->create(['id' => 'd', 'type' => TaskCommented::class, 'data' => ['task_id' => $task->id, 'summary' => 'Otto hat kommentiert']]);
-        $sentences = fn () => $recipient->notifications()->orderBy('id')->get()->map(fn ($n) => InboxTextService::sentence($n))->all();
+        $sentences = fn () => $recipient->notifications()->orderBy('id')->get()->map(fn (DatabaseNotification $n) => InboxTextService::sentence($n))->all();
 
         LocaleService::apply('de');
         $this->assertSame(['Otto hat kommentiert', 'Jemand hat den Status von „Offen“ auf „Erledigt“ geändert', 'Otto hat dich in der Beschreibung erwähnt', 'Otto hat kommentiert'], $sentences());

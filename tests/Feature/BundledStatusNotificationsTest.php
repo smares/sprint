@@ -13,6 +13,7 @@ use App\Services\LocaleService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
+use RuntimeException;
 use Tests\TestCase;
 
 class BundledStatusNotificationsTest extends TestCase
@@ -64,11 +65,9 @@ class BundledStatusNotificationsTest extends TestCase
         Notification::assertSentToTimes($this->anna, TasksStatusChanged::class, 1);
         Notification::assertNotSentTo($this->anna, TaskStatusChanged::class);
         Notification::assertNotSentTo($this->actor, TasksStatusChanged::class);
-        Notification::assertSentTo($this->anna, TasksStatusChanged::class, function (TasksStatusChanged $notification) {
-            return count($notification->changes) === 3
-                && $notification->changedBy === 'Otto'
-                && $notification->changes[0]['from'] === 'Offen' && $notification->changes[0]['to'] === 'Erledigt';
-        });
+        Notification::assertSentTo($this->anna, TasksStatusChanged::class, fn (TasksStatusChanged $notification) => count($notification->changes) === 3
+            && $notification->changedBy === 'Otto'
+            && $notification->changes[0]['from'] === 'Offen' && $notification->changes[0]['to'] === 'Erledigt');
     }
 
     public function test_everybody_gets_exactly_the_changes_that_concern_them(): void
@@ -132,10 +131,10 @@ class BundledStatusNotificationsTest extends TestCase
         Notification::fake();
 
         try {
-            Task::bundlingStatusNotifications(function () {
-                throw new \RuntimeException('kaputt');
+            Task::bundlingStatusNotifications(function (): never {
+                throw new RuntimeException('kaputt');
             });
-        } catch (\RuntimeException) {
+        } catch (RuntimeException) {
         }
 
         $task->update(['status_id' => $this->project->doneStatus()->id]);
@@ -145,7 +144,7 @@ class BundledStatusNotificationsTest extends TestCase
 
     public function test_the_mail_lists_the_tasks_in_both_languages_and_cuts_long_lists(): void
     {
-        $changes = array_map(fn ($n) => ['id' => $n, 'title' => "Aufgabe {$n}", 'project' => 'Website', 'from' => 'Offen', 'to' => 'Erledigt'], range(1, TasksStatusChanged::LISTED + 5));
+        $changes = array_map(fn (int $n) => ['id' => $n, 'title' => "Aufgabe {$n}", 'project' => 'Website', 'from' => 'Offen', 'to' => 'Erledigt'], range(1, TasksStatusChanged::LISTED + 5));
         $notification = new TasksStatusChanged($changes, 'Otto');
 
         LocaleService::apply('de');

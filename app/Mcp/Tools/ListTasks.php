@@ -6,6 +6,7 @@ use App\Mcp\TaskData;
 use App\Models\Task;
 use App\Models\User;
 use App\Services\TaskSearchService;
+use Illuminate\Contracts\Database\Query\Builder;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -18,7 +19,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 #[IsReadOnly]
 class ListTasks extends SprintTool
 {
-    private const PAGE = 50;
+    private const int PAGE = 50;
 
     public function schema(JsonSchema $schema): array
     {
@@ -57,10 +58,10 @@ class ListTasks extends SprintTool
         } else {
             $tasks = Task::query()
                 ->where('tasks.is_section', false)
-                ->whereHas('project', fn ($projects) => $projects->visibleTo($user))
+                ->whereHas('project', fn (Builder $projects) => $projects->visibleTo($user))
                 ->when(isset($validated['project_id']), fn ($query) => $query->where('tasks.project_id', $validated['project_id']))
-                ->when(! ($validated['include_subtasks'] ?? false), fn ($query) => $query->whereNull('tasks.parent_id'))
-                ->when($state !== 'all', fn ($query) => $query->whereHas('status', fn ($status) => $status->where('is_done', $state === 'done')))
+                ->unless($validated['include_subtasks'] ?? false, fn ($query) => $query->whereNull('tasks.parent_id'))
+                ->when($state !== 'all', fn ($query) => $query->whereHas('status', fn (Builder $status) => $status->where('is_done', $state === 'done')))
                 ->orderBy('tasks.project_id')->orderBy('tasks.position')->orderBy('tasks.id');
         }
 
@@ -74,7 +75,7 @@ class ListTasks extends SprintTool
 
         if (! empty($validated['overdue'])) {
             $tasks->whereDate('tasks.due_date', '<', today())
-                ->whereHas('status', fn ($status) => $status->where('is_done', false));
+                ->whereHas('status', fn (Builder $status) => $status->where('is_done', false));
         }
 
         $page = $tasks->with(['project', 'status', 'assignee', 'tags'])

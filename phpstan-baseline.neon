@@ -1,0 +1,181 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Trait App\\Concerns\\EditsTasksInBulk is used zero times and is not analysed\.$#'
+			identifier: trait.unused
+			count: 1
+			path: app/Concerns/EditsTasksInBulk.php
+
+		-
+			message: '#^Trait App\\Concerns\\OpensTaskPanel is used zero times and is not analysed\.$#'
+			identifier: trait.unused
+			count: 1
+			path: app/Concerns/OpensTaskPanel.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Mcp/TaskData.php
+
+		-
+			message: '#^Cannot access property \$value on string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Mcp/Tools/ListProjects.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\CustomField\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Mcp/Tools/ListProjects.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Project\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Mcp/Tools/ListProjects.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Mcp/Tools/WriteTaskTool.php
+
+		-
+			message: '#^Match expression does not handle remaining value\: string$#'
+			identifier: match.unhandled
+			count: 1
+			path: app/Mcp/Tools/WriteTaskTool.php
+
+		-
+			message: '#^Method App\\Mcp\\Tools\\WriteTaskTool\:\:member\(\) should return App\\Models\\User but returns Illuminate\\Database\\Eloquent\\Model\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Mcp/Tools/WriteTaskTool.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 3
+			path: app/Mcp/Tools/WriteTaskTool.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Team\:\:\$pivot\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/Project.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Relations\\Pivot\:\:\$role\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/Project.php
+
+		-
+			message: '#^Cannot call method addTo\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 3
+			path: app/Models/Task.php
+
+		-
+			message: '#^Cannot call method copy\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 8
+			path: app/Models/Task.php
+
+		-
+			message: '#^Cannot call method isPast\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/Task.php
+
+		-
+			message: '#^Cannot call method isToday\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/Task.php
+
+		-
+			message: '#^Cannot call method isoFormat\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/Task.php
+
+		-
+			message: '#^Empty array passed to foreach\.$#'
+			identifier: foreach.emptyArray
+			count: 1
+			path: app/Models/Task.php
+
+		-
+			message: '#^Match expression does not handle remaining value\: string$#'
+			identifier: match.unhandled
+			count: 2
+			path: app/Models/Task.php
+
+		-
+			message: '#^Method App\\Models\\Task\:\:spanEnd\(\) should return Illuminate\\Support\\Carbon\|null but returns string\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Models/Task.php
+
+		-
+			message: '#^Method App\\Models\\Task\:\:spanStart\(\) should return Illuminate\\Support\\Carbon\|null but returns string\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Models/Task.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 3
+			path: app/Models/Task.php
+
+		-
+			message: '#^Parameter \#1 \$callback of static method Laravel\\Passkeys\\Passkeys\:\:authorizeLoginUsing\(\) expects \(callable\(Illuminate\\Http\\Request, Laravel\\Passkeys\\Contracts\\PasskeyUser, Laravel\\Passkeys\\Passkey\)\: bool\)\|null, Closure\(Illuminate\\Http\\Request, App\\Models\\User\)\: bool given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Providers/AppServiceProvider.php
+
+		-
+			message: '#^Cannot call method startOfDay\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 3
+			path: app/Services/DailyDigestService.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Services/TaskCsvService.php
+
+		-
+			message: '#^Match expression does not handle remaining value\: string$#'
+			identifier: match.unhandled
+			count: 1
+			path: app/Services/TaskCsvService.php
+
+		-
+			message: '#^Parameter \#1 \$byParent of method App\\Services\\TaskCsvService\:\:inTreeOrder\(\) expects Illuminate\\Support\\Collection\<int\|string, Illuminate\\Support\\Collection\<int, App\\Models\\Task\>\>, Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\), Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Task\>\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/TaskCsvService.php
+
+		-
+			message: '#^Parameter \#1 \$users of method App\\Services\\TaskCsvService\:\:findUser\(\) expects Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\User\>, Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/TaskCsvService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/TaskCsvService.php
+
+		-
+			message: '#^PHPDoc tag @return with type array\<string, mixed\> is incompatible with native type static\(Database\\Factories\\CustomFieldFactory\)\.$#'
+			identifier: return.phpDocType
+			count: 1
+			path: database/factories/CustomFieldFactory.php

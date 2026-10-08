@@ -28,7 +28,7 @@ class CommandPaletteTest extends TestCase
     {
         $project = Project::factory()->create(['name' => $name] + $attributes);
 
-        if ($role !== null) {
+        if ($role instanceof ProjectRole) {
             $project->setRole($this->user, $role);
         }
 

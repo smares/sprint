@@ -1,0 +1,20 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+    - phpstan-baseline.neon
+
+parameters:
+    level: 5
+
+    paths:
+        - app
+        - config
+        - database
+        - routes
+
+    # Type information from PHPDoc is trusted less than native types, which avoids
+    # false "always true/false" reports on values that PHPDoc narrows too far.
+    treatPhpDocTypesAsCertain: false
+
+    # The baseline is shared by all PHP versions of the CI; a version that no longer
+    # reports an old error must not fail because of it.
+    reportUnmatchedIgnoredErrors: false

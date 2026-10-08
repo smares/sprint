@@ -9,6 +9,7 @@ use App\Models\Task;
 use App\Models\User;
 use App\Services\InboxTextService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Notifications\DatabaseNotification;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -43,7 +44,7 @@ class InboxTest extends TestCase
         $this->task->update(['status_id' => $this->project->doneStatus()->id]);
         Comment::factory()->create(['task_id' => $this->task->id, 'user_id' => $this->other->id, 'body' => 'Hallo @['.$this->me->name.'](user:'.$this->me->id.')']);
 
-        $summaries = $this->me->notifications()->get()->map(fn ($notification) => InboxTextService::sentence($notification))->all();
+        $summaries = $this->me->notifications()->get()->map(fn (DatabaseNotification $notification) => InboxTextService::sentence($notification))->all();
 
         $this->assertContains('Otto hat kommentiert', $summaries);
         $this->assertContains('Otto hat den Status von „Offen“ auf „Erledigt“ geändert', $summaries);

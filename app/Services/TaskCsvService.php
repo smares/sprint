@@ -15,6 +15,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Throwable;
 
 /**
  * Tasks of a project as CSV: a complete export, and an import that understands our own export as well as
@@ -31,7 +32,7 @@ class TaskCsvService
      *
      * @var array<string, list<string>>
      */
-    private const ALIASES = [
+    private const array ALIASES = [
         'id' => ['id', 'task id', 'nr', 'nummer'],
         'parent_id' => ['parent_id', 'parent id', 'übergeordnete id'],
         'parent' => ['parent', 'parent task', 'übergeordnete aufgabe'],
@@ -47,7 +48,7 @@ class TaskCsvService
     ];
 
     /** @var list<string> */
-    private const DATE_FORMATS = ['Y-m-d', 'd.m.Y', 'd.m.y', 'm/d/Y', 'Y-m-d H:i:s', 'Y-m-d\TH:i:sP', 'Y-m-d\TH:i:s.vP'];
+    private const array DATE_FORMATS = ['Y-m-d', 'd.m.Y', 'd.m.y', 'm/d/Y', 'Y-m-d H:i:s', 'Y-m-d\TH:i:sP', 'Y-m-d\TH:i:s.vP'];
 
     /**
      * The whole project, parents before their subtasks, one header row first.
@@ -193,7 +194,7 @@ class TaskCsvService
             $row = [];
 
             foreach ($columns as $index => $column) {
-                $row[$column] ??= $this->unguard(trim((string) ($cells[$index] ?? '')));
+                $row[$column] ??= $this->unguard(trim($cells[$index] ?? ''));
             }
 
             $rows[] = $row;
@@ -289,7 +290,7 @@ class TaskCsvService
             if (($row['assignee'] ?? '') !== '') {
                 $user = $this->findUser($users, $row['assignee']);
 
-                if ($user === null) {
+                if (! $user instanceof User) {
                     $warnings[] = ['line' => $line, 'message' => 'unknown-person:'.$row['assignee']];
                 } else {
                     $task['assignee_id'] = $user->id;
@@ -301,7 +302,7 @@ class TaskCsvService
             foreach ($this->split($row['collaborators'] ?? '') as $entry) {
                 $user = $this->findUser($users, $entry);
 
-                if ($user === null) {
+                if (! $user instanceof User) {
                     $warnings[] = ['line' => $line, 'message' => 'unknown-person:'.$entry];
                 } elseif ($user->id !== $task['assignee_id']) {
                     $task['collaborator_ids'][] = $user->id;
@@ -385,7 +386,7 @@ class TaskCsvService
      */
     public function import(Project $project, User $user, array $tasks): int
     {
-        return DB::transaction(function () use ($project, $user, $tasks) {
+        return DB::transaction(function () use ($project, $user, $tasks): int {
             $createdById = [];
             $createdByTitle = [];
             $tags = $project->tags()->get()->keyBy(fn (Tag $tag) => mb_strtolower($tag->name));
@@ -462,7 +463,7 @@ class TaskCsvService
      */
     private function split(string $value): array
     {
-        return array_values(array_filter(array_map('trim', preg_split('/[,;\n]+/', $value) ?: []), fn ($part) => $part !== ''));
+        return array_values(array_filter(array_map(trim(...), preg_split('/[,;\n]+/', $value) ?: []), fn (string $part) => $part !== ''));
     }
 
     private function parseDate(string $value): ?string
@@ -470,11 +471,11 @@ class TaskCsvService
         foreach (self::DATE_FORMATS as $format) {
             try {
                 $date = Carbon::createFromFormat($format, $value);
-            } catch (\Throwable) {
+            } catch (Throwable) {
                 continue;
             }
 
-            if ($date !== false && $date->format($format) === $value) {
+            if ($date->format($format) === $value) {
                 return $date->toDateString();
             }
         }

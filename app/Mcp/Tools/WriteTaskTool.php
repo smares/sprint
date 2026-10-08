@@ -88,9 +88,7 @@ abstract class WriteTaskTool extends SprintTool
         $start = array_key_exists('start_date', $columns) ? $columns['start_date'] : $task?->start_date?->toDateString();
         $due = array_key_exists('due_date', $columns) ? $columns['due_date'] : $task?->due_date?->toDateString();
 
-        if ($start !== null && $due !== null && $start > $due) {
-            throw new ToolFailure('The start date must not be after the due date.');
-        }
+        throw_if($start !== null && $due !== null && $start > $due, ToolFailure::class, 'The start date must not be after the due date.');
 
         return $columns;
     }

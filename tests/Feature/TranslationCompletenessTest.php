@@ -95,6 +95,6 @@ class TranslationCompletenessTest extends TestCase
         $german = $this->german();
 
         $this->assertNotEmpty($german);
-        $this->assertSame([], array_keys(array_filter($german, fn ($value) => trim((string) $value) === '')));
+        $this->assertSame([], array_keys(array_filter($german, fn (string $value) => trim($value) === '')));
     }
 }

@@ -6,6 +6,7 @@ use App\Mcp\ToolFailure;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
+use Illuminate\Contracts\Database\Query\Builder;
 use Illuminate\Support\Facades\Gate;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -46,7 +47,7 @@ abstract class SprintTool extends Tool
     {
         return Task::query()
             ->where('is_section', false)
-            ->whereHas('project', fn ($projects) => $projects->visibleTo($user))
+            ->whereHas('project', fn (Builder $projects) => $projects->visibleTo($user))
             ->find($taskId) ?? throw new ToolFailure("Task {$taskId} not found.");
     }
 
@@ -57,9 +58,7 @@ abstract class SprintTool extends Tool
     {
         $token = $user->currentAccessToken();
 
-        if ($token !== null && ! $user->tokenCan('write')) {
-            throw new ToolFailure('This token is read-only.');
-        }
+        throw_if($token !== null && ! $user->tokenCan('write'), ToolFailure::class, 'This token is read-only.');
 
         if (! Gate::forUser($user)->allows('edit', $project)) {
             throw new ToolFailure($project->archived_at !== null

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Task;
 use App\Models\User;
+use Illuminate\Contracts\Database\Query\Builder as QueryBuilder;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -151,7 +152,7 @@ class TaskSearchService
         $tasks = Task::query()
             ->select('tasks.*')
             ->where('tasks.is_section', false)
-            ->whereHas('project', fn ($projects) => $projects->visibleTo($user));
+            ->whereHas('project', fn (QueryBuilder $projects) => $projects->visibleTo($user));
 
         if ($terms === []) {
             return $tasks->whereRaw('0 = 1');
@@ -170,7 +171,7 @@ class TaskSearchService
                 $tasks->where(fn (Builder $any) => $any
                     ->whereLike('tasks.title', $like)
                     ->orWhereLike('tasks.description', $like)
-                    ->orWhereHas('comments', fn ($comments) => $comments->whereLike('body', $like))
+                    ->orWhereHas('comments', fn (QueryBuilder $comments) => $comments->whereLike('body', $like))
                     ->orWhereHas('attachments', fn ($attachments) => $attachments->whereLike('name', $like))
                 );
             }
@@ -191,7 +192,7 @@ class TaskSearchService
         if (! empty($filters['mine'])) {
             $tasks->where(fn (Builder $mine) => $mine
                 ->where('tasks.assignee_id', $user->id)
-                ->orWhereHas('collaborators', fn ($collaborators) => $collaborators->whereKey($user->id))
+                ->orWhereHas('collaborators', fn (QueryBuilder $collaborators) => $collaborators->whereKey($user->id))
             );
         }
 

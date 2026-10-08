@@ -33,7 +33,7 @@ class Color
     /**
      * @var array<string, string>
      */
-    private const LEGACY = [
+    private const array LEGACY = [
         'zinc' => '#71717a',
         'red' => '#ef4444',
         'orange' => '#f97316',

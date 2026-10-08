@@ -57,5 +57,11 @@ jobs:
       - name: Generate app key
         run: php artisan key:generate
 
+      - name: Static analysis (Larastan)
+        run: vendor/bin/phpstan analyse --memory-limit=1G --no-progress
+
+      - name: Check refactoring rules (Rector)
+        run: vendor/bin/rector process --dry-run --no-progress-bar
+
       - name: Execute tests
         run: php artisan test

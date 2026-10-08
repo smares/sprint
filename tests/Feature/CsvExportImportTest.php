@@ -200,7 +200,7 @@ class CsvExportImportTest extends TestCase
     {
         $anna = User::factory()->create(['email' => 'anna@example.com']);
         $this->project->setRole($anna, ProjectRole::Editor);
-        $existing = Tag::factory()->for($this->project)->create(['name' => 'Bug']);
+        Tag::factory()->for($this->project)->create(['name' => 'Bug']);
         Task::factory()->for($this->project)->create(['title' => 'Schon da', 'position' => 4]);
         $csv = "id,parent_id,title,description,status,assignee,collaborators,start_date,due_date,tags,field:Priorität\n"
             ."1,,Eltern,Beschreibung,In Arbeit,anna@example.com,ich@example.com,2026-12-01,2026-12-05,\"bug, Neu\",Hoch\n"

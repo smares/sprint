@@ -37,7 +37,7 @@ class McpServerTest extends TestCase
         $this->project->setRole($this->user, ProjectRole::Editor);
     }
 
-    private function tool(string $tool, array $arguments = [], ?User $as = null)
+    private function tool(string $tool, array $arguments = [], ?User $as = null): \Laravel\Mcp\Server\Testing\TestResponse
     {
         return SprintServer::actingAs($as ?? $this->user)->tool($tool, $arguments);
     }

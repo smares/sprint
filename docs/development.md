@@ -21,7 +21,7 @@ composer refactor:check  # Rector prüfen (ohne Änderungen); composer refactor 
 | Pfad | Inhalt |
 | --- | --- |
 | `app/Enums` | Aufzählungen: `ProjectRole`, `CustomFieldType`, `RepeatUnit`, `RepeatMode`, `ActivityType` (Einträge im Verlauf samt Satz) |
-| `app/Models` | Eloquent-Modelle: `Project`, `Task`, `TaskStatus`, `TaskActivity`, `Tag`, `Comment`, `Attachment`, `CustomField`, `CustomFieldOption`, `CustomFieldValue`, `SavedFilter`, `Team`, `User` |
+| `app/Models` | Eloquent-Modelle: `Project`, `Task`, `TaskStatus`, `TaskActivity`, `Tag`, `Comment`, `Attachment`, `CustomField`, `CustomFieldOption`, `CustomFieldValue`, `SavedFilter`, `Team`, `User`, `UserAvatar` (Profilbild, eigene Tabelle) |
 | `app/Policies` | Berechtigungen: `ProjectPolicy` (sehen, bearbeiten, verwalten), `CommentPolicy`, `SavedFilterPolicy` |
 | `app/Services` | Dienste (Klassen mit Endung `Service`): `MarkdownService` (Markdown samt Erwähnungen und Bildern zu sicherem HTML), `TaskSearchService`, `TaskCsvService`, `DailyDigestService`, `HealthCheckService`, `InboxTextService`, `LocaleService` (Sprachen, ISO-Datumsformate), `RealtimeService` (Reverb), `DateService` |
 | `resources/views/pages` | Seiten als Livewire-Komponenten (Projekte, Board, Status, Mitglieder, Aufgaben, Administration, Login) |

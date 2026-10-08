@@ -118,6 +118,14 @@ new class extends Component
         Flux::toast(variant: 'success', text: __('Two-factor authentication and passkeys reset.'));
     }
 
+    public function removeAvatar(int $userId): void
+    {
+        User::findOrFail($userId)->removeAvatar();
+
+        unset($this->users);
+        Flux::toast(variant: 'success', text: __('Profile picture removed.'));
+    }
+
     public function deactivate(int $userId): void
     {
         $user = User::findOrFail($userId);
@@ -177,7 +185,7 @@ new class extends Component
     <ul class="space-y-2">
         @foreach ($this->users as $user)
             <li wire:key="user-{{ $user->id }}" @class(['flex flex-wrap items-center gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700', 'opacity-60' => ! $user->isActive()])>
-                <flux:avatar size="sm" :name="$user->name" />
+                <x-user-avatar size="sm" :user="$user" />
                 <div class="min-w-0 flex-1">
                     <flux:heading class="truncate">{{ $user->name }} @if ($user->is(auth()->user())) <flux:badge size="sm">{{ __('You') }}</flux:badge> @endif @unless ($user->isActive()) <flux:badge size="sm" color="zinc">{{ __('Deactivated') }}</flux:badge> @endunless</flux:heading>
                     <flux:text size="sm" class="truncate">{{ $user->email }}</flux:text>
@@ -188,6 +196,11 @@ new class extends Component
                     <flux:button size="xs" variant="ghost" icon="key" wire:click="resetPassword({{ $user->id }})" wire:confirm="{{ __('Generate a new password for :name? The old one will no longer work, and all sessions and API tokens are signed out.', ['name' => $user->name]) }}" :aria-label="__('Generate new password')" :tooltip="__('Generate new password')" />
                     @if ($user->two_factor_secret || $user->passkeys_count)
                         <flux:button size="xs" variant="ghost" icon="shield-exclamation" wire:click="resetSecondFactors({{ $user->id }})" wire:confirm="{{ __('Reset two-factor authentication and passkeys for :name? Afterwards the password alone is enough again.', ['name' => $user->name]) }}" :aria-label="__('Reset two-factor and passkeys')" :tooltip="__('Reset two-factor and passkeys')" />
+                    @else
+                        <span class="inline-block size-6" aria-hidden="true"></span>
+                    @endif
+                    @if ($user->avatar_updated_at)
+                        <flux:button size="xs" variant="ghost" icon="photo" wire:click="removeAvatar({{ $user->id }})" wire:confirm="{{ __('Remove the profile picture of :name?', ['name' => $user->name]) }}" :aria-label="__('Remove profile picture')" :tooltip="__('Remove profile picture')" />
                     @else
                         <span class="inline-block size-6" aria-hidden="true"></span>
                     @endif

@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
@@ -48,6 +49,7 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
             'deactivated_at' => 'datetime',
             'two_factor_confirmed_at' => 'datetime',
             'digest_enabled' => 'boolean',
+            'avatar_updated_at' => 'datetime',
         ];
     }
 
@@ -139,6 +141,36 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
     }
 
     /**
+     * @return HasOne<UserAvatar, $this>
+     */
+    public function avatar(): HasOne
+    {
+        return $this->hasOne(UserAvatar::class);
+    }
+
+    /**
+     * Address of the profile picture, versioned so that browsers may keep it; null without one.
+     */
+    public function avatarUrl(): ?string
+    {
+        return $this->avatar_updated_at === null
+            ? null
+            : route('avatars.show', ['user' => $this->getKey(), 'v' => $this->avatar_updated_at->getTimestamp()]);
+    }
+
+    public function setAvatar(string $contents, string $mimeType): void
+    {
+        $this->avatar()->updateOrCreate([], ['mime_type' => $mimeType, 'data' => base64_encode($contents)]);
+        $this->forceFill(['avatar_updated_at' => now()])->save();
+    }
+
+    public function removeAvatar(): void
+    {
+        $this->avatar()->delete();
+        $this->forceFill(['avatar_updated_at' => null])->save();
+    }
+
+    /**
      * @return BelongsToMany<Project, $this>
      */
     public function projects(): BelongsToMany
@@ -152,6 +184,16 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
     public function teams(): BelongsToMany
     {
         return $this->belongsToMany(Team::class);
+    }
+
+    /**
+     * What others see of this person in "who else is here" (presence channels).
+     *
+     * @return array{id: int, name: string, initials: string, avatar: string|null}
+     */
+    public function presenceData(): array
+    {
+        return ['id' => $this->id, 'name' => $this->name, 'initials' => $this->initials(), 'avatar' => $this->avatarUrl()];
     }
 
     public function initials(): string

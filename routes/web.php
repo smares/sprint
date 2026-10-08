@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AttachmentController;
+use App\Http\Controllers\AvatarController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\ProjectExportController;
 use App\Services\LocaleService;
@@ -69,6 +70,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/projects/{project}/export', ProjectExportController::class)->name('projects.export');
     Route::get('/attachments/{attachment}', AttachmentController::class)->name('attachments.show');
+    Route::get('/avatars/{user}', AvatarController::class)->name('avatars.show');
 
     Route::livewire('/tasks/mine', 'pages::tasks.mine')->name('tasks.mine');
     Route::livewire('/tasks/{task}', 'pages::tasks.show')->name('tasks.show');

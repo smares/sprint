@@ -169,6 +169,11 @@ class AttachmentsTest extends TestCase
         $this->assertStringContainsString('attachment', $forced->headers->get('Content-Disposition'));
         $this->assertSame('application/octet-stream', $forced->headers->get('Content-Type'));
 
+        $this->assertStringEndsWith('sandbox', $inlineText->headers->get('Content-Security-Policy'));
+        $this->assertStringEndsWith('sandbox', $forced->headers->get('Content-Security-Policy'));
+        $this->assertStringNotContainsString('sandbox', $inlinePdf->headers->get('Content-Security-Policy'));
+        $this->assertStringContainsString("frame-ancestors 'self'", $inlinePdf->headers->get('Content-Security-Policy'));
+
         $this->assertSame('pdf', $pdf->previewKind());
         $this->assertSame('text', $text->previewKind());
         $this->assertNull($html->previewKind());

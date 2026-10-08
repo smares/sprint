@@ -23,6 +23,7 @@ Anleitungen für zwei typische Hosts:
    DB_HOST=...  DB_PORT=...  DB_DATABASE=...  DB_USERNAME=...  DB_PASSWORD=...
 
    SESSION_DRIVER=database
+   SESSION_SECURE_COOKIE=true  # Sitzungs-Cookie nur über HTTPS
    CACHE_STORE=database
    QUEUE_CONNECTION=database
 

@@ -45,7 +45,7 @@ Einrichten:
 3. Den Queue-Worker laufen lassen: die Meldungen gehen über die Queue (`queue:work`), ohne Worker kommt nichts an
 4. Nach `.env`-Änderungen `php artisan config:clear` (bzw. `optimize`) und die Assets müssen nicht neu gebaut werden, die Verbindungsdaten liefert der Server zur Laufzeit
 
-Hinter Nginx leitest du den Pfad `/app` (WebSocket) und `/apps` (Meldungen) an den Reverb-Port weiter und terminierst TLS am Proxy; Laravel Forge und Laravel Cloud (eigener *WebSocket-Cluster*) richten das ein. Mehrere Anwendungsserver brauchen `REVERB_SCALING_ENABLED=true` und Redis.
+Hinter Nginx leitest du den Pfad `/app` (WebSocket) und `/apps` (Meldungen) an den Reverb-Port weiter und terminierst TLS am Proxy; Laravel Forge und Laravel Cloud (eigener *WebSocket-Cluster*) richten das ein. Mehrere Anwendungsserver brauchen `REVERB_SCALING_ENABLED=true` und Redis. Verbindungen nimmt Reverb nur von Seiten des Hosts aus `APP_URL` an; weitere Hosts trägst du kommagetrennt in `REVERB_ALLOWED_ORIGINS` ein.
 
 Wenn der Reverb-Server nicht erreichbar ist, laufen die Seiten normal weiter, sie aktualisieren sich nur nicht von selbst; fehlgeschlagene Meldungen landen in `failed_jobs`.
 
@@ -55,6 +55,7 @@ Wenn der Reverb-Server nicht erreichbar ist, laufen die Seiten normal weiter, si
 
 ## MCP-Server und Passkeys
 
+- **Sicherheits-Header** setzt die App selbst (`App\Http\Middleware\SecurityHeaders`): Einbetten nur von der eigenen Seite, Bilder nur vom eigenen Server (Bilder fremder Adressen in Markdown werden nicht geladen, damit Dritte nicht sehen, wer eine Aufgabe liest), HSTS sobald die Seite über HTTPS läuft. Hochgeladene Dateien werden in einer Sandbox ausgeliefert
 - Der **MCP-Server** läuft unter `https://<host>/mcp` (Tools: `list-projects`, `list-tasks`, `get-task`, `create-task`, `update-task`, `add-comment`) und braucht kein weiteres Setup außer `php artisan migrate`. Anbinden z. B. mit `claude mcp add --transport http sprint https://<host>/mcp --header "Authorization: Bearer <token>"`; lokal testen mit `php artisan mcp:inspector mcp`. Es gelten nur API-Tokens (keine Browser-Sitzung), 120 Anfragen pro Minute und Token; beim Deaktivieren einer Person und bei jedem Passwortwechsel werden ihre Tokens gelöscht. Im Betrieb nur über HTTPS erreichbar machen, da der Token im Header übertragen wird
 - **Passkeys** brauchen HTTPS (lokal reicht `localhost`) und eine korrekte `APP_URL` in `.env`: Host und Schema der Adresse, unter der die App im Browser aufgerufen wird, bestimmen, wo ein Passkey gilt. Wer die Adresse später ändert, kann bestehende Passkeys nicht mehr nutzen (Passwort und 2FA funktionieren weiter). Wer sich aussperrt, wird von einem Administrator zurückgesetzt (*Benutzer*); API-Tokens für den MCP-Server sind davon unabhängig
 

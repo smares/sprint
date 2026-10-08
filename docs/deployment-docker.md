@@ -64,7 +64,7 @@ REVERB_SCHEME=https       # lokal http
 
 ## Fertiges Image
 
-Mit jedem Release baut GitHub das Image und legt es unter `ghcr.io/smares/sprint` ab (Tags `0.1.0`, `0.1` und `latest`; `latest` zeigt auf die jüngste Version ohne Vorabkennung). Damit muss der Server nichts bauen und braucht keinen Flux-Pro-Zugang. Die Datei `compose.image.yaml` ist derselbe Stack wie `compose.yaml`, nur mit diesem Image:
+Mit jedem Release baut GitHub das Image und legt es für `amd64` und `arm64` (Raspberry Pi, Apple-Silicon-Server, Graviton) unter `ghcr.io/smares/sprint` ab (Tags `0.1.0`, `0.1` und `latest`; `latest` zeigt auf die jüngste Version ohne Vorabkennung). Damit muss der Server nichts bauen und braucht keinen Flux-Pro-Zugang. Die Datei `compose.image.yaml` ist derselbe Stack wie `compose.yaml`, nur mit diesem Image:
 
 ```bash
 docker login ghcr.io                                  # einmal; Benutzername und ein Token mit read:packages

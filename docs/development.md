@@ -44,7 +44,7 @@ Eine Regel (`Automation`) gehört zu einem Projekt: **Auslöser** (Status wechse
 
 ## Release
 
-Ein Release entsteht über den Workflow *Release* (Actions → Release → *Run workflow*, Zweig `main`) mit einer Version wie `0.1.0` (Vorabversionen wie `1.0.0-rc.1` sind erlaubt). Er baut das Docker-Image mit dem Flux-Pro-Zugang aus den Secrets, schiebt es nach `ghcr.io/smares/sprint` (Tags `0.1.0`, `0.1`, bei einer Hauptversion auch `latest`), legt den Tag `v0.1.0` samt GitHub-Release mit automatisch erzeugten Hinweisen an und prüft zuletzt, dass das Paket privat ist. Mit *dry run* baut er nur, auf jedem Zweig, und veröffentlicht nichts. Das Image ist privat zu halten, weil es Flux Pro enthält; siehe [Fertiges Image](deployment-docker.md#fertiges-image).
+Ein Release entsteht über den Workflow *Release* (Actions → Release → *Run workflow*, Zweig `main`) mit einer Version wie `0.1.0` (Vorabversionen wie `1.0.0-rc.1` sind erlaubt). Er baut das Docker-Image mit dem Flux-Pro-Zugang aus den Secrets, je Architektur (`amd64`, `arm64`) auf einem Runner der jeweiligen Architektur ohne Emulation, schiebt es nach `ghcr.io/smares/sprint` (Tags `0.1.0`, `0.1`, bei einer Hauptversion auch `latest`), legt den Tag `v0.1.0` samt GitHub-Release mit automatisch erzeugten Hinweisen an und prüft zuletzt, dass das Paket privat ist. Mit *dry run* baut er nur (beide Architekturen), auf jedem Zweig, und veröffentlicht nichts. Das Image ist privat zu halten, weil es Flux Pro enthält; siehe [Fertiges Image](deployment-docker.md#fertiges-image).
 
 ## Tests und CI
 

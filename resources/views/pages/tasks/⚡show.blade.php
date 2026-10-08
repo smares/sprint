@@ -2,7 +2,7 @@
 
 use App\Color;
 use App\CustomFieldType;
-use App\Markdown;
+use App\Services\Markdown;
 use App\Models\Attachment;
 use App\Models\CustomField;
 use App\RepeatMode;

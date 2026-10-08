@@ -1,6 +1,6 @@
 <?php
 
-use App\Locale;
+use App\Services\Locale;
 use Flux\Flux;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -145,7 +145,7 @@ new class extends Component
             <flux:separator />
 
             <flux:select variant="listbox" wire:model.live="locale" :label="__('Language')" :description="__('The interface and emails appear in this language.')">
-                @foreach (\App\Locale::available() as $code => $name)
+                @foreach (\App\Services\Locale::available() as $code => $name)
                     <flux:select.option value="{{ $code }}">{{ $name }}</flux:select.option>
                 @endforeach
             </flux:select>

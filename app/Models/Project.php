@@ -4,7 +4,7 @@ namespace App\Models;
 
 use App\CustomFieldType;
 use App\ProjectRole;
-use App\TaskSearch;
+use App\Services\TaskSearch;
 use Database\Factories\ProjectFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;

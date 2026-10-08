@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\TaskSearch;
+use App\Services\TaskSearch;
 use Database\Factories\AttachmentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;

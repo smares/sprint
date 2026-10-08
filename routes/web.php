@@ -3,7 +3,7 @@
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\ProjectExportController;
-use App\Locale;
+use App\Services\Locale;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;

@@ -1,6 +1,6 @@
 <?php
 
-use App\Locale;
+use App\Services\Locale;
 use App\Models\User;
 use Flux\Flux;
 use Illuminate\Support\Facades\Gate;
@@ -203,7 +203,7 @@ new class extends Component
         </div>
         <flux:input wire:model="password" type="password" :label="__('Password')" :description="__('Leave empty to generate one and show it once.')" />
         <flux:select variant="listbox" wire:model="locale" :label="__('Language')">
-            @foreach (\App\Locale::available() as $code => $name)
+            @foreach (\App\Services\Locale::available() as $code => $name)
                 <flux:select.option value="{{ $code }}">{{ $name }}</flux:select.option>
             @endforeach
         </flux:select>

@@ -2,7 +2,7 @@
 
 use App\Models\Project;
 use App\Models\Task;
-use App\TaskSearch;
+use App\Services\TaskSearch;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;

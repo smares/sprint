@@ -13,7 +13,7 @@ vendor/bin/pint   # Code-Stil
 | Pfad | Inhalt |
 | --- | --- |
 | `app/Models` | Eloquent-Modelle: `Project`, `Task`, `TaskStatus`, `Tag`, `Comment`, `Team`, `User` |
-| `app/Markdown.php` | Rendert Markdown samt `@`-Erwähnungen zu sicherem HTML |
+| `app/Services` | Dienste ohne eigenes Modell: `Markdown` (Markdown samt Erwähnungen und Bildern zu sicherem HTML), `TaskSearch`, `TaskCsv`, `DailyDigest`, `HealthCheck`, `InboxText`, `Locale` |
 | `resources/views/pages` | Seiten als Livewire-Komponenten (Projekte, Board, Status, Mitglieder, Aufgaben, Administration, Login) |
 | `resources/views/components` | Blade-Komponenten (`x-markdown`, `x-markdown-editor`, `x-task-subtree`) |
 | `resources/js/app.js` | Alpine-Komponente für das `@`-Auswahlfenster |

@@ -1,7 +1,7 @@
 <?php
 
 use App\Models\Project;
-use App\TaskSearch;
+use App\Services\TaskSearch;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 

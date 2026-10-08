@@ -2,12 +2,12 @@
 
 namespace Tests\Feature;
 
-use App\Markdown;
 use App\Models\Comment;
 use App\Models\Task;
 use App\Models\User;
 use App\Notifications\TaskCommented;
 use App\Notifications\UserMentioned;
+use App\Services\Markdown;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;

@@ -7,7 +7,7 @@ use App\Models\Tag;
 use App\Models\Task;
 use App\Models\User;
 use App\ProjectRole;
-use App\TaskCsv;
+use App\Services\TaskCsv;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Livewire\Livewire;

@@ -2,14 +2,14 @@
 
 namespace Tests\Feature;
 
-use App\InboxText;
-use App\Locale;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
 use App\Notifications\TasksStatusChanged;
 use App\Notifications\TaskStatusChanged;
 use App\ProjectRole;
+use App\Services\InboxText;
+use App\Services\Locale;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;

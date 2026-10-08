@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\TaskSearch;
+use App\Services\TaskSearch;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;

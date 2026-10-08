@@ -5,7 +5,7 @@ namespace App\Mcp\Tools;
 use App\Mcp\TaskData;
 use App\Models\Task;
 use App\Models\User;
-use App\TaskSearch;
+use App\Services\TaskSearch;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;

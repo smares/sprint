@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
-use App\Markdown;
 use App\Notifications\TaskCommented;
 use App\Notifications\UserMentioned;
-use App\TaskSearch;
+use App\Services\Markdown;
+use App\Services\TaskSearch;
 use Database\Factories\CommentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;

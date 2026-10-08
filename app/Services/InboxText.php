@@ -1,6 +1,6 @@
 <?php
 
-namespace App;
+namespace App\Services;
 
 use App\Notifications\TaskCommented;
 use App\Notifications\TasksStatusChanged;

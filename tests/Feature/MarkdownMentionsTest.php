@@ -2,11 +2,11 @@
 
 namespace Tests\Feature;
 
-use App\Markdown;
 use App\Models\Comment;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
+use App\Services\Markdown;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;

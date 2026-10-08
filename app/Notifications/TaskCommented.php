@@ -2,9 +2,9 @@
 
 namespace App\Notifications;
 
-use App\Markdown;
 use App\Models\Comment;
 use App\Notifications\Concerns\BuildsLocalizedMail;
+use App\Services\Markdown;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;

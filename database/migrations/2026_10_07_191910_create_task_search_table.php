@@ -1,6 +1,6 @@
 <?php
 
-use App\TaskSearch;
+use App\Services\TaskSearch;
 use Illuminate\Database\Migrations\Migration;
 
 return new class extends Migration

@@ -8,7 +8,7 @@ use App\Models\Task;
 use App\Models\User;
 use App\Notifications\UserMentioned;
 use App\ProjectRole;
-use App\TaskSearch;
+use App\Services\TaskSearch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;

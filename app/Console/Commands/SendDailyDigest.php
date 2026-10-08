@@ -2,9 +2,9 @@
 
 namespace App\Console\Commands;
 
-use App\DailyDigest;
 use App\Models\User;
 use App\Notifications\DailyDigest as DailyDigestNotification;
+use App\Services\DailyDigest;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;

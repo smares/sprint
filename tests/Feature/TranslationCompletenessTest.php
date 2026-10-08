@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Locale;
+use App\Services\Locale;
 use Illuminate\Support\Facades\File;
 use Tests\TestCase;
 

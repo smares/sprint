@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\HealthCheck;
+use App\Services\HealthCheck;
 use Illuminate\Http\JsonResponse;
 
 /**

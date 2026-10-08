@@ -2,8 +2,8 @@
 
 namespace App\Console\Commands;
 
-use App\Locale;
 use App\Models\User;
+use App\Services\Locale;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;

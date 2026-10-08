@@ -2,13 +2,13 @@
 
 namespace App\Models;
 
-use App\Markdown;
 use App\Notifications\TasksStatusChanged;
 use App\Notifications\TaskStatusChanged;
 use App\Notifications\UserMentioned;
 use App\RepeatMode;
 use App\RepeatUnit;
-use App\TaskSearch;
+use App\Services\Markdown;
+use App\Services\TaskSearch;
 use Closure;
 use Database\Factories\TaskFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;

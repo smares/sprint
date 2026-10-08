@@ -7,7 +7,7 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
 use App\ProjectRole;
-use App\TaskSearch;
+use App\Services\TaskSearch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;

@@ -1,6 +1,6 @@
 <?php
 
-use App\HealthCheck;
+use App\Services\HealthCheck;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schedule;
 

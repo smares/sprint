@@ -1,7 +1,7 @@
 <?php
 
 use App\Models\Project;
-use App\TaskCsv;
+use App\Services\TaskCsv;
 use Flux\Flux;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;

@@ -2,8 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\InboxText;
-use App\Locale;
 use App\Models\Comment;
 use App\Models\Project;
 use App\Models\Task;
@@ -12,6 +10,8 @@ use App\Notifications\TaskCommented;
 use App\Notifications\TaskStatusChanged;
 use App\Notifications\UserMentioned;
 use App\ProjectRole;
+use App\Services\InboxText;
+use App\Services\Locale;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;

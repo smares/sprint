@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Locale;
 use App\Models\Comment;
 use App\Models\Project;
 use App\Models\Tag;
@@ -10,6 +9,7 @@ use App\Models\Task;
 use App\Models\Team;
 use App\Models\User;
 use App\ProjectRole;
+use App\Services\Locale;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 

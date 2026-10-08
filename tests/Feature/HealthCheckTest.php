@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\HealthCheck;
+use App\Services\HealthCheck;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;

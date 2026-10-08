@@ -39,6 +39,12 @@ class Task extends Model
 
     use HasPosition;
 
+    /** How far a task can be moved or stretched in one go (calendar and timeline), about ten years. */
+    public const MAX_SHIFT_DAYS = 3650;
+
+    /** How many intervals an overdue repeating task may skip to reach today; a guard against endless loops. */
+    private const int MAX_CATCH_UP_STEPS = 1000;
+
     /**
      * While tasks are changed in bulk: status changes per recipient, to be sent as one message.
      *
@@ -201,7 +207,7 @@ class Task extends Model
     }
 
     /**
-     * The repeat rule in words, e.g. "alle 2 Wochen (nach Erledigung) bis 31.12.2026".
+     * The repeat rule in words, e.g. "every 2 weeks (after completion) until 2026-12-31".
      */
     public function recurrenceLabel(): ?string
     {
@@ -249,7 +255,7 @@ class Task extends Model
             ? $unit->addTo($today, $interval)
             : $unit->addTo($due->copy()->startOfDay(), $interval);
 
-        for ($guard = 0; $this->repeat_mode === RepeatMode::Schedule && $next < $today && $guard < 1000; $guard++) {
+        for ($guard = 0; $this->repeat_mode === RepeatMode::Schedule && $next < $today && $guard < self::MAX_CATCH_UP_STEPS; $guard++) {
             $next = $unit->addTo($next, $interval);
         }
 

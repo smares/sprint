@@ -54,6 +54,10 @@ new class extends Component
     #[Url(as: 'dir')]
     public string $sortDirection = 'asc';
 
+    public string $saveName = '';
+
+    public bool $saveShared = false;
+
     /**
      * Statuses and tags are edited in modals; the list re-renders itself, and a filter on a deleted tag is dropped.
      */
@@ -290,10 +294,6 @@ new class extends Component
             default => null,
         };
     }
-
-    public string $saveName = '';
-
-    public bool $saveShared = false;
 
     /**
      * Saved views: the shared ones and the person's own.
@@ -672,7 +672,7 @@ new class extends Component
                     <flux:text class="px-2 font-medium">{!! __(':count selected', ['count' => '<span x-text="$wire.selected.length">0</span>']) !!}</flux:text>
 
                     @if ($this->totalTasks > $this->tasks->count())
-                        <flux:button size="sm" variant="ghost" wire:click="selectAllMatching">{{ __('Select all :count', ['count' => min($this->totalTasks, 500)]) }}</flux:button>
+                        <flux:button size="sm" variant="ghost" wire:click="selectAllMatching">{{ __('Select all :count', ['count' => min($this->totalTasks, $this::MAX_SELECTION)]) }}</flux:button>
                     @endif
 
                     <flux:button size="sm" variant="ghost" icon="x-mark" wire:click="stopSelecting" aria-label="{{ __('End selection') }}" class="ms-auto sm:hidden" />

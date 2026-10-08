@@ -122,7 +122,7 @@ new class extends Component
             <flux:file-upload wire:model="file" :label="__('CSV file')">
                 <flux:file-upload.dropzone :heading="__('Drag a file here or click')" text="{{ __('CSV up to :size MB, at most :rows rows', ['size' => intdiv(TaskCsvService::MAX_KILOBYTES, 1024), 'rows' => TaskCsvService::MAX_ROWS]) }}" inline />
             </flux:file-upload>
-            @error('file') <flux:text class="text-red-500">{{ $message }}</flux:text> @enderror
+            <flux:error name="file" />
 
             @if ($report)
                 @if ($report['error'] === 'no-title')

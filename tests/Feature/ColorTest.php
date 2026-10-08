@@ -42,13 +42,6 @@ class ColorTest extends TestCase
         $this->assertSame(Color::hexes()[1], Color::next($count + 1));
     }
 
-    public function test_text_is_dark_on_light_colors_and_white_on_dark_ones(): void
-    {
-        $this->assertSame('#18181b', Color::textOn('#fde047'));
-        $this->assertSame('#ffffff', Color::textOn('#1e3a8a'));
-        $this->assertSame('#ffffff', Color::textOn('nonsense'));
-    }
-
     public function test_defaults_use_hex_colors_everywhere(): void
     {
         $project = Project::factory()->create();
@@ -86,6 +79,6 @@ class ColorTest extends TestCase
         Task::factory()->for($project)->create(['title' => 'Termin', 'due_date' => now()->startOfMonth()->addDays(9)]);
 
         $this->actingAs($admin)->get(route('projects.calendar', $project))->assertOk()->assertSee('--badge: #fde047', false);
-        $this->get(route('projects.timeline', $project))->assertOk()->assertSee('background-color: #fde047; color: #18181b', false);
+        $this->get(route('projects.timeline', $project))->assertOk()->assertSee('--badge: #fde047', false)->assertSee('color-chip', false);
     }
 }

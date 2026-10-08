@@ -244,7 +244,7 @@ new class extends Component
         </flux:select>
         <flux:button type="submit" icon="plus">{{ __('Add') }}</flux:button>
     </form>
-    @error('newUserId') <flux:text class="mt-1 text-red-500">{{ $message }}</flux:text> @enderror
+    <flux:error name="newUserId" class="mt-1" />
 
     <flux:heading size="lg" class="mb-1 mt-10">{{ __('Teams') }}</flux:heading>
     <flux:text class="mb-4">{{ __('Everyone in a team gets the role chosen here. Anyone who is also a direct member keeps the higher role.') }}</flux:text>
@@ -283,6 +283,6 @@ new class extends Component
             </flux:select>
             <flux:button type="submit" icon="plus">{{ __('Add') }}</flux:button>
         </form>
-        @error('newTeamId') <flux:text class="mt-1 text-red-500">{{ $message }}</flux:text> @enderror
+        <flux:error name="newTeamId" class="mt-1" />
     @endif
 </div>

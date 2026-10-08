@@ -21,14 +21,16 @@ composer refactor:check  # Rector prüfen (ohne Änderungen); composer refactor 
 | Pfad | Inhalt |
 | --- | --- |
 | `app/Enums` | Aufzählungen: `ProjectRole`, `CustomFieldType`, `RepeatUnit`, `RepeatMode`, `ActivityType` (Einträge im Verlauf samt Satz) |
-| `app/Models` | Eloquent-Modelle: `Project`, `Task`, `TaskStatus`, `Tag`, `Comment`, `Team`, `User` |
-| `app/Services` | Dienste (Klassen mit Endung `Service`): `MarkdownService` (Markdown samt Erwähnungen und Bildern zu sicherem HTML), `TaskSearchService`, `TaskCsvService`, `DailyDigestService`, `HealthCheckService`, `InboxTextService`, `LocaleService` |
+| `app/Models` | Eloquent-Modelle: `Project`, `Task`, `TaskStatus`, `TaskActivity`, `Tag`, `Comment`, `Attachment`, `CustomField`, `CustomFieldOption`, `CustomFieldValue`, `SavedFilter`, `Team`, `User` |
+| `app/Policies` | Berechtigungen: `ProjectPolicy` (sehen, bearbeiten, verwalten), `CommentPolicy`, `SavedFilterPolicy` |
+| `app/Services` | Dienste (Klassen mit Endung `Service`): `MarkdownService` (Markdown samt Erwähnungen und Bildern zu sicherem HTML), `TaskSearchService`, `TaskCsvService`, `DailyDigestService`, `HealthCheckService`, `InboxTextService`, `LocaleService` (Sprachen, ISO-Datumsformate), `RealtimeService` (Reverb), `DateService` |
 | `resources/views/pages` | Seiten als Livewire-Komponenten (Projekte, Board, Status, Mitglieder, Aufgaben, Administration, Login) |
-| `app/Concerns` | Traits der Livewire-Seiten: `ShowsProject` (gemeinsamer Teil von Liste, Board, Kalender, Zeitleiste), `ListensForRealtime`, `OpensTaskPanel`, `EditsTasksInBulk`, `ConfirmsPassword` |
+| `app/Concerns` | Traits: `ShowsProject` (gemeinsamer Teil von Liste, Board, Kalender, Zeitleiste), `ListensForRealtime`, `OpensTaskPanel`, `EditsTasksInBulk`, `ConfirmsPassword`, `HasPosition` (manuelle Reihenfolge der Modelle) |
 | `resources/views/components` | Blade-Komponenten (u. a. `x-project-header`, `x-task-title-link`, `x-markdown`, `x-markdown-editor`, `x-task-subtree`) und kleine Livewire-Komponenten mit ⚡ (`task-create`, Projekt-Dialoge, Glocke, Befehlspalette) |
 | `resources/js/app.js` | Alpine-Komponenten (`@`-Auswahl, Zeitleistenbalken, Anwesenheit), Bildvorschau; Passkeys werden erst bei Bedarf geladen |
 | `resources/js/realtime.js` | Echo/Reverb-Verbindung; das Layout lädt die Datei nur, wenn Live-Updates eingeschaltet sind |
-| `routes/web.php` | Routen (alles hinter dem Login, außer `/login`) |
+| `routes/web.php` | Routen; alles hinter dem Login außer `/login`, Passkey-Anmeldung, Sprachwahl (`/locale`), `/health` und dem signierten Abmeldelink aus Benachrichtigungs-Mails |
+| `app/Mcp` | MCP-Server für KI-Agenten (Tools unter `app/Mcp/Tools`) |
 | `tests/Feature` | Feature-Tests je Funktionsbereich |
 
 ## Tests und CI
@@ -37,6 +39,6 @@ GitHub Actions führt die Tests auf PHP 8.3, 8.4 und 8.5 aus (`.github/workflows
 
 ## Arbeitsweise
 
-- Branches tragen ein Präfix: `feat/…`, `fix/…`, `chore/…`, `test/…`, `docs/…`
+- Branches tragen ein Präfix: `feat/…`, `fix/…`, `refactor/…`, `perf/…`, `chore/…`, `test/…`, `docs/…`
 - Änderungen laufen über Pull Requests nach `main`; gemergt wird per Merge-Commit, damit aufeinander aufbauende PRs nicht in Konflikte laufen
 - Vor dem Commit: `vendor/bin/pint --dirty` und `composer test`

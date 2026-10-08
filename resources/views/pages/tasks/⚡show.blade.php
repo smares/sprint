@@ -68,6 +68,10 @@ new class extends Component
 
     public string $comment = '';
 
+    public ?int $editingCommentId = null;
+
+    public string $editingBody = '';
+
     /** @var list<\Livewire\Features\SupportFileUploads\TemporaryUploadedFile> */
     public array $uploads = [];
 
@@ -443,6 +447,7 @@ new class extends Component
 
         if ($title === '' || mb_strlen($title) > 255) {
             $this->sectionTitles[$sectionId] = $this->subtreeTasks->firstWhere('id', (int) $sectionId)->title;
+            Flux::toast(variant: 'danger', text: __('The name must not be empty and may have at most :max characters.', ['max' => 255]));
 
             return;
         }
@@ -690,10 +695,6 @@ new class extends Component
         $this->reset('comment');
         unset($this->activityFeed);
     }
-
-    public ?int $editingCommentId = null;
-
-    public string $editingBody = '';
 
     private function commentOrFail(int $commentId): \App\Models\Comment
     {
@@ -1032,7 +1033,7 @@ new class extends Component
             </x-task-field>
 
             <x-task-field :label="__('Tags')">
-                <flux:pillbox size="sm" wire:model="tagIds" multiple :aria-label="__('Tags')" :placeholder="__('Choose tags …')">
+                <flux:pillbox size="sm" wire:model="tagIds" multiple :aria-label="__('Tags')" :placeholder="__('Select tags …')">
                     @foreach ($this->projectTags as $tag)
                         <flux:pillbox.option wire:key="tag-{{ $tag->id }}" value="{{ $tag->id }}">{{ $tag->name }}</flux:pillbox.option>
                     @endforeach
@@ -1112,7 +1113,7 @@ new class extends Component
             <flux:button size="sm" type="submit" icon="plus">{{ __('Add') }}</flux:button>
             <flux:button size="sm" type="button" icon="bars-3-bottom-left" wire:click="addSection({{ $task->id }})">{{ __('Heading') }}</flux:button>
         </form>
-        @error('newSubtaskTitles.'.$task->id) <flux:text class="mt-1 text-red-500">{{ $message }}</flux:text> @enderror
+        <flux:error :name="'newSubtaskTitles.'.$task->id" />
     @endif
 
     <flux:separator class="my-6" />
@@ -1162,8 +1163,7 @@ new class extends Component
             <flux:file-upload wire:model="uploads" multiple>
                 <flux:file-upload.dropzone :heading="__('Drag files here or click')" :text="__('Up to :size MB per file', ['size' => intdiv(\App\Models\Attachment::MAX_KILOBYTES, 1024)])" with-progress inline />
             </flux:file-upload>
-            @error('uploads') <flux:text class="mt-1 text-red-500">{{ $message }}</flux:text> @enderror
-            @error('uploads.*') <flux:text class="mt-1 text-red-500">{{ $message }}</flux:text> @enderror
+            <flux:error name="uploads" />
         </div>
     @endif
 
@@ -1193,7 +1193,7 @@ new class extends Component
                     @if ($editingCommentId === $comment->id)
                         <form wire:submit="saveComment" class="space-y-2">
                             <x-markdown-editor wire:model="editingBody" :rows="3" :mentions="$this->mentionOptions" :images="$this->canEdit ? $this->imageAttachments : null" />
-                            @error('editingBody') <flux:text class="text-red-500">{{ $message }}</flux:text> @enderror
+                            <flux:error name="editingBody" />
                             <div class="flex gap-2">
                                 <flux:button size="sm" type="submit" variant="primary">{{ __('Save') }}</flux:button>
                                 <flux:button size="sm" type="button" variant="ghost" wire:click="cancelEditComment">{{ __('Cancel') }}</flux:button>

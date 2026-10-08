@@ -195,7 +195,7 @@ new class extends Component
                             <div class="flex items-center gap-3">
                                 <x-color-badge size="sm" :color="$tag->color" class="shrink-0" title="{{ __('Tasks with this tag') }}">{{ $tag->tasks_count }}</x-color-badge>
                                 <flux:input size="sm" wire:model.blur="names.{{ $tag->id }}" aria-label="{{ __('Name') }}" class="min-w-0 flex-1" />
-                                <flux:color-picker type="button" size="sm" with-confirmation :swatches="\App\Color::SWATCHES" wire:model.live="colors.{{ $tag->id }}" aria-label="{{ __('Color') }}" />
+                                <flux:color-picker type="button" size="sm" with-confirmation :swatches="\App\Color::swatches()" wire:model.live="colors.{{ $tag->id }}" aria-label="{{ __('Color') }}" />
                                 <flux:button size="xs" variant="ghost" icon="trash" wire:click="confirmDelete({{ $tag->id }})" aria-label="{{ __('Delete tag') }}" />
                             </div>
 
@@ -208,7 +208,7 @@ new class extends Component
                                             <flux:select.option value="{{ $candidate->id }}">{{ $candidate->name }}</flux:select.option>
                                         @endforeach
                                     </flux:select>
-                                    @error('mergeIntoId') <flux:text size="sm" class="text-red-500">{{ $message }}</flux:text> @enderror
+                                    <flux:error name="mergeIntoId" />
                                     <div class="flex justify-end gap-2">
                                         <flux:button size="sm" variant="ghost" wire:click="cancelDelete">{{ __('Cancel') }}</flux:button>
                                         <flux:button size="sm" type="submit" variant="danger">{{ __('Delete') }}</flux:button>
@@ -224,7 +224,7 @@ new class extends Component
                 <flux:input wire:model="newName" :label="__('New tag')" :placeholder="__('e.g. Important')" class="flex-1" />
                 <flux:button type="submit" icon="plus">{{ __('Create') }}</flux:button>
             </form>
-            @error('newName') <flux:text class="-mt-4 text-red-500">{{ $message }}</flux:text> @enderror
+            <flux:error name="newName" class="-mt-4" />
         </div>
     </flux:modal>
 </div>

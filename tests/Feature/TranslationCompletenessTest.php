@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Color;
 use App\Services\LocaleService;
 use Illuminate\Support\Facades\File;
 use Tests\TestCase;
@@ -19,14 +20,15 @@ class TranslationCompletenessTest extends TestCase
     /**
      * Every text passed to __() or trans_choice() in the code, with the file it comes from.
      *
+     * @param  list<string>  $directories  Further directories to look in.
      * @return array<string, string>
      */
-    private function usedKeys(): array
+    private function usedKeys(array $directories = []): array
     {
         $keys = [];
         $call = '/(?:__|trans_choice|@lang)\(\s*(?:\'((?:[^\'\\\\]|\\\\.)*)\'|"((?:[^"\\\\]|\\\\.)*)")/';
 
-        foreach ([app_path(), resource_path('views'), base_path('routes')] as $directory) {
+        foreach ([app_path(), resource_path('views'), base_path('routes'), ...$directories] as $directory) {
             foreach (File::allFiles($directory) as $file) {
                 if (! str_ends_with($file->getFilename(), '.php') || str_contains($file->getPathname(), '/views/mail/')) {
                     continue;
@@ -53,6 +55,18 @@ class TranslationCompletenessTest extends TestCase
         $missing = array_filter($this->usedKeys(), fn ($file, $key) => ! array_key_exists($key, $german), ARRAY_FILTER_USE_BOTH);
 
         $this->assertSame([], $missing, 'Texts without a German translation in lang/de.json');
+    }
+
+    public function test_every_german_translation_is_still_used(): void
+    {
+        // Besides our code: Flux's own texts, Laravel's mail layout and the color names, which are translated from Color::SWATCHES.
+        $used = $this->usedKeys([
+            base_path('vendor/livewire/flux/stubs'),
+            base_path('vendor/livewire/flux-pro/stubs'),
+            base_path('vendor/laravel/framework/src/Illuminate/Mail/resources/views'),
+        ]) + array_fill_keys(array_column(Color::SWATCHES, 1), 'app/Color.php');
+
+        $this->assertSame([], array_values(array_diff(array_keys($this->german()), array_keys($used))), 'Translations in lang/de.json that nothing uses');
     }
 
     public function test_placeholders_and_plural_forms_match_between_text_and_translation(): void

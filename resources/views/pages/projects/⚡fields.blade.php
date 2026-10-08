@@ -104,6 +104,7 @@ new class extends Component
 
         if ($name === '' || mb_strlen($name) > 100) {
             $this->names[$id] = $field->name;
+            Flux::toast(variant: 'danger', text: __('The name must not be empty and may have at most :max characters.', ['max' => 100]));
 
             return;
         }
@@ -166,6 +167,7 @@ new class extends Component
 
         if ($name === '' || mb_strlen($name) > 100) {
             $this->optionNames[$id] = $option->name;
+            Flux::toast(variant: 'danger', text: __('The name must not be empty and may have at most :max characters.', ['max' => 100]));
 
             return;
         }
@@ -239,7 +241,7 @@ new class extends Component
                             <li wire:key="option-{{ $option->id }}" wire:sort:item="{{ $option->id }}" class="flex items-center gap-2">
                                 <x-color-badge size="sm" :color="$option->color" class="shrink-0">&nbsp;</x-color-badge>
                                 <flux:input size="sm" wire:model.blur="optionNames.{{ $option->id }}" aria-label="{{ __('Option') }}" class="min-w-0 flex-1" />
-                                <flux:color-picker type="button" size="sm" with-confirmation :swatches="\App\Color::SWATCHES" wire:model.live="optionColors.{{ $option->id }}" aria-label="{{ __('Color') }}" />
+                                <flux:color-picker type="button" size="sm" with-confirmation :swatches="\App\Color::swatches()" wire:model.live="optionColors.{{ $option->id }}" aria-label="{{ __('Color') }}" />
                                 <flux:button size="xs" variant="ghost" icon="x-mark" wire:click="removeOption({{ $option->id }})" aria-label="{{ __('Remove option') }}" />
                             </li>
                         @endforeach
@@ -249,7 +251,7 @@ new class extends Component
                         <flux:input size="sm" wire:model="newOptions.{{ $field->id }}" placeholder="{{ __('New option …') }}" class="max-w-xs" />
                         <flux:button size="sm" type="submit" icon="plus">{{ __('Add') }}</flux:button>
                     </form>
-                    @error('newOptions.'.$field->id) <flux:text class="ms-6 text-red-500">{{ $message }}</flux:text> @enderror
+                    <flux:error :name="'newOptions.'.$field->id" class="ms-6" />
                 @endif
             </li>
         @endforeach
@@ -264,7 +266,7 @@ new class extends Component
         </flux:select>
         <flux:button type="submit" icon="plus">{{ __('Create') }}</flux:button>
     </form>
-    @error('newName') <flux:text class="mt-1 text-red-500">{{ $message }}</flux:text> @enderror
+    <flux:error name="newName" class="mt-1" />
 
     <flux:modal name="delete-field" class="min-w-[22rem]">
         <div class="space-y-6">

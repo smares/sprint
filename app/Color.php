@@ -31,6 +31,16 @@ class Color
     ];
 
     /**
+     * The swatches with their names in the current language, for the color pickers.
+     *
+     * @return list<array{0: string, 1: string}>
+     */
+    public static function swatches(): array
+    {
+        return array_map(fn (array $swatch) => [$swatch[0], __($swatch[1])], self::SWATCHES);
+    }
+
+    /**
      * @var array<string, string>
      */
     private const array LEGACY = [
@@ -81,15 +91,5 @@ class Color
         }
 
         return self::LEGACY[strtolower((string) $value)] ?? self::FALLBACK;
-    }
-
-    /**
-     * Text color that stays readable on a solid background of the given color.
-     */
-    public static function textOn(string $hex): string
-    {
-        [$red, $green, $blue] = sscanf(self::normalize($hex), '#%02x%02x%02x');
-
-        return (0.299 * $red + 0.587 * $green + 0.114 * $blue) > 150 ? '#18181b' : '#ffffff';
     }
 }

@@ -594,7 +594,7 @@ new class extends Component
     </div>
 
     @if ($this->canEdit)
-        <livewire:project-import :project="$project" />
+        <livewire:project-import :project="$project" defer.bundle />
     @endif
 
     <flux:modal name="saved-filters" class="w-full max-w-md">

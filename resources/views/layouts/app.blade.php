@@ -6,8 +6,10 @@
         <title>{{ isset($title) ? $title.' – '.config('app.name') : config('app.name') }}</title>
         @if ($realtime = app(\App\Services\RealtimeService::class)->clientConfig())
             <script>window.sprintRealtime = @js($realtime)</script>
+            @vite(['resources/css/app.css', 'resources/js/realtime.js', 'resources/js/app.js'])
+        @else
+            @vite(['resources/css/app.css', 'resources/js/app.js'])
         @endif
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
         @fluxAppearance
     </head>
     <body class="min-h-screen bg-white dark:bg-zinc-800">
@@ -82,7 +84,10 @@
         @endauth
 
         @auth
-            <livewire:command-palette />
+            {{-- Kept across wire:navigate page changes instead of being mounted again on every page. --}}
+            @persist('command-palette')
+                <livewire:command-palette />
+            @endpersist
         @endauth
 
         <flux:main container>

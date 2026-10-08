@@ -62,6 +62,17 @@ class CommandPaletteTest extends TestCase
             ->assertSee('Website')->assertDontSee('Geheim')->assertDontSee('Alt');
     }
 
+    public function test_typing_narrows_the_projects_on_the_server(): void
+    {
+        $this->project('Website Relaunch');
+        $this->project('Buchhaltung');
+
+        Livewire::test('command-palette')
+            ->set('query', 'relaunch')
+            ->assertSee('Website Relaunch')
+            ->assertDontSee('Buchhaltung');
+    }
+
     public function test_admins_also_get_the_admin_destinations_and_all_projects(): void
     {
         $this->user->forceFill(['is_admin' => true])->save();

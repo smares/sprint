@@ -12,12 +12,19 @@ new class extends Component
     public string $query = '';
 
     /**
-     * Projects the person can open.
+     * Projects the person can open; while typing only those whose name contains the text, so that
+     * every keystroke renders a handful of entries instead of all projects.
      */
     #[Computed]
     public function projects(): Collection
     {
-        return Project::visibleTo(auth()->user())->whereNull('archived_at')->orderBy('name')->get(['id', 'name']);
+        $query = mb_strtolower(trim($this->query));
+
+        return Project::visibleTo(auth()->user())
+            ->whereNull('archived_at')
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->when($query !== '', fn (Collection $projects) => $projects->filter(fn (Project $project) => str_contains(mb_strtolower($project->name), $query))->values());
     }
 
     /**
@@ -42,7 +49,7 @@ new class extends Component
 <div>
     <flux:modal name="command-palette" variant="bare" class="my-[12vh] max-h-screen w-full max-w-[32rem] overflow-y-hidden" x-on:close="$wire.set('query', '')">
         <flux:command class="inline-flex max-h-[76vh] flex-col border-none shadow-lg [&_ui-option-empty]:hidden">
-            <flux:command.input wire:model.live.debounce.200ms="query" :placeholder="__('Jump to or search for tasks…')" closable autofocus />
+            <flux:command.input wire:model.live.debounce.250ms="query" :placeholder="__('Jump to or search for tasks…')" closable autofocus />
 
             <flux:command.items>
                 @if ($this->tasks->isNotEmpty())

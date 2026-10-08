@@ -120,8 +120,12 @@ class ProjectSettingsTest extends TestCase
 
     public function test_the_settings_are_in_the_gear_menu_for_admins(): void
     {
-        $this->get(route('projects.show', $this->project))->assertSee('Einstellungen')->assertSee('data-modal="project-settings"', false);
-        $this->get(route('projects.board', $this->project))->assertSee('data-modal="project-settings"', false);
+        // The dialog itself loads right after the page (deferred); the page carries the menu entry and the component.
+        $this->get(route('projects.show', $this->project))->assertSee('Einstellungen')
+            ->assertSee("\$flux.modal('project-settings').show()", false)
+            ->assertSee('wire:name="project-settings"', false);
+        $this->get(route('projects.board', $this->project))->assertSee('wire:name="project-settings"', false);
+        Livewire::test('project-settings', ['project' => $this->project])->assertSee('data-modal="project-settings"', false);
     }
 
     public function test_actions_stay_protected_after_losing_the_right(): void

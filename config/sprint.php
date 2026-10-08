@@ -31,6 +31,25 @@ return [
         'en' => 'English',
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Backups
+    |--------------------------------------------------------------------------
+    |
+    | Every night `php artisan sprint:backup` writes a ZIP with a consistent copy
+    | of the SQLite database and the attachments of a local disk to the given
+    | disk ("backups" is storage/app/backups; a bucket keeps them off the
+    | server) and removes backups older than `keep_days`.
+    |
+    */
+
+    'backup' => [
+        'enabled' => (bool) env('BACKUP_ENABLED', true),
+        'disk' => env('BACKUP_DISK', 'backups'),
+        'time' => env('BACKUP_TIME', '02:30'),
+        'keep_days' => (int) env('BACKUP_KEEP_DAYS', 14),
+    ],
+
     /** How many days ahead the digest looks, besides today and overdue tasks. */
     'digest_days_ahead' => 3,
 

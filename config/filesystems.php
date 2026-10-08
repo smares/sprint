@@ -38,6 +38,14 @@ return [
             'report' => false,
         ],
 
+        'backups' => [
+            'driver' => 'local',
+            'root' => storage_path('app/backups'),
+            'serve' => false,
+            'throw' => true,
+            'report' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

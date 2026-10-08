@@ -83,15 +83,14 @@ Beim Start migriert der `app`-Container und baut die Caches neu; `queue`, `sched
 
 ## Backup
 
-Das Volume `storage` enthält Datenbank und Anhänge. Eine konsistente SQLite-Kopie und die Anhänge sicherst du z. B. so:
+Der `scheduler`-Container schreibt jede Nacht ein Backup (Datenbank und Anhänge als ZIP) nach `storage/app/backups`, also ins selbe Volume. Damit es auch den Verlust des Servers übersteht, holst du es regelmäßig ab oder lässt es gleich in einen Bucket schreiben (`BACKUP_DISK`):
 
 ```bash
-docker compose exec app php -r '(new PDO("sqlite:storage/database/database.sqlite"))->exec("VACUUM INTO \"storage/database/backup.sqlite\"");'
-docker compose cp app:/app/storage/database/backup.sqlite ./sprint-backup.sqlite
-docker compose cp app:/app/storage/app/private ./sprint-attachments
+docker compose exec app php artisan sprint:backup       # sofort eines schreiben
+docker compose cp app:/app/storage/app/backups ./sprint-backups
 ```
 
-Mehr dazu unter [Backup und Wiederherstellung](maintenance.md#backup-und-wiederherstellung).
+Einstellungen und Wiederherstellung unter [Backup und Wiederherstellung](maintenance.md#backup-und-wiederherstellung).
 
 ## Befehle
 

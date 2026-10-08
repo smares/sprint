@@ -18,6 +18,9 @@ class HealthCheckService
     /** Minutes after which a silent scheduler or an unprocessed job counts as stuck. */
     public const STALE_MINUTES = 5;
 
+    /** Hours after which the last successful backup counts as too old (a nightly run plus a day of slack). */
+    public const BACKUP_STALE_HOURS = 48;
+
     public const OK = 'ok';
 
     public const WARN = 'warn';
@@ -35,6 +38,7 @@ class HealthCheckService
             'cache' => $this->cache(),
             'scheduler' => $this->scheduler(),
             'queue' => $this->queue(),
+            'backup' => $this->backup(),
         ];
     }
 
@@ -154,6 +158,38 @@ class HealthCheckService
             $failed > 0 => $this->result(self::WARN, __(':failed failed jobs, see `php artisan queue:failed`.', ['failed' => $failed])),
             default => $this->result(self::OK, __('no backlog')),
         };
+    }
+
+    /**
+     * The nightly backup (see BackupService); a failed or missing one does not stop the pages, so it is a warning.
+     *
+     * @return array{status: string, detail: string}
+     */
+    protected function backup(): array
+    {
+        if (! config('sprint.backup.enabled')) {
+            return $this->result(self::OK, __('turned off'));
+        }
+
+        try {
+            $last = app(BackupService::class)->lastRun();
+        } catch (Throwable) {
+            return $this->result(self::WARN, __('Last backup not readable.'));
+        }
+
+        if ($last === null) {
+            return $this->result(self::OK, __('no backup yet'));
+        }
+
+        if (! $last['ok']) {
+            return $this->result(self::WARN, __('The last backup failed: :error', ['error' => $last['error']]));
+        }
+
+        $hours = (int) floor((now()->timestamp - $last['at']) / 3600);
+
+        return $hours >= self::BACKUP_STALE_HOURS
+            ? $this->result(self::WARN, __('The last backup is :hours hours old.', ['hours' => $hours]))
+            : $this->result(self::OK, __(':file, :hours h ago', ['file' => $last['file'], 'hours' => $hours]));
     }
 
     /**

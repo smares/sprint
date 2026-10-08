@@ -10,6 +10,6 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Schedule::command('digest:send')->weekdays()->dailyAt(config('sprint.digest_time'));
+Schedule::command('digest:send')->weekdays()->dailyAt(config('sprint.digest_time'))->onOneServer();
 
 Schedule::call(fn () => Cache::put(HealthCheck::SCHEDULER_HEARTBEAT, now()->timestamp, now()->addDay()))->everyMinute()->name('scheduler-heartbeat');

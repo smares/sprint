@@ -26,7 +26,7 @@ class Project extends Model
         static::deleting(function (self $project) {
             $taskIds = $project->tasks()->pluck('id')->all();
 
-            Storage::disk(Attachment::DISK)->delete(Attachment::whereIn('task_id', $taskIds)->pluck('path')->all());
+            Storage::disk(Attachment::disk())->delete(Attachment::whereIn('task_id', $taskIds)->pluck('path')->all());
             app(TaskSearch::class)->forgetMany($taskIds);
         });
 

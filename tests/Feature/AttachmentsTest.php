@@ -25,7 +25,7 @@ class AttachmentsTest extends TestCase
     {
         parent::setUp();
 
-        Storage::fake(Attachment::DISK);
+        Storage::fake(Attachment::disk());
         $this->actingAs(User::factory()->admin()->create());
         $this->project = Project::factory()->create();
         $this->task = Task::factory()->for($this->project)->create();
@@ -35,7 +35,7 @@ class AttachmentsTest extends TestCase
     {
         $task ??= $this->task;
         $path = "attachments/{$task->project_id}/{$task->id}/".fake()->uuid();
-        Storage::disk(Attachment::DISK)->put($path, $content);
+        Storage::disk(Attachment::disk())->put($path, $content);
 
         return Attachment::factory()->for($task)->create(['name' => $name, 'path' => $path, 'size' => strlen($content), 'mime_type' => 'application/pdf']);
     }
@@ -53,7 +53,7 @@ class AttachmentsTest extends TestCase
         $attachment = $this->task->attachments()->where('name', 'plan.pdf')->firstOrFail();
         $this->assertSame(auth()->id(), $attachment->user_id);
         $this->assertSame('application/pdf', $attachment->mime_type);
-        Storage::disk(Attachment::DISK)->assertExists($attachment->path);
+        Storage::disk(Attachment::disk())->assertExists($attachment->path);
         $this->assertContains('hat plan.pdf, foto.png angehängt', $this->task->activities()->get()->map->sentence()->all());
     }
 
@@ -73,7 +73,7 @@ class AttachmentsTest extends TestCase
         Livewire::test('pages::tasks.show', ['task' => $this->task])->call('deleteAttachment', $attachment->id);
 
         $this->assertModelMissing($attachment);
-        Storage::disk(Attachment::DISK)->assertMissing($attachment->path);
+        Storage::disk(Attachment::disk())->assertMissing($attachment->path);
         $this->assertContains('hat den Anhang bericht.pdf entfernt', $this->task->activities()->get()->map->sentence()->all());
     }
 
@@ -152,7 +152,7 @@ class AttachmentsTest extends TestCase
     public function test_a_missing_file_gives_404(): void
     {
         $attachment = $this->attach();
-        Storage::disk(Attachment::DISK)->delete($attachment->path);
+        Storage::disk(Attachment::disk())->delete($attachment->path);
 
         $this->get(route('attachments.show', $attachment))->assertNotFound();
     }
@@ -167,9 +167,9 @@ class AttachmentsTest extends TestCase
         $this->task->delete();
 
         foreach ($paths as $path) {
-            Storage::disk(Attachment::DISK)->assertMissing($path);
+            Storage::disk(Attachment::disk())->assertMissing($path);
         }
-        Storage::disk(Attachment::DISK)->assertExists($other->path);
+        Storage::disk(Attachment::disk())->assertExists($other->path);
         $this->assertSame(1, Attachment::count());
     }
 

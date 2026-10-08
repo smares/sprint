@@ -704,7 +704,7 @@ new class extends Component
             $this->task->attachments()->create([
                 'user_id' => auth()->id(),
                 'name' => $name,
-                'path' => $upload->store("attachments/{$this->task->project_id}/{$this->task->id}", Attachment::DISK),
+                'path' => $upload->store("attachments/{$this->task->project_id}/{$this->task->id}", Attachment::disk()),
                 'mime_type' => $upload->getMimeType(),
                 'size' => $upload->getSize(),
             ]);

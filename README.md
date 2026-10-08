@@ -99,6 +99,107 @@ php artisan db:seed
 
 Das legt drei Benutzer (`anna@`, `ben@`, `clara@example.com`, Passwort `password`; Anna ist Administratorin) sowie zwei Projekte mit Aufgaben an, in denen alle drei Mitglieder sind.
 
+## Bereitstellung
+
+Sprint ist eine normale Laravel-Anwendung. Egal wo sie läuft, braucht sie dieselben fünf Dinge: **PHP mit Webserver**, **eine Datenbank**, **einen dauerhaft laufenden Queue-Worker** (Mails, Posteingang), **den Scheduler** (jede Minute `php artisan schedule:run`, für die Tageszusammenfassung und die Gesundheitsprüfung) und **dauerhaften Speicher für Anhänge**.
+
+### Checkliste für jeden Host
+
+1. **Code und Abhängigkeiten:** PHP ab 8.3 (Erweiterungen siehe *Voraussetzungen*), `composer install --no-dev --optimize-autoloader` mit den [Flux-Pro-Zugangsdaten](#flux-pro-einrichten), `npm ci --ignore-scripts && npm run build`.
+2. **`.env`** (oder Umgebungsvariablen des Hosts), mindestens:
+   ```ini
+   APP_ENV=production
+   APP_DEBUG=false
+   APP_KEY=                  # php artisan key:generate --show
+   APP_URL=https://sprint.example.com
+   APP_TIMEZONE=Europe/Berlin
+   APP_LOCALE=de             # Standardsprache für neue Personen, sonst en
+
+   DB_CONNECTION=mysql       # mysql, pgsql oder sqlite (nur mit dauerhafter Platte)
+   DB_HOST=...  DB_PORT=...  DB_DATABASE=...  DB_USERNAME=...  DB_PASSWORD=...
+
+   SESSION_DRIVER=database
+   CACHE_STORE=database
+   QUEUE_CONNECTION=database
+
+   MAIL_MAILER=smtp          # smtp, postmark, resend, ses …
+   MAIL_HOST=...  MAIL_PORT=587  MAIL_USERNAME=...  MAIL_PASSWORD=...
+   MAIL_FROM_ADDRESS=sprint@example.com
+   MAIL_FROM_NAME=Sprint
+   ```
+   `APP_URL` muss exakt die Adresse sein, unter der die Leute Sprint öffnen (HTTPS): Links in Mails, signierte Abbestell-Links und **Passkeys** hängen daran.
+3. **Datenbank anlegen und migrieren:** `php artisan migrate --force` bei jedem Deployment.
+4. **Queue-Worker:** `php artisan queue:work --tries=3` als dauerhafter Prozess, nach jedem Deployment neu gestartet (`php artisan queue:restart`).
+5. **Scheduler:** jede Minute `php artisan schedule:run`.
+6. **Ersten Administrator anlegen:** `php artisan user:create "Anna Beispiel" anna@example.com --admin`.
+7. **Prüfen:** `https://sprint.example.com/health` liefert `{"status":"ok", …}` (siehe *Gesundheitsprüfung*); `php artisan sprint:health` zeigt Details. Nach einer Mail-Probe (Kommentar mit Erwähnung) und einem Blick ins Profil (Sprache, Passkey) ist die Installation fertig.
+8. **Backup einrichten** (siehe *Backup und Wiederherstellung*).
+
+### Beispiel: Laravel Forge (eigener Server)
+
+Auf einem Forge-Server liegen Datenbank und Dateien dauerhaft auf der Platte, es ist also nichts Besonderes nötig.
+
+1. **Server** anlegen (PHP 8.3 oder neuer, MySQL oder PostgreSQL; SQLite geht auch, dann `DB_DATABASE` auf einen Pfad **außerhalb** des Projektordners setzen, z. B. `/home/forge/sprint.sqlite`, damit ein Deployment sie nie überschreibt).
+2. **Site** mit der Domain anlegen, Repository `smares/sprint` (dein Fork), Branch `main`; **SSL** per Let's Encrypt aktivieren.
+3. **Flux-Pro-Zugang** einmal auf dem Server hinterlegen (per SSH als Benutzer `forge`), damit `composer install` das private Paket laden kann:
+   ```bash
+   composer config --global http-basic.composer.fluxui.dev "<E-Mail der Lizenz>" "<Lizenzschlüssel>"
+   ```
+4. **Umgebung** (*Environment*) mit den Werten aus der Checkliste füllen und `APP_KEY` erzeugen (`php artisan key:generate --show` auf dem Server).
+5. **Deployment-Skript** der Site:
+   ```bash
+   cd $FORGE_SITE_PATH
+   git pull origin $FORGE_SITE_BRANCH
+
+   $FORGE_COMPOSER install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+
+   npm ci --ignore-scripts
+   npm run build
+
+   ( flock -w 10 9 || exit 1
+       echo 'Restarting FPM...'; sudo -S service $FORGE_PHP_FPM reload ) 9>/tmp/fpmlock
+
+   $FORGE_PHP artisan migrate --force
+   $FORGE_PHP artisan optimize
+   $FORGE_PHP artisan queue:restart
+   ```
+6. **Queue-Worker:** in der Site unter *Queue* einen Worker anlegen (Connection `database`, Queue `default`, 1 Prozess); Forge hält ihn am Leben.
+7. **Scheduler:** unter *Scheduler* einen Job mit Befehl `php8.3 /home/forge/sprint.example.com/artisan schedule:run` und Frequenz *jede Minute* anlegen (Pfad und PHP-Version anpassen).
+8. **Ersten Administrator** anlegen (Forge-Terminal oder SSH): `php artisan user:create "Anna Beispiel" anna@example.com --admin`.
+9. **Backups:** Datenbank-Backups in Forge einrichten und `storage/app/private` (Anhänge) sowie die `.env` zusätzlich sichern, siehe *Backup und Wiederherstellung*. Die Adresse `/health` kannst du in einen externen Uptime-Dienst eintragen.
+
+Aktualisieren: Code auf `main` pushen und in Forge *Deploy now* (oder Quick Deploy aktivieren).
+
+### Beispiel: Laravel Cloud
+
+Laravel Cloud baut aus deinem GitHub-Repository ein Image und startet es ohne Ausfallzeit. Das Dateisystem ist dabei **flüchtig** (jedes Deployment setzt es zurück, jedes Replikat hat eine eigene Platte). Daraus folgt für Sprint:
+
+* **Keine SQLite-Datenbank.** Hänge eine *Laravel MySQL*- oder *Serverless-Postgres*-Datenbank an (gleiche Region wie die App); Cloud setzt `DB_*` selbst. Die Volltextsuche läuft dort automatisch über LIKE.
+* **Anhänge gehören in einen Bucket.** Hänge einen privaten *Object Storage*-Bucket als Standard-Disk an; Cloud setzt `FILESYSTEM_DISK` samt Zugangsdaten, und Sprint legt Anhänge auf der Standard-Disk ab (`SPRINT_ATTACHMENTS_DISK` leer lassen). Dafür braucht die Anwendung den S3-Adapter, der **nicht** zu den Abhängigkeiten von Sprint gehört: `composer require league/flysystem-aws-s3-v3 "^3.0" --with-all-dependencies` (einmalig, danach committen).
+* **Sitzungen, Cache und Queue in der Datenbank:** `SESSION_DRIVER=database`, `CACHE_STORE=database`, `QUEUE_CONNECTION=database` (die Voreinstellung). Die *Managed Queues* von Cloud setzen `QUEUE_CONNECTION=cloud` und das Paket `aws/aws-sdk-php` voraus und sind für Sprint nicht nötig.
+
+So gehst du vor:
+
+1. **Anwendung anlegen:** in Laravel Cloud *New application*, GitHub-Repository wählen, Region, Umgebung *production*, PHP 8.3 oder neuer.
+2. **Build-Befehle** der Umgebung (*Deployments*): die Flux-Zugangsdaten gehören **vor** `composer install` hinein, genau wie in der Cloud-Dokumentation für private Pakete beschrieben. Behandle die Build-Befehle deshalb vertraulich:
+   ```bash
+   composer config http-basic.composer.fluxui.dev "<E-Mail der Lizenz>" "<Lizenzschlüssel>"
+   composer install --no-dev
+   npm ci --ignore-scripts
+   npm run build
+   php artisan optimize
+   ```
+3. **Deploy-Befehl:** `php artisan migrate --force`. Nicht hinzufügen: `queue:restart`, `optimize:clear`, `storage:link` (Cloud übernimmt Neustarts, das Dateisystem bleibt nicht erhalten).
+4. **Datenbank und Bucket** anhängen (siehe oben).
+5. **Umgebungsvariablen** setzen: `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL` (zuerst die `…laravel.cloud`-Adresse, später die eigene Domain), `APP_TIMEZONE`, `APP_LOCALE`, die `MAIL_*`-Werte deines Mail-Anbieters (Cloud bringt keinen eigenen Mailversand mit) sowie `SESSION_DRIVER`, `CACHE_STORE` und `QUEUE_CONNECTION` auf `database`. `APP_KEY` erzeugst du lokal mit `php artisan key:generate --show` und trägst ihn ein; sensible Werte gehören in den *Secrets Manager* von Cloud.
+6. **Queue-Worker:** am App-Cluster (für kleine Installationen) oder an einem eigenen Worker-Cluster unter *Background processes* einen *Queue worker* mit `queue:work` und einem Prozess anlegen. Soll Mail auch dann rausgehen, wenn die Umgebung sonst schlafen würde, den Worker-Cluster nicht mit der App einschlafen lassen (*Scale to zero* vermeiden).
+7. **Scheduler:** am App-Cluster (oder Worker-Cluster) den Schalter **Scheduler** einschalten. Bei mehreren Replikaten läuft die Tageszusammenfassung dank `onOneServer` nur einmal.
+8. **Deployen**, dann den ersten Administrator anlegen: im Reiter *Commands* der Umgebung `php artisan user:create "Anna Beispiel" anna@example.com --admin` ausführen.
+9. **Eigene Domain:** in Cloud hinzufügen und verifizieren, danach `APP_URL` auf die neue Adresse ändern und neu deployen. **Bestehende Passkeys gelten nur für die alte Adresse**, Passwort und 2FA funktionieren weiter.
+10. **Prüfen:** `https://<deine-domain>/health`; die Gesundheitsprüfung zeigt auch, ob Scheduler und Queue-Worker laufen. Backups für Datenbank und Bucket stellst du bei den jeweiligen Cloud-Ressourcen ein; die Befehle im Abschnitt *Backup und Wiederherstellung* gelten für eigene Server.
+
+Die Cloud-CLI (`composer global require laravel/cloud-cli`, dann `cloud ship` bzw. `cloud deploy`) kann dieselben Schritte aus dem Terminal erledigen; die Befehle und Optionen zeigt `cloud -h`.
+
 ## Entwicklung
 
 ```bash
@@ -140,7 +241,7 @@ GitHub Actions führt die Tests auf PHP 8.3, 8.4 und 8.5 aus (`.github/workflows
 - Sitzungen, Cache und Queue nutzen standardmäßig die Datenbank (`SESSION_DRIVER`, `CACHE_STORE`, `QUEUE_CONNECTION`); für die Queue läuft im Betrieb ein Worker: `php artisan queue:work`
 - Der **MCP-Server** läuft unter `https://<host>/mcp` (Tools: `list-projects`, `list-tasks`, `get-task`, `create-task`, `update-task`, `add-comment`) und braucht kein weiteres Setup außer `php artisan migrate`. Anbinden z. B. mit `claude mcp add --transport http sprint https://<host>/mcp --header "Authorization: Bearer <token>"`; lokal testen mit `php artisan mcp:inspector mcp`. Es gelten nur API-Tokens (keine Browser-Sitzung), 120 Anfragen pro Minute und Token; beim Deaktivieren einer Person werden ihre Tokens gelöscht. Im Betrieb nur über HTTPS erreichbar machen, da der Token im Header übertragen wird
 - **Passkeys** brauchen HTTPS (lokal reicht `localhost`) und eine korrekte `APP_URL` in `.env`: Host und Schema der Adresse, unter der die App im Browser aufgerufen wird, bestimmen, wo ein Passkey gilt. Wer die Adresse später ändert, kann bestehende Passkeys nicht mehr nutzen (Passwort und 2FA funktionieren weiter). Wer sich aussperrt, wird von einem Administrator zurückgesetzt (*Benutzer*); API-Tokens für den MCP-Server sind davon unabhängig
-- Anhänge liegen privat auf der Disk `local` (`storage/app/private`) und müssen mit gesichert werden; für große Dateien müssen `upload_max_filesize` und `post_max_size` in der PHP-Konfiguration (und ggf. das Limit des Webservers) mindestens 20 MB erlauben
+- Anhänge liegen privat auf der Standard-Disk (`FILESYSTEM_DISK`, lokal `storage/app/private`; mit `SPRINT_ATTACHMENTS_DISK` lässt sich eine andere Disk wählen, z. B. ein Bucket) und müssen mit gesichert werden; für große Dateien müssen `upload_max_filesize` und `post_max_size` in der PHP-Konfiguration (und ggf. das Limit des Webservers) mindestens 20 MB erlauben
 - Der Suchindex (SQLite/FTS5) wird von der Anwendung gepflegt und von der Migration aufgebaut. Nach einem Restore oder bei Unstimmigkeiten: `php artisan search:rebuild`. Ohne FTS5 (z. B. MySQL/PostgreSQL) läuft die Suche automatisch über LIKE und braucht keinen Index
 - **Sprachen:** jede Person hat in ihrem Profil eine Sprache (Spalte `users.locale`, zweistelliges Kürzel wie `de`, `en`); sie bestimmt Oberfläche, E-Mails, Meldungen und Datumsformate. Besucher:innen bekommen die Sprache ihres Browsers oder wählen sie auf der Anmeldeseite. `APP_LOCALE` (Standard `en`, in `.env.example` gesetzt) ist die Voreinstellung für neue Personen und für Browser mit einer anderen Sprache. Die Konsolenbefehle (`php artisan user:create` usw.) sprechen Englisch. Mails liegen pro Sprache als eigene Vorlagen unter `resources/views/mail/<kürzel>/` (Inhalt) und `…/subjects/` (Betreff); fehlt eine Sprache, gilt Englisch. Die Oberfläche nutzt englische Ausgangstexte als Schlüssel (`__('New task')`), die Übersetzungen stehen in `lang/<kürzel>.json` (für Deutsch `lang/de.json`; `lang/en.json` bleibt leer). Standard-Status und das Feld „Priorität“ neuer Projekte entstehen in der Sprache der Person, die das Projekt anlegt; bereits gespeicherte Daten (Projekt-, Status-, Tag- und Feldnamen, Aufgabentexte) werden nicht übersetzt. Eine neue Sprache braucht `lang/<kürzel>.json`, den Ordner `lang/<kürzel>/` (Laravel-Texte für Validierung, Anmeldung …), die Mail-Vorlagen und einen Eintrag in `config/sprint.php`
 - Der Scheduler schreibt jede Minute einen Herzschlag, den die Gesundheitsprüfung auswertet (siehe unten)

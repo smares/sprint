@@ -56,4 +56,5 @@ GitHub Actions führt die Tests auf PHP 8.3, 8.4 und 8.5 aus (`.github/workflows
 
 - Branches tragen ein Präfix: `feat/…`, `fix/…`, `refactor/…`, `perf/…`, `chore/…`, `test/…`, `docs/…`
 - Änderungen laufen über Pull Requests nach `main`; gemergt wird per Merge-Commit, damit aufeinander aufbauende PRs nicht in Konflikte laufen
+- Schleifen und Hooks, die bei `false` abbrechen: `Collection::each()` (auch `->each->methode()`) und `chunk()`/`chunkById()` hören auf, sobald die Closure `false` liefert, und ein Eloquent- oder Event-Listener, der `false` liefert, bricht das Ereignis ab (bei den `*ing`-Ereignissen stoppt schon jeder Rückgabewert die übrigen Listener). Deshalb eine einfache `foreach`-Schleife nehmen, wenn die Closure etwas wie `delete()` aufruft, das `false` liefern kann, und Listener ohne Rückgabewert (`void`) schreiben
 - Vor dem Commit: `vendor/bin/pint --dirty` und `composer test`

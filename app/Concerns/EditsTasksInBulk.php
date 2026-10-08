@@ -234,7 +234,12 @@ trait EditsTasksInBulk
     {
         $tasks = $this->selectedTasks();
 
-        app(RealtimeService::class)->bundling(fn () => DB::transaction(fn () => $tasks->each->delete()));
+        // A loop and not $tasks->each->delete(): each() stops at the first closure that returns false, and delete() returns false when it is cancelled
+        app(RealtimeService::class)->bundling(fn () => DB::transaction(function () use ($tasks): void {
+            foreach ($tasks as $task) {
+                $task->delete();
+            }
+        }));
 
         if (ctype_digit($this->openTaskId) && $tasks->contains('id', (int) $this->openTaskId)) {
             $this->openTaskId = '';

@@ -3,7 +3,9 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Notifications\EmailChanged;
 use App\Notifications\ResetPassword;
+use App\Notifications\VerifyNewEmail;
 use App\Services\LocaleService;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Translation\HasLocalePreference;
@@ -15,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Contracts\PasskeyUser;
@@ -66,6 +69,38 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
     public function sendPasswordResetNotification(#[SensitiveParameter] $token): void
     {
         $this->notify(new ResetPassword($token));
+    }
+
+    /**
+     * The confirmation of a new address goes to that address, the notice about a change to the previous one.
+     */
+    public function routeNotificationForMail(Notification $notification): string
+    {
+        return match (true) {
+            $notification instanceof VerifyNewEmail => (string) $this->pending_email,
+            $notification instanceof EmailChanged => $notification->previousEmail,
+            default => $this->email,
+        };
+    }
+
+    /**
+     * Keeps the new address aside and sends it a confirmation link; until then everything goes to the current one.
+     */
+    public function requestEmailChange(string $email): void
+    {
+        $this->forceFill(['pending_email' => $email])->save();
+        $this->notify(new VerifyNewEmail);
+    }
+
+    /**
+     * Takes over the confirmed address and tells the previous one.
+     */
+    public function confirmPendingEmail(): void
+    {
+        $previous = $this->email;
+
+        $this->forceFill(['email' => $this->pending_email, 'pending_email' => null, 'email_verified_at' => now()])->save();
+        $this->notify(new EmailChanged($previous));
     }
 
     /**

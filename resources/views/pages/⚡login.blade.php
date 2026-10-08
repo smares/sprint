@@ -185,6 +185,9 @@ new class extends Component
     @if (session('status'))
         <flux:callout variant="success" icon="check-circle" class="mb-6" :heading="session('status')" />
     @endif
+    @if (session('warning'))
+        <flux:callout variant="warning" icon="exclamation-triangle" class="mb-6" :heading="session('warning')" />
+    @endif
 
     @if ($needsCode)
         <form wire:submit="confirmCode" class="space-y-6">

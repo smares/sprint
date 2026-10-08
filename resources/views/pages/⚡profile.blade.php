@@ -18,6 +18,11 @@ new class extends Component
 {
     use WithFileUploads;
 
+    /** Confirmation mails per person within CONFIRMATION_DECAY_SECONDS, so the profile cannot be used to flood a mailbox. */
+    private const int CONFIRMATION_ATTEMPTS = 3;
+
+    private const int CONFIRMATION_DECAY_SECONDS = 600;
+
     public string $name = '';
 
     public string $email = '';
@@ -100,15 +105,55 @@ new class extends Component
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
         ], attributes: ['name' => __('Name'), 'email' => __('Email')]);
 
-        if (Str::lower($validated['email']) !== Str::lower($user->email)) {
-            $this->validate(['emailPassword' => ['required']], attributes: ['emailPassword' => __('Password')]);
-            $this->checkPasswordThrottled('change-email', $this->emailPassword, 'emailPassword', __('The password is incorrect.'));
+        $user->update(['name' => trim($validated['name'])]);
+
+        // Only the letter case changed: the same mailbox, so nothing to confirm
+        if (Str::lower($validated['email']) === Str::lower($user->email)) {
+            $user->update(['email' => $validated['email']]);
+            Flux::toast(variant: 'success', text: __('Profile saved.'));
+
+            return;
         }
 
-        $user->update(['name' => trim($validated['name']), 'email' => $validated['email']]);
+        $this->validate(['emailPassword' => ['required']], attributes: ['emailPassword' => __('Password')]);
+        $this->checkPasswordThrottled('change-email', $this->emailPassword, 'emailPassword', __('The password is incorrect.'));
 
+        $user->requestEmailChange($validated['email']);
+        RateLimiter::hit($this->confirmationThrottleKey(), self::CONFIRMATION_DECAY_SECONDS);
+
+        $this->email = $user->email;
         $this->reset('emailPassword');
-        Flux::toast(variant: 'success', text: __('Profile saved.'));
+        Flux::toast(variant: 'success', text: __('We sent a link to :email. The address changes once you open it.', ['email' => $validated['email']]));
+    }
+
+    public function resendEmailConfirmation(): void
+    {
+        $user = auth()->user();
+
+        if ($user->pending_email === null) {
+            return;
+        }
+
+        if (RateLimiter::tooManyAttempts($this->confirmationThrottleKey(), self::CONFIRMATION_ATTEMPTS)) {
+            Flux::toast(variant: 'warning', text: __('Too many attempts. Please try again in :seconds seconds.', ['seconds' => RateLimiter::availableIn($this->confirmationThrottleKey())]));
+
+            return;
+        }
+
+        RateLimiter::hit($this->confirmationThrottleKey(), self::CONFIRMATION_DECAY_SECONDS);
+        $user->requestEmailChange($user->pending_email);
+
+        Flux::toast(variant: 'success', text: __('We sent a link to :email. The address changes once you open it.', ['email' => $user->pending_email]));
+    }
+
+    public function cancelEmailChange(): void
+    {
+        auth()->user()->forceFill(['pending_email' => null])->save();
+    }
+
+    private function confirmationThrottleKey(): string
+    {
+        return 'email-confirmation|'.auth()->id();
     }
 
     public function changePassword(): void
@@ -194,6 +239,21 @@ new class extends Component
                     <flux:error name="avatarUpload" />
                 </div>
             </div>
+
+            @if (session('status'))
+                <flux:callout variant="success" icon="check-circle" :heading="session('status')" />
+            @endif
+            @if (session('warning'))
+                <flux:callout variant="warning" icon="exclamation-triangle" :heading="session('warning')" />
+            @endif
+            @if (auth()->user()->pending_email)
+                <flux:callout icon="envelope" :heading="__('Waiting for confirmation of :email', ['email' => auth()->user()->pending_email])" :text="__('Open the link we sent to that address. Until then, :email stays in use.', ['email' => auth()->user()->email])">
+                    <x-slot name="actions">
+                        <flux:button size="sm" wire:click="resendEmailConfirmation">{{ __('Send link again') }}</flux:button>
+                        <flux:button size="sm" variant="ghost" wire:click="cancelEmailChange">{{ __('Cancel change') }}</flux:button>
+                    </x-slot>
+                </flux:callout>
+            @endif
 
             <form wire:submit="saveProfile" class="space-y-4">
                 <flux:input wire:model="name" :label="__('Name')" autocomplete="name" />

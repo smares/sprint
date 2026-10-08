@@ -145,6 +145,9 @@ class TaskNotificationsTest extends TestCase
 
     public function test_mail_contains_task_details_and_a_signed_unsubscribe_link(): void
     {
+        // The link carries its expiry time; without a frozen clock a second may pass between mail and comparison.
+        $this->freezeSecond();
+
         $comment = Comment::factory()->for($this->task)->create([
             'user_id' => $this->actor->id,
             'body' => "Hallo @[Alt]({$this->mentionToken($this->collaborator)})",

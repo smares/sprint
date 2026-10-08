@@ -298,8 +298,12 @@ class RealtimeTest extends TestCase
 
         $authorize = fn (User $user, string $channel) => $this->actingAs($user)->post('/broadcasting/auth', ['socket_id' => '1234.5678', 'channel_name' => $channel]);
 
+        $member->setAvatar('picture', 'image/png');
+
         $response = $authorize($member, "presence-project.{$this->project->id}.presence")->assertOk();
-        $this->assertSame('Berta Muster', json_decode($response->json('channel_data'), true)['user_info']['name']);
+        $info = json_decode($response->json('channel_data'), true)['user_info'];
+        $this->assertSame('Berta Muster', $info['name']);
+        $this->assertSame($member->avatarUrl(), $info['avatar']);
 
         $authorize($member, "presence-task.{$task->id}.presence")->assertOk();
         $authorize($outsider, "presence-project.{$this->project->id}.presence")->assertForbidden();

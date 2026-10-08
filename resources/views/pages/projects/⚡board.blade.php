@@ -193,7 +193,7 @@ new class extends Component
                                 <div class="mt-2 flex items-center justify-between gap-2">
                                     <div class="flex min-w-0 items-center gap-1.5" title="{{ collect([$task->assignee?->name, ...$task->collaborators->pluck('name')])->filter()->join(', ') }}">
                                         @if ($task->assignee)
-                                            <flux:avatar size="xs" circle :name="$task->assignee->name" />
+                                            <x-user-avatar size="xs" circle :user="$task->assignee" />
                                             <flux:text size="sm" class="truncate">{{ $task->assignee->name }}</flux:text>
                                         @endif
                                         @if ($task->collaborators->isNotEmpty())

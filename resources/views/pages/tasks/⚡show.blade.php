@@ -1188,7 +1188,7 @@ new class extends Component
                         @php($comment = $entry['comment'])
                         <flux:timeline.item wire:key="comment-{{ $comment->id }}" align="start">
                             <flux:timeline.indicator variant="bare">
-                                <flux:avatar size="xs" circle :name="$comment->user->name" />
+                                <x-user-avatar size="xs" circle :user="$comment->user" />
                             </flux:timeline.indicator>
 
                             <flux:timeline.content>

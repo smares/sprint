@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\UserAvatar;
 use App\Services\LocaleService;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
@@ -10,9 +11,13 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\WithFileUploads;
 
 new class extends Component
 {
+    use WithFileUploads;
+
     public string $name = '';
 
     public string $email = '';
@@ -28,6 +33,9 @@ new class extends Component
     public bool $digest = true;
 
     public string $locale = '';
+
+    /** The picture as the browser cropped and shrank it (see `avatarPicker` in app.js). */
+    public ?TemporaryUploadedFile $avatarUpload = null;
 
     #[Url(as: 'tab', except: 'profile')]
     public string $tab = 'profile';
@@ -60,6 +68,27 @@ new class extends Component
         auth()->user()->update(['digest_enabled' => $value]);
 
         Flux::toast(variant: 'success', text: $value ? __('Daily digest turned on.') : __('Daily digest turned off.'));
+    }
+
+    public function updatedAvatarUpload(): void
+    {
+        $this->validate([
+            'avatarUpload' => ['required', 'image', 'mimetypes:'.implode(',', UserAvatar::MIME_TYPES), 'max:'.UserAvatar::MAX_KILOBYTES, 'dimensions:max_width=2048,max_height=2048'],
+        ], attributes: ['avatarUpload' => __('Profile picture')]);
+
+        auth()->user()->setAvatar((string) $this->avatarUpload->get(), (string) $this->avatarUpload->getMimeType());
+        $this->avatarUpload->delete();
+        $this->reset('avatarUpload');
+
+        // A full re-render, so that the menu at the top shows the new picture too
+        $this->redirectRoute('profile', navigate: true);
+    }
+
+    public function removeAvatar(): void
+    {
+        auth()->user()->removeAvatar();
+
+        $this->redirectRoute('profile', navigate: true);
     }
 
     public function saveProfile(): void
@@ -149,6 +178,21 @@ new class extends Component
             <div>
                 <flux:heading size="lg">{{ __('Personal details') }}</flux:heading>
                 <flux:text class="mt-1">{{ __('Your name and email address appear on assignments, comments and in notifications.') }}</flux:text>
+            </div>
+
+            <div class="flex items-center gap-4" x-data="avatarPicker({{ UserAvatar::SIZE }})">
+                <x-user-avatar size="xl" circle :user="auth()->user()" />
+                <div class="space-y-2">
+                    <div class="flex flex-wrap gap-2">
+                        <flux:button size="sm" icon="photo" x-on:click="$refs.avatarFile.click()" x-bind:disabled="busy">{{ __('Choose picture') }}</flux:button>
+                        @if (auth()->user()->avatar_updated_at)
+                            <flux:button size="sm" variant="ghost" icon="trash" wire:click="removeAvatar">{{ __('Remove picture') }}</flux:button>
+                        @endif
+                    </div>
+                    <flux:text size="sm">{{ __('Shown next to your name; it is cropped to a square.') }}</flux:text>
+                    <input type="file" x-ref="avatarFile" accept="image/*" class="hidden" x-on:change="pick($event.target.files[0]); $event.target.value = ''">
+                    <flux:error name="avatarUpload" />
+                </div>
             </div>
 
             <form wire:submit="saveProfile" class="space-y-4">

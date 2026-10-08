@@ -45,7 +45,7 @@
                 <livewire:notification-bell />
 
                 <flux:dropdown position="bottom" align="end">
-                    <flux:profile :name="auth()->user()->name" initials="{{ auth()->user()->initials() }}" class="max-sm:[&>span.truncate]:hidden" />
+                    <flux:profile :name="auth()->user()->name" initials="{{ auth()->user()->initials() }}" :avatar="auth()->user()->avatarUrl()" class="max-sm:[&>span.truncate]:hidden" />
                     <flux:menu>
                         <div class="px-2 py-1.5">
                             <flux:text size="sm" class="mb-1.5">{{ __('Appearance') }}</flux:text>

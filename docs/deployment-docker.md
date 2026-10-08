@@ -15,16 +15,11 @@ Dauerhaft liegt alles im Volume `storage`: SQLite-Datenbank (`storage/database/d
 
 ## Erster Start
 
-1. **Flux-Pro-Zugang** als `auth.json` neben die `compose.yaml` legen (steht in `.gitignore`). Die Datei geht beim Bauen als Build-Secret hinein und landet nicht im Image:
-   ```bash
-   composer config http-basic.composer.fluxui.dev "<E-Mail der Lizenz>" "<Lizenzschlüssel>"
+1. **`.env`** aus `.env.example` anlegen und mindestens `APP_URL`, `APP_ENV=production`, `APP_DEBUG=false` und die Mail-Einstellungen eintragen (siehe [Checkliste](deployment.md#checkliste-für-jeden-host)). Die Datenbank musst du nicht eintragen, ohne Angabe nutzt Compose SQLite im Volume.
+2. **Flux-Pro-Zugang** als `COMPOSER_AUTH` in dieselbe `.env` (eine Zeile, in einfachen Anführungszeichen). Er geht beim Bauen als Build-Secret hinein und landet nicht im Image:
+   ```ini
+   COMPOSER_AUTH='{"http-basic":{"composer.fluxui.dev":{"username":"<E-Mail der Lizenz>","password":"<Lizenzschlüssel>"}}}'
    ```
-   Ohne Composer auf dem Rechner legst du die Datei von Hand an:
-   ```json
-   {"http-basic": {"composer.fluxui.dev": {"username": "<E-Mail der Lizenz>", "password": "<Lizenzschlüssel>"}}}
-   ```
-   Die Datei muss im Projektordner liegen; für einen Pfad außerhalb (`COMPOSER_AUTH_FILE`) verlangt `docker compose build` eine Freigabe per `--allow fs.read=<Pfad>`.
-2. **`.env`** aus `.env.example` anlegen und mindestens `APP_URL`, `APP_ENV=production`, `APP_DEBUG=false` und die Mail-Einstellungen eintragen (siehe [Checkliste](deployment.md#checkliste-für-jeden-host)). Die Datenbank musst du nicht eintragen, ohne Angabe nutzt Compose SQLite im Volume.
 3. **Bauen und Schlüssel erzeugen**, die Ausgabe als `APP_KEY=…` in `.env` eintragen:
    ```bash
    docker compose build
@@ -48,14 +43,14 @@ Dauerhaft liegt alles im Volume `storage`: SQLite-Datenbank (`storage/database/d
   SESSION_SECURE_COOKIE=true
   ```
   Die Domain muss per DNS auf den Server zeigen. Ohne Angabe (`SERVER_NAME=:80`) liefert der Container reines HTTP auf Port `HTTP_PORT` (Standard 8000).
-- **Hinter einem eigenen Proxy** (Traefik, nginx, Load Balancer), der TLS beendet: `SERVER_NAME` so lassen, den Proxy auf `HTTP_PORT` zeigen lassen und Laravel dem Proxy vertrauen lassen, damit Links, sichere Cookies und Passkeys `https` sehen:
+- **Hinter einem eigenen Proxy** (Traefik, nginx, Load Balancer), der TLS beendet: `SERVER_NAME` so lassen, den Proxy auf `HTTP_PORT` zeigen lassen (läuft er auf demselben Server, mit `HTTP_BIND=127.0.0.1` nur lokal erreichbar) und Laravel dem Proxy vertrauen lassen, damit Links, sichere Cookies und Passkeys `https` sehen:
   ```ini
   TRUSTED_PROXIES=*        # oder die Adressen des Proxys, kommagetrennt (CIDR erlaubt)
   ```
 
 ## Live-Updates
 
-Mit `docker compose --profile realtime up -d` läuft zusätzlich Reverb. Caddy leitet den WebSocket (`/app/…`) an den Reverb-Container weiter; der Browser braucht also keinen eigenen Port, und die App schickt ihre Meldungen intern direkt an Reverb (`REVERB_INTERNAL_*` setzt die `compose.yaml`). In `.env`:
+Mit `docker compose --profile realtime up -d` (oder dauerhaft `COMPOSE_PROFILES=realtime` in `.env`) läuft zusätzlich Reverb. Caddy leitet den WebSocket (`/app/…`) an den Reverb-Container weiter; der Browser braucht also keinen eigenen Port, und die App schickt ihre Meldungen intern direkt an Reverb (`REVERB_INTERNAL_*` setzt die `compose.yaml`). In `.env`:
 
 ```ini
 BROADCAST_CONNECTION=reverb

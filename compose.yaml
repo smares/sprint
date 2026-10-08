@@ -41,10 +41,11 @@ services:
       SERVER_NAME: ${SERVER_NAME:-:80}
       # The browser's WebSocket for live updates runs over the same address as the app
       CADDY_SERVER_EXTRA_DIRECTIVES: reverse_proxy /app/* reverb:8080
+    # Behind a reverse proxy on the same host (Traefik, nginx), HTTP_BIND=127.0.0.1 keeps the ports off the internet
     ports:
-      - ${HTTP_PORT:-8000}:80
-      - ${HTTPS_PORT:-8443}:443
-      - ${HTTPS_PORT:-8443}:443/udp
+      - ${HTTP_BIND:-0.0.0.0}:${HTTP_PORT:-8000}:80
+      - ${HTTP_BIND:-0.0.0.0}:${HTTPS_PORT:-8443}:443
+      - ${HTTP_BIND:-0.0.0.0}:${HTTPS_PORT:-8443}:443/udp
     volumes:
       - storage:/app/storage
       - caddy_data:/data
@@ -80,8 +81,9 @@ services:
         condition: service_healthy
 
 secrets:
+  # The Flux Pro credentials as JSON, e.g. from .env: COMPOSER_AUTH='{"http-basic":{"composer.fluxui.dev":{…}}}'
   composer_auth:
-    file: ${COMPOSER_AUTH_FILE:-./auth.json}
+    environment: COMPOSER_AUTH
 
 volumes:
   storage:

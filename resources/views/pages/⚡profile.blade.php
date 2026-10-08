@@ -39,6 +39,8 @@ new class extends Component
 
     public bool $reminders = true;
 
+    public bool $celebrations = true;
+
     public string $locale = '';
 
     /** The picture as the browser cropped and shrank it (see `avatarPicker` in app.js). */
@@ -57,6 +59,7 @@ new class extends Component
         $this->email = auth()->user()->email;
         $this->digest = auth()->user()->digest_enabled;
         $this->reminders = auth()->user()->reminders_enabled;
+        $this->celebrations = auth()->user()->celebrations_enabled;
         $this->locale = auth()->user()->preferredLocale();
     }
 
@@ -104,6 +107,13 @@ new class extends Component
         auth()->user()->update(['reminders_enabled' => $value]);
 
         Flux::toast(variant: 'success', text: $value ? __('Reminders turned on.') : __('Reminders turned off.'));
+    }
+
+    public function updatedCelebrations(bool $value): void
+    {
+        auth()->user()->update(['celebrations_enabled' => $value]);
+
+        Flux::toast(variant: 'success', text: $value ? __('Celebrations turned on.') : __('Celebrations turned off.'));
     }
 
     public function saveProfile(): void
@@ -287,6 +297,8 @@ new class extends Component
             <flux:switch wire:model.live="digest" :label="__('Daily digest by email')" :description="__('On weekday mornings, an email with your overdue and soon-due tasks, only if there is something to report.')" />
 
             <flux:switch wire:model.live="reminders" :label="__('Reminder the day before')" :description="__('An entry in your inbox the day before a task you are assigned to or collaborate on is due.')" />
+
+            <flux:switch wire:model.live="celebrations" :label="__('Celebrate completed tasks')" :description="__('Now and then a unicorn flies across the screen when you complete a task. Not shown if your device is set to reduce motion.')" />
         </flux:tab.panel>
 
         <flux:tab.panel name="security" class="space-y-8">

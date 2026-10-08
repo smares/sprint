@@ -118,8 +118,7 @@ class ProjectRolesTest extends TestCase
         $task = $this->task();
         $this->actingAs($this->viewer);
 
-        Livewire::test('pages::projects.show', ['project' => $this->project])
-            ->set('title', 'Neu')->call('createTask')->assertForbidden();
+        Livewire::test('task-create', ['project' => $this->project])->assertForbidden();
         Livewire::test('pages::projects.show', ['project' => $this->project])
             ->call('toggleDone', $task->id)->assertForbidden();
         Livewire::test('pages::projects.show', ['project' => $this->project])
@@ -154,8 +153,8 @@ class ProjectRolesTest extends TestCase
         $task = $this->task();
         $this->actingAs($this->editor);
 
-        Livewire::test('pages::projects.show', ['project' => $this->project])
-            ->set('title', 'Neue Aufgabe')->call('createTask')->assertHasNoErrors();
+        Livewire::test('task-create', ['project' => $this->project])
+            ->set('title', 'Neue Aufgabe')->call('create')->assertHasNoErrors();
         Livewire::test('pages::tasks.show', ['task' => $task])
             ->set('comment', 'Hallo')->call('addComment')->assertHasNoErrors();
 

@@ -250,9 +250,9 @@ class TaskSortingTest extends TestCase
     {
         $this->task(['position' => 4]);
 
-        Livewire::test('pages::projects.show', ['project' => $this->project])
+        Livewire::test('task-create', ['project' => $this->project])
             ->set('title', 'Neu')
-            ->call('createTask');
+            ->call('create');
 
         $this->assertSame(5, Task::where('title', 'Neu')->value('position'));
     }

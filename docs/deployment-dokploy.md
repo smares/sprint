@@ -1,6 +1,6 @@
 # Bereitstellung mit Dokploy
 
-Vorher: die [Checkliste](deployment.md#checkliste-für-jeden-host). Grundlage ist das Docker-Setup aus dem Repository (siehe [Docker Compose](deployment-docker.md)); Dokploy baut es auf deinem Server, Traefik davor kümmert sich um Domain und HTTPS.
+Vorher: die [Checkliste](deployment.md#checkliste-für-jeden-host). Grundlage ist das Docker-Setup aus dem Repository (siehe [Docker Compose](deployment-docker.md)); Dokploy baut es auf deinem Server, Traefik davor kümmert sich um Domain und HTTPS; Caddy im Container spricht nur HTTP und holt kein eigenes Zertifikat.
 
 So sieht es danach aus:
 
@@ -96,4 +96,5 @@ Eine zweite Domain braucht Reverb nicht: Der Browser verbindet sich mit `wss://s
 - **Links mit `http://` oder Passkeys gehen nicht:** `TRUSTED_PROXIES=*` fehlt, oder `APP_URL` stimmt nicht exakt mit der Domain überein.
 - **Build bricht bei `livewire/flux-pro` ab:** `COMPOSER_AUTH` fehlt im *Environment* oder ist nicht in einfachen Anführungszeichen.
 - **Seite über `http://<server-ip>:8000` erreichbar:** `HTTP_BIND=127.0.0.1` fehlt; ohne ihn veröffentlicht der Container seine Ports am Server vorbei an Traefik.
+- **Kein `SERVER_NAME` setzen:** Das Image lässt Caddy mit `SERVER_NAME=:80` nur HTTP sprechen, Zertifikate holt allein Traefik. Steht dort eine Domain, will Caddy selbst eines bei Let's Encrypt holen; das scheitert, weil Port 80 Traefik gehört, und Caddy leitet dann auf HTTPS um, was in einer Umleitungsschleife endet.
 - **Kein `container_name`** in der `compose.yaml` ergänzen: Dokploy braucht seine eigenen Namen für Logs und Monitoring.

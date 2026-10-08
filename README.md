@@ -1,3 +1,5 @@
+<img src="public/favicon.svg" alt="" width="64" height="64">
+
 # Sprint
 
 Sprint ist eine schlanke Aufgabenverwaltung für Teams: Projekte, Aufgaben und Subtasks, Liste, Kanban-Board, Kalender und Zeitleiste, Kommentare mit Markdown und `@`-Erwähnungen, Benachrichtigungen per Mail und im Posteingang, ein MCP-Server für KI-Agenten. Die Oberfläche gibt es auf Deutsch und Englisch.

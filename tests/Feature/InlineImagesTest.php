@@ -2,12 +2,12 @@
 
 namespace Tests\Feature;
 
-use App\Markdown;
+use App\Enums\ProjectRole;
 use App\Models\Attachment;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
-use App\ProjectRole;
+use App\Services\MarkdownService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -41,7 +41,7 @@ class InlineImagesTest extends TestCase
     {
         $image = $this->image();
 
-        $html = (string) Markdown::render("Davor\n\n![Skizze](attachment:{$image->id})\n\nDanach");
+        $html = (string) MarkdownService::render("Davor\n\n![Skizze](attachment:{$image->id})\n\nDanach");
 
         $this->assertStringContainsString('<img', $html);
         $this->assertStringContainsString('class="attachment-image"', $html);
@@ -56,7 +56,7 @@ class InlineImagesTest extends TestCase
         $image = $this->image();
         $this->actingAs(User::factory()->create());
 
-        $html = (string) Markdown::render("![x](attachment:{$image->id})");
+        $html = (string) MarkdownService::render("![x](attachment:{$image->id})");
 
         $this->assertStringNotContainsString('<img', $html);
         $this->assertStringNotContainsString('foto.png', $html);
@@ -69,7 +69,7 @@ class InlineImagesTest extends TestCase
         $svg = $this->image('bild.svg', 'image/svg+xml');
 
         foreach (["![x](attachment:{$document->id})", "![x](attachment:{$svg->id})", '![x](attachment:99999)'] as $text) {
-            $html = (string) Markdown::render($text);
+            $html = (string) MarkdownService::render($text);
 
             $this->assertStringNotContainsString('<img', $html);
             $this->assertStringContainsString('mention-missing', $html);
@@ -80,7 +80,7 @@ class InlineImagesTest extends TestCase
     {
         $image = $this->image('"><script>alert(1)</script>.png');
 
-        $html = (string) Markdown::render("![<b>x</b>](attachment:{$image->id})");
+        $html = (string) MarkdownService::render("![<b>x</b>](attachment:{$image->id})");
 
         $this->assertStringNotContainsString('<script>', $html);
         $this->assertStringNotContainsString('<b>x</b>', $html);
@@ -88,7 +88,7 @@ class InlineImagesTest extends TestCase
 
     public function test_plain_text_shows_the_name_instead_of_the_image(): void
     {
-        $this->assertSame('Siehe [Skizze] oben', Markdown::plainText('Siehe ![Skizze](attachment:5) oben'));
+        $this->assertSame('Siehe [Skizze] oben', MarkdownService::plainText('Siehe ![Skizze](attachment:5) oben'));
     }
 
     public function test_a_pasted_image_becomes_an_attachment_and_can_be_referenced(): void

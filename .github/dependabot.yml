@@ -1,0 +1,42 @@
+# Weekly update pull requests; minor and patch versions arrive together per ecosystem.
+# Composer needs the Flux Pro credentials as Dependabot secrets (see docs/development.md).
+version: 2
+
+registries:
+  flux:
+    type: composer-repository
+    url: https://composer.fluxui.dev
+    username: ${{ secrets.FLUX_USERNAME }}
+    password: ${{ secrets.FLUX_LICENSE_KEY }}
+
+updates:
+  - package-ecosystem: composer
+    directory: /
+    registries:
+      - flux
+    schedule:
+      interval: weekly
+    groups:
+      composer-minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      npm-minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ['*']
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly

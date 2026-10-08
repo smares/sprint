@@ -1,0 +1,51 @@
+name: Audit
+
+on:
+  pull_request:
+    paths:
+      - composer.json
+      - composer.lock
+      - package.json
+      - package-lock.json
+      - .github/workflows/audit.yml
+  push:
+    branches:
+      - main
+  schedule:
+    # Daily, so that newly published advisories show up without a change in the repository
+    - cron: '17 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+
+    name: Known vulnerabilities in dependencies
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        with:
+          php-version: 8.4
+          coverage: none
+
+      - name: Configure Flux Pro credentials
+        env:
+          FLUX_USERNAME: ${{ secrets.FLUX_USERNAME }}
+          FLUX_LICENSE_KEY: ${{ secrets.FLUX_LICENSE_KEY }}
+        run: composer config http-basic.composer.fluxui.dev "$FLUX_USERNAME" "$FLUX_LICENSE_KEY"
+
+      # Abandoned packages are only reported: some come in through development tools we do not control
+      - name: Composer
+        run: composer audit --locked --abandoned=report
+
+      - name: npm
+        run: npm audit --audit-level=high

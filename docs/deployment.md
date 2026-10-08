@@ -9,7 +9,7 @@ Anleitungen für zwei typische Hosts:
 
 ## Checkliste für jeden Host
 
-1. **Code und Abhängigkeiten:** PHP ab 8.3 (Erweiterungen siehe [Voraussetzungen](installation.md#voraussetzungen)), `composer install --no-dev --optimize-autoloader` mit den [Flux-Pro-Zugangsdaten](installation.md#flux-pro-einrichten), `npm ci --ignore-scripts && npm run build`.
+1. **Code und Abhängigkeiten:** PHP ab 8.4 (Erweiterungen siehe [Voraussetzungen](installation.md#voraussetzungen)), `composer install --no-dev --optimize-autoloader` mit den [Flux-Pro-Zugangsdaten](installation.md#flux-pro-einrichten), `npm ci --ignore-scripts && npm run build`.
 2. **`.env`** (oder Umgebungsvariablen des Hosts), mindestens:
    ```ini
    APP_ENV=production

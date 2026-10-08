@@ -4,7 +4,7 @@ Vorher: die [Checkliste](deployment.md#checkliste-für-jeden-host).
 
 Auf einem Forge-Server liegen Datenbank und Dateien dauerhaft auf der Platte, es ist also nichts Besonderes nötig.
 
-1. **Server** anlegen (PHP 8.3 oder neuer, MySQL oder PostgreSQL; SQLite geht auch, dann `DB_DATABASE` auf einen Pfad **außerhalb** des Projektordners setzen, z. B. `/home/forge/sprint.sqlite`, damit ein Deployment sie nie überschreibt).
+1. **Server** anlegen (PHP 8.4 oder neuer, MySQL oder PostgreSQL; SQLite geht auch, dann `DB_DATABASE` auf einen Pfad **außerhalb** des Projektordners setzen, z. B. `/home/forge/sprint.sqlite`, damit ein Deployment sie nie überschreibt).
 2. **Site** mit der Domain anlegen, Repository `smares/sprint` (dein Fork), Branch `main`; **SSL** per Let's Encrypt aktivieren.
 3. **Flux-Pro-Zugang** einmal auf dem Server hinterlegen (per SSH als Benutzer `forge`), damit `composer install` das private Paket laden kann:
    ```bash
@@ -29,7 +29,7 @@ Auf einem Forge-Server liegen Datenbank und Dateien dauerhaft auf der Platte, es
    $FORGE_PHP artisan queue:restart
    ```
 6. **Queue-Worker:** in der Site unter *Queue* einen Worker anlegen (Connection `database`, Queue `default`, 1 Prozess); Forge hält ihn am Leben.
-7. **Scheduler:** unter *Scheduler* einen Job mit Befehl `php8.3 /home/forge/sprint.example.com/artisan schedule:run` und Frequenz *jede Minute* anlegen (Pfad und PHP-Version anpassen).
+7. **Scheduler:** unter *Scheduler* einen Job mit Befehl `php8.4 /home/forge/sprint.example.com/artisan schedule:run` und Frequenz *jede Minute* anlegen (Pfad und PHP-Version anpassen).
 8. **Ersten Administrator** anlegen (Forge-Terminal oder SSH): `php artisan user:create "Anna Beispiel" anna@example.com --admin`.
 9. **Backups:** Datenbank-Backups in Forge einrichten und `storage/app/private` (Anhänge) sowie die `.env` zusätzlich sichern, siehe [Backup und Wiederherstellung](maintenance.md#backup-und-wiederherstellung). Die Adresse `/health` kannst du in einen externen Uptime-Dienst eintragen.
 

@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -95,6 +96,30 @@ class Project extends Model
     public function canBeViewedBy(?User $user): bool
     {
         return $this->roleFor($user) !== null;
+    }
+
+    /**
+     * Which of the given people may open the project, found with three queries instead of two per person.
+     *
+     * @param  Collection<int, User>  $users
+     * @return list<int>
+     */
+    public function viewerIds(Collection $users): array
+    {
+        $ids = $users->pluck('id');
+
+        return $users->where('is_admin', true)->pluck('id')
+            ->merge(DB::table('project_members')->where('project_id', $this->getKey())->whereIn('user_id', $ids)->pluck('user_id'))
+            ->merge(
+                DB::table('team_user')
+                    ->join('project_team', 'project_team.team_id', '=', 'team_user.team_id')
+                    ->where('project_team.project_id', $this->getKey())
+                    ->whereIn('team_user.user_id', $ids)
+                    ->pluck('team_user.user_id')
+            )
+            ->unique()
+            ->values()
+            ->all();
     }
 
     public function setTeamRole(Team $team, ProjectRole $role): void

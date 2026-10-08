@@ -125,7 +125,7 @@ trait EditsTasksInBulk
             throw ValidationException::withMessages(['selected' => __('Select tasks first.')]);
         }
 
-        return $this->project->tasks()->whereNull('parent_id')->where('is_section', false)->whereKey($ids)->get();
+        return $this->project->tasks()->whereNull('parent_id')->where('is_section', false)->whereKey($ids)->with(['project', 'status', 'assignee'])->get();
     }
 
     private function finishBulk(string $message): void

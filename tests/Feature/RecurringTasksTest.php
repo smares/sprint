@@ -216,7 +216,7 @@ class RecurringTasksTest extends TestCase
         $task->toggleDone();
 
         $next = $this->others($task)->where('title', 'Wochenbericht')->firstOrFail();
-        $copies = $next->children()->get();
+        $copies = $next->children()->with('status')->get();
 
         $this->assertSame(['Vorbereitung', 'Zahlen holen'], $copies->pluck('title')->all());
         $this->assertTrue($copies[0]->is_section);

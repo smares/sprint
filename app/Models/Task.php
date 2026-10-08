@@ -102,7 +102,7 @@ class Task extends Model
             $actor = auth()->user();
 
             if ($task->wasChanged('status_id')) {
-                $task->unsetRelation('status');
+                $task->setRelation('status', TaskStatus::find($task->status_id));
             }
 
             $task->logChanges();
@@ -451,12 +451,14 @@ class Task extends Model
     {
         $muted = $this->notificationMutes()->pluck('users.id');
 
-        return collect([$this->assignee, ...$this->collaborators()->get()])
+        $candidates = collect([$this->assignee, ...$this->collaborators()->get()])
             ->filter()
             ->unique('id')
             ->reject(fn (User $user) => $muted->contains($user->id) || $user->id === $except?->id)
-            ->filter(fn (User $user) => $user->isActive() && $this->project->canBeViewedBy($user))
-            ->values();
+            ->filter(fn (User $user) => $user->isActive());
+        $viewers = $this->project->viewerIds($candidates);
+
+        return $candidates->filter(fn (User $user) => in_array($user->id, $viewers, true))->values();
     }
 
     /**
@@ -470,10 +472,11 @@ class Task extends Model
     {
         $muted = $this->notificationMutes()->pluck('users.id');
 
-        return User::whereIn('id', collect($userIds)->all())->active()->get()
-            ->reject(fn (User $user) => $muted->contains($user->id) || $user->id === $except?->id)
-            ->filter(fn (User $user) => $this->project->canBeViewedBy($user))
-            ->values();
+        $candidates = User::whereIn('id', collect($userIds)->all())->active()->get()
+            ->reject(fn (User $user) => $muted->contains($user->id) || $user->id === $except?->id);
+        $viewers = $this->project->viewerIds($candidates);
+
+        return $candidates->filter(fn (User $user) => in_array($user->id, $viewers, true))->values();
     }
 
     public function fieldValues(): HasMany
@@ -509,7 +512,7 @@ class Task extends Model
         if ($this->wasChanged('status_id')) {
             $this->logActivity('status_changed', [
                 'from' => TaskStatus::find($this->getOriginal('status_id'))?->name ?? '–',
-                'to' => $this->status->name,
+                'to' => $this->loadMissing('status')->status->name,
             ]);
         }
 
@@ -569,21 +572,22 @@ class Task extends Model
     public function hasDependencyCycle(): bool
     {
         $visited = [];
-        $queue = $this->blocking()->pluck('tasks.id')->all();
+        $frontier = $this->blocking()->pluck('tasks.id')->all();
 
-        while ($queue !== []) {
-            $id = array_shift($queue);
-
-            if ($id === $this->getKey()) {
+        while ($frontier !== []) {
+            if (in_array($this->getKey(), $frontier, true)) {
                 return true;
             }
 
-            if (isset($visited[$id])) {
-                continue;
-            }
+            $visited = [...$visited, ...$frontier];
 
-            $visited[$id] = true;
-            $queue = [...$queue, ...self::findOrFail($id)->blocking()->pluck('tasks.id')->all()];
+            $frontier = DB::table('task_dependencies')
+                ->whereIn('blocker_id', $frontier)
+                ->pluck('blocked_id')
+                ->unique()
+                ->diff($visited)
+                ->values()
+                ->all();
         }
 
         return false;

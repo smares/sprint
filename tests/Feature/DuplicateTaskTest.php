@@ -91,7 +91,7 @@ class DuplicateTaskTest extends TestCase
 
         $copy = $original->duplicate();
 
-        $children = $copy->children()->get();
+        $children = $copy->children()->with('status')->get();
         $this->assertSame(['Vorbereitung', 'Zahlen'], $children->pluck('title')->all());
         $this->assertTrue($children[0]->is_section);
         $this->assertFalse($children[1]->isDone());

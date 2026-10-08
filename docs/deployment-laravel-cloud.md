@@ -10,7 +10,7 @@ Laravel Cloud baut aus deinem GitHub-Repository ein Image und startet es ohne Au
 
 So gehst du vor:
 
-1. **Anwendung anlegen:** in Laravel Cloud *New application*, GitHub-Repository wählen, Region, Umgebung *production*, PHP 8.3 oder neuer.
+1. **Anwendung anlegen:** in Laravel Cloud *New application*, GitHub-Repository wählen, Region, Umgebung *production*, PHP 8.4 oder neuer.
 2. **Build-Befehle** der Umgebung (*Deployments*): die Flux-Zugangsdaten gehören **vor** `composer install` hinein, genau wie in der Cloud-Dokumentation für private Pakete beschrieben. Behandle die Build-Befehle deshalb vertraulich:
    ```bash
    composer config http-basic.composer.fluxui.dev "<E-Mail der Lizenz>" "<Lizenzschlüssel>"

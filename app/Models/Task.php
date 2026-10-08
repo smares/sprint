@@ -9,6 +9,7 @@ use App\Notifications\TaskStatusChanged;
 use App\Notifications\UserMentioned;
 use App\Services\MarkdownService;
 use App\Services\TaskSearchService;
+use Carbon\CarbonInterface;
 use Closure;
 use Database\Factories\TaskFactory;
 use Illuminate\Contracts\Database\Query\Builder as QueryBuilder;
@@ -677,7 +678,7 @@ class Task extends Model
     /**
      * First day of the task's time span; tasks with only a due date last a single day.
      */
-    public function spanStart(): ?Carbon
+    public function spanStart(): ?CarbonInterface
     {
         return $this->start_date ?? $this->due_date;
     }
@@ -685,7 +686,7 @@ class Task extends Model
     /**
      * Last day of the task's time span.
      */
-    public function spanEnd(): ?Carbon
+    public function spanEnd(): ?CarbonInterface
     {
         return $this->due_date ?? $this->start_date;
     }

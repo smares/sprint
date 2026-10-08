@@ -5,6 +5,9 @@ includes:
 parameters:
     level: 5
 
+    # Read the types of date, enum and other casts from the casts() methods of the models.
+    parseModelCastsMethod: true
+
     paths:
         - app
         - config

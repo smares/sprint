@@ -118,7 +118,7 @@ class TaskCsvService
     }
 
     /**
-     * @param  SupportCollection<int|string, SupportCollection<int, Task>>  $byParent
+     * @param  SupportCollection<array-key, SupportCollection<array-key, Task>>  $byParent
      * @return Generator<int, Task>
      */
     private function inTreeOrder(SupportCollection $byParent, int $parentId): Generator

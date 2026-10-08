@@ -157,6 +157,8 @@ class Project extends Model
 
     /**
      * People who can be assigned, mentioned or made collaborators: members and application admins.
+     *
+     * @return Builder<User>
      */
     public function eligibleUsers(): Builder
     {

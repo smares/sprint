@@ -2,13 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ProjectRole;
 use App\Models\Attachment;
 use App\Models\Comment;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
-use App\ProjectRole;
-use App\TaskSearch;
+use App\Services\TaskSearchService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -43,18 +43,18 @@ class SearchTest extends TestCase
      */
     private function titles(string $query, array $filters = [], ?User $user = null): array
     {
-        return app(TaskSearch::class)->search($user ?? $this->user, $query, $filters)->pluck('title')->all();
+        return app(TaskSearchService::class)->search($user ?? $this->user, $query, $filters)->pluck('title')->all();
     }
 
     private function withoutFullText(): void
     {
-        Schema::dropIfExists(TaskSearch::TABLE);
-        $this->app->forgetInstance(TaskSearch::class);
+        Schema::dropIfExists(TaskSearchService::TABLE);
+        $this->app->forgetInstance(TaskSearchService::class);
     }
 
     public function test_the_migration_creates_the_fts5_index_here(): void
     {
-        $this->assertTrue(app(TaskSearch::class)->usesFullText());
+        $this->assertTrue(app(TaskSearchService::class)->usesFullText());
     }
 
     public function test_titles_descriptions_comments_and_attachment_names_are_searched(): void
@@ -132,7 +132,7 @@ class SearchTest extends TestCase
 
         $task->delete();
         $this->assertSame([], $this->titles('neuer'));
-        $this->assertSame(0, \DB::table(TaskSearch::TABLE)->count());
+        $this->assertSame(0, \DB::table(TaskSearchService::TABLE)->count());
     }
 
     public function test_deleting_a_parent_leaves_no_search_hits_for_its_subtasks(): void
@@ -185,7 +185,7 @@ class SearchTest extends TestCase
     public function test_the_like_fallback_gives_the_same_answers(): void
     {
         $this->withoutFullText();
-        $this->assertFalse(app(TaskSearch::class)->usesFullText());
+        $this->assertFalse(app(TaskSearchService::class)->usesFullText());
 
         $this->task('Angebot schreiben');
         $this->task('Aufräumen', ['description' => 'Das Lager muss sortiert werden']);
@@ -218,7 +218,7 @@ class SearchTest extends TestCase
     public function test_rebuild_restores_the_index(): void
     {
         $task = $this->task('Wiederfinden', ['description' => 'Beschreibung X']);
-        \DB::table(TaskSearch::TABLE)->delete();
+        \DB::table(TaskSearchService::TABLE)->delete();
         $this->assertSame([], $this->titles('wiederfinden'));
 
         $this->artisan('search:rebuild')->assertSuccessful();
@@ -231,11 +231,11 @@ class SearchTest extends TestCase
     {
         $this->task('Egal', ['description' => 'Inhalt']);
         $this->withoutFullText();
-        $this->assertFalse(app(TaskSearch::class)->usesFullText());
+        $this->assertFalse(app(TaskSearchService::class)->usesFullText());
 
         $this->artisan('search:rebuild')->expectsOutputToContain('1 tasks indexed')->assertSuccessful();
 
-        $this->assertTrue(app(TaskSearch::class)->usesFullText());
+        $this->assertTrue(app(TaskSearchService::class)->usesFullText());
         $this->assertSame(['Egal'], $this->titles('inhalt'));
     }
 

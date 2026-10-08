@@ -1,7 +1,7 @@
 <?php
 
 use App\Models\Project;
-use App\ProjectRole;
+use App\Enums\ProjectRole;
 use Flux\Flux;
 use Livewire\Attributes\Computed;
 use Livewire\Component;

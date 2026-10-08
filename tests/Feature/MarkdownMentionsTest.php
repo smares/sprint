@@ -2,11 +2,11 @@
 
 namespace Tests\Feature;
 
-use App\Markdown;
 use App\Models\Comment;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
+use App\Services\MarkdownService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -27,7 +27,7 @@ class MarkdownMentionsTest extends TestCase
 
     public function test_markdown_is_rendered(): void
     {
-        $html = (string) Markdown::render("# Titel\n\n**fett** und _kursiv_\n\n- eins\n- zwei\n\n`code`");
+        $html = (string) MarkdownService::render("# Titel\n\n**fett** und _kursiv_\n\n- eins\n- zwei\n\n`code`");
 
         $this->assertStringContainsString('<h1>Titel</h1>', $html);
         $this->assertStringContainsString('<strong>fett</strong>', $html);
@@ -38,7 +38,7 @@ class MarkdownMentionsTest extends TestCase
 
     public function test_github_flavoured_features_work(): void
     {
-        $html = (string) Markdown::render("~~weg~~\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\n- [x] erledigt\n\nhttps://example.com/seite");
+        $html = (string) MarkdownService::render("~~weg~~\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\n- [x] erledigt\n\nhttps://example.com/seite");
 
         $this->assertStringContainsString('<del>weg</del>', $html);
         $this->assertStringContainsString('<table>', $html);
@@ -48,13 +48,13 @@ class MarkdownMentionsTest extends TestCase
 
     public function test_empty_text_renders_nothing(): void
     {
-        $this->assertSame('', (string) Markdown::render(null));
-        $this->assertSame('', (string) Markdown::render("  \n "));
+        $this->assertSame('', (string) MarkdownService::render(null));
+        $this->assertSame('', (string) MarkdownService::render("  \n "));
     }
 
     public function test_raw_html_and_scripts_are_stripped(): void
     {
-        $html = (string) Markdown::render("<script>alert(1)</script>\n\n<img src=x onerror=alert(1)>\n\nText <b onclick=\"x()\">fett</b>");
+        $html = (string) MarkdownService::render("<script>alert(1)</script>\n\n<img src=x onerror=alert(1)>\n\nText <b onclick=\"x()\">fett</b>");
 
         $this->assertStringNotContainsString('<script', $html);
         $this->assertStringNotContainsString('<img', $html);
@@ -64,7 +64,7 @@ class MarkdownMentionsTest extends TestCase
 
     public function test_unsafe_links_are_blocked(): void
     {
-        $html = (string) Markdown::render('[klick](javascript:alert(1)) [auch](data:text/html;base64,AAAA) [ok](https://example.com)');
+        $html = (string) MarkdownService::render('[klick](javascript:alert(1)) [auch](data:text/html;base64,AAAA) [ok](https://example.com)');
 
         $this->assertStringNotContainsString('javascript:', $html);
         $this->assertStringNotContainsString('data:text', $html);
@@ -73,7 +73,7 @@ class MarkdownMentionsTest extends TestCase
 
     public function test_external_links_open_safely_in_a_new_window(): void
     {
-        $html = (string) Markdown::render('[extern](https://example.org/x)');
+        $html = (string) MarkdownService::render('[extern](https://example.org/x)');
 
         $this->assertStringContainsString('target="_blank"', $html);
         $this->assertStringContainsString('noopener', $html);
@@ -84,7 +84,7 @@ class MarkdownMentionsTest extends TestCase
     {
         $person = User::factory()->admin()->create(['name' => 'Anna Beispiel']);
 
-        $html = (string) Markdown::render("Hallo @[Alter Name]({$this->mention('user', $person->id)}) bitte prüfen");
+        $html = (string) MarkdownService::render("Hallo @[Alter Name]({$this->mention('user', $person->id)}) bitte prüfen");
 
         $this->assertStringContainsString('<span class="mention mention-user">@Anna Beispiel</span>', $html);
         $this->assertStringNotContainsString('Alter Name', $html);
@@ -94,7 +94,7 @@ class MarkdownMentionsTest extends TestCase
     {
         $task = Task::factory()->create(['title' => 'Aktueller Titel']);
 
-        $html = (string) Markdown::render("Siehe @[Alter Titel]({$this->mention('task', $task->id)})");
+        $html = (string) MarkdownService::render("Siehe @[Alter Titel]({$this->mention('task', $task->id)})");
 
         $this->assertStringContainsString('href="'.route('tasks.show', $task).'"', $html);
         $this->assertStringContainsString('>Aktueller Titel</a>', $html);
@@ -103,7 +103,7 @@ class MarkdownMentionsTest extends TestCase
 
     public function test_mentions_of_deleted_records_are_marked_as_missing(): void
     {
-        $html = (string) Markdown::render('@[Gelöscht](user:99999) und @[Weg](task:99999)');
+        $html = (string) MarkdownService::render('@[Gelöscht](user:99999) und @[Weg](task:99999)');
 
         $this->assertSame(2, substr_count($html, 'mention-missing'));
         $this->assertStringContainsString('@Gelöscht', $html);
@@ -115,7 +115,7 @@ class MarkdownMentionsTest extends TestCase
         $person = User::factory()->admin()->create(['name' => '<b>Evil</b> "Name"']);
         $task = Task::factory()->create(['title' => '<script>x</script>']);
 
-        $html = (string) Markdown::render("@[x](user:{$person->id}) @[y](task:{$task->id})");
+        $html = (string) MarkdownService::render("@[x](user:{$person->id}) @[y](task:{$task->id})");
 
         $this->assertStringNotContainsString('<b>', $html);
         $this->assertStringNotContainsString('<script>', $html);
@@ -127,7 +127,7 @@ class MarkdownMentionsTest extends TestCase
         $first = User::factory()->admin()->create(['name' => 'Anna']);
         $second = User::factory()->admin()->create(['name' => 'Ben']);
 
-        $html = (string) Markdown::render("**@[a](user:{$first->id})** und *@[b](user:{$second->id})*");
+        $html = (string) MarkdownService::render("**@[a](user:{$first->id})** und *@[b](user:{$second->id})*");
 
         $this->assertStringContainsString('<strong><span class="mention mention-user">@Anna</span></strong>', $html);
         $this->assertStringContainsString('<em><span class="mention mention-user">@Ben</span></em>', $html);

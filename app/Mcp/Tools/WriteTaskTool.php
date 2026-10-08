@@ -2,7 +2,7 @@
 
 namespace App\Mcp\Tools;
 
-use App\CustomFieldType;
+use App\Enums\CustomFieldType;
 use App\Mcp\ToolFailure;
 use App\Models\CustomField;
 use App\Models\Project;

@@ -1,6 +1,6 @@
 <?php
 
-namespace App;
+namespace App\Services;
 
 use Illuminate\Support\Facades\Date;
 
@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Date;
  * The languages of the application, as two-letter codes (de, en, fr, …). A new language needs a `lang/xx.json`
  * and `lang/xx/` files, a folder `resources/views/mail/xx` and an entry in `config/sprint.php`.
  */
-class Locale
+class LocaleService
 {
     /**
      * Code => name in the language itself.

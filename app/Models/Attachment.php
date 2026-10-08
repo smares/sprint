@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\TaskSearch;
+use App\Services\TaskSearchService;
 use Database\Factories\AttachmentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -28,11 +28,11 @@ class Attachment extends Model
 
     protected static function booted(): void
     {
-        static::saved(fn (self $attachment) => app(TaskSearch::class)->index($attachment->task_id));
+        static::saved(fn (self $attachment) => app(TaskSearchService::class)->index($attachment->task_id));
 
         static::deleted(function (self $attachment) {
             Storage::disk()->delete($attachment->path);
-            app(TaskSearch::class)->index($attachment->task_id);
+            app(TaskSearchService::class)->index($attachment->task_id);
         });
     }
 

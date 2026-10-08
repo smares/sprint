@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\CustomFieldType;
+use App\Enums\CustomFieldType;
 use Database\Factories\CustomFieldFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;

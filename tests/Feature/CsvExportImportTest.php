@@ -2,12 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ProjectRole;
 use App\Models\Project;
 use App\Models\Tag;
 use App\Models\Task;
 use App\Models\User;
-use App\ProjectRole;
-use App\TaskCsv;
+use App\Services\TaskCsvService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Livewire\Livewire;
@@ -34,18 +34,18 @@ class CsvExportImportTest extends TestCase
     private function exportRows(?Project $project = null): array
     {
         $out = fopen('php://temp', 'r+');
-        app(TaskCsv::class)->write($out, $project ?? $this->project);
+        app(TaskCsvService::class)->write($out, $project ?? $this->project);
         rewind($out);
         $contents = stream_get_contents($out);
 
-        return ['text' => $contents, ...app(TaskCsv::class)->parse($contents)];
+        return ['text' => $contents, ...app(TaskCsvService::class)->parse($contents)];
     }
 
     private function plan(string $csv): array
     {
-        $parsed = app(TaskCsv::class)->parse($csv);
+        $parsed = app(TaskCsvService::class)->parse($csv);
 
-        return app(TaskCsv::class)->plan($this->project, $parsed['rows']);
+        return app(TaskCsvService::class)->plan($this->project, $parsed['rows']);
     }
 
     public function test_the_export_contains_every_task_with_its_details(): void
@@ -136,7 +136,7 @@ class CsvExportImportTest extends TestCase
 
     public function test_the_parser_copes_with_delimiters_encodings_and_blank_lines(): void
     {
-        $csv = new TaskCsv;
+        $csv = new TaskCsvService;
 
         $semicolon = $csv->parse("Titel;Beschreibung\r\nEins;\"Zeile 1\nZeile 2\"\r\n\r\n;;\r\nZwei;ok\r\n");
         $this->assertSame(['Eins', 'Zwei'], array_column($semicolon['rows'], 'title'));
@@ -155,8 +155,8 @@ class CsvExportImportTest extends TestCase
 
     public function test_files_without_a_title_column_or_content_are_rejected(): void
     {
-        $this->assertSame('no-title', (new TaskCsv)->parse("foo,bar\n1,2\n")['error']);
-        $this->assertSame('empty', (new TaskCsv)->parse('')['error']);
+        $this->assertSame('no-title', (new TaskCsvService)->parse("foo,bar\n1,2\n")['error']);
+        $this->assertSame('empty', (new TaskCsvService)->parse('')['error']);
     }
 
     public function test_an_asana_style_export_is_understood(): void
@@ -209,7 +209,7 @@ class CsvExportImportTest extends TestCase
             ."4,,Zweite,,,,,,,,\n";
 
         $plan = $this->plan($csv);
-        $count = app(TaskCsv::class)->import($this->project, $this->user, $plan['tasks']);
+        $count = app(TaskCsvService::class)->import($this->project, $this->user, $plan['tasks']);
 
         $this->assertSame(4, $count);
         $parent = Task::where('title', 'Eltern')->firstOrFail();
@@ -234,7 +234,7 @@ class CsvExportImportTest extends TestCase
     {
         $plan = $this->plan("id,parent_id,title\n1,2,Zu früh\n2,,Später\n3,99,Fremd\n");
 
-        app(TaskCsv::class)->import($this->project, $this->user, $plan['tasks']);
+        app(TaskCsvService::class)->import($this->project, $this->user, $plan['tasks']);
 
         $this->assertNull(Task::where('title', 'Zu früh')->value('parent_id'));
         $this->assertNull(Task::where('title', 'Fremd')->value('parent_id'));
@@ -244,7 +244,7 @@ class CsvExportImportTest extends TestCase
     {
         $plan = $this->plan("id,parent_id,title\n1,,P\n2,1,Erstes\n3,1,Zweites\n");
 
-        app(TaskCsv::class)->import($this->project, $this->user, $plan['tasks']);
+        app(TaskCsvService::class)->import($this->project, $this->user, $plan['tasks']);
 
         $parentId = Task::where('title', 'P')->value('id');
         $this->assertSame(['Erstes', 'Zweites'], Task::where('parent_id', $parentId)->orderBy('position')->pluck('title')->all());
@@ -258,9 +258,9 @@ class CsvExportImportTest extends TestCase
         $target = Project::factory()->create();
         $target->setRole($this->user, ProjectRole::Editor);
 
-        $parsed = app(TaskCsv::class)->parse($this->exportRows()['text']);
-        $plan = app(TaskCsv::class)->plan($target, $parsed['rows']);
-        app(TaskCsv::class)->import($target, $this->user, $plan['tasks']);
+        $parsed = app(TaskCsvService::class)->parse($this->exportRows()['text']);
+        $plan = app(TaskCsvService::class)->plan($target, $parsed['rows']);
+        app(TaskCsvService::class)->import($target, $this->user, $plan['tasks']);
 
         $this->assertSame(['Eltern', 'Kind', '=Formel'], $target->tasks()->orderBy('id')->pluck('title')->all());
         $copy = $target->tasks()->where('title', 'Kind')->firstOrFail();
@@ -271,11 +271,11 @@ class CsvExportImportTest extends TestCase
 
     public function test_too_long_files_are_cut_at_the_row_limit(): void
     {
-        $rows = implode("\n", array_map(fn ($n) => "Aufgabe $n", range(1, TaskCsv::MAX_ROWS + 5)));
+        $rows = implode("\n", array_map(fn ($n) => "Aufgabe $n", range(1, TaskCsvService::MAX_ROWS + 5)));
 
         $plan = $this->plan("title\n".$rows);
 
-        $this->assertCount(TaskCsv::MAX_ROWS, $plan['tasks']);
+        $this->assertCount(TaskCsvService::MAX_ROWS, $plan['tasks']);
         $this->assertContains('too-many-rows', array_column($plan['errors'], 'message'));
     }
 
@@ -301,7 +301,7 @@ class CsvExportImportTest extends TestCase
 
     public function test_oversized_files_are_refused(): void
     {
-        $file = UploadedFile::fake()->create('big.csv', TaskCsv::MAX_KILOBYTES + 1, 'text/csv');
+        $file = UploadedFile::fake()->create('big.csv', TaskCsvService::MAX_KILOBYTES + 1, 'text/csv');
 
         Livewire::test('project-import', ['project' => $this->project])->set('file', $file)->assertHasErrors('file');
     }

@@ -1,6 +1,6 @@
 <?php
 
-namespace App;
+namespace App\Services;
 
 use App\Models\Attachment;
 use App\Models\Task;
@@ -14,7 +14,7 @@ use League\CommonMark\Extension\ExternalLink\ExternalLinkExtension;
  * Renders user-written Markdown, including `@[Name](user:1)` / `@[Title](task:2)` mentions and
  * `![Name](attachment:3)` images of attachments, to safe HTML.
  */
-class Markdown
+class MarkdownService
 {
     private const MENTION_PATTERN = '/@\[([^\]\n]{1,255})\]\((user|task):(\d+)\)/u';
 

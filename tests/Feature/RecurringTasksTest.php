@@ -2,15 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ProjectRole;
+use App\Enums\RepeatMode;
+use App\Enums\RepeatUnit;
 use App\Models\CustomField;
 use App\Models\Project;
 use App\Models\Tag;
 use App\Models\Task;
 use App\Models\User;
 use App\Notifications\TaskStatusChanged;
-use App\ProjectRole;
-use App\RepeatMode;
-use App\RepeatUnit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;

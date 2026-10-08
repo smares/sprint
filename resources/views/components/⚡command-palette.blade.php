@@ -1,7 +1,7 @@
 <?php
 
 use App\Models\Project;
-use App\TaskSearch;
+use App\Services\TaskSearchService;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -28,7 +28,7 @@ new class extends Component
             return collect();
         }
 
-        return app(TaskSearch::class)
+        return app(TaskSearchService::class)
             ->search(auth()->user(), $this->query)
             ->with('project:id,name')
             ->limit(8)

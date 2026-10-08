@@ -2,7 +2,7 @@
 
 use App\Concerns\EditsTasksInBulk;
 use App\Concerns\OpensTaskPanel;
-use App\CustomFieldType;
+use App\Enums\CustomFieldType;
 use App\Models\CustomField;
 use App\Models\CustomFieldValue;
 use App\Models\Project;

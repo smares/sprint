@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\HealthCheck;
+use App\Services\HealthCheckService;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -11,7 +11,7 @@ use Illuminate\Http\JsonResponse;
  */
 class HealthController extends Controller
 {
-    public function __invoke(HealthCheck $health): JsonResponse
+    public function __invoke(HealthCheckService $health): JsonResponse
     {
         $checks = $health->run();
         $overall = $health->overall($checks);

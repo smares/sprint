@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\HealthCheck;
+use App\Services\HealthCheckService;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -11,14 +11,14 @@ use Illuminate\Console\Command;
 #[Description('Checks the database, storage, cache, scheduler and queue worker')]
 class CheckHealth extends Command
 {
-    public function handle(HealthCheck $health): int
+    public function handle(HealthCheckService $health): int
     {
         $checks = $health->run();
 
         foreach ($checks as $name => $check) {
             $label = match ($check['status']) {
-                HealthCheck::OK => '<info>ok  </info>',
-                HealthCheck::WARN => '<comment>warn</comment>',
+                HealthCheckService::OK => '<info>ok  </info>',
+                HealthCheckService::WARN => '<comment>warn</comment>',
                 default => '<error>FAIL</error>',
             };
 

@@ -12,8 +12,9 @@ vendor/bin/pint   # Code-Stil
 
 | Pfad | Inhalt |
 | --- | --- |
+| `app/Enums` | Aufzählungen: `ProjectRole`, `CustomFieldType`, `RepeatUnit`, `RepeatMode` |
 | `app/Models` | Eloquent-Modelle: `Project`, `Task`, `TaskStatus`, `Tag`, `Comment`, `Team`, `User` |
-| `app/Markdown.php` | Rendert Markdown samt `@`-Erwähnungen zu sicherem HTML |
+| `app/Services` | Dienste (Klassen mit Endung `Service`): `MarkdownService` (Markdown samt Erwähnungen und Bildern zu sicherem HTML), `TaskSearchService`, `TaskCsvService`, `DailyDigestService`, `HealthCheckService`, `InboxTextService`, `LocaleService` |
 | `resources/views/pages` | Seiten als Livewire-Komponenten (Projekte, Board, Status, Mitglieder, Aufgaben, Administration, Login) |
 | `resources/views/components` | Blade-Komponenten (`x-markdown`, `x-markdown-editor`, `x-task-subtree`) |
 | `resources/js/app.js` | Alpine-Komponente für das `@`-Auswahlfenster |

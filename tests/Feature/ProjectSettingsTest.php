@@ -2,12 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ProjectRole;
 use App\Models\Attachment;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
-use App\ProjectRole;
-use App\TaskSearch;
+use App\Services\TaskSearchService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -97,14 +97,14 @@ class ProjectSettingsTest extends TestCase
         Attachment::factory()->for($task)->create(['path' => $path]);
         $other = Task::factory()->for(Project::factory()->create())->create(['title' => 'Zebra bleibt']);
 
-        $this->assertSame(2, app(TaskSearch::class)->search(auth()->user(), 'zebra')->count());
+        $this->assertSame(2, app(TaskSearchService::class)->search(auth()->user(), 'zebra')->count());
 
         $this->settings()->set('confirmName', 'Website')->call('delete');
 
         Storage::disk()->assertMissing($path);
         $this->assertSame(0, Attachment::count());
         $this->assertSame(0, Task::where('project_id', $this->project->id)->count());
-        $this->assertSame(1, DB::table(TaskSearch::TABLE)->count());
+        $this->assertSame(1, DB::table(TaskSearchService::TABLE)->count());
         $this->assertModelExists($other);
     }
 

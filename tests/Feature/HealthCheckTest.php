@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\HealthCheck;
+use App\Services\HealthCheckService;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -16,8 +16,8 @@ class HealthCheckTest extends TestCase
     private function heartbeat(?int $minutesAgo): void
     {
         $minutesAgo === null
-            ? Cache::forget(HealthCheck::SCHEDULER_HEARTBEAT)
-            : Cache::put(HealthCheck::SCHEDULER_HEARTBEAT, now()->subMinutes($minutesAgo)->timestamp, 3600);
+            ? Cache::forget(HealthCheckService::SCHEDULER_HEARTBEAT)
+            : Cache::put(HealthCheckService::SCHEDULER_HEARTBEAT, now()->subMinutes($minutesAgo)->timestamp, 3600);
     }
 
     protected function setUp(): void
@@ -50,10 +50,10 @@ class HealthCheckTest extends TestCase
 
         $this->getJson(route('health'))->assertOk()->assertJsonPath('status', 'degraded')->assertJsonPath('checks.scheduler', 'warn');
 
-        $this->heartbeat(HealthCheck::STALE_MINUTES + 1);
+        $this->heartbeat(HealthCheckService::STALE_MINUTES + 1);
         $this->getJson(route('health'))->assertOk()->assertJsonPath('checks.scheduler', 'warn');
 
-        $this->heartbeat(HealthCheck::STALE_MINUTES - 1);
+        $this->heartbeat(HealthCheckService::STALE_MINUTES - 1);
         $this->getJson(route('health'))->assertJsonPath('checks.scheduler', 'ok');
     }
 
@@ -63,7 +63,7 @@ class HealthCheckTest extends TestCase
         $this->job(1);
         $this->getJson(route('health'))->assertJsonPath('checks.queue', 'ok');
 
-        $this->job(HealthCheck::STALE_MINUTES + 1);
+        $this->job(HealthCheckService::STALE_MINUTES + 1);
         $this->getJson(route('health'))->assertOk()->assertJsonPath('status', 'degraded')->assertJsonPath('checks.queue', 'warn');
     }
 
@@ -85,8 +85,8 @@ class HealthCheckTest extends TestCase
 
     public function test_a_broken_essential_part_makes_the_installation_count_as_down(): void
     {
-        $this->partialMock(HealthCheck::class, fn ($mock) => $mock->shouldAllowMockingProtectedMethods()
-            ->shouldReceive('database')->andReturn(['status' => HealthCheck::FAIL, 'detail' => 'weg']));
+        $this->partialMock(HealthCheckService::class, fn ($mock) => $mock->shouldAllowMockingProtectedMethods()
+            ->shouldReceive('database')->andReturn(['status' => HealthCheckService::FAIL, 'detail' => 'weg']));
 
         $this->getJson(route('health'))->assertStatus(503)->assertJsonPath('status', 'down')->assertJsonPath('checks.database', 'fail');
         $this->artisan('sprint:health')->expectsOutputToContain('Overall: down')->assertFailed();
@@ -95,8 +95,8 @@ class HealthCheckTest extends TestCase
     public function test_a_failing_storage_or_cache_is_down_too(): void
     {
         foreach (['storage', 'cache'] as $part) {
-            $this->partialMock(HealthCheck::class, fn ($mock) => $mock->shouldAllowMockingProtectedMethods()
-                ->shouldReceive($part)->andReturn(['status' => HealthCheck::FAIL, 'detail' => 'weg']));
+            $this->partialMock(HealthCheckService::class, fn ($mock) => $mock->shouldAllowMockingProtectedMethods()
+                ->shouldReceive($part)->andReturn(['status' => HealthCheckService::FAIL, 'detail' => 'weg']));
 
             $this->getJson(route('health'))->assertStatus(503)->assertJsonPath("checks.{$part}", 'fail');
         }
@@ -129,8 +129,8 @@ class HealthCheckTest extends TestCase
         $this->assertNotNull($event);
         $this->assertSame('* * * * *', $event->expression);
 
-        Cache::forget(HealthCheck::SCHEDULER_HEARTBEAT);
+        Cache::forget(HealthCheckService::SCHEDULER_HEARTBEAT);
         $this->artisan('schedule:run');
-        $this->assertNotNull(Cache::get(HealthCheck::SCHEDULER_HEARTBEAT));
+        $this->assertNotNull(Cache::get(HealthCheckService::SCHEDULER_HEARTBEAT));
     }
 }

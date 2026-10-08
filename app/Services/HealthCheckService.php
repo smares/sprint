@@ -1,6 +1,6 @@
 <?php
 
-namespace App;
+namespace App\Services;
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -11,7 +11,7 @@ use Throwable;
  * Is the installation able to do its job? Database, storage and cache are essential; a missing scheduler
  * or queue worker does not stop the pages but silently stops mails and the daily digest, so it is a warning.
  */
-class HealthCheck
+class HealthCheckService
 {
     public const SCHEDULER_HEARTBEAT = 'sprint:scheduler-heartbeat';
 

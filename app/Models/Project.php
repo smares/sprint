@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
-use App\CustomFieldType;
-use App\ProjectRole;
-use App\TaskSearch;
+use App\Enums\CustomFieldType;
+use App\Enums\ProjectRole;
+use App\Services\TaskSearchService;
 use Database\Factories\ProjectFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -27,7 +27,7 @@ class Project extends Model
             $taskIds = $project->tasks()->pluck('id')->all();
 
             Storage::disk()->delete(Attachment::whereIn('task_id', $taskIds)->pluck('path')->all());
-            app(TaskSearch::class)->forgetMany($taskIds);
+            app(TaskSearchService::class)->forgetMany($taskIds);
         });
 
         static::created(function (self $project) {

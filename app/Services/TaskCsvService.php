@@ -1,7 +1,9 @@
 <?php
 
-namespace App;
+namespace App\Services;
 
+use App\Color;
+use App\Enums\CustomFieldType;
 use App\Models\CustomField;
 use App\Models\Project;
 use App\Models\Tag;
@@ -17,7 +19,7 @@ use Illuminate\Support\Str;
  * Tasks of a project as CSV: a complete export, and an import that understands our own export as well as
  * spreadsheets from other tools (for example Asana) by looking at the column names.
  */
-class TaskCsv
+class TaskCsvService
 {
     public const MAX_ROWS = 2000;
 

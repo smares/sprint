@@ -2,9 +2,9 @@
 
 namespace App\Notifications;
 
-use App\Markdown;
 use App\Models\Task;
 use App\Notifications\Concerns\BuildsLocalizedMail;
+use App\Services\MarkdownService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -41,7 +41,7 @@ class UserMentioned extends Notification implements ShouldQueue
             'where' => $this->where,
             'title' => $this->task->title,
             'project' => $this->task->project->name,
-            'excerpt' => Str::limit(Markdown::plainText($this->text), 500),
+            'excerpt' => Str::limit(MarkdownService::plainText($this->text), 500),
             'url' => route('tasks.show', $this->task),
             'unsubscribeUrl' => TaskCommented::unsubscribeUrl($this->task, $notifiable),
         ]);

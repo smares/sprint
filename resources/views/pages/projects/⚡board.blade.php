@@ -202,7 +202,7 @@ new class extends Component
                             @if ($this->listFields->isNotEmpty())
                                 <div class="mt-2 flex flex-wrap gap-1">
                                     @foreach ($this->listFields as $field)
-                                        <x-field-value :task="$task" :field="$field" :show-empty="false" :with-name="$field->type !== \App\CustomFieldType::Select" />
+                                        <x-field-value :task="$task" :field="$field" :show-empty="false" :with-name="$field->type !== \App\Enums\CustomFieldType::Select" />
                                     @endforeach
                                 </div>
                             @endif

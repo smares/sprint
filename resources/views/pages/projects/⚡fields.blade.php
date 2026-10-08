@@ -1,6 +1,6 @@
 <?php
 
-use App\CustomFieldType;
+use App\Enums\CustomFieldType;
 use App\Models\CustomField;
 use App\Models\CustomFieldOption;
 use App\Color;
@@ -245,7 +245,7 @@ new class extends Component
                     <flux:button size="xs" variant="ghost" icon="trash" wire:click="confirmDelete({{ $field->id }})" aria-label="{{ __('Delete field') }}" />
                 </div>
 
-                @if ($field->type === \App\CustomFieldType::Select)
+                @if ($field->type === \App\Enums\CustomFieldType::Select)
                     <ul class="ms-6 space-y-2" wire:sort="moveOption" wire:sort:group="options" wire:sort:group-id="{{ $field->id }}">
                         @foreach ($field->options as $option)
                             <li wire:key="option-{{ $option->id }}" wire:sort:item="{{ $option->id }}" class="flex items-center gap-2">
@@ -270,7 +270,7 @@ new class extends Component
     <form wire:submit="add" class="mt-6 flex items-end gap-2">
         <flux:input wire:model="newName" :label="__('New field')" placeholder="{{ __('e.g. Effort') }}" class="min-w-0 flex-1" />
         <flux:select variant="listbox" wire:model="newType" :label="__('Type')" class="max-w-36">
-            @foreach (\App\CustomFieldType::cases() as $type)
+            @foreach (\App\Enums\CustomFieldType::cases() as $type)
                 <flux:select.option value="{{ $type->value }}">{{ $type->label() }}</flux:select.option>
             @endforeach
         </flux:select>

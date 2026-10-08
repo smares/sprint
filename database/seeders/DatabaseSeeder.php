@@ -2,10 +2,10 @@
 
 namespace Database\Seeders;
 
+use App\Enums\ProjectRole;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
-use App\ProjectRole;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder

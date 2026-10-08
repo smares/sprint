@@ -3,7 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
-use App\Locale;
+use App\Services\LocaleService;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Translation\HasLocalePreference;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -61,7 +61,7 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
      */
     public function preferredLocale(): string
     {
-        return Locale::isSupported($this->locale) ? $this->locale : config('app.locale');
+        return LocaleService::isSupported($this->locale) ? $this->locale : config('app.locale');
     }
 
     /**

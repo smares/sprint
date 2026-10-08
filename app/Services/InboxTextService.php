@@ -1,6 +1,6 @@
 <?php
 
-namespace App;
+namespace App\Services;
 
 use App\Notifications\TaskCommented;
 use App\Notifications\TasksStatusChanged;
@@ -12,7 +12,7 @@ use Illuminate\Notifications\DatabaseNotification;
  * The line shown for an inbox entry. Entries store what happened, not the words, so the sentence follows
  * the language of the reader; older entries that stored their sentence are shown as they were.
  */
-class InboxText
+class InboxTextService
 {
     public static function sentence(DatabaseNotification $notification): string
     {

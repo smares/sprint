@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
-use App\Markdown;
 use App\Notifications\TaskCommented;
 use App\Notifications\UserMentioned;
-use App\TaskSearch;
+use App\Services\MarkdownService;
+use App\Services\TaskSearchService;
 use Database\Factories\CommentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -21,8 +21,8 @@ class Comment extends Model
 
     protected static function booted(): void
     {
-        static::saved(fn (self $comment) => app(TaskSearch::class)->index($comment->task_id));
-        static::deleted(fn (self $comment) => app(TaskSearch::class)->index($comment->task_id));
+        static::saved(fn (self $comment) => app(TaskSearchService::class)->index($comment->task_id));
+        static::deleted(fn (self $comment) => app(TaskSearchService::class)->index($comment->task_id));
 
         static::updated(function (self $comment) {
             if (! $comment->wasChanged('body')) {
@@ -32,8 +32,8 @@ class Comment extends Model
             $comment->loadMissing('task', 'user');
 
             $added = array_diff(
-                Markdown::mentionedUserIds($comment->body),
-                Markdown::mentionedUserIds($comment->getOriginal('body')),
+                MarkdownService::mentionedUserIds($comment->body),
+                MarkdownService::mentionedUserIds($comment->getOriginal('body')),
             );
 
             Notification::send(
@@ -45,7 +45,7 @@ class Comment extends Model
         static::created(function (self $comment) {
             $comment->loadMissing('task', 'user');
 
-            $mentionedIds = Markdown::mentionedUserIds($comment->body);
+            $mentionedIds = MarkdownService::mentionedUserIds($comment->body);
 
             Notification::send(
                 $comment->task->usersToNotify($comment->user)->reject(fn (User $user) => in_array($user->id, $mentionedIds, true)),

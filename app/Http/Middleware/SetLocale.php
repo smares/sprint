@@ -2,7 +2,7 @@
 
 namespace App\Http\Middleware;
 
-use App\Locale;
+use App\Services\LocaleService;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -17,12 +17,12 @@ class SetLocale
     {
         $locale = $request->user()?->locale;
 
-        if (! Locale::isSupported($locale)) {
+        if (! LocaleService::isSupported($locale)) {
             $stored = $request->hasSession() ? $request->session()->get('locale') : null;
-            $locale = Locale::isSupported($stored) ? $stored : (Locale::fromHeader($request->header('Accept-Language')) ?? config('app.locale'));
+            $locale = LocaleService::isSupported($stored) ? $stored : (LocaleService::fromHeader($request->header('Accept-Language')) ?? config('app.locale'));
         }
 
-        Locale::apply($locale);
+        LocaleService::apply($locale);
 
         return $next($request);
     }

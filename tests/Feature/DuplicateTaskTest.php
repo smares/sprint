@@ -2,15 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ProjectRole;
+use App\Enums\RepeatMode;
+use App\Enums\RepeatUnit;
 use App\Models\Attachment;
 use App\Models\Comment;
 use App\Models\Project;
 use App\Models\Tag;
 use App\Models\Task;
 use App\Models\User;
-use App\ProjectRole;
-use App\RepeatMode;
-use App\RepeatUnit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;

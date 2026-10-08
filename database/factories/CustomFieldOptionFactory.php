@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\CustomFieldType;
+use App\Enums\CustomFieldType;
 use App\Models\CustomField;
 use App\Models\CustomFieldOption;
 use Illuminate\Database\Eloquent\Factories\Factory;

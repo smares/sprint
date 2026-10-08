@@ -2,7 +2,7 @@
 
 namespace App\Mcp;
 
-use App\CustomFieldType;
+use App\Enums\CustomFieldType;
 use App\Models\Comment;
 use App\Models\Task;
 use App\Models\User;

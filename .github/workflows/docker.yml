@@ -1,0 +1,80 @@
+name: Docker
+
+on:
+  pull_request:
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - compose.yaml
+      - docker/**
+      - composer.lock
+      - package-lock.json
+      - config/broadcasting.php
+      - .github/workflows/docker.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compose:
+    runs-on: ubuntu-latest
+
+    name: Build and start with Docker Compose
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Flux Pro credentials as build secret
+        env:
+          FLUX_USERNAME: ${{ secrets.FLUX_USERNAME }}
+          FLUX_LICENSE_KEY: ${{ secrets.FLUX_LICENSE_KEY }}
+        run: |
+          jq -n --arg user "$FLUX_USERNAME" --arg key "$FLUX_LICENSE_KEY" \
+            '{"http-basic": {"composer.fluxui.dev": {"username": $user, "password": $key}}}' > "$RUNNER_TEMP/auth.json"
+          echo "COMPOSER_AUTH_FILE=$RUNNER_TEMP/auth.json" >> "$GITHUB_ENV"
+
+      - name: Build image
+        run: docker compose build
+
+      - name: Configure
+        run: |
+          cp .env.example .env
+          echo "APP_KEY=$(docker compose run --rm --no-deps app php artisan key:generate --show)" >> .env
+          cat >> .env <<'EOF'
+          APP_ENV=production
+          APP_DEBUG=false
+          BROADCAST_CONNECTION=reverb
+          REVERB_APP_ID=sprint
+          REVERB_APP_KEY=ci-key
+          REVERB_APP_SECRET=ci-secret
+          REVERB_HOST=
+          REVERB_PORT=8000
+          REVERB_SCHEME=http
+          EOF
+
+      - name: Start app, queue, scheduler and Reverb
+        run: docker compose --profile realtime up -d --wait --wait-timeout 120
+
+      - name: Check the running stack
+        run: |
+          docker compose --profile realtime ps
+          curl -fsS http://localhost:8000/up
+          curl -fsS http://localhost:8000/health
+          curl -fsS http://localhost:8000/login | grep -q '/build/assets/app-'
+          for service in queue scheduler reverb; do
+            test "$(docker compose --profile realtime ps --status running --services | grep -cx "$service")" = 1
+          done
+          docker compose exec -T app php artisan user:create "CI Admin" ci@example.com --admin --password=geheim123
+          # The browser's WebSocket goes through Caddy to Reverb
+          curl -sS -o /dev/null -w '%{http_code}' --http1.1 \
+            -H 'Connection: Upgrade' -H 'Upgrade: websocket' -H 'Sec-WebSocket-Version: 13' \
+            -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' -H 'Origin: http://localhost:8000' \
+            --max-time 5 http://localhost:8000/app/ci-key | grep -q 101
+
+      - name: Logs
+        if: always()
+        run: docker compose --profile realtime logs --no-color

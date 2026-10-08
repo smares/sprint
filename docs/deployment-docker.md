@@ -1,0 +1,102 @@
+# Bereitstellung mit Docker Compose
+
+Vorher: die [Checkliste](deployment.md#checkliste-für-jeden-host). Das meiste davon übernimmt hier das Image.
+
+Im Repository liegen ein `Dockerfile` und eine `compose.yaml`. Alle Dienste nutzen dasselbe Image ([FrankenPHP](https://frankenphp.dev): Caddy und PHP in einem Prozess, läuft ohne Root-Rechte):
+
+| Dienst | Aufgabe |
+|---|---|
+| `app` | Webserver; migriert beim Start die Datenbank und baut die Caches (`php artisan optimize`) |
+| `queue` | Queue-Worker für Mails, Posteingang und Live-Meldungen |
+| `scheduler` | `php artisan schedule:work` (Tageszusammenfassung, Wiederholungen, Aufräumen) |
+| `reverb` | nur mit `--profile realtime`: Live-Updates, der Browser verbindet sich über die Adresse der App |
+
+Dauerhaft liegt alles im Volume `storage`: SQLite-Datenbank (`storage/database/database.sqlite`) und Anhänge (`storage/app/private`). Logs gehen nach `docker compose logs`. Die Zertifikate von Caddy liegen in `caddy_data`.
+
+## Erster Start
+
+1. **Flux-Pro-Zugang** als `auth.json` neben die `compose.yaml` legen (steht in `.gitignore`). Die Datei geht beim Bauen als Build-Secret hinein und landet nicht im Image:
+   ```bash
+   composer config http-basic.composer.fluxui.dev "<E-Mail der Lizenz>" "<Lizenzschlüssel>"
+   ```
+   Ohne Composer auf dem Rechner legst du die Datei von Hand an:
+   ```json
+   {"http-basic": {"composer.fluxui.dev": {"username": "<E-Mail der Lizenz>", "password": "<Lizenzschlüssel>"}}}
+   ```
+   Liegt sie woanders, nennst du den Pfad in `COMPOSER_AUTH_FILE`.
+2. **`.env`** aus `.env.example` anlegen und mindestens `APP_URL`, `APP_ENV=production`, `APP_DEBUG=false` und die Mail-Einstellungen eintragen (siehe [Checkliste](deployment.md#checkliste-für-jeden-host)). Die Datenbank musst du nicht eintragen, ohne Angabe nutzt Compose SQLite im Volume.
+3. **Bauen und Schlüssel erzeugen**, die Ausgabe als `APP_KEY=…` in `.env` eintragen:
+   ```bash
+   docker compose build
+   docker compose run --rm --no-deps app php artisan key:generate --show
+   ```
+4. **Starten** und den ersten Administrator anlegen:
+   ```bash
+   docker compose up -d
+   docker compose exec app php artisan user:create "Anna Beispiel" anna@example.com --admin
+   ```
+5. **Prüfen:** `http://<server>:8000/health` liefert `{"status":"ok", …}`; `docker compose exec app php artisan sprint:health` zeigt Details.
+
+## HTTPS
+
+- **Caddy holt das Zertifikat selbst:** Domain in `SERVER_NAME` eintragen und die Standard-Ports freigeben, z. B. in `.env`:
+  ```ini
+  SERVER_NAME=sprint.example.com
+  HTTP_PORT=80
+  HTTPS_PORT=443
+  APP_URL=https://sprint.example.com
+  SESSION_SECURE_COOKIE=true
+  ```
+  Die Domain muss per DNS auf den Server zeigen. Ohne Angabe (`SERVER_NAME=:80`) liefert der Container reines HTTP auf Port `HTTP_PORT` (Standard 8000).
+- **Hinter einem eigenen Proxy** (Traefik, nginx, Load Balancer), der TLS beendet: `SERVER_NAME` so lassen, den Proxy auf `HTTP_PORT` zeigen lassen und Laravel dem Proxy vertrauen lassen, damit Links, sichere Cookies und Passkeys `https` sehen:
+  ```ini
+  TRUSTED_PROXIES=*        # oder die Adressen des Proxys, kommagetrennt (CIDR erlaubt)
+  ```
+
+## Live-Updates
+
+Mit `docker compose --profile realtime up -d` läuft zusätzlich Reverb. Caddy leitet den WebSocket (`/app/…`) an den Reverb-Container weiter; der Browser braucht also keinen eigenen Port, und die App schickt ihre Meldungen intern direkt an Reverb (`REVERB_INTERNAL_*` setzt die `compose.yaml`). In `.env`:
+
+```ini
+BROADCAST_CONNECTION=reverb
+REVERB_APP_ID=sprint
+REVERB_APP_KEY=<zufälliger Schlüssel>
+REVERB_APP_SECRET=<zufälliges Geheimnis>
+REVERB_HOST=              # leer: Host der Seite
+REVERB_PORT=443           # Port, unter dem der Browser die App erreicht (lokal 8000)
+REVERB_SCHEME=https       # lokal http
+```
+
+## Andere Datenbank
+
+Das Image bringt die Treiber für MySQL/MariaDB und PostgreSQL mit. `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME` und `DB_PASSWORD` in `.env` setzen; die Datenbank selbst läuft dann außerhalb oder als zusätzlicher Dienst in einer eigenen `compose.override.yaml`. Ohne FTS5 sucht Sprint automatisch per LIKE (siehe [Suche](configuration.md#suche)).
+
+## Updates
+
+```bash
+git pull
+docker compose build
+docker compose up -d
+```
+
+Beim Start migriert der `app`-Container und baut die Caches neu; `queue`, `scheduler` und `reverb` starten erst, wenn `app` gesund ist. Wer Migrationen lieber selbst anstößt, setzt `MIGRATE_ON_START=false` und ruft `docker compose exec app php artisan migrate --force` auf.
+
+## Backup
+
+Das Volume `storage` enthält Datenbank und Anhänge. Eine konsistente SQLite-Kopie und die Anhänge sicherst du z. B. so:
+
+```bash
+docker compose exec app php -r '(new PDO("sqlite:storage/database/database.sqlite"))->exec("VACUUM INTO \"storage/database/backup.sqlite\"");'
+docker compose cp app:/app/storage/database/backup.sqlite ./sprint-backup.sqlite
+docker compose cp app:/app/storage/app/private ./sprint-attachments
+```
+
+Mehr dazu unter [Backup und Wiederherstellung](maintenance.md#backup-und-wiederherstellung).
+
+## Befehle
+
+```bash
+docker compose logs -f app                 # Logs (Laravel schreibt nach stderr)
+docker compose exec app php artisan …      # Artisan im laufenden Container
+docker compose restart queue               # Worker neu starten
+```

@@ -1,0 +1,90 @@
+# Sprint with Docker Compose; see docs/deployment-docker.md.
+#
+#   docker compose up -d --build                       app, queue worker and scheduler
+#   docker compose --profile realtime up -d --build    plus Reverb for live updates
+#
+# Settings come from .env (APP_KEY, APP_URL, mail …). The SQLite database, attachments
+# and logs live in the "storage" volume; Caddy's certificates in "caddy_data".
+
+x-environment: &environment
+  DB_CONNECTION: ${DB_CONNECTION:-sqlite}
+  DB_DATABASE: ${DB_DATABASE:-/app/storage/database/database.sqlite}
+  # Logs go to "docker compose logs"
+  LOG_CHANNEL: stderr
+  # Messages for live updates go straight to the Reverb container
+  REVERB_INTERNAL_HOST: reverb
+  REVERB_INTERNAL_PORT: 8080
+  REVERB_INTERNAL_SCHEME: http
+
+x-sprint: &sprint
+  image: ${SPRINT_IMAGE:-sprint:latest}
+  build:
+    context: .
+    args:
+      PHP_VERSION: ${PHP_VERSION:-8.4}
+    secrets:
+      - composer_auth
+  env_file:
+    - path: .env
+      required: false
+  environment: *environment
+  volumes:
+    - storage:/app/storage
+  restart: unless-stopped
+
+services:
+  app:
+    <<: *sprint
+    environment:
+      <<: *environment
+      # ":80" serves plain HTTP (behind your own proxy); a domain makes Caddy fetch a certificate
+      SERVER_NAME: ${SERVER_NAME:-:80}
+      # The browser's WebSocket for live updates runs over the same address as the app
+      CADDY_SERVER_EXTRA_DIRECTIVES: reverse_proxy /app/* reverb:8080
+    ports:
+      - ${HTTP_PORT:-8000}:80
+      - ${HTTPS_PORT:-8443}:443
+      - ${HTTPS_PORT:-8443}:443/udp
+    volumes:
+      - storage:/app/storage
+      - caddy_data:/data
+      - caddy_config:/config
+    healthcheck:
+      test: [CMD, php, artisan, sprint:health]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      start_interval: 3s
+      retries: 3
+
+  queue:
+    <<: *sprint
+    command: [php, artisan, queue:work, --tries=3, --max-time=3600]
+    stop_signal: SIGTERM
+    depends_on:
+      app:
+        condition: service_healthy
+
+  scheduler:
+    <<: *sprint
+    command: [php, artisan, schedule:work]
+    depends_on:
+      app:
+        condition: service_healthy
+
+  reverb:
+    <<: *sprint
+    profiles: [realtime]
+    command: [php, artisan, reverb:start, --host=0.0.0.0, --port=8080]
+    depends_on:
+      app:
+        condition: service_healthy
+
+secrets:
+  composer_auth:
+    file: ${COMPOSER_AUTH_FILE:-./auth.json}
+
+volumes:
+  storage:
+  caddy_data:
+  caddy_config:

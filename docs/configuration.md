@@ -47,7 +47,7 @@ Einrichten:
 3. Den Queue-Worker laufen lassen: die Meldungen gehen über die Queue (`queue:work`), ohne Worker kommt nichts an
 4. Nach `.env`-Änderungen `php artisan config:clear` (bzw. `optimize`) und die Assets müssen nicht neu gebaut werden, die Verbindungsdaten liefert der Server zur Laufzeit
 
-Hinter Nginx leitest du den Pfad `/app` (WebSocket) und `/apps` (Meldungen) an den Reverb-Port weiter und terminierst TLS am Proxy; Laravel Forge und Laravel Cloud (eigener *WebSocket-Cluster*) richten das ein. Mehrere Anwendungsserver brauchen `REVERB_SCALING_ENABLED=true` und Redis. Verbindungen nimmt Reverb nur von Seiten des Hosts aus `APP_URL` an; weitere Hosts trägst du kommagetrennt in `REVERB_ALLOWED_ORIGINS` ein.
+Hinter Nginx leitest du den Pfad `/app` (WebSocket) und `/apps` (Meldungen) an den Reverb-Port weiter und terminierst TLS am Proxy. Erreicht die App den Reverb-Server intern auf anderem Weg als der Browser (z. B. in Docker), stehen Host, Port und Schema dafür in `REVERB_INTERNAL_HOST`, `REVERB_INTERNAL_PORT` und `REVERB_INTERNAL_SCHEME`; die `REVERB_*`-Werte oben gelten dann nur für den Browser, ein leerer `REVERB_HOST` heißt Host der Seite ([Docker Compose](deployment-docker.md#live-updates) setzt das schon); Laravel Forge und Laravel Cloud (eigener *WebSocket-Cluster*) richten das ein. Mehrere Anwendungsserver brauchen `REVERB_SCALING_ENABLED=true` und Redis. Verbindungen nimmt Reverb nur von Seiten des Hosts aus `APP_URL` an; weitere Hosts trägst du kommagetrennt in `REVERB_ALLOWED_ORIGINS` ein.
 
 Wenn der Reverb-Server nicht erreichbar ist, laufen die Seiten normal weiter, sie aktualisieren sich nur nicht von selbst; fehlgeschlagene Meldungen landen in `failed_jobs`.
 

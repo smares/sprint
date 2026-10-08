@@ -17,8 +17,6 @@ class Attachment extends Model
     /** @use HasFactory<AttachmentFactory> */
     use HasFactory;
 
-    public const DISK = 'local';
-
     /** Maximum upload size in kilobytes. */
     public const MAX_KILOBYTES = 20480;
 
@@ -30,7 +28,7 @@ class Attachment extends Model
         static::saved(fn (self $attachment) => app(TaskSearch::class)->index($attachment->task_id));
 
         static::deleted(function (self $attachment) {
-            Storage::disk(self::DISK)->delete($attachment->path);
+            Storage::disk()->delete($attachment->path);
             app(TaskSearch::class)->index($attachment->task_id);
         });
     }

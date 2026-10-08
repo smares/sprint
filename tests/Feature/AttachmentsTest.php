@@ -149,6 +149,45 @@ class AttachmentsTest extends TestCase
         $this->assertSame('application/octet-stream', $forced->headers->get('Content-Type'));
     }
 
+    public function test_pdfs_and_text_files_can_be_previewed_inline(): void
+    {
+        $pdf = $this->attach('bericht.pdf', '%PDF-1.4');
+        $text = $this->attach('notizen.md', '# Notizen');
+        $text->update(['mime_type' => 'text/markdown']);
+        $html = $this->attach('seite.html', '<script>alert(1)</script>');
+        $html->update(['mime_type' => 'text/html']);
+
+        $inlinePdf = $this->get(route('attachments.show', [$pdf, 'inline' => 1]))->assertOk();
+        $this->assertStringContainsString('inline', $inlinePdf->headers->get('Content-Disposition'));
+        $this->assertSame('application/pdf', $inlinePdf->headers->get('Content-Type'));
+
+        $inlineText = $this->get(route('attachments.show', [$text, 'inline' => 1]))->assertOk();
+        $this->assertStringContainsString('inline', $inlineText->headers->get('Content-Disposition'));
+        $this->assertStringStartsWith('text/plain', $inlineText->headers->get('Content-Type'));
+
+        $forced = $this->get(route('attachments.show', [$html, 'inline' => 1]))->assertOk();
+        $this->assertStringContainsString('attachment', $forced->headers->get('Content-Disposition'));
+        $this->assertSame('application/octet-stream', $forced->headers->get('Content-Type'));
+
+        $this->assertSame('pdf', $pdf->previewKind());
+        $this->assertSame('text', $text->previewKind());
+        $this->assertNull($html->previewKind());
+    }
+
+    public function test_the_task_page_offers_previews_and_downloads(): void
+    {
+        $this->attach('bericht.pdf');
+        $image = $this->attach('foto.png', 'png');
+        $image->update(['mime_type' => 'image/png']);
+        $this->attach('daten.bin');
+        Attachment::where('name', 'daten.bin')->update(['mime_type' => 'application/zip']);
+
+        Livewire::test('pages::tasks.show', ['task' => $this->task])
+            ->assertSeeHtml(route('attachments.show', [$image, 'inline' => 1]))
+            ->assertSee('Vorschau')
+            ->assertSee('Herunterladen');
+    }
+
     public function test_a_missing_file_gives_404(): void
     {
         $attachment = $this->attach();

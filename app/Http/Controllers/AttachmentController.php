@@ -17,10 +17,17 @@ class AttachmentController extends Controller
         $disk = Storage::disk();
         abort_unless($disk->exists($attachment->path), 404);
 
-        $inline = $request->boolean('inline') && $attachment->isInlineImage();
+        $kind = $attachment->previewKind();
+        $inline = $request->boolean('inline') && $kind !== null;
+
+        $contentType = match (true) {
+            ! $inline => 'application/octet-stream',
+            $kind === 'text' => 'text/plain; charset=UTF-8',
+            default => $attachment->mime_type,
+        };
 
         return $disk->response($attachment->path, $attachment->name, [
-            'Content-Type' => $inline ? $attachment->mime_type : 'application/octet-stream',
+            'Content-Type' => $contentType,
             'X-Content-Type-Options' => 'nosniff',
         ], $inline ? 'inline' : 'attachment');
     }

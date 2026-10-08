@@ -144,7 +144,7 @@ new class extends Component
             return;
         }
 
-        $this->project->members()->detach($member->id);
+        $this->project->removeMember($member);
         $this->refresh();
     }
 
@@ -190,7 +190,7 @@ new class extends Component
             return;
         }
 
-        $this->project->teams()->detach($team->id);
+        $this->project->removeTeam($team);
         $this->refresh();
     }
 

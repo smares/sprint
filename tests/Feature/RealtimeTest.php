@@ -166,6 +166,7 @@ class RealtimeTest extends TestCase
     {
         foreach (['pages::projects.show', 'pages::projects.board', 'pages::projects.calendar', 'pages::projects.timeline'] as $page) {
             $this->assertSame([], $this->listenersOf($page, ['project' => $this->project]), $page);
+            Livewire::test($page, ['project' => $this->project])->assertDontSee('x-data="presence(', false);
         }
 
         $this->switchOnReverb();
@@ -173,40 +174,23 @@ class RealtimeTest extends TestCase
         foreach (['pages::projects.show', 'pages::projects.board', 'pages::projects.calendar', 'pages::projects.timeline'] as $page) {
             $listeners = $this->listenersOf($page, ['project' => $this->project]);
 
-            $this->assertSame('projectChangedElsewhere', $listeners["echo-private:project.{$this->project->id},.TaskChanged"], $page);
-            $this->assertSame('presenceHere', $listeners["echo-presence:project.{$this->project->id}.presence,here"], $page);
+            $this->assertSame(["echo-private:project.{$this->project->id},.TaskChanged" => 'projectChangedElsewhere'], $listeners, $page);
+            Livewire::test($page, ['project' => $this->project])
+                ->assertSee("x-data=\"presence('project.{$this->project->id}.presence'", false);
         }
     }
 
-    public function test_the_task_page_listens_to_the_project_and_its_own_presence_channel(): void
+    public function test_the_task_page_listens_to_the_project_and_shows_who_else_looks_at_the_task(): void
     {
         $task = Task::factory()->for($this->project)->create();
         $this->switchOnReverb();
 
         $listeners = $this->listenersOf('pages::tasks.show', ['task' => $task]);
 
-        $this->assertArrayHasKey("echo-private:project.{$this->project->id},.TaskChanged", $listeners);
-        $this->assertArrayHasKey("echo-presence:task.{$task->id}.presence,joining", $listeners);
-    }
-
-    public function test_presence_lists_the_others_but_not_oneself(): void
-    {
-        $this->switchOnReverb();
-        $task = Task::factory()->for($this->project)->create();
-
+        $this->assertSame(["echo-private:project.{$this->project->id},.TaskChanged" => 'projectChangedElsewhere'], $listeners);
         Livewire::test('pages::tasks.show', ['task' => $task])
-            ->call('presenceHere', [
-                ['id' => $this->admin->id, 'name' => 'Ich', 'initials' => 'IC'],
-                ['id' => 41, 'name' => 'Anna Beispiel', 'initials' => 'AB'],
-            ])
-            ->assertSet('presentUsers', [41 => ['id' => 41, 'name' => 'Anna Beispiel', 'initials' => 'AB']])
-            ->assertSee('Anna Beispiel sieht sich diese Aufgabe auch gerade an')
-            ->call('presenceJoining', ['id' => 42, 'name' => 'Ben Beispiel', 'initials' => 'BB'])
-            ->assertSee('2 Personen sehen sich diese Aufgabe auch gerade an')
-            ->call('presenceLeaving', ['id' => 41])
-            ->call('presenceLeaving', ['id' => 42])
-            ->assertSet('presentUsers', [])
-            ->assertDontSee('auch gerade an');
+            ->assertSee("x-data=\"presence('task.{$task->id}.presence'", false)
+            ->assertSee(':name sieht sich diese Aufgabe auch gerade an', false);
     }
 
     public function test_a_change_by_somebody_else_to_the_open_task_warns_and_keeps_what_was_typed(): void

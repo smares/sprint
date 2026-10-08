@@ -54,7 +54,7 @@ class SubtasksTest extends TestCase
             $parent = Task::where('title', "Ebene $level")->firstOrFail();
         }
 
-        $this->assertSame(6, $task->fresh()->project->subtaskProgress()[$task->id]['total']);
+        $this->assertSame(6, $task->fresh()->project->subtaskProgress([$task->id])[$task->id]['total']);
     }
 
     public function test_subtask_title_is_required(): void
@@ -84,10 +84,11 @@ class SubtasksTest extends TestCase
         $this->task(['parent_id' => $child->id, 'status_id' => $this->project->doneStatus()->id]);
         $this->task(['parent_id' => $child->id]);
 
-        $progress = $this->project->subtaskProgress();
+        $progress = $this->project->subtaskProgress([$root->id, $child->id]);
 
         $this->assertSame(['done' => 2, 'total' => 3], $progress[$root->id]);
         $this->assertSame(['done' => 1, 'total' => 2], $progress[$child->id]);
+        $this->assertSame([$root->id], array_keys($this->project->subtaskProgress([$root->id])));
     }
 
     public function test_completing_all_subtasks_does_not_complete_the_parent(): void

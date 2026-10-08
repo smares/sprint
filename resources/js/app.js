@@ -127,6 +127,42 @@ const registerMentionable = () => {
 
 
 /**
+ * Who else has the same page open, from a Reverb presence channel; the page itself never re-renders for it.
+ */
+const registerPresence = () => {
+    window.Alpine.data('presence', (channel, selfId, labels) => ({
+        users: [],
+
+        init() {
+            if (!window.Echo) {
+                return
+            }
+
+            window.Echo.join(channel)
+                .here((users) => { this.users = users.filter((user) => user.id !== selfId) })
+                .joining((user) => {
+                    if (user.id !== selfId && !this.users.some((other) => other.id === user.id)) {
+                        this.users.push(user)
+                    }
+                })
+                .leaving((user) => { this.users = this.users.filter((other) => other.id !== user.id) })
+        },
+
+        destroy() {
+            window.Echo?.leave(channel)
+        },
+
+        label() {
+            if (this.users.length === 1) {
+                return labels.one.replace(':name', this.users[0].name)
+            }
+
+            return this.users.length > 1 && labels.many ? labels.many.replace(':count', this.users.length) : ''
+        },
+    }))
+}
+
+/**
  * Timeline bars: drag to move, drag an edge to stretch or shrink; the new dates are saved in whole days.
  */
 const registerTimelineBar = () => {
@@ -211,6 +247,7 @@ const registerTimelineBar = () => {
 const registerAll = () => {
     registerMentionable()
     registerTimelineBar()
+    registerPresence()
 }
 
 if (window.Alpine) {

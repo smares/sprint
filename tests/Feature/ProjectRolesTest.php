@@ -274,13 +274,13 @@ class ProjectRolesTest extends TestCase
             ->call('add')
             ->assertHasNoErrors();
 
-        $this->assertSame(ProjectRole::Viewer, $this->project->roleFor($this->outsider));
+        $this->assertSame(ProjectRole::Viewer, $this->project->fresh()->roleFor($this->outsider));
 
         $component->set("roles.{$this->outsider->id}", 'editor');
-        $this->assertSame(ProjectRole::Editor, $this->project->roleFor($this->outsider));
+        $this->assertSame(ProjectRole::Editor, $this->project->fresh()->roleFor($this->outsider));
 
         $component->call('remove', $this->outsider->id);
-        $this->assertNull($this->project->roleFor($this->outsider));
+        $this->assertNull($this->project->fresh()->roleFor($this->outsider));
     }
 
     public function test_members_page_rejects_unknown_people_and_roles(): void

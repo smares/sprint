@@ -260,7 +260,7 @@ new class extends Component
     #[Computed]
     public function progress(): array
     {
-        return $this->project->subtaskProgress();
+        return $this->project->subtaskProgress($this->tasks->pluck('id')->all());
     }
 
     #[Computed]
@@ -503,7 +503,7 @@ new class extends Component
         unset($this->tasks);
     }
 
-    protected function presenceChannel(): string
+    public function presenceChannel(): string
     {
         return "project.{$this->project->getKey()}.presence";
     }
@@ -534,7 +534,7 @@ new class extends Component
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
-            <x-project-views :project="$project" active="list" :present="$presentUsers" />
+            <x-project-views :project="$project" active="list" :presence="$this->presenceChannel()" />
 
             @if ($this->canEdit)
                 <flux:modal.trigger name="create-task">

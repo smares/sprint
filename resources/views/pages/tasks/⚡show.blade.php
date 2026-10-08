@@ -953,7 +953,7 @@ new class extends Component
         $this->resetErrorBag();
     }
 
-    protected function presenceChannel(): string
+    public function presenceChannel(): string
     {
         return "task.{$this->task->getKey()}.presence";
     }
@@ -968,7 +968,7 @@ new class extends Component
 ?>
 
 <div @class(['max-w-3xl' => ! $panel])>
-    <x-presence :users="$presentUsers" :label="count($presentUsers) === 1 ? __(':name is looking at this task too', ['name' => collect($presentUsers)->first()['name']]) : (count($presentUsers) > 1 ? __(':count people are looking at this task too', ['count' => count($presentUsers)]) : null)" class="mb-3" />
+    <x-presence :channel="$this->presenceChannel()" :one="__(':name is looking at this task too')" :many="__(':count people are looking at this task too')" class="mb-3" />
 
     @if ($changedElsewhere)
         <flux:callout class="mb-4" variant="warning" icon="arrow-path" :heading="__('Changed by someone else')" :text="__('This task was saved by another person. Reload to see their changes; what you typed is kept until then.')">

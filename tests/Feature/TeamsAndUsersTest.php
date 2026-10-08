@@ -290,13 +290,13 @@ class TeamsAndUsersTest extends TestCase
             ->call('addTeam')
             ->assertHasNoErrors();
 
-        $this->assertSame(ProjectRole::Viewer, $this->project->roleFor($this->member));
+        $this->assertSame(ProjectRole::Viewer, $this->project->fresh()->roleFor($this->member));
 
         $component->set("teamRoles.{$team->id}", 'editor');
-        $this->assertSame(ProjectRole::Editor, $this->project->roleFor($this->member));
+        $this->assertSame(ProjectRole::Editor, $this->project->fresh()->roleFor($this->member));
 
         $component->call('removeTeam', $team->id);
-        $this->assertNull($this->project->roleFor($this->member));
+        $this->assertNull($this->project->fresh()->roleFor($this->member));
     }
 
     public function test_adding_an_unknown_team_or_role_is_rejected(): void

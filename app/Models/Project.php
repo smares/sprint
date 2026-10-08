@@ -22,6 +22,9 @@ class Project extends Model
     /** @use HasFactory<ProjectFactory> */
     use HasFactory;
 
+    /** @var array<int, ProjectRole|null> Roles already looked up, by user id. */
+    private array $knownRoles = [];
+
     protected static function booted(): void
     {
         static::deleting(function (self $project) {
@@ -74,6 +77,8 @@ class Project extends Model
 
     /**
      * What the person may do here: app admins manage every project, everybody else needs a membership.
+     * Every permission check asks this, so the answer is kept for the lifetime of this model instance
+     * (one request) and forgotten when memberships change through this model.
      */
     public function roleFor(?User $user): ?ProjectRole
     {
@@ -85,6 +90,15 @@ class Project extends Model
             return ProjectRole::Admin;
         }
 
+        if (! array_key_exists($user->getKey(), $this->knownRoles)) {
+            $this->knownRoles[$user->getKey()] = $this->lookUpRole($user);
+        }
+
+        return $this->knownRoles[$user->getKey()];
+    }
+
+    private function lookUpRole(User $user): ?ProjectRole
+    {
         $roles = $this->teams()
             ->whereHas('users', fn (Builder $users) => $users->whereKey($user->getKey()))
             ->get()
@@ -131,11 +145,25 @@ class Project extends Model
     public function setTeamRole(Team $team, ProjectRole $role): void
     {
         $this->teams()->syncWithoutDetaching([$team->getKey() => ['role' => $role->value]]);
+        $this->knownRoles = [];
+    }
+
+    public function removeTeam(Team $team): void
+    {
+        $this->teams()->detach($team->getKey());
+        $this->knownRoles = [];
     }
 
     public function setRole(User $user, ProjectRole $role): void
     {
         $this->members()->syncWithoutDetaching([$user->getKey() => ['role' => $role->value]]);
+        $this->knownRoles = [];
+    }
+
+    public function removeMember(User $user): void
+    {
+        $this->members()->detach($user->getKey());
+        $this->knownRoles = [];
     }
 
     /**
@@ -220,17 +248,35 @@ class Project extends Model
     }
 
     /**
-     * Done and total counts of all descendants for every task that has subtasks.
+     * Done and total counts of all descendants for those of the given tasks that have subtasks.
+     * Reads only their subtrees, one query per level, not the whole project.
      *
+     * @param  list<int>  $taskIds
      * @return array<int, array{done: int, total: int}>
      */
-    public function subtaskProgress(): array
+    public function subtaskProgress(array $taskIds): array
     {
-        $tasks = $this->tasks()->where('is_section', false)->with('status:id,is_done')->get(['id', 'parent_id', 'status_id']);
-        $childrenByParent = $tasks->groupBy('parent_id');
+        $childrenByParent = collect();
+        $frontier = $taskIds;
+
+        while ($frontier !== []) {
+            $level = collect();
+
+            foreach (array_chunk($frontier, 500) as $parentIds) {
+                $level = $level->concat($this->tasks()
+                    ->whereIn('parent_id', $parentIds)
+                    ->where('is_section', false)
+                    ->with('status:id,is_done')
+                    ->get(['id', 'parent_id', 'status_id']));
+            }
+
+            $childrenByParent = $childrenByParent->union($level->groupBy('parent_id'));
+            $frontier = $level->pluck('id')->all();
+        }
+
         $progress = [];
 
-        $count = function (int $id) use (&$count, &$progress, $childrenByParent): array {
+        $count = function (int $id) use (&$count, $childrenByParent): array {
             $done = 0;
             $total = 0;
 
@@ -240,15 +286,15 @@ class Project extends Model
                 $done += ($child->isDone() ? 1 : 0) + $childDone;
             }
 
-            if ($total > 0) {
-                $progress[$id] = ['done' => $done, 'total' => $total];
-            }
-
             return [$done, $total];
         };
 
-        foreach ($childrenByParent->get(null, []) as $root) {
-            $count($root->id);
+        foreach ($taskIds as $id) {
+            [$done, $total] = $count($id);
+
+            if ($total > 0) {
+                $progress[$id] = ['done' => $done, 'total' => $total];
+            }
         }
 
         return $progress;
@@ -270,13 +316,13 @@ class Project extends Model
     public function placeRootTask(Task $task, array $visibleIds, int $position): void
     {
         DB::transaction(function () use ($task, $visibleIds, $position) {
-            $orderedIds = $this->tasks()
+            $currentPositions = $this->tasks()
                 ->whereNull('parent_id')
-                ->whereKeyNot($task->getKey())
                 ->orderBy('position')
                 ->orderBy('id')
-                ->pluck('id')
+                ->pluck('position', 'id')
                 ->all();
+            $orderedIds = array_values(array_diff(array_keys($currentPositions), [$task->getKey()]));
 
             $visibleIds = array_values(array_intersect($visibleIds, $orderedIds));
             $position = max(0, min($position, count($visibleIds)));
@@ -289,8 +335,13 @@ class Project extends Model
 
             array_splice($orderedIds, $insertAt, 0, [$task->getKey()]);
 
+            // Only the rows whose place actually changes are written, usually a handful instead of all.
             foreach ($orderedIds as $index => $id) {
-                Task::whereKey($id)->update(['position' => $index]);
+                $current = $currentPositions[$id] ?? null;
+
+                if ($current === null || (int) $current !== $index) {
+                    Task::whereKey($id)->update(['position' => $index]);
+                }
             }
         });
     }

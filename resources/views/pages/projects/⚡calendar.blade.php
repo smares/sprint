@@ -130,7 +130,7 @@ new class extends Component
             ->count();
     }
 
-    protected function presenceChannel(): string
+    public function presenceChannel(): string
     {
         return "project.{$this->project->getKey()}.presence";
     }
@@ -150,7 +150,7 @@ new class extends Component
 
     <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <flux:heading size="xl">{{ $project->name }}</flux:heading>
-        <x-project-views :project="$project" active="calendar" :present="$presentUsers" />
+        <x-project-views :project="$project" active="calendar" :presence="$this->presenceChannel()" />
     </div>
 
     <div class="mb-4 flex items-center gap-2">

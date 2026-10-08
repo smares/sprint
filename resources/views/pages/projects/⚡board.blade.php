@@ -62,11 +62,27 @@ new class extends Component
     #[Computed]
     public function columns(): array
     {
+        // One query for all columns: number the tasks within each status and keep the first n per column.
+        $ranked = $this->project->tasks()
+            ->whereNull('parent_id')
+            ->select('tasks.*')
+            ->selectRaw('row_number() over (partition by status_id order by position, id) as column_rank');
+
+        $tasks = Task::query()
+            ->fromSub($ranked, 'tasks')
+            ->where(function ($query) {
+                foreach ($this->statuses as $status) {
+                    $query->orWhere(fn ($column) => $column->where('status_id', $status->id)->where('column_rank', '<=', $this->columnLimit($status->id)));
+                }
+            })
+            ->with(['assignee', 'collaborators', 'tags', 'status', 'blockers.status', 'fieldValues'])
+            ->orderBy('position')
+            ->orderBy('id')
+            ->get()
+            ->groupBy('status_id');
+
         return $this->statuses
-            ->mapWithKeys(fn (TaskStatus $status) => [$status->id => $this->columnQuery($status->id)
-                ->with(['assignee', 'collaborators', 'tags', 'status', 'blockers.status', 'fieldValues'])
-                ->limit($this->columnLimit($status->id))
-                ->get()])
+            ->mapWithKeys(fn (TaskStatus $status) => [$status->id => $tasks->get($status->id, collect())->values()])
             ->all();
     }
 
@@ -125,7 +141,7 @@ new class extends Component
     #[Computed]
     public function progress(): array
     {
-        return $this->project->subtaskProgress();
+        return $this->project->subtaskProgress(collect($this->columns)->flatten(1)->pluck('id')->all());
     }
 
     public function moveTask(int|string $taskId, int $position, string $group): void
@@ -150,7 +166,7 @@ new class extends Component
         unset($this->columns, $this->columnTotals);
     }
 
-    protected function presenceChannel(): string
+    public function presenceChannel(): string
     {
         return "project.{$this->project->getKey()}.presence";
     }
@@ -176,7 +192,7 @@ new class extends Component
         <flux:heading size="xl">{{ $project->name }}</flux:heading>
 
         <div class="flex flex-wrap items-center gap-2">
-            <x-project-views :project="$project" active="board" :present="$presentUsers" />
+            <x-project-views :project="$project" active="board" :presence="$this->presenceChannel()" />
 
             @if ($this->canManage)
                 <x-project-menu :project="$project" />

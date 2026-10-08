@@ -6,6 +6,7 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -48,7 +49,7 @@ class TaskSortingTest extends TestCase
             ->assertHasNoErrors();
 
         $this->assertDatabaseHas('tasks', ['title' => 'Planung', 'is_section' => true, 'parent_id' => $root->id]);
-        $this->assertSame(['done' => 0, 'total' => 1], $this->project->subtaskProgress()[$root->id]);
+        $this->assertSame(['done' => 0, 'total' => 1], $this->project->subtaskProgress([$root->id])[$root->id]);
     }
 
     public function test_sections_cannot_be_completed_or_used_as_parent(): void
@@ -154,6 +155,23 @@ class TaskSortingTest extends TestCase
             [$c->id, $a->id, $b->id],
             $this->project->tasks()->orderBy('position')->pluck('id')->all(),
         );
+    }
+
+    public function test_moving_a_task_only_rewrites_the_positions_that_change(): void
+    {
+        $tasks = collect(range(0, 5))->map(fn (int $position) => $this->task(['position' => $position]));
+        $ids = $tasks->pluck('id')->all();
+        $updates = 0;
+        DB::listen(function ($query) use (&$updates) {
+            if (str_starts_with(strtolower($query->sql), 'update "tasks" set "position"')) {
+                $updates++;
+            }
+        });
+
+        $this->project->placeRootTask($tasks[4], array_values(array_diff($ids, [$ids[4]])), 3);
+
+        $this->assertSame(2, $updates);
+        $this->assertSame([$ids[0], $ids[1], $ids[2], $ids[4], $ids[3], $ids[5]], $this->project->tasks()->orderBy('position')->pluck('id')->all());
     }
 
     public function test_manual_order_is_shared_between_list_and_board(): void

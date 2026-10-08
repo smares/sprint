@@ -42,6 +42,10 @@ Eine Regel (`Automation`) gehört zu einem Projekt: **Auslöser** (Status wechse
 - **Akteur ist die Regel:** Der Verlauf bekommt `user_id = null`, `automation_id` und in `data` den Namen der Regel (`automation`) sowie die auslösende Person (`by`); Kommentare haben `user_id = null` und `automation_name`. Benachrichtigungen nennen die Regel als Urheber und gehen nicht an die Person, die sie ausgelöst hat.
 - **Rechte:** Die Regel handelt mit den Rechten ihres Erstellers (`created_by`). Darf er das Projekt nicht mehr bearbeiten, schaltet sie sich ab, statt zu laufen. Zuständige und Benachrichtigte müssen das Projekt sehen dürfen; Status, Tags und Personen aus anderen Projekten werden ignoriert. Eine fehlerhafte Aktion bricht weder das Speichern noch die folgenden Aktionen ab.
 
+## Release
+
+Ein Release entsteht über den Workflow *Release* (Actions → Release → *Run workflow*, Zweig `main`) mit einer Version wie `0.1.0` (Vorabversionen wie `1.0.0-rc.1` sind erlaubt). Er baut das Docker-Image mit dem Flux-Pro-Zugang aus den Secrets, schiebt es nach `ghcr.io/smares/sprint` (Tags `0.1.0`, `0.1`, bei einer Hauptversion auch `latest`), legt den Tag `v0.1.0` samt GitHub-Release mit automatisch erzeugten Hinweisen an und prüft zuletzt, dass das Paket privat ist. Mit *dry run* baut er nur, auf jedem Zweig, und veröffentlicht nichts. Das Image ist privat zu halten, weil es Flux Pro enthält; siehe [Fertiges Image](deployment-docker.md#fertiges-image).
+
 ## Tests und CI
 
 GitHub Actions führt die Tests auf PHP 8.3, 8.4 und 8.5 aus (`.github/workflows/tests.yml`). Ändern sich `Dockerfile`, `compose.yaml`, `docker/` oder die Lockfiles, baut `.github/workflows/docker.yml` zusätzlich das Image und startet den ganzen Stack samt Reverb. Die Workflows brauchen die Repository-Secrets `FLUX_USERNAME` und `FLUX_LICENSE_KEY`, damit Composer `livewire/flux-pro` installieren kann.

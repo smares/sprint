@@ -60,6 +60,10 @@ Browser ──HTTPS──▶ Traefik (Dokploy) ──HTTP──▶ app (Caddy + 
 
 Mit **Auto Deploy** (Webhook von GitHub) baut Dokploy nach jedem Push auf `main` neu; Migrationen laufen beim Start automatisch.
 
+## Fertiges Image statt Bauen
+
+Dokploy muss Sprint nicht selbst bauen: Als **Compose Path** `./compose.image.yaml` eintragen und im *Environment* `SPRINT_VERSION=0.1.0` (oder `latest`) setzen; `COMPOSER_AUTH` entfällt. Das Image liegt privat auf `ghcr.io`: einmal im Terminal des Servers `docker login ghcr.io` (Token mit `read:packages`, siehe [Fertiges Image](deployment-docker.md#fertiges-image)), oder in Dokploy unter *Settings → Registry* ein Registry-Konto für `ghcr.io` anlegen. Ein neues Release spielst du ein, indem du `SPRINT_VERSION` änderst und **Deploy** drückst.
+
 ## Live-Updates (Reverb)
 
 Der Dienst `reverb` steckt im Compose-Profil `realtime`. Docker Compose liest das gewünschte Profil aus der `.env`, ein Eintrag im *Environment* genügt also (der Startbefehl unter *Advanced* bleibt, wie er ist):

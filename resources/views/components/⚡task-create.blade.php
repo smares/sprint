@@ -55,7 +55,7 @@ new class extends Component
     #[Computed]
     public function users(): Collection
     {
-        return $this->project->eligibleUsers()->orderBy('name')->get(['id', 'name']);
+        return $this->project->eligibleUsers()->orderBy('name')->get(['id', 'name', 'absent_from', 'absent_until']);
     }
 
     protected function mentionProject(): Project
@@ -118,7 +118,7 @@ new class extends Component
                 <flux:select variant="listbox" wire:model="assigneeId" :label="__('Assignee')">
                     <flux:select.option value="">{{ __('Nobody') }}</flux:select.option>
                     @foreach ($this->users as $user)
-                        <flux:select.option value="{{ $user->id }}">{{ $user->name }}</flux:select.option>
+                        <flux:select.option value="{{ $user->id }}">{{ $user->labelledName() }}</flux:select.option>
                     @endforeach
                 </flux:select>
             </div>

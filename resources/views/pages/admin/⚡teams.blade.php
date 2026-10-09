@@ -152,7 +152,7 @@ new class extends Component
                 <div class="flex flex-wrap gap-2">
                     @forelse ($team->users as $member)
                         <flux:badge wire:key="team-{{ $team->id }}-user-{{ $member->id }}" size="lg">
-                            {{ $member->name }}
+                            {{ $member->labelledName() }}
                             <flux:badge.close wire:click="removeMember({{ $team->id }}, {{ $member->id }})" />
                         </flux:badge>
                     @empty

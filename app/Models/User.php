@@ -26,7 +26,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Sanctum\HasApiTokens;
 use SensitiveParameter;
 
-#[Fillable(['name', 'email', 'password', 'is_admin', 'locale', 'deactivated_at', 'digest_enabled', 'reminders_enabled', 'celebrations_enabled'])]
+#[Fillable(['name', 'email', 'password', 'is_admin', 'locale', 'deactivated_at', 'digest_enabled', 'reminders_enabled', 'celebrations_enabled', 'absent_from', 'absent_until'])]
 #[Hidden(['password', 'remember_token', 'two_factor_secret', 'two_factor_recovery_codes'])]
 class User extends Authenticatable implements HasLocalePreference, PasskeyUser
 {
@@ -55,6 +55,8 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
             'reminders_enabled' => 'boolean',
             'celebrations_enabled' => 'boolean',
             'avatar_updated_at' => 'datetime',
+            'absent_from' => 'date',
+            'absent_until' => 'date',
         ];
     }
 
@@ -126,6 +128,44 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
     public function isActive(): bool
     {
         return $this->deactivated_at === null;
+    }
+
+    /**
+     * The one planned absence from the profile, both days included. While it lasts no emails go out to this person
+     * (the inbox still collects everything) and the interface shows "away until …" with a faded avatar.
+     */
+    public function isAbsent(): bool
+    {
+        $today = today()->toDateString();
+
+        return $this->absent_from !== null && $this->absent_until !== null
+            && $this->absent_from->toDateString() <= $today && $today <= $this->absent_until->toDateString();
+    }
+
+    /**
+     * Whether an absence is entered that has not ended yet (it may still lie ahead).
+     */
+    public function hasPlannedAbsence(): bool
+    {
+        return $this->absent_until !== null && $this->absent_until->toDateString() >= today()->toDateString();
+    }
+
+    /**
+     * "away until 2026-10-20" while the absence lasts, otherwise null.
+     */
+    public function absenceNote(): ?string
+    {
+        return $this->isAbsent() ? __('away until :date', ['date' => $this->absent_until->isoFormat('L')]) : null;
+    }
+
+    /**
+     * The name with what tells others about the person: "Anna (deactivated)" or "Anna (away until 2026-10-20)".
+     */
+    public function labelledName(): string
+    {
+        $note = $this->isActive() ? $this->absenceNote() : __('deactivated');
+
+        return $note === null ? $this->name : "{$this->name} ({$note})";
     }
 
     /**

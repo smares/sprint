@@ -221,7 +221,7 @@ new class extends Component
                                     <div class="flex min-w-0 items-center gap-1.5" title="{{ collect([$task->assignee?->name, ...$task->collaborators->pluck('name')])->filter()->join(', ') }}">
                                         @if ($task->assignee)
                                             <x-user-avatar size="xs" :user="$task->assignee" />
-                                            <flux:text size="sm" class="truncate">{{ $task->assignee->name }}</flux:text>
+                                            <flux:text size="sm" class="truncate">{{ $task->assignee->labelledName() }}</flux:text>
                                         @endif
                                         @if ($task->collaborators->isNotEmpty())
                                             <flux:text size="sm">+{{ $task->collaborators->count() }}</flux:text>

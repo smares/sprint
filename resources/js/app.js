@@ -15,7 +15,7 @@ const registerMentionable = () => {
             return options.users
                 .filter((user) => user.name.toLowerCase().includes(query))
                 .slice(0, 8)
-                .map((user) => ({ type: 'user', id: user.id, label: user.name }))
+                .map((user) => ({ type: 'user', id: user.id, label: user.name, note: user.note }))
         },
 
         field() {

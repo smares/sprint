@@ -98,8 +98,11 @@
                         class="block w-full truncate rounded px-2 py-1 text-start"
                         x-bind:class="index === active ? 'bg-zinc-100 dark:bg-zinc-700' : ''"
                         x-on:mousedown.prevent="select(item)"
-                        x-text="item.label"
-                    ></button>
+                    >
+                        <span x-text="item.label"></span>
+                        {{-- Only shown in the list; the mention itself keeps just the name --}}
+                        <span x-show="item.note" class="text-xs text-zinc-400" x-text="'(' + item.note + ')'"></span>
+                    </button>
                 </li>
             </template>
         </ul>

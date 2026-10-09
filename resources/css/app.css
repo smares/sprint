@@ -169,6 +169,15 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
     display: none;
 }
 
+/* Toasts: Flux keeps them 1.5rem off the edges and up to 24rem wide, more than a phone has, so long ones stuck to the left
+   edge and short ones sat on the right. On phones they are centred with the page's gutter on both sides. */
+@media (width < 40rem) {
+    ui-toast {
+        margin-inline: auto;
+        max-width: calc(100% - 2rem);
+    }
+}
+
 /* The unicorn after a completed task: fades in below left of the middle, flies diagonally up to the right with a slight
    swing and fades out again before it reaches the edge. Centred on its own middle by the first translate. */
 @keyframes unicorn-flight {

@@ -110,7 +110,7 @@ class BulkTaskActionsTest extends TestCase
         $a = $this->task('Eins');
         $b = $this->task('Zwei');
 
-        $this->list([$a])->assertSee('Auswahl beenden')->assertSee('Erledigen')->assertSee('Ändern')->assertSee('Löschen')->assertSeeHtml('$wire.selected');
+        $this->list([$a])->assertSee('Auswahl beenden')->assertSee('Als erledigt markieren')->assertSee('Ändern')->assertSee('Löschen')->assertSeeHtml('$wire.selected');
         $this->list([$a, $b])->assertSee('Auswahl beenden');
         $this->list()->call('stopSelecting')->assertDontSee('Auswahl beenden');
     }

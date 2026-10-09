@@ -2,7 +2,7 @@
 @php
     $groups = [
         __('Everywhere') => [
-            ['/', __('Search or jump to…')],
+            [['/', '⌘ K', 'Ctrl K'], __('Search or jump to…')],
             ['?', __('Show this overview')],
         ],
         __('List and board') => [
@@ -12,7 +12,7 @@
             ['Esc', __('Close the task')],
         ],
         __('Open task') => [
-            ['e', __('Mark as done or open again')],
+            ['e', __('Mark as done or reopen')],
         ],
     ];
 @endphp
@@ -28,7 +28,11 @@
                     @foreach ($shortcuts as [$key, $label])
                         <div class="flex items-center justify-between py-1.5">
                             <dt class="text-sm text-zinc-700 dark:text-zinc-200">{{ $label }}</dt>
-                            <dd><kbd class="rounded border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 font-mono text-xs text-zinc-700 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200">{{ $key }}</kbd></dd>
+                            <dd class="flex gap-1">
+                                @foreach ((array) $key as $one)
+                                    <kbd class="rounded border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 font-mono text-xs text-zinc-700 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200">{{ $one }}</kbd>
+                                @endforeach
+                            </dd>
                         </div>
                     @endforeach
                 </dl>

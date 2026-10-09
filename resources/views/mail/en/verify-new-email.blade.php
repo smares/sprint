@@ -1,7 +1,7 @@
 <x-mail::message>
 # Hello {{ $name }},
 
-you want to change your email address in {{ config('app.name') }} to **{{ $email }}**. Please confirm that this address is yours; the link is valid for {{ $minutes }} minutes.
+You want to change your email address in {{ config('app.name') }} to **{{ $email }}**. Please confirm that this address is yours; the link is valid for {{ $minutes }} minutes.
 
 <x-mail::button :url="$url">
 Confirm address

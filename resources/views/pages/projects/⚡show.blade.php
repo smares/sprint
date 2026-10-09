@@ -748,7 +748,7 @@ new class extends Component
                 </div>
 
                 <div class="flex flex-wrap items-center gap-2">
-                    <flux:button size="sm" icon="check" wire:click="bulkComplete" x-bind:disabled="$wire.selected.length === 0">{{ __('Complete') }}</flux:button>
+                    <flux:button size="sm" icon="check" wire:click="bulkComplete" x-bind:disabled="$wire.selected.length === 0">{{ __('Mark as done') }}</flux:button>
 
                     <flux:modal.trigger name="bulk-edit">
                         <flux:button size="sm" icon="pencil-square" x-bind:disabled="$wire.selected.length === 0">{{ __('Change') }}</flux:button>

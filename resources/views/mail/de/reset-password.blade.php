@@ -1,7 +1,7 @@
 <x-mail::message>
 # Hallo {{ $name }},
 
-für dein Konto wurde ein neues Passwort angefordert. Über den Knopf legst du es fest; der Link gilt {{ $minutes }} Minuten.
+für dein Konto wurde ein neues Passwort angefordert. Über die Schaltfläche legst du es fest; der Link gilt {{ $minutes }} Minuten.
 
 <x-mail::button :url="$url">
 Neues Passwort festlegen

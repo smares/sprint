@@ -1201,9 +1201,9 @@ new class extends Component
                         <flux:timeline.item wire:key="comment-{{ $comment->id }}" align="start">
                             <flux:timeline.indicator variant="bare">
                                 @if ($comment->user)
-                                    <x-user-avatar size="xs" circle :user="$comment->user" />
+                                    <x-user-avatar size="xs" :user="$comment->user" />
                                 @else
-                                    <flux:avatar size="xs" circle icon="bolt" />
+                                    <flux:avatar size="xs" icon="bolt" />
                                 @endif
                             </flux:timeline.indicator>
 

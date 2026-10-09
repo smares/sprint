@@ -251,7 +251,7 @@ new class extends Component
             </div>
 
             <div class="flex items-center gap-4" x-data="avatarPicker({{ UserAvatar::SIZE }})">
-                <x-user-avatar size="xl" circle :user="auth()->user()" />
+                <x-user-avatar size="xl" :user="auth()->user()" />
                 <div class="space-y-2">
                     <div class="flex flex-wrap gap-2">
                         <flux:button size="sm" icon="photo" x-on:click="$refs.avatarFile.click()" x-bind:disabled="busy">{{ __('Choose picture') }}</flux:button>

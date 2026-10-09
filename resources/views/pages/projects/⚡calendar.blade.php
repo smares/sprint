@@ -175,7 +175,7 @@ new class extends Component
                         @class([
                         'group min-h-28 space-y-1 border-e border-b border-zinc-200 p-1.5 dark:border-zinc-700',
                         'bg-zinc-50/60 text-zinc-400 dark:bg-zinc-900/40' => ! $day['inMonth'],
-                        'cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50' => $this->canEdit,
+                        'cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-700/40' => $this->canEdit,
                     ])>
                         <div class="flex items-start justify-between">
                             <div @class([

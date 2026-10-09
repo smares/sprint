@@ -104,7 +104,7 @@ new class extends Component
 ?>
 
 <div>
-    <flux:modal name="create-task" class="md:w-[28rem]">
+    <flux:modal name="create-task" class="md:w-[34rem]">
         <form wire:submit="create" class="space-y-6">
             <flux:heading size="lg">{{ __('New task') }}</flux:heading>
             <flux:input wire:model="title" :label="__('Title')" autofocus />

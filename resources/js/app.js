@@ -352,6 +352,20 @@ if (window.Alpine) {
     document.addEventListener('alpine:init', registerAll)
 }
 
+// From "… commented" in a task's activity to the comment (tasks/⚡show.blade.php), which then lights up briefly
+window.showComment = (id) => {
+    const comment = document.getElementById(`comment-${id}`)
+    const card = comment?.querySelector('[data-comment-card]')
+
+    if (! comment) {
+        return
+    }
+
+    comment.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    card?.classList.add('ring-2', 'ring-accent')
+    setTimeout(() => card?.classList.remove('ring-2', 'ring-accent'), 1600)
+}
+
 document.addEventListener('click', (event) => {
     const image = event.target.closest?.('img[data-preview-url]')
 

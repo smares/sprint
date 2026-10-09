@@ -115,8 +115,11 @@ new class extends Component
     /** Somebody else saved this task while it is open here; the form keeps what was typed until it is reloaded. */
     public bool $changedElsewhere = false;
 
-    /** How many of the latest feed entries are shown. */
+    /** How many of the latest activity entries are shown. */
     public int $feedLimit = self::FEED_PAGE;
+
+    /** How many of the latest comments are shown. */
+    public int $commentLimit = self::FEED_PAGE;
 
     public function hydrate(): void
     {
@@ -162,7 +165,7 @@ new class extends Component
         $reactable->toggleReaction(auth()->user(), $emoji);
 
         $this->task->load('reactions.user');
-        unset($this->activityFeed);
+        $this->forgetComments();
     }
 
     #[Computed]
@@ -653,7 +656,7 @@ new class extends Component
         $this->task->logSyncChanges(ActivityType::CollaboratorsAdded, ActivityType::CollaboratorsRemoved, $collaboratorChanges, $names(User::class, 'name'));
         $this->task->logSyncChanges(ActivityType::BlockersAdded, ActivityType::BlockersRemoved, $dependencyChanges['blockers'], $names(Task::class, 'title'));
         $this->task->logSyncChanges(ActivityType::BlockingAdded, ActivityType::BlockingRemoved, $dependencyChanges['blocking'], $names(Task::class, 'title'));
-        unset($this->activityFeed);
+        $this->forgetComments();
 
         $this->announceChange();
 
@@ -661,15 +664,40 @@ new class extends Component
     }
 
     /**
-     * The latest comments and recorded changes (feedLimit of them), oldest first.
+     * The latest comments (commentLimit of them), oldest first, with the form below them.
+     *
+     * @return Collection<int, \App\Models\Comment>
+     */
+    #[Computed]
+    public function shownComments(): Collection
+    {
+        return $this->task->comments()->with('user', 'reactions.user')->latest()->latest('id')->limit($this->commentLimit)->get()
+            ->each(fn ($comment) => $comment->setRelation('task', $this->task))
+            ->reverse()->values();
+    }
+
+    #[Computed]
+    public function hasEarlierComments(): bool
+    {
+        return $this->task->comments()->count() > $this->commentLimit;
+    }
+
+    public function showEarlierComments(): void
+    {
+        $this->commentLimit += self::FEED_PAGE;
+        unset($this->shownComments, $this->hasEarlierComments);
+    }
+
+    /**
+     * The latest recorded changes and who commented when (feedLimit of them), oldest first. A comment shows here only
+     * as "… commented" with a jump to it; the words stay in the comments above.
      *
      * @return \Illuminate\Support\Collection<int, array{at: \Illuminate\Support\Carbon, comment: ?\App\Models\Comment, activity: ?\App\Models\TaskActivity}>
      */
     #[Computed]
     public function activityFeed(): SupportCollection
     {
-        $comments = $this->task->comments()->with('user', 'reactions.user')->latest()->latest('id')->limit($this->feedLimit)->get()
-            ->each(fn ($comment) => $comment->setRelation('task', $this->task))
+        $comments = $this->task->comments()->with('user')->latest()->latest('id')->limit($this->feedLimit)->get()
             ->map(fn ($comment) => ['at' => $comment->created_at, 'comment' => $comment, 'activity' => null]);
 
         $activities = $this->task->activities()->with('user')->latest()->latest('id')->limit($this->feedLimit)->get()
@@ -693,6 +721,34 @@ new class extends Component
         unset($this->activityFeed, $this->hasEarlierFeed);
     }
 
+    /**
+     * From "… commented" in the activity to the comment itself, loading earlier comments first if it is not shown yet.
+     */
+    public function showComment(int $commentId): void
+    {
+        $comment = $this->commentOrFail($commentId);
+
+        $newerOrSame = $this->task->comments()
+            ->where(fn ($query) => $query->where('created_at', '>', $comment->created_at)
+                ->orWhere(fn ($query) => $query->where('created_at', $comment->created_at)->where('id', '>=', $comment->id)))
+            ->count();
+
+        if ($newerOrSame > $this->commentLimit) {
+            $this->commentLimit = (int) (ceil($newerOrSame / self::FEED_PAGE) * self::FEED_PAGE);
+            unset($this->shownComments, $this->hasEarlierComments);
+        }
+
+        $this->js("window.showComment({$comment->id})");
+    }
+
+    /**
+     * Comments and the activity both list comments, so a change to one is a change to both.
+     */
+    private function forgetComments(): void
+    {
+        unset($this->shownComments, $this->hasEarlierComments, $this->activityFeed, $this->hasEarlierFeed);
+    }
+
     public function addComment(): void
     {
         $this->authorizeEdit();
@@ -705,7 +761,7 @@ new class extends Component
         ]);
 
         $this->reset('comment');
-        unset($this->activityFeed);
+        $this->forgetComments();
     }
 
     private function commentOrFail(int $commentId): \App\Models\Comment
@@ -744,7 +800,7 @@ new class extends Component
         $comment->update(['body' => $validated['editingBody']]);
 
         $this->reset('editingCommentId', 'editingBody');
-        unset($this->activityFeed);
+        $this->forgetComments();
     }
 
     public function deleteComment(int $commentId): void
@@ -759,7 +815,7 @@ new class extends Component
             $this->reset('editingCommentId', 'editingBody');
         }
 
-        unset($this->activityFeed);
+        $this->forgetComments();
     }
 
     #[Computed]
@@ -782,7 +838,8 @@ new class extends Component
 
         $this->reset('uploads');
         $this->task->logActivity(ActivityType::AttachmentsAdded, ['names' => $names]);
-        unset($this->attachments, $this->activityFeed);
+        unset($this->attachments);
+        $this->forgetComments();
     }
 
     /**
@@ -800,7 +857,8 @@ new class extends Component
 
         $this->reset('inlineUpload');
         $this->task->logActivity(ActivityType::AttachmentsAdded, ['names' => [$attachment->name]]);
-        unset($this->attachments, $this->activityFeed);
+        unset($this->attachments);
+        $this->forgetComments();
 
         return ['id' => $attachment->id, 'name' => $attachment->name];
     }
@@ -828,7 +886,8 @@ new class extends Component
         $attachment->delete();
 
         $this->task->logActivity(ActivityType::AttachmentsRemoved, ['names' => [$attachment->name]]);
-        unset($this->attachments, $this->activityFeed);
+        unset($this->attachments);
+        $this->forgetComments();
     }
 
     public function duplicate(): void
@@ -838,7 +897,7 @@ new class extends Component
         abort_if($this->task->is_section, 404);
 
         $copy = $this->task->duplicate();
-        unset($this->activityFeed);
+        $this->forgetComments();
 
         if ($this->panel) {
             $this->dispatch('task-changed');
@@ -1188,7 +1247,63 @@ new class extends Component
 
     <flux:separator class="my-6" />
 
-    <flux:heading size="lg" class="mb-4">{{ __('Activity and comments') }}</flux:heading>
+    <flux:heading size="lg" class="mb-4">{{ __('Comments') }}</flux:heading>
+
+    <div class="space-y-3">
+        @if ($this->hasEarlierComments)
+            <flux:button size="sm" variant="ghost" icon="chevron-up" wire:click="showEarlierComments">{{ __('Show earlier comments') }}</flux:button>
+        @endif
+
+        @forelse ($this->shownComments as $comment)
+            <div id="comment-{{ $comment->id }}" wire:key="comment-{{ $comment->id }}" class="flex scroll-mt-4 items-start gap-3">
+                @if ($comment->user)
+                    <x-user-avatar size="xs" :user="$comment->user" class="mt-2" />
+                @else
+                    <flux:avatar size="xs" icon="bolt" class="mt-2" />
+                @endif
+
+                <flux:card size="sm" class="min-w-0 flex-1 space-y-1 transition-shadow" data-comment-card>
+                    <div class="flex items-center gap-2">
+                        <flux:text class="min-w-0 flex-1 text-sm"><strong>{{ $comment->authorName() ?? __('Someone') }}</strong> · {{ $comment->created_at->isoFormat('L LT') }}@if ($comment->wasEdited()) · {{ __('edited') }} @endif</flux:text>
+                        @if ($editingCommentId !== $comment->id && Gate::allows('update', $comment))
+                            <flux:button size="xs" variant="ghost" icon="pencil-square" wire:click="startEditComment({{ $comment->id }})" :aria-label="__('Edit comment')" :tooltip="__('Edit comment')" />
+                        @endif
+                        @can('delete', $comment)
+                            <flux:button size="xs" variant="ghost" icon="trash" wire:click="deleteComment({{ $comment->id }})" wire:confirm="{{ __('Delete comment?') }}" :aria-label="__('Delete comment')" :tooltip="__('Delete comment')" />
+                        @endcan
+                    </div>
+
+                    @if ($editingCommentId === $comment->id)
+                        <form wire:submit="saveComment" class="space-y-2">
+                            <x-markdown-editor wire:model="editingBody" :rows="3" :mentions="$this->mentionOptions" :images="$this->canEdit ? $this->imageAttachments : null" />
+                            <flux:error name="editingBody" />
+                            <div class="flex gap-2">
+                                <flux:button size="sm" type="submit" variant="primary">{{ __('Save') }}</flux:button>
+                                <flux:button size="sm" type="button" variant="ghost" wire:click="cancelEditComment">{{ __('Cancel') }}</flux:button>
+                            </div>
+                        </form>
+                    @else
+                        <x-markdown :text="$comment->body" />
+                    @endif
+
+                    <x-reactions :reactable="$comment" target="comment" :can-react="$this->canEdit" />
+                </flux:card>
+            </div>
+        @empty
+            <flux:text>{{ __('No comments yet.') }}</flux:text>
+        @endforelse
+    </div>
+
+    @if ($this->canEdit)
+        <form wire:submit="addComment" class="mt-6 space-y-3">
+            <x-markdown-editor wire:model="comment" :placeholder="__('Write a comment … (Markdown, @ for mentions)')" :rows="3" :mentions="$this->mentionOptions" :images="$this->canEdit ? $this->imageAttachments : null" />
+            <flux:button type="submit">{{ __('Post comment') }}</flux:button>
+        </form>
+    @endif
+
+    <flux:separator class="my-6" />
+
+    <flux:heading size="lg" class="mb-4">{{ __('Activity') }}</flux:heading>
 
     <div class="space-y-3">
         @if ($this->hasEarlierFeed)
@@ -1202,42 +1317,13 @@ new class extends Component
                 @foreach ($this->activityFeed as $entry)
                     @if ($entry['comment'])
                         @php($comment = $entry['comment'])
-                        <flux:timeline.item wire:key="comment-{{ $comment->id }}" align="start">
-                            <flux:timeline.indicator variant="bare">
-                                @if ($comment->user)
-                                    <x-user-avatar size="xs" :user="$comment->user" />
-                                @else
-                                    <flux:avatar size="xs" icon="bolt" />
-                                @endif
+                        <flux:timeline.item wire:key="activity-comment-{{ $comment->id }}">
+                            <flux:timeline.indicator>
+                                <flux:icon name="chat-bubble-left" variant="micro" />
                             </flux:timeline.indicator>
 
                             <flux:timeline.content>
-                                <flux:card size="sm" class="space-y-1">
-                                    <div class="flex items-center gap-2">
-                                        <flux:text class="min-w-0 flex-1 text-sm"><strong>{{ $comment->authorName() }}</strong> · {{ $comment->created_at->isoFormat('L LT') }}@if ($comment->wasEdited()) · {{ __('edited') }} @endif</flux:text>
-                                        @if ($editingCommentId !== $comment->id && Gate::allows('update', $comment))
-                                            <flux:button size="xs" variant="ghost" icon="pencil-square" wire:click="startEditComment({{ $comment->id }})" :aria-label="__('Edit comment')" :tooltip="__('Edit comment')" />
-                                        @endif
-                                        @can('delete', $comment)
-                                            <flux:button size="xs" variant="ghost" icon="trash" wire:click="deleteComment({{ $comment->id }})" wire:confirm="{{ __('Delete comment?') }}" :aria-label="__('Delete comment')" :tooltip="__('Delete comment')" />
-                                        @endcan
-                                    </div>
-
-                                    @if ($editingCommentId === $comment->id)
-                                        <form wire:submit="saveComment" class="space-y-2">
-                                            <x-markdown-editor wire:model="editingBody" :rows="3" :mentions="$this->mentionOptions" :images="$this->canEdit ? $this->imageAttachments : null" />
-                                            <flux:error name="editingBody" />
-                                            <div class="flex gap-2">
-                                                <flux:button size="sm" type="submit" variant="primary">{{ __('Save') }}</flux:button>
-                                                <flux:button size="sm" type="button" variant="ghost" wire:click="cancelEditComment">{{ __('Cancel') }}</flux:button>
-                                            </div>
-                                        </form>
-                                    @else
-                                        <x-markdown :text="$comment->body" />
-                                    @endif
-
-                                    <x-reactions :reactable="$comment" target="comment" :can-react="$this->canEdit" />
-                                </flux:card>
+                                <flux:text size="sm"><strong class="font-medium text-zinc-800 dark:text-white">{{ $comment->authorName() ?? __('Someone') }}</strong> {{ __('commented') }} · {{ $comment->created_at->isoFormat('L LT') }} · <flux:link href="#comment-{{ $comment->id }}" variant="subtle" wire:click.prevent="showComment({{ $comment->id }})" class="text-sm">{{ __('Go to comment') }}</flux:link></flux:text>
                             </flux:timeline.content>
                         </flux:timeline.item>
                     @else
@@ -1256,13 +1342,6 @@ new class extends Component
             </flux:timeline>
         @endif
     </div>
-
-    @if ($this->canEdit)
-        <form wire:submit="addComment" class="mt-6 space-y-3">
-            <x-markdown-editor wire:model="comment" :placeholder="__('Write a comment … (Markdown, @ for mentions)')" :rows="3" :mentions="$this->mentionOptions" :images="$this->canEdit ? $this->imageAttachments : null" />
-            <flux:button type="submit">{{ __('Post comment') }}</flux:button>
-        </form>
-    @endif
 
     <flux:modal name="delete-task" class="min-w-[22rem]">
         <div class="space-y-6">

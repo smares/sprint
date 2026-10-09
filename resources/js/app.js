@@ -268,6 +268,44 @@ const registerAvatarPicker = () => {
     }))
 }
 
+// One emoji, as Emoji::normalize() accepts it: a flag, a keycap, a flag of a region, or pictographs (with skin tone), joined ones included
+const EMOJI = /^(?:[\u{1F1E6}-\u{1F1FF}]{2}|[0-9#*]\uFE0F?\u20E3|\u{1F3F4}[\u{E0020}-\u{E007E}]+\u{E007F}|\p{Extended_Pictographic}\uFE0F?[\u{1F3FB}-\u{1F3FF}]?(?:\u200D\p{Extended_Pictographic}\uFE0F?[\u{1F3FB}-\u{1F3FF}]?)*)$/u
+
+// The field for any other reaction emoji (components/reactions.blade.php). Letters and other text vanish as they are typed or pasted, only
+// the last emoji stays. Enter sends it and never reaches the task's form around it; while an input method is still composing, Enter only
+// finishes that. enterkeyhint="send" makes phone keyboards show Send instead of Next, which would jump to the next field of the form.
+const registerEmojiField = () => {
+    window.Alpine.data('emojiField', (target, id) => ({
+        emoji: '',
+
+        keepEmoji(event) {
+            if (event.isComposing) {
+                return
+            }
+
+            const graphemes = [...new Intl.Segmenter().segment(event.target.value)].map(({ segment }) => segment.trim())
+
+            this.emoji = graphemes.findLast((grapheme) => EMOJI.test(grapheme)) ?? ''
+            event.target.value = this.emoji
+        },
+
+        send(event) {
+            if (event.isComposing) {
+                return
+            }
+
+            event.preventDefault()
+
+            if (this.emoji === '') {
+                return
+            }
+
+            this.$wire.react(target, id, this.emoji)
+            this.emoji = ''
+        },
+    }))
+}
+
 // The task flyout (components/task-panel.blade.php). Flux does not close it by itself: Esc, a click next to it,
 // the close button and switching to another task go through here and ask first if the task has unsaved input.
 const registerTaskFlyout = () => {
@@ -344,6 +382,7 @@ const registerAll = () => {
     registerTimelineBar()
     registerPresence()
     registerAvatarPicker()
+    registerEmojiField()
 }
 
 if (window.Alpine) {

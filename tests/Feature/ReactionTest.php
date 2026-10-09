@@ -255,4 +255,15 @@ class ReactionTest extends TestCase
         $this->assertSame(4, substr_count($html, '<template x-if="built">'));
         $this->assertStringNotContainsString(__('Any other emoji …'), preg_replace('#<template x-if="built">.*?</template>#s', '', $html));
     }
+
+    public function test_the_emoji_field_keeps_only_an_emoji_and_sends_with_enter_instead_of_moving_on(): void
+    {
+        $html = $this->page($this->bernd)->html();
+
+        // Filtering and sending live in emojiField (app.js); Send instead of Next keeps phone keyboards from jumping to the next field of the task's form
+        $this->assertStringContainsString('x-data="emojiField(\'task\', '.$this->task->id.')"', $html);
+        $this->assertStringContainsString('x-on:keydown.enter="send($event)"', $html);
+        $this->assertStringContainsString('enterkeyhint="send"', $html);
+        $this->assertStringContainsString("Alpine.data('emojiField'", (string) file_get_contents(resource_path('js/app.js')));
+    }
 }

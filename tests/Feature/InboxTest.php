@@ -153,6 +153,33 @@ class InboxTest extends TestCase
         Livewire::test('notification-bell')->assertDontSee('ungelesen');
     }
 
+    public function test_the_inbox_tells_the_bell_whenever_entries_are_read_unread_or_removed(): void
+    {
+        $this->actingAs($this->other);
+        Comment::factory()->count(3)->create(['task_id' => $this->task->id, 'user_id' => $this->other->id]);
+        [$first, $second, $third] = $this->me->notifications()->get()->all();
+
+        $this->actingAs($this->me);
+        $page = Livewire::test('pages::inbox');
+
+        $page->call('toggleRead', $first->id)->assertDispatched('inbox-changed');
+        $page->call('open', $second->id)->assertDispatched('inbox-changed');
+        $page->call('remove', $third->id)->assertDispatched('inbox-changed');
+        $page->call('markAllRead')->assertDispatched('inbox-changed');
+    }
+
+    public function test_the_bell_recounts_when_told_by_the_inbox(): void
+    {
+        $this->actingAs($this->other);
+        Comment::factory()->count(2)->create(['task_id' => $this->task->id, 'user_id' => $this->other->id]);
+
+        $this->actingAs($this->me);
+        $bell = Livewire::test('notification-bell')->assertSee('2 ungelesen');
+
+        $this->me->unreadNotifications()->update(['read_at' => now()]);
+        $bell->dispatch('inbox-changed')->assertDontSee('ungelesen');
+    }
+
     public function test_the_header_links_to_the_inbox(): void
     {
         $this->actingAs($this->me)->get(route('projects.index'))->assertOk()->assertSee(route('inbox'), false);

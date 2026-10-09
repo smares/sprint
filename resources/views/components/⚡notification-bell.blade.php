@@ -3,6 +3,7 @@
 use App\Services\RealtimeService;
 use Flux\Flux;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 new class extends Component
@@ -15,6 +16,15 @@ new class extends Component
         return app(RealtimeService::class)->enabled()
             ? ['echo-private:user.'.auth()->id().',.InboxUpdated' => 'inboxUpdated']
             : [];
+    }
+
+    /**
+     * The inbox page read, unread or removed entries: the bell stays on the page across navigation, so it is told.
+     */
+    #[On('inbox-changed')]
+    public function inboxChanged(): void
+    {
+        unset($this->unread);
     }
 
     public function inboxUpdated(): void

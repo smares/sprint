@@ -21,8 +21,10 @@ new class extends Component
             ->visibleTo(auth()->user())
             ->whereNull('archived_at')
             ->withCount([
-                'tasks',
                 'tasks as open_tasks_count' => fn ($query) => $query->open(),
+                // Like the list, which these numbers open: top-level tasks only
+                'tasks as overdue_tasks_count' => fn ($query) => $query->topLevel()->overdue(),
+                'tasks as due_soon_tasks_count' => fn ($query) => $query->topLevel()->dueSoon(),
             ])
             ->orderBy('name')
             ->get();

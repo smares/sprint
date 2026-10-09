@@ -46,6 +46,9 @@ class Task extends Model
     /** How far a task can be moved or stretched in one go (calendar and timeline), about ten years. */
     public const MAX_SHIFT_DAYS = 3650;
 
+    /** "Due this week": today and the six days after it (projects page, list filter). */
+    public const int DUE_SOON_DAYS = 7;
+
     /** How many intervals an overdue repeating task may skip to reach today; a guard against endless loops. */
     private const int MAX_CATCH_UP_STEPS = 1000;
 
@@ -907,6 +910,28 @@ class Task extends Model
     protected function scopeDone(Builder $query): void
     {
         $query->whereIn('tasks.status_id', TaskStatus::query()->where('is_done', true)->select('id'));
+    }
+
+    /**
+     * Open tasks whose due date has passed (before today, in the app's time zone).
+     *
+     * @param  Builder<static>  $query
+     */
+    protected function scopeOverdue(Builder $query): void
+    {
+        $query->open()->where('tasks.due_date', '<', today()->toDateString());
+    }
+
+    /**
+     * Open tasks due from today on within the next DUE_SOON_DAYS days ("due this week").
+     *
+     * @param  Builder<static>  $query
+     */
+    protected function scopeDueSoon(Builder $query): void
+    {
+        $query->open()
+            ->where('tasks.due_date', '>=', today()->toDateString())
+            ->where('tasks.due_date', '<', today()->addDays(self::DUE_SOON_DAYS)->toDateString());
     }
 
     /**

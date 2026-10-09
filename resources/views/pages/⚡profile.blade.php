@@ -138,6 +138,11 @@ new class extends Component
         $this->validate(['emailPassword' => ['required']], attributes: ['emailPassword' => __('Password')]);
         $this->checkPasswordThrottled('change-email', $this->emailPassword, 'emailPassword', __('The password is incorrect.'));
 
+        // Each new address gets a mail: the same limit as for sending the link again
+        if (RateLimiter::tooManyAttempts($this->confirmationThrottleKey(), self::CONFIRMATION_ATTEMPTS)) {
+            throw ValidationException::withMessages(['email' => __('Too many attempts. Please try again in :seconds seconds.', ['seconds' => RateLimiter::availableIn($this->confirmationThrottleKey())])]);
+        }
+
         $user->requestEmailChange($validated['email']);
         RateLimiter::hit($this->confirmationThrottleKey(), self::CONFIRMATION_DECAY_SECONDS);
 

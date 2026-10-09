@@ -26,6 +26,15 @@ class MarkdownService
 
     private static ?GithubFlavoredMarkdownConverter $converter = null;
 
+    /**
+     * Text that is shown as it is inside Markdown (a name or title in a mail): links, emphasis and
+     * headings typed into it stay plain characters. HTML is escaped separately by Blade.
+     */
+    public static function escape(?string $text): string
+    {
+        return (string) preg_replace('/([\\\\`*_{}\[\]()#+\-.!|~])/', '\\\\$1', (string) $text);
+    }
+
     public static function render(?string $text): HtmlString
     {
         $text = trim((string) $text);

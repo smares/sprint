@@ -421,6 +421,25 @@ class Project extends Model
     }
 
     /**
+     * Tasks whose title contains the typed text, newest first, for the @ list of the editors.
+     *
+     * @return list<array{id: int, title: string}>
+     */
+    public function mentionableTasks(string $query, int $limit = 8): array
+    {
+        $query = mb_substr(trim($query), 0, 50);
+
+        return $this->tasks()
+            ->where('is_section', false)
+            ->when($query !== '', fn ($tasks) => $tasks->whereLike('title', '%'.addcslashes($query, '%_\\').'%'))
+            ->orderByDesc('id')
+            ->limit($limit)
+            ->get(['id', 'title'])
+            ->map(fn (Task $task) => ['id' => $task->id, 'title' => $task->title])
+            ->all();
+    }
+
+    /**
      * Put a top-level task into the single manual order shared by list and board.
      *
      * @param  list<int>  $visibleIds  Ordered ids currently shown to the user, without the moved task.

@@ -179,4 +179,34 @@ class MentionNotificationsTest extends TestCase
         $this->assertSame([], MarkdownService::mentionedUserIds(null));
         $this->assertSame('@Anna Autorin und @Olaf Außenstehend', MarkdownService::plainText("{$this->mention($this->actor)} und {$this->mention($this->outsider)}"));
     }
+
+    public function test_mentions_in_the_description_of_a_new_task_notify_from_the_create_dialog(): void
+    {
+        $project = $this->task->project;
+
+        Livewire::test('task-create', ['project' => $project])
+            ->set('title', 'Neue Aufgabe')
+            ->set('description', "Bitte ansehen {$this->mention($this->outsider)} und {$this->mention($this->actor)}")
+            ->call('create')->assertHasNoErrors();
+
+        $created = Task::where('title', 'Neue Aufgabe')->sole();
+        Notification::assertSentTo($this->outsider, UserMentioned::class, fn (UserMentioned $notification) => $notification->where === 'description'
+            && $notification->task->is($created) && $notification->mentionedBy === 'Anna Autorin');
+        Notification::assertNotSentTo($this->actor, UserMentioned::class);
+        Notification::assertSentTimes(UserMentioned::class, 1);
+    }
+
+    public function test_the_create_dialog_offers_people_and_tasks_after_an_at_sign(): void
+    {
+        $project = $this->task->project;
+        $dialog = Livewire::test('task-create', ['project' => $project]);
+
+        $dialog->assertSeeHtml('Aufgabe beschreiben … (Markdown, @ für Erwähnungen)');
+        $this->assertContains($this->outsider->id, collect($dialog->instance()->mentionOptions['users'])->pluck('id')->all());
+        $this->assertTrue($dialog->instance()->mentionOptions['searchTasks']);
+
+        $this->assertSame([['id' => $this->task->id, 'title' => 'Release planen']], $dialog->instance()->mentionTasks('release'));
+        $this->assertSame([], $dialog->instance()->mentionTasks('gibtesnicht'));
+        $this->assertStringContainsString('<strong>fett</strong>', $dialog->instance()->previewMarkdown('**fett**'));
+    }
 }

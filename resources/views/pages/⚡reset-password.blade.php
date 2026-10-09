@@ -46,7 +46,8 @@ new class extends Component
         );
 
         if ($status !== Password::PASSWORD_RESET) {
-            throw ValidationException::withMessages(['email' => __($status)]);
+            // An unknown address gets the same answer as a wrong link, so the page does not tell which addresses have an account
+            throw ValidationException::withMessages(['email' => __($status === Password::INVALID_USER ? Password::INVALID_TOKEN : $status)]);
         }
 
         session()->flash('status', __($status));

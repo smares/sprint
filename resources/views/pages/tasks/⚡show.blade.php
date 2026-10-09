@@ -551,16 +551,7 @@ new class extends Component
     #[Renderless]
     public function mentionTasks(string $query): array
     {
-        $query = mb_substr(trim($query), 0, 50);
-
-        return $this->task->project->tasks()
-            ->where('is_section', false)
-            ->when($query !== '', fn ($tasks) => $tasks->whereLike('title', '%'.addcslashes($query, '%_\\').'%'))
-            ->orderByDesc('id')
-            ->limit(self::MENTION_LIMIT)
-            ->get(['id', 'title'])
-            ->map(fn (Task $task) => ['id' => $task->id, 'title' => $task->title])
-            ->all();
+        return $this->task->project->mentionableTasks($query, self::MENTION_LIMIT);
     }
 
     #[Renderless]

@@ -225,7 +225,7 @@ new class extends Component
                 <flux:text class="mt-1">{{ __('The order determines the columns on the board. New tasks start in the first status that does not count as done.') }}</flux:text>
             </div>
 
-            <ul class="max-h-96 space-y-2 overflow-y-auto" wire:sort="move">
+            <ul class="max-h-96 space-y-2 overflow-y-auto" wire:sort="move" wire:sort:config="{ delay: 250, delayOnTouchOnly: true, touchStartThreshold: 12 }">
                 @foreach ($this->statuses as $status)
                     <li wire:key="status-{{ $status->id }}" wire:sort:item="{{ $status->id }}" class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
                         <div class="flex items-center gap-3">

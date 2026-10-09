@@ -662,7 +662,7 @@ new class extends Component
                     <flux:table.column wire:key="column-{{ $field->id }}" class="max-md:hidden" sortable :sorted="$sortBy === 'field:'.$field->id" :direction="$sortDirection" wire:click="sort('field:{{ $field->id }}')">{{ $field->name }}</flux:table.column>
                 @endforeach
             </flux:table.columns>
-            <flux:table.rows :wire:sort="$sortBy === '' && $this->canEdit && ! $selecting ? 'moveTask' : null">
+            <flux:table.rows :wire:sort="$sortBy === '' && $this->canEdit && ! $selecting ? 'moveTask' : null" wire:sort:config="{ delay: 250, delayOnTouchOnly: true, touchStartThreshold: 12 }">
                 @foreach ($this->tasks as $task)
                     <flux:table.row wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" :wire:sort:item="$sortBy === '' && $this->canEdit && ! $selecting ? $task->id : null">
                         <flux:table.cell>

@@ -3,6 +3,7 @@
 <ul
     {!! $canEdit ? 'wire:sort="moveSubtask" wire:sort:group="subtasks"' : '' !!}
     wire:sort:group-id="{{ $parentId }}"
+    wire:sort:config="{ delay: 250, delayOnTouchOnly: true, touchStartThreshold: 12 }"
     @class(['space-y-2', 'ms-6 mt-2 border-s border-zinc-200 ps-4 dark:border-zinc-700' => $depth > 0])
 >
     @foreach ($tasks as $subtask)

@@ -231,7 +231,7 @@ new class extends Component
     <flux:heading size="xl" class="mb-1">{{ __('Fields') }}</flux:heading>
     <flux:text class="mb-6">{!! __('Custom fields like <em>Priority</em> or <em>Effort</em> appear on every task in this project. Their order determines how they are displayed.') !!}</flux:text>
 
-    <ul class="space-y-3" wire:sort="moveField">
+    <ul class="space-y-3" wire:sort="moveField" wire:sort:config="{ delay: 250, delayOnTouchOnly: true, touchStartThreshold: 12 }">
         @foreach ($this->fields as $field)
             <li wire:key="field-{{ $field->id }}" wire:sort:item="{{ $field->id }}" class="space-y-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
                 <div class="flex items-center gap-3">
@@ -243,7 +243,7 @@ new class extends Component
                 </div>
 
                 @if ($field->type === \App\Enums\CustomFieldType::Select)
-                    <ul class="ms-6 space-y-2" wire:sort="moveOption" wire:sort:group="options" wire:sort:group-id="{{ $field->id }}">
+                    <ul class="ms-6 space-y-2" wire:sort="moveOption" wire:sort:config="{ delay: 250, delayOnTouchOnly: true, touchStartThreshold: 12 }" wire:sort:group="options" wire:sort:group-id="{{ $field->id }}">
                         @foreach ($field->options as $option)
                             <li wire:key="option-{{ $option->id }}" wire:sort:item="{{ $option->id }}" class="flex items-center gap-2">
                                 <x-color-badge size="sm" :color="$option->color" class="shrink-0">&nbsp;</x-color-badge>

@@ -177,8 +177,8 @@ new class extends Component
 };
 ?>
 
-<div @class(['lg:pe-[39rem]' => $this->panelTask])>
-    <x-project-header :project="$project" active="board" :presence="$this->presenceChannel()" :stacked="(bool) $this->panelTask" />
+<div>
+    <x-project-header :project="$project" active="board" :presence="$this->presenceChannel()" />
 
     <flux:kanban class="items-start overflow-x-auto pb-4">
         @foreach ($this->statuses as $status)

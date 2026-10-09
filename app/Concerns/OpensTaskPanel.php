@@ -9,7 +9,7 @@ use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 
 /**
- * For project views that show a task in a side panel while the list or board stays visible.
+ * For project views that show a task in a flyout over the list or board.
  * The open task lives in the URL (`?task=5`), so it survives reloads and can be shared.
  *
  * @property Project $project
@@ -34,7 +34,7 @@ trait OpensTaskPanel
     }
 
     /**
-     * Changes made in the panel arrive as events; handling them re-renders the list or board behind it.
+     * Changes made in the flyout arrive as events; handling them re-renders the list or board behind it.
      */
     #[On('task-changed')]
     public function taskChanged(): void {}

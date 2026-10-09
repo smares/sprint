@@ -502,8 +502,8 @@ new class extends Component
 };
 ?>
 
-<div @class(['lg:pe-[39rem]' => $this->panelTask, 'pb-28' => $selecting])>
-    <x-project-header :project="$project" active="list" :presence="$this->presenceChannel()" :stacked="(bool) $this->panelTask" />
+<div @class(['pb-28' => $selecting])>
+    <x-project-header :project="$project" active="list" :presence="$this->presenceChannel()" />
 
     <div class="mb-4 flex flex-wrap items-center gap-2">
         <flux:modal.trigger name="filters">
@@ -654,10 +654,10 @@ new class extends Component
                 <flux:table.column class="w-10"><span class="sr-only">{{ __('Done') }}</span></flux:table.column>
                 <flux:table.column sortable :sorted="$sortBy === 'title'" :direction="$sortDirection" wire:click="sort('title')">{{ __('Task') }}</flux:table.column>
                 <flux:table.column sortable :sorted="$sortBy === 'status'" :direction="$sortDirection" wire:click="sort('status')">{{ __('Status') }}</flux:table.column>
-                <flux:table.column class="{{ $this->panelTask ? 'hidden' : 'max-md:hidden' }}">{{ __('Assignee') }}</flux:table.column>
+                <flux:table.column class="max-md:hidden">{{ __('Assignee') }}</flux:table.column>
                 <flux:table.column sortable :sorted="$sortBy === 'due'" :direction="$sortDirection" wire:click="sort('due')">{{ __('Due') }}</flux:table.column>
                 @foreach ($this->listFields as $field)
-                    <flux:table.column wire:key="column-{{ $field->id }}" class="{{ $this->panelTask ? 'hidden' : 'max-md:hidden' }}" sortable :sorted="$sortBy === 'field:'.$field->id" :direction="$sortDirection" wire:click="sort('field:{{ $field->id }}')">{{ $field->name }}</flux:table.column>
+                    <flux:table.column wire:key="column-{{ $field->id }}" class="max-md:hidden" sortable :sorted="$sortBy === 'field:'.$field->id" :direction="$sortDirection" wire:click="sort('field:{{ $field->id }}')">{{ $field->name }}</flux:table.column>
                 @endforeach
             </flux:table.columns>
             <flux:table.rows :wire:sort="$sortBy === '' && $this->canEdit && ! $selecting ? 'moveTask' : null">
@@ -681,7 +681,8 @@ new class extends Component
                                 size="xs"
                                 variant="ghost"
                                 icon="check-circle"
-                                :class="$task->isDone() ? 'text-green-600 dark:text-green-500' : 'text-zinc-300 hover:text-green-600 dark:text-zinc-600'"
+                                icon:variant="{{ $task->isDone() ? 'solid' : 'outline' }}"
+                                :class="$task->isDone() ? 'text-green-600! dark:text-green-500!' : 'text-zinc-300! hover:text-green-600! dark:text-zinc-600!'"
                                 :disabled="! $this->canEdit"
                                 wire:click="toggleDone({{ $task->id }})"
                                 aria-label="{{ $task->isDone() ? __('Reopen task') : __('Mark as done') }}"
@@ -700,7 +701,7 @@ new class extends Component
                         <flux:table.cell>
                             <x-color-badge size="sm" :color="$task->status->color">{{ $task->status->name }}</x-color-badge>
                         </flux:table.cell>
-                        <flux:table.cell class="{{ $this->panelTask ? 'hidden' : 'max-md:hidden' }}">
+                        <flux:table.cell class="max-md:hidden">
                             {{ $task->assignee?->name }}
                             @if ($task->collaborators->isNotEmpty())
                                 <flux:text size="sm" class="block" title="{{ $task->collaborators->pluck('name')->join(', ') }}">{{ trans_choice('{1} + :count collaborator|[2,*] + :count collaborators', $task->collaborators->count()) }}</flux:text>
@@ -712,7 +713,7 @@ new class extends Component
                             @endif
                         </flux:table.cell>
                         @foreach ($this->listFields as $field)
-                            <flux:table.cell wire:key="cell-{{ $task->id }}-{{ $field->id }}" class="{{ $this->panelTask ? 'hidden' : 'max-md:hidden' }}">
+                            <flux:table.cell wire:key="cell-{{ $task->id }}-{{ $field->id }}" class="max-md:hidden">
                                 <x-field-value :task="$task" :field="$field" :show-empty="false" />
                             </flux:table.cell>
                         @endforeach

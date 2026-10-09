@@ -294,7 +294,7 @@ document.addEventListener('click', (event) => {
 })
 
 // Keyboard shortcuts, listed in the overview behind "?" (components/keyboard-shortcuts.blade.php).
-// They never fire while typing, with a modifier key held or while a dialog is open.
+// They never fire while typing, with a modifier key held or while a dialog is open (the task flyout allows j, k and e).
 const typingIn = (target) => target.closest?.('input, textarea, select, [contenteditable], [role=combobox], [role=listbox], ui-select, ui-date-picker, ui-editor')
 
 const openTaskId = () => new URLSearchParams(window.location.search).get('task')
@@ -322,8 +322,12 @@ document.addEventListener('keydown', (event) => {
         return
     }
 
-    // A dialog handles its own keys (Escape closes it)
-    if (document.querySelector('dialog[open]')) {
+    // A dialog handles its own keys (Escape closes it); only the task flyout still lets j, k and e step through and complete tasks
+    if (document.querySelector('dialog[open]:not([data-modal=task-panel])')) {
+        return
+    }
+
+    if (document.querySelector('dialog[open][data-modal=task-panel]') && ! ['j', 'k', 'e'].includes(event.key)) {
         return
     }
 

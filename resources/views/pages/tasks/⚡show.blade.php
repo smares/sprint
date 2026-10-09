@@ -42,7 +42,7 @@ new class extends Component
 
     public Task $task;
 
-    /** Shown as a side panel next to a list or board instead of as a page of its own. */
+    /** Shown in a flyout over a list or board instead of as a page of its own. */
     public bool $panel = false;
 
     public string $title = '';
@@ -423,7 +423,7 @@ new class extends Component
     }
 
     /**
-     * Lets the list or board next to the side panel refresh itself.
+     * Lets the list or board behind the flyout refresh itself.
      */
     private function announceChange(): void
     {

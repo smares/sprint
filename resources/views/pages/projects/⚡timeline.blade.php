@@ -135,7 +135,7 @@ new class extends Component
         <flux:button icon="chevron-left" wire:click="earlier" aria-label="{{ __('Earlier') }}" tooltip="{{ __('Earlier') }}" />
         <flux:button icon="chevron-right" wire:click="later" aria-label="{{ __('Later') }}" tooltip="{{ __('Later') }}" />
         <flux:button wire:click="today">{{ __('Today') }}</flux:button>
-        <flux:text class="ms-2">{{ $this->start->isoFormat('L') }} – {{ $this->end->isoFormat('L') }}</flux:text>
+        <flux:text class="ms-2 whitespace-nowrap">{{ $this->start->isoFormat('L') }} – {{ $this->end->isoFormat('L') }}</flux:text>
     </div>
 
     @php($days = collect(range(0, $this::DAYS - 1))->map(fn ($offset) => $this->start->copy()->addDays($offset)))

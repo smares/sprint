@@ -22,7 +22,9 @@
         <x-project-views :project="$project" :active="$active" :presence="$presence" />
 
         @can('edit', $project)
-            <flux:button variant="primary" icon="plus" x-on:click="$flux.modal('create-task').show()">{{ __('New task') }}</flux:button>
+            {{-- On phones only the icon, like the views, so views, new task and the settings fit in one row --}}
+            <flux:button variant="primary" icon="plus" square class="sm:hidden" x-on:click="$flux.modal('create-task').show()" :aria-label="__('New task')" :tooltip="__('New task')" />
+            <flux:button variant="primary" icon="plus" class="max-sm:hidden" x-on:click="$flux.modal('create-task').show()">{{ __('New task') }}</flux:button>
         @endcan
 
         @can('manage', $project)

@@ -123,7 +123,7 @@ new class extends Component
                     <span class="mt-2 size-2 shrink-0 rounded-full {{ $notification->read_at === null ? 'bg-blue-500' : 'bg-transparent' }}" aria-label="{{ $notification->read_at === null ? __('unread') : __('read') }}"></span>
                     <div class="min-w-0 flex-1">
                         @if ($task)
-                            <button type="button" wire:click="open('{{ $notification->id }}')" class="block truncate text-start font-medium hover:underline">{{ $task->title }}</button>
+                            <button type="button" wire:click="open('{{ $notification->id }}')" class="line-clamp-2 w-full text-start font-medium hover:underline">{{ $task->title }}</button>
                             <flux:text size="sm">{{ \App\Services\InboxTextService::sentence($notification) }} · {{ $task->project->name }} · {{ $notification->created_at->diffForHumans() }}</flux:text>
                         @else
                             <flux:text class="italic">{{ __('Task no longer available') }}</flux:text>

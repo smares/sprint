@@ -41,6 +41,17 @@ class BrandingTest extends TestCase
         $this->actingAs(User::factory()->create())->get(route('projects.index'))->assertOk()->assertSee('M32 18l14 14-14 14', false);
     }
 
+    public function test_the_user_menu_shows_the_version(): void
+    {
+        $this->actingAs(User::factory()->create());
+
+        config(['sprint.version' => 'dev']);
+        $this->get(route('projects.index'))->assertOk()->assertSeeInOrder(['data-app-version', 'Sprint dev'], false);
+
+        config(['sprint.version' => '0.1.0']);
+        $this->get(route('projects.index'))->assertOk()->assertSeeInOrder(['data-app-version', 'Sprint v0.1.0'], false);
+    }
+
     public function test_the_icon_files_exist(): void
     {
         foreach (['favicon.svg', 'favicon.ico', 'apple-touch-icon.png'] as $file) {

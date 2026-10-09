@@ -55,7 +55,11 @@ RUN --mount=type=bind,from=composer:2,source=/usr/bin/composer,target=/usr/bin/c
 
 USER $USER
 
-ENV SERVER_NAME=:80 \
+# The release workflow passes the version; it is shown in the user menu
+ARG APP_VERSION=dev
+
+ENV APP_VERSION=$APP_VERSION \
+    SERVER_NAME=:80 \
     DB_DATABASE=/app/storage/database/database.sqlite
 
 VOLUME /app/storage

@@ -139,6 +139,7 @@ jobs:
           context: .
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: APP_VERSION=${{ inputs.version }}
           secret-envs: composer_auth=COMPOSER_AUTH
           outputs: ${{ inputs.dry_run && 'type=cacheonly' || format('type=image,name={0},push-by-digest=true,name-canonical=true,push=true', env.IMAGE) }}
           cache-from: type=gha,scope=${{ env.PLATFORM_PAIR }}

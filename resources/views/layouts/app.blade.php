@@ -68,6 +68,10 @@
                             @csrf
                             <flux:menu.item as="button" type="submit" icon="arrow-right-start-on-rectangle">{{ __('Log out') }}</flux:menu.item>
                         </form>
+                        <flux:menu.separator />
+                        <div class="px-2 py-1.5" data-app-version>
+                            <flux:text size="sm">{{ config('app.name') }} {{ preg_match('/^\d/', (string) config('sprint.version')) ? 'v' : '' }}{{ config('sprint.version') }}</flux:text>
+                        </div>
                     </flux:menu>
                 </flux:dropdown>
             </flux:header>

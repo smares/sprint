@@ -118,6 +118,48 @@ class CommandPaletteTest extends TestCase
         $this->assertSame(['Website Relaunch', 'Web Shop', 'Website Archiv', 'Alte Website', 'Neue Website'], $names);
     }
 
+    public function test_without_a_search_it_offers_the_favorites_and_the_ten_last_opened_projects(): void
+    {
+        $projects = collect(range(1, 14))->map(fn (int $number) => $this->project(sprintf('Projekt %02d', $number)));
+        $this->user->favoriteProjects()->attach($projects[13]->id, ['position' => 1]);
+
+        foreach ([5, 2, 9] as $index) {
+            $this->travel(1)->minutes();
+            $this->user->rememberProjectVisit($projects[$index]);
+        }
+
+        $names = Livewire::test('command-palette')->instance()->projects->pluck('name')->all();
+
+        // The favorite, the opened ones (most recent first), then topped up alphabetically to ten
+        $this->assertSame(['Projekt 14', 'Projekt 10', 'Projekt 03', 'Projekt 06', 'Projekt 01', 'Projekt 02', 'Projekt 04', 'Projekt 05', 'Projekt 07', 'Projekt 08', 'Projekt 09'], $names);
+    }
+
+    public function test_searching_still_finds_every_project_but_shows_at_most_twenty(): void
+    {
+        collect(range(1, 25))->each(fn (int $number) => $this->project(sprintf('Kunde %02d', $number)));
+        $this->project('Intern');
+
+        $palette = Livewire::test('command-palette')->set('query', 'kunde');
+        $this->assertCount(20, $palette->instance()->projects);
+
+        $palette->set('query', 'kunde 25')->assertSee('Kunde 25');
+    }
+
+    public function test_opening_a_project_moves_it_to_the_front_of_the_recent_ones_and_tells_the_palette(): void
+    {
+        $first = $this->project('Erstes');
+        $second = $this->project('Zweites');
+
+        Livewire::test('pages::projects.show', ['project' => $first])->assertDispatched('project-visited');
+        $this->travel(1)->minutes();
+        Livewire::test('pages::projects.board', ['project' => $second])->assertDispatched('project-visited');
+
+        // Switching views within the same project does not change the order, so nothing is sent
+        Livewire::test('pages::projects.calendar', ['project' => $second])->assertNotDispatched('project-visited');
+
+        $this->assertSame([$second->id, $first->id], $this->user->visitedProjects()->pluck('projects.id')->all());
+    }
+
     public function test_admins_also_get_the_admin_destinations_and_all_projects(): void
     {
         $this->user->forceFill(['is_admin' => true])->save();

@@ -304,6 +304,33 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
     }
 
     /**
+     * Projects in the order the person last opened them (list, board, calendar, timeline), the most recent first.
+     *
+     * @return BelongsToMany<Project, $this>
+     */
+    public function visitedProjects(): BelongsToMany
+    {
+        return $this->belongsToMany(Project::class, 'project_visits')->withPivot('visited_at')->orderByPivot('visited_at', 'desc');
+    }
+
+    /**
+     * Notes that the person opened the project. Returns whether that changed the order, i.e. it was not already the
+     * most recent one (switching between list and board does not).
+     */
+    public function rememberProjectVisit(Project $project): bool
+    {
+        $wasMostRecent = $this->visitedProjects()->value('projects.id') === $project->id;
+
+        DB::table('project_visits')->upsert(
+            ['user_id' => $this->id, 'project_id' => $project->id, 'visited_at' => now()],
+            ['user_id', 'project_id'],
+            ['visited_at'],
+        );
+
+        return ! $wasMostRecent;
+    }
+
+    /**
      * @return BelongsToMany<Team, $this>
      */
     public function teams(): BelongsToMany

@@ -8,8 +8,8 @@ use Livewire\Attributes\On;
 
 /**
  * What the list, board, calendar and timeline of a project share: only people who may see the project
- * get in (checked on every request), what they may do, who else is here and a fresh render after a new
- * task. The component declares `public Project $project`.
+ * get in (checked on every request), what they may do, who else is here, a fresh render after a new
+ * task, and the visit for the recent projects. The component declares `public Project $project`.
  */
 trait ShowsProject
 {
@@ -18,6 +18,11 @@ trait ShowsProject
     public function mountShowsProject(): void
     {
         Gate::authorize('view', $this->project);
+
+        // The command palette offers the recently opened projects
+        if (auth()->user()->rememberProjectVisit($this->project)) {
+            $this->dispatch('project-visited');
+        }
     }
 
     public function hydrateShowsProject(): void

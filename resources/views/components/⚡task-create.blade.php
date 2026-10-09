@@ -1,12 +1,14 @@
 <?php
 
 use App\Models\Project;
+use App\Services\MarkdownService;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Renderless;
 use Livewire\Component;
 
 /**
@@ -54,6 +56,35 @@ new class extends Component
         return $this->project->eligibleUsers()->orderBy('name')->get(['id', 'name']);
     }
 
+    /**
+     * The people offered after @; tasks are looked up while typing (mentionTasks).
+     *
+     * @return array{users: list<array{id: int, name: string}>, searchTasks: bool}
+     */
+    #[Computed]
+    public function mentionOptions(): array
+    {
+        return [
+            'users' => $this->users->map(fn ($user) => ['id' => $user->id, 'name' => $user->name])->all(),
+            'searchTasks' => true,
+        ];
+    }
+
+    /**
+     * @return list<array{id: int, title: string}>
+     */
+    #[Renderless]
+    public function mentionTasks(string $query): array
+    {
+        return $this->project->mentionableTasks($query);
+    }
+
+    #[Renderless]
+    public function previewMarkdown(string $text): string
+    {
+        return (string) MarkdownService::render(mb_substr($text, 0, 10000));
+    }
+
     #[On('new-task')]
     public function open(?int $statusId = null, ?string $dueDate = null): void
     {
@@ -75,7 +106,7 @@ new class extends Component
             'startDate' => ['nullable', 'date_format:Y-m-d', 'before_or_equal:dueDate'],
         ], attributes: ['title' => __('Title'), 'statusId' => __('Status'), 'dueDate' => __('Due on'), 'startDate' => __('Starts on')]);
 
-        $this->project->createRootTask([
+        $task = $this->project->createRootTask([
             'title' => trim($validated['title']),
             'description' => $validated['description'] ?: null,
             'status_id' => (int) $validated['statusId'],
@@ -83,6 +114,8 @@ new class extends Component
             'due_date' => $validated['dueDate'] ?: null,
             'start_date' => $validated['startDate'] ?: null,
         ]);
+
+        $task->notifyMentionedInDescription(MarkdownService::mentionedUserIds($task->description), auth()->user());
 
         $this->reset('title', 'description', 'assigneeId', 'dueDate', 'startDate');
         $this->statusId = (string) $this->project->defaultStatus()->id;
@@ -97,7 +130,7 @@ new class extends Component
         <form wire:submit="create" class="space-y-6">
             <flux:heading size="lg">{{ __('New task') }}</flux:heading>
             <flux:input wire:model="title" :label="__('Title')" autofocus />
-            <flux:textarea wire:model="description" :label="__('Description')" :placeholder="__('Describe the task … (Markdown)')" rows="3" />
+            <x-markdown-editor wire:model="description" :label="__('Description')" :placeholder="__('Describe the task … (Markdown, @ for mentions)')" :rows="3" :mentions="$this->mentionOptions" />
             <div class="grid grid-cols-2 gap-4">
                 <flux:select variant="listbox" wire:model="statusId" :label="__('Status')">
                     @foreach ($this->statuses as $status)

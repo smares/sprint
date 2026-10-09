@@ -169,15 +169,28 @@ new class extends Component
                             x-on:dragleave="over = false"
                             x-on:drop.prevent="over = false; const task = JSON.parse($event.dataTransfer.getData('text/plain') || '{}'); if (task.id) { $wire.moveToDay(task.id, task.from, '{{ $day['date']->toDateString() }}') }"
                             x-bind:class="over && 'ring-2 ring-inset ring-blue-400'"
+                            {{-- A click on the day itself (not on a task) opens the dialog with that day as the due date --}}
+                            x-on:click="if (! $event.target.closest('a, button')) { $wire.$dispatch('new-task', { dueDate: '{{ $day['date']->toDateString() }}' }) }"
                         @endif
                         @class([
-                        'min-h-28 space-y-1 border-e border-b border-zinc-200 p-1.5 dark:border-zinc-700',
+                        'group min-h-28 space-y-1 border-e border-b border-zinc-200 p-1.5 dark:border-zinc-700',
                         'bg-zinc-50/60 text-zinc-400 dark:bg-zinc-900/40' => ! $day['inMonth'],
+                        'cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50' => $this->canEdit,
                     ])>
-                        <div @class([
-                            'text-sm',
-                            'inline-flex size-6 items-center justify-center rounded-full bg-blue-600 font-semibold text-white' => $day['date']->isToday(),
-                        ])>{{ $day['date']->day }}</div>
+                        <div class="flex items-start justify-between">
+                            <div @class([
+                                'text-sm',
+                                'inline-flex size-6 items-center justify-center rounded-full bg-blue-600 font-semibold text-white' => $day['date']->isToday(),
+                            ])>{{ $day['date']->day }}</div>
+
+                            @if ($this->canEdit)
+                                <button type="button" x-on:click.stop="$wire.$dispatch('new-task', { dueDate: '{{ $day['date']->toDateString() }}' })"
+                                    class="rounded p-0.5 text-zinc-400 opacity-0 hover:bg-zinc-200 hover:text-zinc-700 focus:opacity-100 group-hover:opacity-100 dark:hover:bg-zinc-700 dark:hover:text-zinc-200"
+                                    aria-label="{{ __('New task on :date', ['date' => $day['date']->isoFormat('L')]) }}" title="{{ __('New task on :date', ['date' => $day['date']->isoFormat('L')]) }}">
+                                    <flux:icon.plus variant="micro" />
+                                </button>
+                            @endif
+                        </div>
 
                         @foreach ($day['tasks']->take($this::TASKS_PER_DAY) as $task)
                             <a wire:key="chip-{{ $day['date']->toDateString() }}-{{ $task->id }}" href="{{ route('tasks.show', $task) }}" wire:navigate

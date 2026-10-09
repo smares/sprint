@@ -18,8 +18,10 @@ use App\Models\Tag;
 use App\Models\Task;
 use App\Models\Team;
 use App\Models\User;
+use App\Notifications\UserMentioned;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Testing\TestResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Tests\TestCase;
@@ -253,6 +255,17 @@ class McpServerTest extends TestCase
         $this->assertSame([$tag->id], $task->tags()->pluck('tags.id')->all());
         $this->assertSame([$this->user->id], $task->collaborators()->pluck('users.id')->all());
         $this->assertContains('hat die Aufgabe angelegt', $task->activities()->get()->map->sentence()->all());
+    }
+
+    public function test_people_mentioned_in_the_description_of_a_new_task_are_told(): void
+    {
+        Notification::fake();
+        $anna = User::factory()->create(['name' => 'Anna']);
+        $this->project->setRole($anna, ProjectRole::Editor);
+
+        $this->tool(CreateTask::class, ['project_id' => $this->project->id, 'title' => 'Mit Erwähnung', 'description' => "Bitte prüfen @[Anna](user:{$anna->id})"])->assertOk();
+
+        Notification::assertSentTo($anna, UserMentioned::class, fn ($notification) => $notification->where === 'description' && $notification->task->title === 'Mit Erwähnung');
     }
 
     public function test_a_minimal_task_gets_defaults_and_goes_to_the_end(): void

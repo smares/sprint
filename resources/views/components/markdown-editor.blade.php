@@ -47,6 +47,8 @@
             }
         },
     }"
+    {{-- The "New task" dialog stays on the page: after creating, the next task starts on Write, not on the old preview --}}
+    x-on:task-created.window="tab = 'write'; html = ''"
     class="space-y-2"
 >
     <div class="flex items-center justify-between">

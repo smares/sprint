@@ -1,5 +1,6 @@
 <?php
 
+use App\Concerns\EditsMarkdown;
 use App\Models\Project;
 use App\Services\MarkdownService;
 use Flux\Flux;
@@ -8,7 +9,6 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
-use Livewire\Attributes\Renderless;
 use Livewire\Component;
 
 /**
@@ -18,6 +18,8 @@ use Livewire\Component;
  */
 new class extends Component
 {
+    use EditsMarkdown;
+
     public Project $project;
 
     public string $title = '';
@@ -56,33 +58,9 @@ new class extends Component
         return $this->project->eligibleUsers()->orderBy('name')->get(['id', 'name']);
     }
 
-    /**
-     * The people offered after @; tasks are looked up while typing (mentionTasks).
-     *
-     * @return array{users: list<array{id: int, name: string}>, searchTasks: bool}
-     */
-    #[Computed]
-    public function mentionOptions(): array
+    protected function mentionProject(): Project
     {
-        return [
-            'users' => $this->users->map(fn ($user) => ['id' => $user->id, 'name' => $user->name])->all(),
-            'searchTasks' => true,
-        ];
-    }
-
-    /**
-     * @return list<array{id: int, title: string}>
-     */
-    #[Renderless]
-    public function mentionTasks(string $query): array
-    {
-        return $this->project->mentionableTasks($query);
-    }
-
-    #[Renderless]
-    public function previewMarkdown(string $text): string
-    {
-        return (string) MarkdownService::render(mb_substr($text, 0, 10000));
+        return $this->project;
     }
 
     #[On('new-task')]

@@ -42,7 +42,7 @@ class ProjectBoardTest extends TestCase
             ->assertOk()
             ->assertSee('Keine Aufgaben')
             ->assertSee('Aufgabe hinzufügen')
-            ->assertSee("new-task', { statusId: {$project->statuses()->first()->id} }", false);
+            ->assertSee('Aufgabentitel, dann Enter');
     }
 
     public function test_moving_a_task_changes_status_and_position(): void

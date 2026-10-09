@@ -407,6 +407,20 @@ class Project extends Model
     }
 
     /**
+     * Create a top-level task at the end of the manual order, by the signed-in person.
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    public function createRootTask(array $attributes): Task
+    {
+        return $this->tasks()->create([
+            ...$attributes,
+            'creator_id' => auth()->id(),
+            'position' => $this->nextRootPosition(),
+        ]);
+    }
+
+    /**
      * Put a top-level task into the single manual order shared by list and board.
      *
      * @param  list<int>  $visibleIds  Ordered ids currently shown to the user, without the moved task.

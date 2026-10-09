@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\ActivityType;
+use App\Concerns\EditsMarkdown;
 use App\Concerns\ListensForRealtime;
 use App\Enums\CustomFieldType;
 use App\Enums\RepeatMode;
@@ -8,10 +9,10 @@ use App\Enums\RepeatUnit;
 use App\Emoji;
 use App\Models\Attachment;
 use App\Models\CustomField;
+use App\Models\Project;
 use App\Models\Tag;
 use App\Models\Task;
 use App\Models\User;
-use App\Services\MarkdownService;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
@@ -22,12 +23,12 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
-use Livewire\Attributes\Renderless;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
 new class extends Component
 {
+    use EditsMarkdown;
     use ListensForRealtime;
     use WithFileUploads;
 
@@ -38,8 +39,6 @@ new class extends Component
     private const FEED_PAGE = 50;
 
     /** How many tasks the @ suggestions offer at most. */
-    private const MENTION_LIMIT = 8;
-
     public Task $task;
 
     /** Shown in a flyout over a list or board instead of as a page of its own. */
@@ -529,35 +528,9 @@ new class extends Component
         $this->resetSubtaskCaches();
     }
 
-    /**
-     * The people offered after @; tasks are looked up while typing (mentionTasks).
-     *
-     * @return array{users: list<array{id: int, name: string}>, searchTasks: bool}
-     */
-    #[Computed]
-    public function mentionOptions(): array
+    protected function mentionProject(): Project
     {
-        return [
-            'users' => $this->users->filter(fn ($user) => $user->isActive())->map(fn ($user) => ['id' => $user->id, 'name' => $user->name])->values()->all(),
-            'searchTasks' => true,
-        ];
-    }
-
-    /**
-     * Tasks of this project whose title contains the typed text, newest first.
-     *
-     * @return list<array{id: int, title: string}>
-     */
-    #[Renderless]
-    public function mentionTasks(string $query): array
-    {
-        return $this->task->project->mentionableTasks($query, self::MENTION_LIMIT);
-    }
-
-    #[Renderless]
-    public function previewMarkdown(string $text): string
-    {
-        return (string) MarkdownService::render(mb_substr($text, 0, 10000));
+        return $this->task->project;
     }
 
     #[Computed]

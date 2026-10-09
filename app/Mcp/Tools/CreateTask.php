@@ -6,6 +6,7 @@ use App\Mcp\TaskData;
 use App\Mcp\ToolFailure;
 use App\Models\Task;
 use App\Models\User;
+use App\Services\MarkdownService;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Support\Facades\DB;
 use Laravel\Mcp\Request;
@@ -58,6 +59,9 @@ class CreateTask extends WriteTaskTool
 
             return $task;
         });
+
+        // As in the "New task" dialog: people mentioned in the description of a new task are told
+        $task->notifyMentionedInDescription(MarkdownService::mentionedUserIds($task->description), $user);
 
         return Response::json(TaskData::detail($task->fresh()));
     }

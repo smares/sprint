@@ -7,7 +7,9 @@
         title: '',
         open() {
             this.adding = true
-            this.$nextTick(() => this.$refs.title.focus())
+            // Shown and focused right away, not on the next tick: otherwise the first key typed after the click is lost
+            this.$refs.field.style.display = ''
+            this.$refs.title.focus()
         },
         close() {
             this.adding = false
@@ -28,7 +30,7 @@
 >
     <flux:button x-show="! adding" size="sm" variant="subtle" icon="plus" class="w-full justify-start" x-on:click="open()">{{ __('Add task') }}</flux:button>
 
-    <div x-show="adding" x-cloak>
+    <div x-show="adding" x-ref="field" x-cloak>
         <flux:input
             x-ref="title"
             x-model="title"

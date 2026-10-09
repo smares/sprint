@@ -240,7 +240,7 @@ new class extends Component
                 </flux:kanban.column.cards>
 
                 @if ($this->canEdit)
-                    <x-quick-add :status-id="$status->id" class="mt-1" />
+                    <x-quick-add :status-id="$status->id" class="mt-1 px-2 pb-2" />
                 @endif
 
                 @if ($this->columnTotals[$status->id] > $this->columns[$status->id]->count())

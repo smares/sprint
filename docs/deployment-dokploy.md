@@ -48,9 +48,9 @@ Browser ──HTTPS──▶ Traefik (Dokploy) ──HTTP──▶ app (Caddy + 
 
    **`APP_KEY`** erzeugst du einmal, z. B. lokal mit `php artisan key:generate --show` oder mit `echo "base64:$(openssl rand -base64 32)"`, und hebst ihn getrennt von den Backups gut auf: Ohne ihn sind Zwei-Faktor-Geheimnisse und Sitzungen nach einem Restore nicht mehr lesbar.
 
-4. **Domain** (Tab *Domains*; *Preview Compose* zeigt vorher die fertige Datei mit den erzeugten Labels): **Service** `app`, **Port** `80`, Host `sprint.example.com`, **HTTPS** an mit Let's Encrypt als Zertifikat. Dokploy hängt `app` dafür ans Netz `dokploy-network` und setzt die Traefik-Labels selbst; eigene Labels in der `compose.yaml` sind nicht nötig. Die Domain muss per DNS (A-Record) auf den Server zeigen. Änderungen an Domains wirken erst nach dem nächsten **Deploy**.
-5. **Deploy**. Beim ersten Start migriert der `app`-Container die Datenbank; `queue` und `scheduler` starten, sobald `app` gesund ist (Healthcheck `php artisan sprint:health`).
-6. **Ersten Administrator anlegen** im Terminal des Containers `app` (in Dokploy über *Docker Terminal*):
+4. **Domain** (Tab *Domains*; *Preview Compose* zeigt vorher die fertige Datei mit den erzeugten Labels): **Service** `sprint`, **Port** `80`, Host `sprint.example.com`, **HTTPS** an mit Let's Encrypt als Zertifikat. Dokploy hängt `app` dafür ans Netz `dokploy-network` und setzt die Traefik-Labels selbst; eigene Labels in der `compose.yaml` sind nicht nötig. Die Domain muss per DNS (A-Record) auf den Server zeigen. Änderungen an Domains wirken erst nach dem nächsten **Deploy**.
+5. **Deploy**. Beim ersten Start migriert der `sprint`-Container die Datenbank; `queue` und `scheduler` starten, sobald `sprint` gesund ist (Healthcheck `php artisan sprint:health`).
+6. **Ersten Administrator anlegen** im Terminal des Containers `sprint` (in Dokploy über *Docker Terminal*):
 
    ```bash
    php artisan user:create "Anna Beispiel" anna@example.com --admin
@@ -79,7 +79,7 @@ REVERB_PORT=443
 REVERB_SCHEME=https
 ```
 
-Eine zweite Domain braucht Reverb nicht: Der Browser verbindet sich mit `wss://sprint.example.com/app/…`, Traefik reicht das an `app` weiter, und Caddy dort leitet `/app/*` an den Reverb-Container. Die App selbst schickt ihre Meldungen intern direkt an `reverb:8080` (`REVERB_INTERNAL_*` setzt die `compose.yaml`).
+Eine zweite Domain braucht Reverb nicht: Der Browser verbindet sich mit `wss://sprint.example.com/app/…`, Traefik reicht das an `sprint` weiter, und Caddy dort leitet `/app/*` an den Reverb-Container. Die App selbst schickt ihre Meldungen intern direkt an `reverb:8080` (`REVERB_INTERNAL_*` setzt die `compose.yaml`).
 
 ## Daten und Backups
 
@@ -91,8 +91,9 @@ Eine zweite Domain braucht Reverb nicht: Der Browser verbindet sich mit `wss://s
 
 ## Updates und Wartung
 
-- Neue Version: Push auf `main` (mit Auto Deploy) oder **Deploy** in Dokploy. Der `app`-Container migriert und baut die Caches beim Start neu.
-- Artisan-Befehle im *Docker Terminal* des Containers `app`, z. B. `php artisan sprint:backup` für ein sofortiges Backup oder `php artisan search:rebuild` nach einem Restore.
+- **Einmalig beim Update auf eine Version nach 0.2.0:** Der Webdienst heißt jetzt `sprint` statt `app`. Unter *Domains* den **Service** von `app` auf `sprint` umstellen, sonst findet Traefik die Seite nicht mehr; Läuft nach dem **Deploy** noch ein alter Container `…-app-1`, ihn im Terminal des Servers mit `docker rm -f <Name>` entfernen (die Daten im Volume bleiben erhalten).
+- Neue Version: Push auf `main` (mit Auto Deploy) oder **Deploy** in Dokploy. Der `sprint`-Container migriert und baut die Caches beim Start neu.
+- Artisan-Befehle im *Docker Terminal* des Containers `sprint`, z. B. `php artisan sprint:backup` für ein sofortiges Backup oder `php artisan search:rebuild` nach einem Restore.
 - Logs pro Dienst im Tab *Logs* (Laravel schreibt nach stderr).
 
 ## Häufige Stolpersteine

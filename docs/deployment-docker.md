@@ -6,7 +6,7 @@ Im Repository liegen ein `Dockerfile` und eine `compose.yaml`. Alle Dienste nutz
 
 | Dienst | Aufgabe |
 |---|---|
-| `app` | Webserver; migriert beim Start die Datenbank und baut die Caches (`php artisan optimize`) |
+| `sprint` | Webserver; migriert beim Start die Datenbank und baut die Caches (`php artisan optimize`) |
 | `queue` | Queue-Worker für Mails, Posteingang und Live-Meldungen |
 | `scheduler` | `php artisan schedule:work` (Tageszusammenfassung, Wiederholungen, Aufräumen) |
 | `reverb` | nur mit `--profile realtime`: Live-Updates, der Browser verbindet sich über die Adresse der App |
@@ -28,9 +28,9 @@ Dauerhaft liegt alles im Volume `storage`: SQLite-Datenbank (`storage/database/d
 4. **Starten** und den ersten Administrator anlegen:
    ```bash
    docker compose up -d
-   docker compose exec app php artisan user:create "Anna Beispiel" anna@example.com --admin
+   docker compose exec sprint php artisan user:create "Anna Beispiel" anna@example.com --admin
    ```
-5. **Prüfen:** `http://<server>:8000/health` liefert `{"status":"ok", …}`; `docker compose exec app php artisan sprint:health` zeigt Details.
+5. **Prüfen:** `http://<server>:8000/health` liefert `{"status":"ok", …}`; `docker compose exec sprint php artisan sprint:health` zeigt Details.
 
 ## HTTPS
 
@@ -91,17 +91,19 @@ docker compose build
 docker compose up -d
 ```
 
+**Einmalig beim Update auf eine Version nach 0.2.0:** Der Webdienst heißt jetzt `sprint` statt `app`. Damit der alte Container den Port bzw. den Namen nicht blockiert, einmal `docker compose down` und danach wie gewohnt `docker compose up -d` (die Daten im Volume bleiben erhalten).
+
 Mit dem fertigen Image genügt `SPRINT_VERSION` zu ändern und `docker compose -f compose.image.yaml up -d` zu wiederholen (die Datei zieht das Image selbst nach).
 
-Beim Start migriert der `app`-Container und baut die Caches neu; `queue`, `scheduler` und `reverb` starten erst, wenn `app` gesund ist. Wer Migrationen lieber selbst anstößt, setzt `MIGRATE_ON_START=false` und ruft `docker compose exec app php artisan migrate --force` auf.
+Beim Start migriert der `sprint`-Container und baut die Caches neu; `queue`, `scheduler` und `reverb` starten erst, wenn `sprint` gesund ist. Wer Migrationen lieber selbst anstößt, setzt `MIGRATE_ON_START=false` und ruft `docker compose exec sprint php artisan migrate --force` auf.
 
 ## Backup
 
 Der `scheduler`-Container schreibt jede Nacht ein Backup (Datenbank und Anhänge als ZIP) nach `storage/app/backups`, also ins selbe Volume. Damit es auch den Verlust des Servers übersteht, holst du es regelmäßig ab oder lässt es gleich in einen Bucket schreiben (`BACKUP_DISK`):
 
 ```bash
-docker compose exec app php artisan sprint:backup       # sofort eines schreiben
-docker compose cp app:/app/storage/app/backups ./sprint-backups
+docker compose exec sprint php artisan sprint:backup       # sofort eines schreiben
+docker compose cp sprint:/app/storage/app/backups ./sprint-backups
 ```
 
 Einstellungen und Wiederherstellung unter [Backup und Wiederherstellung](maintenance.md#backup-und-wiederherstellung).
@@ -110,6 +112,6 @@ Einstellungen und Wiederherstellung unter [Backup und Wiederherstellung](mainten
 
 ```bash
 docker compose logs -f app                 # Logs (Laravel schreibt nach stderr)
-docker compose exec app php artisan …      # Artisan im laufenden Container
+docker compose exec sprint php artisan …      # Artisan im laufenden Container
 docker compose restart queue               # Worker neu starten
 ```

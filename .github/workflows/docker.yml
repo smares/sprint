@@ -60,7 +60,7 @@ jobs:
 
       - name: Configure
         run: |
-          echo "APP_KEY=$(docker compose run --rm --no-deps app php artisan key:generate --show)" >> .env
+          echo "APP_KEY=$(docker compose run --rm --no-deps sprint php artisan key:generate --show)" >> .env
           cat >> .env <<'EOF'
           APP_ENV=production
           APP_DEBUG=false
@@ -75,7 +75,7 @@ jobs:
           EOF
 
       # Reverb comes in through COMPOSE_PROFILES in .env, as on Dokploy
-      - name: Start app, queue, scheduler and Reverb
+      - name: Start sprint, queue, scheduler and Reverb
         run: docker compose up -d --wait --wait-timeout 120
 
       - name: Check the running stack
@@ -87,7 +87,7 @@ jobs:
           for service in queue scheduler reverb; do
             test "$(docker compose --profile realtime ps --status running --services | grep -cx "$service")" = 1
           done
-          docker compose exec -T app php artisan user:create "CI Admin" ci@example.com --admin --password=geheim123
+          docker compose exec -T sprint php artisan user:create "CI Admin" ci@example.com --admin --password=geheim123
           # The browser's WebSocket goes through Caddy to Reverb
           curl -sS -o /dev/null -w '%{http_code}' --http1.1 \
             -H 'Connection: Upgrade' -H 'Upgrade: websocket' -H 'Sec-WebSocket-Version: 13' \

@@ -66,7 +66,7 @@ Starten und den ersten Administrator anlegen:
 
 ```bash
 docker compose up -d
-docker compose exec app php artisan user:create "Anna Beispiel" anna@example.com --admin
+docker compose exec sprint php artisan user:create "Anna Beispiel" anna@example.com --admin
 curl -fsS https://sprint.example.com/health        # {"status":"ok", …}
 ```
 
@@ -83,20 +83,22 @@ docker compose up -d
 
 Migrationen laufen beim Start automatisch.
 
+**Einmalig beim Update auf eine Version nach 0.2.0:** Der Webdienst heißt jetzt `sprint` statt `app`. Damit der alte Container den Port bzw. den Namen nicht blockiert, einmal `docker compose down` und danach `docker compose up -d` (die Daten im Volume bleiben erhalten).
+
 ## Daten und Backup
 
 Alles Dauerhafte liegt im Volume `storage` (Compose nennt es `<Ordnername>_storage`): SQLite-Datenbank, Anhänge, Profilbilder (in der Datenbank) und die nächtlichen Backups unter `storage/app/backups` (jede Nacht um 02:30, siehe [Backup und Wiederherstellung](maintenance.md#backup-und-wiederherstellung)). Damit sie auch den Verlust des Servers überstehen, holst du das Backup-ZIP regelmäßig ab, nicht die laufende `database.sqlite`:
 
 ```bash
-docker compose exec app php artisan sprint:backup      # sofort eines schreiben
-docker compose cp app:/app/storage/app/backups ./sprint-backups
+docker compose exec sprint php artisan sprint:backup      # sofort eines schreiben
+docker compose cp sprint:/app/storage/app/backups ./sprint-backups
 ```
 
 Willst du statt eines Volumes ein Verzeichnis (`./data:/app/storage`), muss es dem Benutzer des Containers gehören: `sudo chown -R 1000:1000 data`.
 
 ## Worauf du achten solltest
 
-- **Die Labels nennen `traefik.docker.network: reverse-proxy`:** Sprint hängt an zwei Netzen, einem eigenen (zwischen den vier Containern, damit `app` und `reverb` nicht mit gleichnamigen Diensten anderer Stacks im Netz `reverse-proxy` kollidieren) und dem des Proxys. Ohne das Label könnte Traefik die Adresse im falschen Netz nehmen und einen Fehler 504 liefern.
+- **Die Labels nennen `traefik.docker.network: reverse-proxy`:** Sprint hängt an zwei Netzen, einem eigenen (zwischen den vier Containern, damit `sprint` und `reverb` nicht mit gleichnamigen Diensten anderer Stacks im Netz `reverse-proxy` kollidieren) und dem des Proxys. Ohne das Label könnte Traefik die Adresse im falschen Netz nehmen und einen Fehler 504 liefern.
 - **`TRUSTED_PROXIES=*`** ist hier vertretbar, weil Sprint keine Ports veröffentlicht. Andere Container im Netz `reverse-proxy` könnten den Dienst aber direkt ansprechen und `X-Forwarded-*` setzen; wer das ausschließen will, trägt statt `*` das Subnetz des Netzes ein (`docker network inspect reverse-proxy`).
 - **Die Middleware `default@file`** gilt zusätzlich zu den Sicherheits-Headern, die Sprint selbst setzt (CSP, `X-Frame-Options` …). Setzt sie dieselben Header, gewinnt je nach Traefik-Version einer von beiden; eine eigene, strengere CSP in der Middleware kann Sprint ausbremsen (Alpine und Livewire brauchen `'unsafe-eval'`).
 - **Links mit `http://` oder Passkeys gehen nicht:** `TRUSTED_PROXIES` fehlt, oder `APP_URL` stimmt nicht exakt mit `SPRINT_HOST` überein.

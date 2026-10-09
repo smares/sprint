@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Task;
+use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Carbon;
 
@@ -11,6 +12,8 @@ use Illuminate\Support\Carbon;
  */
 class TaskDueTomorrow extends Notification
 {
+    use Queueable;
+
     public function __construct(public Task $task) {}
 
     /**

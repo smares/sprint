@@ -133,7 +133,7 @@ new class extends Component
 
         $this->task->toggleDone();
         $this->statusId = (string) $this->task->status_id;
-        $this->dispatch('task-changed');
+        $this->announceChange();
     }
 
     /**
@@ -141,7 +141,7 @@ new class extends Component
      */
     public function react(string $target, int $id, string $emoji): void
     {
-        Gate::authorize('edit', $this->task->project);
+        $this->authorizeEdit();
 
         $emoji = Emoji::normalize($emoji);
 

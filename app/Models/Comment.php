@@ -76,6 +76,11 @@ class Comment extends Model
 
     public function reactionOwner(): ?User
     {
+        // Comments written by an automation belong to nobody
+        if ($this->user_id === null) {
+            return null;
+        }
+
         return User::query()->find($this->user_id);
     }
 

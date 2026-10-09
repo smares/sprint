@@ -338,7 +338,6 @@ document.addEventListener('keydown', (event) => {
         j: () => stepThroughTasks(1),
         k: () => stepThroughTasks(-1),
         e: () => window.Livewire.dispatch('shortcut-toggle-done'),
-        Escape: () => openTaskId() && window.Livewire.dispatch('close-task'),
     }
 
     if (actions[event.key]) {

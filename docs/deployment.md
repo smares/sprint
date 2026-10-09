@@ -35,7 +35,7 @@ Anleitungen für typische Hosts:
    MAIL_FROM_ADDRESS=sprint@example.com
    MAIL_FROM_NAME=Sprint
    ```
-   Hinter einem Proxy oder Load Balancer, der TLS beendet, zusätzlich `TRUSTED_PROXIES=*` (oder die Adressen des Proxys, kommagetrennt), sonst erzeugt Laravel `http`-Links.
+   Hinter einem Proxy oder Load Balancer, der TLS beendet, zusätzlich `TRUSTED_PROXIES` mit den Adressen des Proxys (kommagetrennt, CIDR erlaubt), sonst erzeugt Laravel `http`-Links. `*` nur, wenn die App ausschließlich über den Proxy erreichbar ist: Wer sie direkt erreicht, könnte sonst per `X-Forwarded-For` eine fremde IP vortäuschen und die Begrenzung der Anmeldeversuche umgehen.
 
    `APP_URL` muss exakt die Adresse sein, unter der die Leute Sprint öffnen (HTTPS): Links in Mails, signierte Abbestell-Links und **Passkeys** hängen daran.
 3. **Datenbank anlegen und migrieren:** `php artisan migrate --force` bei jedem Deployment.

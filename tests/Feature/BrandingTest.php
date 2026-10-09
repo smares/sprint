@@ -79,4 +79,16 @@ class BrandingTest extends TestCase
         $this->assertStringContainsString('Content-ID: <'.$logo->getContentId().'>', $sent);
         $this->assertStringNotContainsString('laravel.com', $sent);
     }
+
+    public function test_names_and_titles_stay_text_in_mails(): void
+    {
+        User::factory()->create(['name' => '[Jetzt bestätigen](https://evil.example/x) **fett**', 'locale' => 'de'])
+            ->notify(new EmailChanged('alt@example.com'));
+
+        $sent = quoted_printable_decode(app('mailer')->getSymfonyTransport()->messages()->first()->toString());
+
+        $this->assertStringNotContainsString('href="https://evil.example/x"', $sent);
+        $this->assertStringNotContainsString('<strong>fett</strong>', $sent);
+        $this->assertStringContainsString('[Jetzt bestätigen](https://evil.example/x) **fett**', $sent);
+    }
 }

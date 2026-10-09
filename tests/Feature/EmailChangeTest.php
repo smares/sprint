@@ -140,4 +140,17 @@ class EmailChangeTest extends TestCase
         $this->get($url)->assertSessionHas('warning');
         $this->assertSame('bernd@example.com', $other->fresh()->email);
     }
+
+    public function test_changing_the_address_again_and_again_sends_at_most_three_mails(): void
+    {
+        foreach (['eins@example.com', 'zwei@example.com', 'drei@example.com'] as $email) {
+            $this->requestChange($email);
+        }
+
+        Livewire::test('pages::profile')->set('email', 'vier@example.com')->set('emailPassword', 'geheim123')
+            ->call('saveProfile')->assertHasErrors('email');
+
+        Notification::assertSentToTimes($this->user, VerifyNewEmail::class, 3);
+        $this->assertSame('drei@example.com', $this->user->fresh()->pending_email);
+    }
 }

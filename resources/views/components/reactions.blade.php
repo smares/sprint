@@ -36,9 +36,9 @@
                         @endforeach
                     </div>
 
-                    {{-- No form: on the task page this sits inside the task's form, and forms cannot be nested --}}
-                    <div x-data="{ emoji: '', send() { if (this.emoji.trim() !== '') { $wire.react('{{ $target }}', {{ $id }}, this.emoji); this.emoji = '' } } }" class="space-y-1">
-                        <flux:input size="sm" x-model="emoji" x-on:keydown.enter.prevent="send()" maxlength="32" :placeholder="__('Any other emoji …')" :aria-label="__('Any other emoji …')" />
+                    {{-- No form: on the task page this sits inside the task's form, and forms cannot be nested. Only an emoji stays in the field, see emojiField in app.js --}}
+                    <div x-data="emojiField('{{ $target }}', {{ $id }})" class="space-y-1">
+                        <flux:input size="sm" x-model="emoji" x-on:input="keepEmoji($event)" x-on:compositionend="keepEmoji($event)" x-on:keydown.enter="send($event)" enterkeyhint="send" autocomplete="off" :placeholder="__('Any other emoji …')" :aria-label="__('Any other emoji …')" />
                         <flux:text size="sm" class="text-zinc-500">{{ __('Type or paste one, then press Enter. Windows: Win + . · Mac: Ctrl + Cmd + Space') }}</flux:text>
                     </div>
                     </div>

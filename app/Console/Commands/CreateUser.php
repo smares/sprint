@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\User;
+use App\Notifications\AccountCreated;
 use App\Services\LocaleService;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -30,13 +31,14 @@ class CreateUser extends Command
 
         $password = $this->option('password') ?: str()->password(16, symbols: false);
 
-        User::create([
+        $user = User::create([
             'name' => $this->argument('name'),
             'email' => $this->argument('email'),
             'password' => $password,
             'is_admin' => (bool) $this->option('admin'),
             'locale' => $this->option('locale') ?: config('app.locale'),
         ]);
+        $user->notify(new AccountCreated);
 
         $this->components->info("User created. Password: {$password}");
 

@@ -1,0 +1,1 @@
+You were added to {{ config('app.name') }}

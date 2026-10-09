@@ -86,9 +86,10 @@ class TaskCollaboratorsTest extends TestCase
     public function test_list_and_board_show_collaborator_count(): void
     {
         $task = Task::factory()->create();
-        $task->collaborators()->attach(User::factory()->admin()->count(2)->create());
+        $task->collaborators()->attach($people = User::factory()->admin()->count(2)->create());
 
-        $this->get(route('projects.show', $task->project))->assertOk()->assertSee('+ 2 Beteiligte');
+        // The list shows only the count; who it is shows on hover
+        $this->get(route('projects.show', $task->project))->assertOk()->assertSee('+2')->assertSee('Beteiligte: '.$people->pluck('name')->join(', '));
         $this->get(route('projects.board', $task->project))->assertOk()->assertSee('+2');
     }
 }

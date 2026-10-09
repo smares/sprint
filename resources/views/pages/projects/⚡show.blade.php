@@ -705,11 +705,18 @@ new class extends Component
                         <flux:table.cell>
                             <x-color-badge size="sm" :color="$task->status->color">{{ $task->status->name }}</x-color-badge>
                         </flux:table.cell>
+                        {{-- Only the avatar; the name and an absence show on hover --}}
                         <flux:table.cell class="max-md:hidden">
-                            {{ $task->assignee?->labelledName() }}
-                            @if ($task->collaborators->isNotEmpty())
-                                <flux:text size="sm" class="block" title="{{ $task->collaborators->pluck('name')->join(', ') }}">{{ trans_choice('{1} + :count collaborator|[2,*] + :count collaborators', $task->collaborators->count()) }}</flux:text>
-                            @endif
+                            <div class="flex items-center gap-1.5">
+                                @if ($task->assignee)
+                                    <x-user-avatar size="xs" :user="$task->assignee" :tooltip="$task->assignee->labelledName()" />
+                                @endif
+                                @if ($task->collaborators->isNotEmpty())
+                                    <flux:tooltip :content="__('Collaborators').': '.$task->collaborators->map->labelledName()->join(', ')">
+                                        <flux:text size="sm">+{{ $task->collaborators->count() }}</flux:text>
+                                    </flux:tooltip>
+                                @endif
+                            </div>
                         </flux:table.cell>
                         <flux:table.cell class="max-sm:hidden">
                             @if ($task->due_date)

@@ -76,7 +76,7 @@ SPRINT_VERSION=0.1.0 docker compose -f compose.image.yaml up -d
 
 **Das Paket ist privat.** Es enthält den Quellcode von Flux UI Pro, dessen Lizenz die Weitergabe nicht erlaubt; deshalb darf es nicht öffentlich werden (auf GitHub: Profil → Packages → `sprint` → Package settings: Sichtbarkeit *Private*, den Haken *Inherit access from source repository* entfernen, sonst darf jede Person mit Zugriff auf das öffentliche Repository auch das Paket lesen, und unter *Manage Actions access* das Repository mit der Rolle *Write* eintragen, damit der Release-Workflow schreiben darf; beides ist nur einmal nach dem ersten Release nötig). Wer Zugriff haben soll, braucht dort Leserechte und für `docker login` ein *personal access token (classic)* mit `read:packages`. Der Release-Workflow bricht ab, wenn er das Paket ohne Anmeldung ziehen kann.
 
-Die anderen Wege bleiben: `compose.yaml` baut selbst (mit eigenem Flux-Zugang), siehe oben.
+Hinter einem eigenen Traefik: [Bereitstellung hinter Traefik](deployment-traefik.md). Die anderen Wege bleiben: `compose.yaml` baut selbst (mit eigenem Flux-Zugang), siehe oben.
 
 ## Andere Datenbank
 

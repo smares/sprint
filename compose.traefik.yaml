@@ -1,0 +1,87 @@
+# Sprint hinter einem eigenen Traefik; siehe docs/deployment-traefik.md.
+#
+#   docker compose pull && docker compose up -d
+#
+# Einstellungen stehen in .env (SPRINT_HOST, SPRINT_VERSION, APP_KEY, APP_URL, Mail …).
+# Datenbank (SQLite), Anhänge und Backups liegen im Volume "storage".
+
+x-sprint: &sprint
+  image: ghcr.io/smares/sprint:${SPRINT_VERSION:-latest}
+  restart: unless-stopped
+  env_file: .env
+  environment: &environment
+    # Logs gehen nach "docker compose logs"
+    LOG_CHANNEL: stderr
+    # Meldungen für Live-Updates gehen direkt an den Reverb-Container
+    REVERB_INTERNAL_HOST: reverb
+    REVERB_INTERNAL_PORT: 8080
+    REVERB_INTERNAL_SCHEME: http
+  volumes:
+    - storage:/app/storage
+
+services:
+  app:
+    <<: *sprint
+    container_name: sprint
+    environment:
+      <<: *environment
+      # Nur HTTP: das HTTPS-Zertifikat holt Traefik, Caddy im Container holt keines
+      SERVER_NAME: ":80"
+      # Der WebSocket des Browsers für Live-Updates läuft über dieselbe Adresse
+      CADDY_SERVER_EXTRA_DIRECTIVES: reverse_proxy /app/* reverb:8080
+
+    labels:
+      traefik.enable: true
+      # Der Dienst hängt an zwei Netzen; Traefik soll das Netz des Proxys nehmen
+      traefik.docker.network: reverse-proxy
+      traefik.http.routers.sprint.entrypoints: web-secure
+      traefik.http.routers.sprint.rule: Host(`${SPRINT_HOST:?SPRINT_HOST in .env setzen}`)
+      traefik.http.routers.sprint.service: sprint
+      traefik.http.routers.sprint.tls.certresolver: letsencrypt
+      traefik.http.routers.sprint.middlewares: default@file
+      traefik.http.services.sprint.loadbalancer.server.port: 80
+
+    # Keine "ports": erreichbar ist Sprint nur über Traefik
+    networks:
+      - default
+      - reverse-proxy
+
+  queue:
+    <<: *sprint
+    container_name: sprint-queue
+    command: [php, artisan, queue:work, --tries=3, --max-time=3600]
+    stop_signal: SIGTERM
+    depends_on:
+      app:
+        condition: service_healthy
+
+  scheduler:
+    <<: *sprint
+    container_name: sprint-scheduler
+    command: [php, artisan, schedule:work]
+    depends_on:
+      app:
+        condition: service_healthy
+
+  # Live-Updates; startet nur mit COMPOSE_PROFILES=realtime in .env
+  reverb:
+    <<: *sprint
+    container_name: sprint-reverb
+    profiles: [realtime]
+    command: [php, artisan, reverb:start, --host=0.0.0.0, --port=8080]
+    healthcheck:
+      test: [CMD, php, -r, "exit(@fsockopen('127.0.0.1', 8080) ? 0 : 1);"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      start_interval: 2s
+    depends_on:
+      app:
+        condition: service_healthy
+
+networks:
+  reverse-proxy:
+    external: true
+
+volumes:
+  storage:

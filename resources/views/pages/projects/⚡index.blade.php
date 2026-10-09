@@ -57,6 +57,7 @@ new class extends Component
         }
 
         unset($this->favorites);
+        $this->dispatch('favorites-changed');
     }
 
     /**
@@ -79,6 +80,7 @@ new class extends Component
         }
 
         unset($this->favorites);
+        $this->dispatch('favorites-changed');
     }
 
     /**
@@ -106,6 +108,7 @@ new class extends Component
 
         $this->reset('name', 'description');
         Flux::modal('create-project')->close();
+        $this->dispatch('project-updated');
 
         $this->redirectRoute('projects.show', $project, navigate: true);
     }

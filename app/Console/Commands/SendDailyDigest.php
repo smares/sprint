@@ -22,8 +22,8 @@ class SendDailyDigest extends Command
             ->where('digest_enabled', true)
             ->when($this->option('user'), fn ($users, string $email) => $users->where('email', $email))
             ->each(function (User $user) use ($digest, &$sent): void {
-                // No summary mails during a planned absence
-                if ($user->isAbsent()) {
+                // No summary mails during an absence or a quiet time
+                if (! $user->wantsMailNow()) {
                     return;
                 }
 

@@ -4,7 +4,7 @@ namespace App\Notifications;
 
 use App\Models\Task;
 use App\Notifications\Concerns\BuildsLocalizedMail;
-use App\Notifications\Concerns\PausesMailWhileAbsent;
+use App\Notifications\Concerns\PausesMail;
 use App\Services\MarkdownService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
@@ -14,7 +14,7 @@ use Illuminate\Support\Str;
 
 class UserMentioned extends Notification implements ShouldQueueAfterCommit
 {
-    use BuildsLocalizedMail, PausesMailWhileAbsent, Queueable;
+    use BuildsLocalizedMail, PausesMail, Queueable;
 
     /**
      * @param  'comment'|'description'  $where

@@ -1,6 +1,7 @@
 <?php
 
 use App\Concerns\OpensTaskPanel;
+use App\Concerns\QuickAddsTasks;
 use App\Concerns\ShowsProject;
 use App\Models\Project;
 use App\Models\Task;
@@ -19,6 +20,7 @@ new class extends Component
 {
     use ShowsProject;
     use OpensTaskPanel;
+    use QuickAddsTasks;
 
     private const PAGE_SIZE = 30;
 
@@ -89,6 +91,30 @@ new class extends Component
     private function columnLimit(int $statusId): int
     {
         return $this->columnLimits[$statusId] ?? self::PAGE_SIZE;
+    }
+
+    /**
+     * The board has no filters: a new task gets the status of its column.
+     *
+     * @return array{}
+     */
+    protected function quickAddDefaults(): array
+    {
+        return [];
+    }
+
+    /**
+     * The new task ends its column; a column that was shown completely makes room for it.
+     */
+    protected function quickAdded(Task $task): void
+    {
+        $total = $this->columnTotals[$task->status_id] ?? 0;
+
+        if ($total > $this->columnLimit($task->status_id) && $total - 1 <= $this->columnLimit($task->status_id)) {
+            $this->columnLimits[$task->status_id] = $total;
+        }
+
+        unset($this->columns, $this->columnTotals);
     }
 
     public function loadMoreInColumn(int $statusId): void
@@ -214,7 +240,7 @@ new class extends Component
                 </flux:kanban.column.cards>
 
                 @if ($this->canEdit)
-                    <flux:button size="sm" variant="subtle" icon="plus" class="mt-1 w-full" x-on:click="$wire.$dispatch('new-task', { statusId: {{ $status->id }} })">{{ __('Add task') }}</flux:button>
+                    <x-quick-add :status-id="$status->id" class="mt-1" />
                 @endif
 
                 @if ($this->columnTotals[$status->id] > $this->columns[$status->id]->count())

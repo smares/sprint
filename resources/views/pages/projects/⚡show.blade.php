@@ -2,6 +2,7 @@
 
 use App\Concerns\EditsTasksInBulk;
 use App\Concerns\OpensTaskPanel;
+use App\Concerns\QuickAddsTasks;
 use App\Concerns\ShowsProject;
 use App\Enums\CustomFieldType;
 use App\Models\CustomFieldValue;
@@ -27,6 +28,7 @@ new class extends Component
     use ShowsProject;
     use EditsTasksInBulk;
     use OpensTaskPanel;
+    use QuickAddsTasks;
 
     private const PAGE_SIZE = 50;
 
@@ -133,6 +135,39 @@ new class extends Component
     public function totalTasks(): int
     {
         return $this->filteredTasks()->count();
+    }
+
+    /**
+     * What the shown filters ask of a task, so that a new one does not vanish from the view.
+     *
+     * @return array{status_id?: int, assignee_id?: int, tag_id?: int}
+     */
+    protected function quickAddDefaults(): array
+    {
+        return array_filter([
+            'status_id' => ctype_digit($this->statusFilter) ? (int) $this->statusFilter : null,
+            'assignee_id' => $this->assigneeFilter === 'me' ? auth()->id() : (ctype_digit($this->assigneeFilter) ? (int) $this->assigneeFilter : null),
+            'tag_id' => ctype_digit($this->tagFilter) ? (int) $this->tagFilter : null,
+        ]);
+    }
+
+    /**
+     * The new task ends the list; a list that was shown completely makes room for it, and a task
+     * the filters hide (the date filter, say) is announced rather than lost.
+     */
+    protected function quickAdded(Task $task): void
+    {
+        $total = $this->totalTasks;
+
+        if ($total > $this->limit && $total - 1 <= $this->limit) {
+            $this->limit = $total;
+        }
+
+        unset($this->tasks, $this->totalTasks, $this->progress, $this->tagOptions);
+
+        if (! $this->filteredTasks()->whereKey($task->id)->exists()) {
+            Flux::toast(variant: 'success', text: __('Task created, but the current filters hide it.'));
+        }
     }
 
     public function loadMore(): void
@@ -681,6 +716,10 @@ new class extends Component
                 <flux:button size="sm" wire:click="loadMore">{{ __('Load more') }}</flux:button>
             </div>
         @endif
+    @endif
+
+    @if ($this->canEdit && ! $selecting)
+        <x-quick-add class="mt-2" />
     @endif
 
     @if ($selecting)

@@ -75,15 +75,13 @@ new class extends Component
             'startDate' => ['nullable', 'date_format:Y-m-d', 'before_or_equal:dueDate'],
         ], attributes: ['title' => __('Title'), 'statusId' => __('Status'), 'dueDate' => __('Due on'), 'startDate' => __('Starts on')]);
 
-        $this->project->tasks()->create([
+        $this->project->createRootTask([
             'title' => trim($validated['title']),
             'description' => $validated['description'] ?: null,
             'status_id' => (int) $validated['statusId'],
             'assignee_id' => $validated['assigneeId'] ?: null,
             'due_date' => $validated['dueDate'] ?: null,
             'start_date' => $validated['startDate'] ?: null,
-            'creator_id' => auth()->id(),
-            'position' => $this->project->nextRootPosition(),
         ]);
 
         $this->reset('title', 'description', 'assigneeId', 'dueDate', 'startDate');

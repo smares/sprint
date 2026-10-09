@@ -1,6 +1,7 @@
 <?php
 
 use App\Color;
+use App\Concerns\ConfirmsAutosave;
 use App\Enums\CustomFieldType;
 use App\Models\CustomField;
 use App\Models\CustomFieldOption;
@@ -15,6 +16,8 @@ use Livewire\Component;
 
 new class extends Component
 {
+    use ConfirmsAutosave;
+
     public Project $project;
 
     public string $newName = '';
@@ -111,12 +114,14 @@ new class extends Component
 
         $field->update(['name' => $name]);
         $this->refresh();
+        $this->confirmSaved();
     }
 
     public function updatedInList(bool $value, string $id): void
     {
         $this->fieldOrFail($id)->update(['show_in_list' => $value]);
         $this->refresh();
+        $this->confirmSaved();
     }
 
     public function moveField(int|string $id, int $position): void
@@ -174,6 +179,7 @@ new class extends Component
 
         $option->update(['name' => $name]);
         $this->refresh();
+        $this->confirmSaved();
     }
 
     public function updatedOptionColors(string $value, string $id): void
@@ -188,6 +194,7 @@ new class extends Component
 
         $option->update(['color' => $value]);
         $this->refresh();
+        $this->confirmSaved();
     }
 
     public function moveOption(int|string $id, int $position, int|string $fieldId): void

@@ -1,5 +1,6 @@
 <?php
 
+use App\Concerns\ConfirmsAutosave;
 use App\Models\Team;
 use App\Models\User;
 use Flux\Flux;
@@ -12,6 +13,8 @@ use Livewire\Component;
 
 new class extends Component
 {
+    use ConfirmsAutosave;
+
     public string $newName = '';
 
     /** @var array<int|string, string> */
@@ -86,6 +89,7 @@ new class extends Component
 
         $team->update(['name' => $name]);
         $this->refresh();
+        $this->confirmSaved();
     }
 
     public function addMember(int $teamId): void

@@ -1,6 +1,7 @@
 <?php
 
 use App\Color;
+use App\Concerns\ConfirmsAutosave;
 use App\Models\Project;
 use App\Models\Tag;
 use Flux\Flux;
@@ -13,6 +14,8 @@ use Livewire\Component;
 
 new class extends Component
 {
+    use ConfirmsAutosave;
+
     public Project $project;
 
     public string $newName = '';
@@ -130,6 +133,7 @@ new class extends Component
 
         $tag->update(['name' => $name]);
         $this->changed();
+        $this->confirmSaved();
     }
 
     public function updatedColors(string $value, string $id): void
@@ -144,6 +148,7 @@ new class extends Component
 
         $tag->update(['color' => $value]);
         $this->changed();
+        $this->confirmSaved();
     }
 
     public function confirmDelete(int $id): void

@@ -1,11 +1,13 @@
-# syntax=docker/dockerfile:1
+# syntax=mirror.gcr.io/docker/dockerfile:1
 
 # Sprint as a single image: FrankenPHP (Caddy + PHP) serves the app; the same image runs
 # the queue worker, the scheduler and Reverb (see compose.yaml and docs/deployment-docker.md).
 
+# Docker Hub images come through Google's mirror (mirror.gcr.io): Docker Hub limits anonymous pulls and has been
+# down during releases; the mirror serves the same images.
 ARG PHP_VERSION=8.4
 
-FROM dunglas/frankenphp:1-php${PHP_VERSION}-bookworm AS base
+FROM mirror.gcr.io/dunglas/frankenphp:1-php${PHP_VERSION}-bookworm AS base
 
 RUN install-php-extensions intl opcache pcntl pdo_mysql pdo_pgsql zip \
     && cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
@@ -19,12 +21,12 @@ FROM base AS vendor
 
 COPY composer.json composer.lock ./
 
-RUN --mount=type=bind,from=composer:2,source=/usr/bin/composer,target=/usr/bin/composer \
+RUN --mount=type=bind,from=mirror.gcr.io/library/composer:2,source=/usr/bin/composer,target=/usr/bin/composer \
     --mount=type=secret,id=composer_auth,env=COMPOSER_AUTH,required=true \
     composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-interaction --no-progress
 
 # Front-end assets; Tailwind reads the Flux styles and Blade views from vendor.
-FROM node:25-bookworm-slim AS assets
+FROM mirror.gcr.io/library/node:25-bookworm-slim AS assets
 
 WORKDIR /app
 

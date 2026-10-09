@@ -216,6 +216,16 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
     }
 
     /**
+     * Projects starred on the projects page, in the person's own order.
+     *
+     * @return BelongsToMany<Project, $this>
+     */
+    public function favoriteProjects(): BelongsToMany
+    {
+        return $this->belongsToMany(Project::class, 'project_favorites')->withPivot('position')->orderByPivot('position');
+    }
+
+    /**
      * @return BelongsToMany<Team, $this>
      */
     public function teams(): BelongsToMany

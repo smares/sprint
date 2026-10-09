@@ -29,6 +29,57 @@ new class extends Component
     }
 
     /**
+     * The person's starred projects that are not archived, in their own order.
+     *
+     * @return Collection<int, Project>
+     */
+    #[Computed]
+    public function favorites(): Collection
+    {
+        $order = auth()->user()->favoriteProjects()->pluck('projects.id')->flip();
+
+        return $this->projects->filter(fn (Project $project) => $order->has($project->id))
+            ->sortBy(fn (Project $project) => $order[$project->id])
+            ->values();
+    }
+
+    public function toggleFavorite(int $projectId): void
+    {
+        $project = Project::query()->visibleTo(auth()->user())->findOrFail($projectId);
+        $favorites = auth()->user()->favoriteProjects();
+
+        if ($favorites->whereKey($project->id)->exists()) {
+            auth()->user()->favoriteProjects()->detach($project->id);
+        } else {
+            auth()->user()->favoriteProjects()->attach($project->id, ['position' => (int) auth()->user()->favoriteProjects()->max('position') + 1]);
+        }
+
+        unset($this->favorites);
+    }
+
+    /**
+     * Drag and drop among the favorites; only the person's own order changes.
+     */
+    public function moveFavorite(int|string $projectId, int $position): void
+    {
+        $ids = $this->favorites->pluck('id')->all();
+        $index = array_search((int) $projectId, $ids, true);
+
+        if ($index === false) {
+            return;
+        }
+
+        array_splice($ids, $index, 1);
+        array_splice($ids, max(0, min($position, count($ids))), 0, [(int) $projectId]);
+
+        foreach ($ids as $order => $id) {
+            auth()->user()->favoriteProjects()->updateExistingPivot($id, ['position' => $order]);
+        }
+
+        unset($this->favorites);
+    }
+
+    /**
      * Archived projects the person can still open (read-only).
      */
     #[Computed]
@@ -76,18 +127,25 @@ new class extends Component
     @if ($this->projects->isEmpty())
         <flux:callout icon="folder-open" :heading="__('No projects yet')" :text="__('Create your first project to start managing tasks.')" />
     @else
+        @php($favoriteIds = $this->favorites->pluck('id')->all())
+
+        @if ($favoriteIds !== [])
+            <flux:heading size="lg" class="mb-3">{{ __('Favorites') }}</flux:heading>
+            {{-- Each person sorts their own favorites by dragging --}}
+            <div class="mb-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" wire:sort="moveFavorite" wire:sort:config="{ delay: 250, delayOnTouchOnly: true, touchStartThreshold: 12 }">
+                @foreach ($this->favorites as $project)
+                    <x-project-card :project="$project" favorite sortable wire:key="favorite-{{ $project->id }}" wire:sort:item="{{ $project->id }}" />
+                @endforeach
+            </div>
+
+            <flux:heading size="lg" class="mb-3">{{ __('All projects') }}</flux:heading>
+        @else
+            <flux:text class="mb-4">{{ __('Star a project to keep it at the top as a favorite.') }}</flux:text>
+        @endif
+
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             @foreach ($this->projects as $project)
-                <a href="{{ route('projects.show', $project) }}" wire:navigate wire:key="project-{{ $project->id }}">
-                    <flux:card class="h-full hover:bg-zinc-50 dark:hover:bg-zinc-700/50">
-                        <flux:heading size="lg">{{ $project->name }}</flux:heading>
-                        <flux:text class="mt-1 line-clamp-2">{{ $project->description }}</flux:text>
-                        <div class="mt-4 flex gap-2">
-                            <flux:badge color="blue">{{ __(':count open', ['count' => $project->open_tasks_count]) }}</flux:badge>
-                            <flux:badge>{{ __(':count total', ['count' => $project->tasks_count]) }}</flux:badge>
-                        </div>
-                    </flux:card>
-                </a>
+                <x-project-card :project="$project" :favorite="in_array($project->id, $favoriteIds, true)" wire:key="project-{{ $project->id }}" />
             @endforeach
         </div>
     @endif

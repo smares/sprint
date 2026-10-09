@@ -13,18 +13,39 @@ new class extends Component
 
     /**
      * Projects the person can open; while typing only those whose name contains the text, so that
-     * every keystroke renders a handful of entries instead of all projects.
+     * every keystroke renders a handful of entries instead of all projects. Names that start with the
+     * text come before names that only contain it, and within each the person's favourites lead in
+     * their own order, followed by the rest alphabetically.
      */
     #[Computed]
     public function projects(): Collection
     {
         $query = mb_strtolower(trim($this->query));
+        $favoritePositions = array_flip($this->favoriteIds);
+        $startsWithQuery = fn (Project $project): bool => str_starts_with(mb_strtolower($project->name), $query);
+        $favoritePosition = fn (Project $project): int => $favoritePositions[$project->id] ?? PHP_INT_MAX;
 
         return Project::visibleTo(auth()->user())
             ->whereNull('archived_at')
             ->orderBy('name')
             ->get(['id', 'name'])
-            ->when($query !== '', fn (Collection $projects) => $projects->filter(fn (Project $project) => str_contains(mb_strtolower($project->name), $query))->values());
+            ->when($query !== '', fn (Collection $projects) => $projects->filter(fn (Project $project) => str_contains(mb_strtolower($project->name), $query)))
+            ->sortBy([
+                fn (Project $a, Project $b) => $startsWithQuery($b) <=> $startsWithQuery($a),
+                fn (Project $a, Project $b) => $favoritePosition($a) <=> $favoritePosition($b),
+            ])
+            ->values();
+    }
+
+    /**
+     * Ids of the person's favourite projects in their own order.
+     *
+     * @return list<int>
+     */
+    #[Computed]
+    public function favoriteIds(): array
+    {
+        return auth()->user()->favoriteProjects()->pluck('projects.id')->all();
     }
 
     /**
@@ -83,7 +104,7 @@ new class extends Component
                     <div class="[&:not(:has([data-flux-command-item]:not([data-hidden])))]:hidden">
                         <div class="px-2 pb-1 pt-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">{{ __('Projects') }}</div>
                         @foreach ($this->projects as $project)
-                            <flux:command.item wire:key="project-{{ $project->id }}" icon="folder-open" x-on:click="Livewire.navigate('{{ route('projects.show', $project) }}')">{{ $project->name }}</flux:command.item>
+                            <flux:command.item wire:key="project-{{ $project->id }}" :icon="in_array($project->id, $this->favoriteIds, true) ? 'star' : 'folder-open'" x-on:click="Livewire.navigate('{{ route('projects.show', $project) }}')">{{ $project->name }}</flux:command.item>
                         @endforeach
                     </div>
                 @endif

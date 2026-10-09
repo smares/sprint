@@ -223,7 +223,7 @@ new class extends Component
             <li wire:key="member-{{ $member->id }}" class="flex items-center gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
                 <x-user-avatar size="sm" :user="$member" />
                 <div class="min-w-0 flex-1">
-                    <flux:heading class="truncate">{{ $member->name }} @unless ($member->isActive()) <flux:badge size="sm" color="zinc">{{ __('Deactivated') }}</flux:badge> @endunless</flux:heading>
+                    <flux:heading class="truncate">{{ $member->name }} @unless ($member->isActive()) <flux:badge size="sm" color="zinc">{{ __('Deactivated') }}</flux:badge> @endunless @if ($member->isAbsent()) <flux:badge size="sm" color="amber">{{ \Illuminate\Support\Str::ucfirst($member->absenceNote()) }}</flux:badge> @endif</flux:heading>
                     <flux:text size="sm" class="truncate">{{ $member->email }}</flux:text>
                 </div>
                 <flux:select size="sm" variant="listbox" wire:model.live="roles.{{ $member->id }}" aria-label="{{ __('Role') }}" class="max-w-36">

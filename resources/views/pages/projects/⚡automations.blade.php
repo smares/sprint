@@ -4,6 +4,7 @@ use App\Enums\AutomationAction;
 use App\Enums\AutomationTrigger;
 use App\Models\Automation;
 use App\Models\Project;
+use App\Models\User;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
@@ -82,7 +83,7 @@ new class extends Component
     #[Computed]
     public function userNames(): array
     {
-        return $this->project->eligibleUsers()->orderBy('name')->pluck('name', 'users.id')->all();
+        return $this->project->eligibleUsers()->orderBy('name')->get()->mapWithKeys(fn (User $user) => [$user->id => $user->labelledName()])->all();
     }
 
     public function openForm(?int $id = null): void

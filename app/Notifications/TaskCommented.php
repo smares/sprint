@@ -6,6 +6,7 @@ use App\Models\Comment;
 use App\Models\Task;
 use App\Models\User;
 use App\Notifications\Concerns\BuildsLocalizedMail;
+use App\Notifications\Concerns\PausesMailWhileAbsent;
 use App\Services\MarkdownService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
@@ -16,17 +17,9 @@ use Illuminate\Support\Str;
 
 class TaskCommented extends Notification implements ShouldQueueAfterCommit
 {
-    use BuildsLocalizedMail, Queueable;
+    use BuildsLocalizedMail, PausesMailWhileAbsent, Queueable;
 
     public function __construct(public Comment $comment) {}
-
-    /**
-     * @return list<string>
-     */
-    public function via(object $notifiable): array
-    {
-        return ['mail', 'database'];
-    }
 
     public function toMail(object $notifiable): MailMessage
     {

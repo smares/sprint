@@ -50,6 +50,14 @@ class UserFactory extends Factory
     }
 
     /**
+     * Indicate that the person is away from yesterday until the given number of days from today.
+     */
+    public function absent(int $days = 7): static
+    {
+        return $this->state(fn (array $attributes) => ['absent_from' => today()->subDay(), 'absent_until' => today()->addDays($days)]);
+    }
+
+    /**
      * Indicate that the model's email address should be unverified.
      */
     public function unverified(): static

@@ -4,6 +4,7 @@ namespace App\Notifications;
 
 use App\Models\Task;
 use App\Notifications\Concerns\BuildsLocalizedMail;
+use App\Notifications\Concerns\PausesMailWhileAbsent;
 use App\Services\MarkdownService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
@@ -13,7 +14,7 @@ use Illuminate\Support\Str;
 
 class UserMentioned extends Notification implements ShouldQueueAfterCommit
 {
-    use BuildsLocalizedMail, Queueable;
+    use BuildsLocalizedMail, PausesMailWhileAbsent, Queueable;
 
     /**
      * @param  'comment'|'description'  $where
@@ -24,14 +25,6 @@ class UserMentioned extends Notification implements ShouldQueueAfterCommit
         public string $text,
         public ?string $mentionedBy = null,
     ) {}
-
-    /**
-     * @return list<string>
-     */
-    public function via(object $notifiable): array
-    {
-        return ['mail', 'database'];
-    }
 
     public function toMail(object $notifiable): MailMessage
     {

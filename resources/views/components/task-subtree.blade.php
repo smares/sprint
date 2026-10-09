@@ -27,7 +27,7 @@
                         <a href="{{ route('tasks.show', $subtask) }}" wire:navigate @class(['hover:underline', 'line-through text-zinc-400' => $subtask->isDone()])>{{ $subtask->title }}</a>
                     @endif
                     @if ($subtask->assignee)
-                        <flux:text size="sm">{{ $subtask->assignee->name }}</flux:text>
+                        <flux:text size="sm">{{ $subtask->assignee->labelledName() }}</flux:text>
                     @endif
                 </div>
 

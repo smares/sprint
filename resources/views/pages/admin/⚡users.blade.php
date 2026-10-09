@@ -193,7 +193,7 @@ new class extends Component
             <li wire:key="user-{{ $user->id }}" @class(['flex flex-wrap items-center gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700', 'opacity-60' => ! $user->isActive()])>
                 <x-user-avatar size="sm" :user="$user" />
                 <div class="min-w-0 flex-1">
-                    <flux:heading class="truncate">{{ $user->name }} @if ($user->is(auth()->user())) <flux:badge size="sm">{{ __('You') }}</flux:badge> @endif @unless ($user->isActive()) <flux:badge size="sm" color="zinc">{{ __('Deactivated') }}</flux:badge> @endunless</flux:heading>
+                    <flux:heading class="truncate">{{ $user->name }} @if ($user->is(auth()->user())) <flux:badge size="sm">{{ __('You') }}</flux:badge> @endif @unless ($user->isActive()) <flux:badge size="sm" color="zinc">{{ __('Deactivated') }}</flux:badge> @endunless @if ($user->isAbsent()) <flux:badge size="sm" color="amber">{{ \Illuminate\Support\Str::ucfirst($user->absenceNote()) }}</flux:badge> @endif</flux:heading>
                     <flux:text size="sm" class="truncate">{{ $user->email }}</flux:text>
                 </div>
                 {{-- On phones the actions get their own line under the name; the buttons keep their places in every row. --}}

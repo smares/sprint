@@ -570,7 +570,7 @@ new class extends Component
             ->filter()
             ->unique();
 
-        return User::whereIn('id', $ids)->orderBy('name')->get(['id', 'name', 'deactivated_at']);
+        return User::whereIn('id', $ids)->orderBy('name')->get(['id', 'name', 'deactivated_at', 'absent_from', 'absent_until']);
     }
 
     public function save(): void
@@ -1030,7 +1030,7 @@ new class extends Component
                 <flux:select size="sm" variant="listbox" wire:model="assigneeId" :aria-label="__('Assignee')">
                     <flux:select.option value="">{{ __('Nobody') }}</flux:select.option>
                     @foreach ($this->users as $user)
-                        <flux:select.option value="{{ $user->id }}">{{ $user->name }}{{ $user->isActive() ? '' : ' ('.__('deactivated').')' }}</flux:select.option>
+                        <flux:select.option value="{{ $user->id }}">{{ $user->labelledName() }}</flux:select.option>
                     @endforeach
                 </flux:select>
             </x-task-field>
@@ -1102,7 +1102,7 @@ new class extends Component
             <x-task-field :label="__('Collaborators')">
                 <flux:pillbox size="sm" wire:model="collaboratorIds" multiple searchable :aria-label="__('Collaborators')" :placeholder="__('Choose more people …')">
                     @foreach ($this->users as $user)
-                        <flux:pillbox.option wire:key="collaborator-{{ $user->id }}" value="{{ $user->id }}">{{ $user->name }}{{ $user->isActive() ? '' : ' ('.__('deactivated').')' }}</flux:pillbox.option>
+                        <flux:pillbox.option wire:key="collaborator-{{ $user->id }}" value="{{ $user->id }}">{{ $user->labelledName() }}</flux:pillbox.option>
                     @endforeach
                 </flux:pillbox>
             </x-task-field>

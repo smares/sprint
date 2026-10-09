@@ -43,6 +43,11 @@ new class extends Component
 
     public string $locale = '';
 
+    /** The one planned absence (Y-m-d), empty when there is none. */
+    public string $absentFrom = '';
+
+    public string $absentUntil = '';
+
     /** The picture as the browser cropped and shrank it (see `avatarPicker` in app.js). */
     public ?TemporaryUploadedFile $avatarUpload = null;
 
@@ -61,6 +66,30 @@ new class extends Component
         $this->reminders = auth()->user()->reminders_enabled;
         $this->celebrations = auth()->user()->celebrations_enabled;
         $this->locale = auth()->user()->preferredLocale();
+        // An absence that is over is not shown again
+        if (auth()->user()->hasPlannedAbsence()) {
+            $this->absentFrom = auth()->user()->absent_from->toDateString();
+            $this->absentUntil = auth()->user()->absent_until->toDateString();
+        }
+    }
+
+    public function saveAbsence(): void
+    {
+        $validated = $this->validate([
+            'absentFrom' => ['required', 'date_format:Y-m-d'],
+            'absentUntil' => ['required', 'date_format:Y-m-d', 'after_or_equal:absentFrom', 'after_or_equal:today'],
+        ], attributes: ['absentFrom' => __('Away from'), 'absentUntil' => __('Away until')]);
+
+        auth()->user()->update(['absent_from' => $validated['absentFrom'], 'absent_until' => $validated['absentUntil']]);
+        Flux::toast(variant: 'success', text: __('Absence saved.'));
+    }
+
+    public function clearAbsence(): void
+    {
+        auth()->user()->update(['absent_from' => null, 'absent_until' => null]);
+        $this->reset('absentFrom', 'absentUntil');
+        $this->resetErrorBag(['absentFrom', 'absentUntil']);
+        Flux::toast(variant: 'success', text: __('Absence removed.'));
     }
 
     public function updatedLocale(string $value): void
@@ -304,6 +333,27 @@ new class extends Component
             <flux:switch wire:model.live="reminders" :label="__('Reminder the day before')" :description="__('An entry in your inbox the day before a task you are assigned to or collaborate on is due.')" />
 
             <flux:switch wire:model.live="celebrations" :label="__('Celebrate completed tasks')" :description="__('Now and then a unicorn flies across the screen when you complete a task. Not shown if your device is set to reduce motion.')" />
+
+            <flux:separator />
+
+            <form wire:submit="saveAbsence" class="space-y-4">
+                <div>
+                    <flux:heading>{{ __('Absence') }}</flux:heading>
+                    <flux:text class="mt-1">{{ __('While you are away you get no emails; your inbox still collects everything. Others see “away until …” next to your name.') }}</flux:text>
+                </div>
+
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <flux:date-picker wire:model="absentFrom" :label="__('Away from')" locale="{{ app()->getLocale() }}" :placeholder="__('Select a date')" />
+                    <flux:date-picker wire:model="absentUntil" :label="__('Away until')" locale="{{ app()->getLocale() }}" :placeholder="__('Select a date')" />
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2">
+                    <flux:button type="submit" variant="primary">{{ __('Save absence') }}</flux:button>
+                    @if (auth()->user()->hasPlannedAbsence())
+                        <flux:button type="button" variant="ghost" wire:click="clearAbsence">{{ __('Remove absence') }}</flux:button>
+                    @endif
+                </div>
+            </form>
         </flux:tab.panel>
 
         <flux:tab.panel name="security" class="space-y-8">

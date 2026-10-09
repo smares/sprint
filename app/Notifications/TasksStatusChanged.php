@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Notifications\Concerns\BuildsLocalizedMail;
+use App\Notifications\Concerns\PausesMailWhileAbsent;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -13,7 +14,7 @@ use Illuminate\Notifications\Notification;
  */
 class TasksStatusChanged extends Notification implements ShouldQueueAfterCommit
 {
-    use BuildsLocalizedMail, Queueable;
+    use BuildsLocalizedMail, PausesMailWhileAbsent, Queueable;
 
     /** How many tasks the mail lists before it says "and n more". */
     public const LISTED = 25;
@@ -22,14 +23,6 @@ class TasksStatusChanged extends Notification implements ShouldQueueAfterCommit
      * @param  list<array{id: int, title: string, project: string, from: string, to: string}>  $changes
      */
     public function __construct(public array $changes, public ?string $changedBy = null) {}
-
-    /**
-     * @return list<string>
-     */
-    public function via(object $notifiable): array
-    {
-        return ['mail', 'database'];
-    }
 
     public function toMail(object $notifiable): MailMessage
     {

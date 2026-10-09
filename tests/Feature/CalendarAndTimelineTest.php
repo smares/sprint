@@ -30,6 +30,36 @@ class CalendarAndTimelineTest extends TestCase
         return Task::factory()->for($this->project)->create(['title' => $title, 'start_date' => $start, 'due_date' => $due] + $attributes);
     }
 
+    public function test_a_day_opens_the_new_task_dialog_with_that_day_for_people_who_may_edit(): void
+    {
+        $calendar = Livewire::test('pages::projects.calendar', ['project' => $this->project]);
+
+        // The whole cell and a plus button for the keyboard both open the dialog with the day as the due date
+        $calendar->assertSeeHtml("\$wire.\$dispatch('new-task', { dueDate: '2026-10-15' })")
+            ->assertSeeHtml('aria-label="Neue Aufgabe am 2026-10-15"')
+            ->assertSeeHtml("{ dueDate: '2026-10-31' }");
+
+        $viewer = User::factory()->create();
+        $this->project->setRole($viewer, ProjectRole::Viewer);
+
+        Livewire::actingAs($viewer)->test('pages::projects.calendar', ['project' => $this->project])
+            ->assertOk()
+            ->assertDontSeeHtml('new-task')
+            ->assertDontSeeHtml('Neue Aufgabe am');
+    }
+
+    public function test_the_dialog_takes_the_clicked_day_as_the_due_date(): void
+    {
+        Livewire::test('task-create', ['project' => $this->project])
+            ->dispatch('new-task', dueDate: '2026-10-15')
+            ->assertSet('dueDate', '2026-10-15')
+            ->set('title', 'Am Stichtag')
+            ->call('create')
+            ->assertHasNoErrors();
+
+        $this->assertSame('2026-10-15', $this->project->tasks()->sole()->due_date->toDateString());
+    }
+
     public function test_start_date_is_saved_on_the_task_page_and_logged(): void
     {
         $task = $this->task('Plan', null, '2026-10-20');

@@ -214,6 +214,7 @@
     "Describe the task … (Markdown, @ for mentions)": "Aufgabe beschreiben … (Markdown, @ für Erwähnungen)",
     "Description": "Beschreibung",
     "detached the task from “:from”": "hat die Aufgabe aus „:from“ gelöst",
+    "Discard your unsaved changes to this task?": "Ungespeicherte Änderungen an dieser Aufgabe verwerfen?",
     "Do you want to stop receiving emails about “:task” (:project), :name?": "Möchtest du keine E-Mails mehr zu „:task“ (:project) bekommen, :name?",
     "Done": "Erledigt",
     "Done only": "Nur erledigte",

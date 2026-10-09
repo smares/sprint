@@ -268,7 +268,78 @@ const registerAvatarPicker = () => {
     }))
 }
 
+// The task flyout (components/task-panel.blade.php). Flux does not close it by itself: Esc, a click next to it,
+// the close button and switching to another task go through here and ask first if the task has unsaved input.
+const registerTaskFlyout = () => {
+    window.Alpine.data('taskFlyout', (question, label) => ({
+        init() {
+            this.$nextTick(() => {
+                window.Flux.modal('task-panel').show()
+                this.$el.querySelector('dialog')?.setAttribute('aria-label', label)
+                this.$nextTick(() => this.$el.querySelector('[data-flyout-close]')?.focus())
+            })
+        },
+
+        // Title, description, fields or a comment typed but not saved yet
+        hasUnsavedInput() {
+            const task = this.$el.querySelector('dialog [wire\\:id]')
+
+            return Boolean(task && window.Livewire.find(task.getAttribute('wire:id'))?.$dirty())
+        },
+
+        mayLeave() {
+            return ! this.hasUnsavedInput() || window.confirm(question)
+        },
+
+        close() {
+            if (this.mayLeave()) {
+                window.Flux.modal('task-panel').close()
+            }
+        },
+
+        // Listens on the window before everything else (capture), also when the focus left the flyout: an open menu, list or
+        // date picker inside is still open then, and Esc closes only that.
+        // Flux itself ignores Esc here (escapable false) and marks the event as handled, so that cannot be the signal.
+        onKeydown(event) {
+            if (event.key !== 'Escape' || this.hasOpenMenu()) {
+                return
+            }
+
+            event.preventDefault()
+            this.close()
+        },
+
+        // Tooltips are popovers too, but one may still show after a click on a button
+        hasOpenMenu() {
+            return [...this.$el.querySelectorAll(':popover-open')].some((popover) => ! popover.closest('ui-tooltip'))
+        },
+
+        onClick(event) {
+            const dialog = event.target
+
+            if (dialog.tagName !== 'DIALOG') {
+                return
+            }
+
+            // A click on the dimmed backdrop lands on the dialog itself, outside its box
+            const box = dialog.getBoundingClientRect()
+
+            if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) {
+                this.close()
+            }
+        },
+
+        // close-task and open-task from inside the flyout (close button, subtasks, parent tasks)
+        guard(event) {
+            if (! this.mayLeave()) {
+                event.stopImmediatePropagation()
+            }
+        },
+    }))
+}
+
 const registerAll = () => {
+    registerTaskFlyout()
     registerMentionable()
     registerTimelineBar()
     registerPresence()

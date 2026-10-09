@@ -954,7 +954,7 @@ new class extends Component
                 @endforeach
             </flux:text>
             <flux:button size="sm" variant="ghost" icon="arrow-top-right-on-square" href="{{ route('tasks.show', $task) }}" wire:navigate aria-label="{{ __('Open as page') }}" tooltip="{{ __('Open as page') }}" />
-            <flux:button size="sm" variant="ghost" icon="x-mark" x-on:click="$dispatch('close-task')" aria-label="{{ __('Close') }}" tooltip="{{ __('Close') }}" />
+            <flux:button size="sm" variant="ghost" icon="x-mark" x-on:click="$dispatch('close-task')" data-flyout-close aria-label="{{ __('Close') }}" tooltip="{{ __('Close') }}" />
         </div>
     @else
         <flux:breadcrumbs class="mb-4">

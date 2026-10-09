@@ -19,6 +19,22 @@ class Reaction extends Model
     use HasFactory;
 
     /**
+     * Removes the reactions on these tasks and on their comments. The database removes subtasks and
+     * comments by itself (foreign keys), but reactions point at them without one, so they would stay behind.
+     *
+     * @param  list<int>  $taskIds
+     */
+    public static function deleteForTasks(array $taskIds): void
+    {
+        foreach (array_chunk($taskIds, 500) as $chunk) {
+            self::query()->where('reactable_type', (new Task)->getMorphClass())->whereIn('reactable_id', $chunk)->delete();
+            self::query()->where('reactable_type', (new Comment)->getMorphClass())
+                ->whereIn('reactable_id', Comment::query()->whereIn('task_id', $chunk)->select('id'))
+                ->delete();
+        }
+    }
+
+    /**
      * @return BelongsTo<User, $this>
      */
     public function user(): BelongsTo

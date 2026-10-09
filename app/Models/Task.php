@@ -111,9 +111,11 @@ class Task extends Model
 
         static::deleted(fn (self $task) => app(RealtimeService::class)->taskChanged($task->project_id, $task->id, 'task'));
 
-        static::deleting(function (self $task) {
+        static::deleting(function (self $task): void {
             app(TaskSearchService::class)->forget($task->id);
-            $task->deleteAttachmentFiles();
+            $ids = [$task->getKey(), ...$task->descendantIds()];
+            $task->deleteAttachmentFiles($ids);
+            Reaction::deleteForTasks($ids);
         });
 
         static::updated(function (self $task) {
@@ -419,9 +421,12 @@ class Task extends Model
     /**
      * Remove the stored files of this task and all its subtasks; the rows go with the task itself.
      */
-    private function deleteAttachmentFiles(): void
+    /**
+     * @param  list<int>  $taskIds  This task and all its subtasks.
+     */
+    private function deleteAttachmentFiles(array $taskIds): void
     {
-        foreach (array_chunk([$this->getKey(), ...$this->descendantIds()], 500) as $chunk) {
+        foreach (array_chunk($taskIds, 500) as $chunk) {
             Storage::disk()->delete(Attachment::whereIn('task_id', $chunk)->pluck('path')->all());
         }
     }

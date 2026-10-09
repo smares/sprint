@@ -6,7 +6,6 @@ Updates, Gesundheitsprüfung und Backups.
 
 - Nach jedem Update: `composer install --no-dev --optimize-autoloader`, `php artisan migrate --force`, `npm ci --ignore-scripts && npm run build`
 - Vor Migrationen, die bestehende Daten umbauen, ein Datenbank-Backup ziehen
-- Beim Einführen der Rollen werden alle bestehenden Benutzer Verwalter aller bestehenden Projekte (alles bleibt wie bisher erreichbar); danach per `php artisan user:admin <E-Mail>` Administratoren bestimmen und Mitgliedschaften in den Projekten anpassen
 
 ## Gesundheitsprüfung
 

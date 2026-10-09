@@ -37,7 +37,7 @@ Den ersten Benutzer legst du so an:
 php artisan user:create "Anna Beispiel" anna@example.com --password=geheim1234
 ```
 
-Das Passwort braucht mindestens 8 Zeichen. Ohne `--password` erzeugt das Kommando ein Passwort und gibt es aus. Mit `--admin` wird die Person Administrator der ganzen Anwendung; bestehende Benutzer machst du so dazu (oder mit `--revoke` wieder zum normalen Benutzer):
+Die neue Person bekommt eine Mail, dass sie angelegt wurde (ohne Passwort; dafür muss der Mailversand eingerichtet sein, siehe [Konfiguration](configuration.md#e-mail-und-tageszusammenfassung)). Das Passwort braucht mindestens 8 Zeichen. Ohne `--password` erzeugt das Kommando ein Passwort und gibt es aus. Mit `--admin` wird die Person Administrator der ganzen Anwendung; bestehende Benutzer machst du so dazu (oder mit `--revoke` wieder zum normalen Benutzer):
 
 ```bash
 php artisan user:admin anna@example.com

@@ -98,7 +98,7 @@ new class extends Component
         $this->conditionAssignee = (string) ($rule?->conditions['assignee_id'] ?? '');
         $this->conditionTag = (string) ($rule?->conditions['tag_id'] ?? '');
         $this->actions = $rule === null
-            ? [['type' => AutomationAction::SetAssignee->value, 'value' => '']]
+            ? [['type' => '', 'value' => '']]
             : array_map(fn (array $step) => ['type' => $step['type']->value, 'value' => (string) ($step['value'] ?? '')], $rule->steps());
 
         Flux::modal('automation-form')->show();
@@ -119,7 +119,7 @@ new class extends Component
     public function addAction(): void
     {
         if (count($this->actions) < self::MAX_ACTIONS) {
-            $this->actions[] = ['type' => AutomationAction::SetAssignee->value, 'value' => ''];
+            $this->actions[] = ['type' => '', 'value' => ''];
         }
     }
 
@@ -136,7 +136,7 @@ new class extends Component
             'trigger' => ['required', Rule::enum(AutomationTrigger::class)],
             'actions' => ['required', 'array', 'min:1', 'max:'.self::MAX_ACTIONS],
             'actions.*.type' => ['required', Rule::enum(AutomationAction::class)],
-        ], attributes: ['name' => __('Name'), 'trigger' => __('When'), 'actions' => __('Then')]);
+        ], attributes: ['name' => __('Name'), 'trigger' => __('When'), 'actions' => __('Then'), 'actions.*.type' => __('Action')]);
 
         $trigger = AutomationTrigger::from($validated['trigger']);
         $triggerValue = $this->idOf('triggerValue', array_keys($trigger === AutomationTrigger::StatusChanged ? $this->statusNames : ($trigger === AutomationTrigger::TagAdded ? $this->tagNames : $this->userNames)), $trigger->valueIsOptional());
@@ -423,7 +423,7 @@ new class extends Component
                     <div class="space-y-1" wire:key="action-{{ $index }}-{{ $action['type'] }}">
                         <div class="flex flex-col gap-2 sm:flex-row sm:items-start">
                             <div class="sm:w-60 sm:shrink-0">
-                                <flux:select variant="listbox" wire:model.live="actions.{{ $index }}.type" aria-label="{{ __('Action') }}">
+                                <flux:select variant="listbox" wire:model.live="actions.{{ $index }}.type" :placeholder="__('Choose an action …')" aria-label="{{ __('Action') }}">
                                     @foreach (\App\Enums\AutomationAction::cases() as $case)
                                         <flux:select.option value="{{ $case->value }}">{{ $case->label() }}</flux:select.option>
                                     @endforeach
@@ -432,6 +432,8 @@ new class extends Component
 
                             <div class="min-w-0 flex-1">
                                 @switch($action['type'])
+                                    @case('')
+                                        @break
                                     @case('set_assignee')
                                     @case('notify')
                                         <flux:select variant="listbox" wire:model="actions.{{ $index }}.value" :placeholder="$action['type'] === 'notify' ? __('Choose …') : __('Nobody (remove the assignee)')" clearable aria-label="{{ __('Value') }}">
@@ -466,6 +468,7 @@ new class extends Component
                                 <flux:button size="sm" variant="ghost" icon="x-mark" wire:click="removeAction({{ $index }})" aria-label="{{ __('Remove action') }}" />
                             @endif
                         </div>
+                        <flux:error :name="'actions.'.$index.'.type'" />
                         <flux:error :name="'actions.'.$index.'.value'" />
                     </div>
                 @endforeach

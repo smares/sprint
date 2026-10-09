@@ -13,6 +13,20 @@ enum AutomationTrigger: string
     case TagAdded = 'tag_added';
 
     /**
+     * The trigger that reacts to a history entry of this type, if any.
+     */
+    public static function forActivity(ActivityType $type): ?self
+    {
+        foreach (self::cases() as $trigger) {
+            if ($trigger->activityType() === $type) {
+                return $trigger;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * The history entry this trigger reacts to.
      */
     public function activityType(): ActivityType

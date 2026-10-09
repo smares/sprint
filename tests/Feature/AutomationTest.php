@@ -16,6 +16,7 @@ use App\Notifications\TaskCommented;
 use App\Notifications\TaskStatusChanged;
 use App\Services\InboxTextService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -335,5 +336,43 @@ class AutomationTest extends TestCase
         $entry = $task->activities()->where('type', ActivityType::AssigneeChanged)->sole();
         $this->assertNull($entry->automation_id);
         $this->assertSame('Automatisierung „Alte Regel“', $entry->actorName());
+    }
+
+    public function test_moving_the_due_date_back_keeps_the_start_before_it(): void
+    {
+        $this->rule(AutomationTrigger::StatusChanged, $this->done(), [['type' => AutomationAction::ShiftDueDate, 'value' => -5]]);
+        $task = $this->task(['start_date' => '2026-10-12', 'due_date' => '2026-10-15']);
+
+        $this->actingAs($this->owner);
+        $task->update(['status_id' => $this->done()]);
+
+        $task->refresh();
+        $this->assertSame('2026-10-10', $task->due_date->toDateString());
+        $this->assertSame('2026-10-10', $task->start_date->toDateString());
+    }
+
+    public function test_a_task_without_due_date_is_due_the_given_days_from_today(): void
+    {
+        $this->rule(AutomationTrigger::StatusChanged, $this->done(), [['type' => AutomationAction::ShiftDueDate, 'value' => 3]]);
+        $task = $this->task(['start_date' => null, 'due_date' => null]);
+
+        $this->actingAs($this->owner);
+        $task->update(['status_id' => $this->done()]);
+
+        $this->assertSame('2026-10-11', $task->fresh()->due_date->toDateString());
+    }
+
+    public function test_rules_for_other_changes_cost_a_single_query(): void
+    {
+        $this->rule(AutomationTrigger::TagAdded, Tag::factory()->for($this->project)->create()->id, [['type' => AutomationAction::Comment, 'value' => 'x']]);
+        $task = $this->task();
+        $this->actingAs($this->owner);
+
+        DB::enableQueryLog();
+        $task->update(['status_id' => $this->done()]);
+        $automationQueries = collect(DB::getQueryLog())->filter(fn (array $query) => str_contains($query['query'], '"automations"'));
+
+        $this->assertCount(1, $automationQueries);
+        $this->assertStringContainsString('"trigger" = ?', $automationQueries->first()['query']);
     }
 }

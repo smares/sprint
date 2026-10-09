@@ -233,6 +233,17 @@ class AutomationPageTest extends TestCase
         $this->assertModelExists($rule);
     }
 
+    public function test_a_new_rule_starts_without_a_chosen_action(): void
+    {
+        $page = $this->page()->call('openForm')->assertSet('actions', [['type' => '', 'value' => '']]);
+
+        $page->set('name', 'Ohne Aktion')->set('triggerValue', (string) $this->project->doneStatus()->id)
+            ->call('save')->assertHasErrors('actions.0.type');
+
+        $this->assertSame(0, Automation::count());
+        $page->call('addAction')->assertSet('actions.1', ['type' => '', 'value' => '']);
+    }
+
     public function test_the_sentences_of_rules_cannot_be_called_from_the_browser(): void
     {
         $foreign = Automation::factory()->create([

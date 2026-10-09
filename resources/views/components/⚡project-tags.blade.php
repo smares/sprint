@@ -194,7 +194,7 @@ new class extends Component
                         <li wire:key="tag-{{ $tag->id }}" class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
                             <div class="flex items-center gap-3">
                                 <x-color-badge size="sm" :color="$tag->color" class="shrink-0" title="{{ __('Tasks with this tag') }}">{{ $tag->tasks_count }}</x-color-badge>
-                                <flux:input size="sm" wire:model.blur="names.{{ $tag->id }}" aria-label="{{ __('Name') }}" class="min-w-0 flex-1" />
+                                <flux:input size="sm" wire:model.live.blur="names.{{ $tag->id }}" aria-label="{{ __('Name') }}" class="min-w-0 flex-1" />
                                 <flux:color-picker type="button" size="sm" with-confirmation :swatches="\App\Color::swatches()" wire:model.live="colors.{{ $tag->id }}" aria-label="{{ __('Color') }}" />
                                 <flux:button size="xs" variant="ghost" icon="trash" wire:click="confirmDelete({{ $tag->id }})" aria-label="{{ __('Delete tag') }}" />
                             </div>

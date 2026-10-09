@@ -140,7 +140,7 @@ new class extends Component
         @forelse ($this->teams as $team)
             <flux:card wire:key="team-{{ $team->id }}" class="space-y-3">
                 <div class="flex items-center gap-3">
-                    <flux:input size="sm" wire:model.blur="names.{{ $team->id }}" aria-label="{{ __('Team name') }}" class="max-w-xs font-semibold" />
+                    <flux:input size="sm" wire:model.live.blur="names.{{ $team->id }}" aria-label="{{ __('Team name') }}" class="max-w-xs font-semibold" />
                     <flux:text size="sm" class="flex-1">{{ trans_choice('{0} :count projects|{1} :count project|[2,*] :count projects', $team->projects_count) }}</flux:text>
                     <flux:button size="xs" variant="ghost" icon="trash" wire:click="confirmDelete({{ $team->id }})" aria-label="{{ __('Delete team') }}" />
                 </div>

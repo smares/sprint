@@ -225,7 +225,7 @@ new class extends Component
                         <div class="flex items-center gap-3">
                             <flux:icon.bars-2 variant="micro" class="shrink-0 text-zinc-400" />
                             <x-color-badge size="sm" :color="$status->color" class="shrink-0" title="{{ __('Tasks with this status') }}">{{ $status->tasks_count }}</x-color-badge>
-                            <flux:input size="sm" wire:model.blur="names.{{ $status->id }}" aria-label="{{ __('Name') }}" class="min-w-0 flex-1" />
+                            <flux:input size="sm" wire:model.live.blur="names.{{ $status->id }}" aria-label="{{ __('Name') }}" class="min-w-0 flex-1" />
                             <flux:color-picker type="button" size="sm" with-confirmation :swatches="\App\Color::swatches()" wire:model.live="colors.{{ $status->id }}" aria-label="{{ __('Color') }}" />
                             <flux:checkbox wire:model.live="done.{{ $status->id }}" :label="__('Done')" />
                             <flux:button size="xs" variant="ghost" icon="trash" wire:click="confirmDelete({{ $status->id }})" aria-label="{{ __('Delete status') }}" />

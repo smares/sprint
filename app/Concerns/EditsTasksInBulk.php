@@ -53,14 +53,6 @@ trait EditsTasksInBulk
      */
     abstract protected function filteredTasks();
 
-    public function startSelecting(): void
-    {
-        Gate::authorize('edit', $this->project);
-
-        $this->selecting = true;
-        $this->selected = [];
-    }
-
     /**
      * The first tick of a checkbox starts the selection with that task.
      */

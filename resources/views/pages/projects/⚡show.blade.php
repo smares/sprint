@@ -519,7 +519,6 @@ new class extends Component
             <flux:button icon="bookmark">{{ __('Views') }} @if ($this->savedFilters->isNotEmpty()) <flux:badge size="sm" inset="top bottom">{{ $this->savedFilters->count() }}</flux:badge> @endif</flux:button>
         </flux:modal.trigger>
 
-
         <flux:badge size="sm" color="zinc">{{ $this->statusFilterLabel }}</flux:badge>
 
         @foreach ($this->activeFilters as $filter)

@@ -29,7 +29,7 @@ composer refactor:check  # Rector prüfen (ohne Änderungen); composer refactor 
 | `resources/views/components` | Blade-Komponenten (u. a. `x-project-header`, `x-task-title-link`, `x-markdown`, `x-markdown-editor`, `x-task-subtree`) und kleine Livewire-Komponenten mit ⚡ (`task-create`, Projekt-Dialoge, Glocke, Befehlspalette) |
 | `resources/js/app.js` | Alpine-Komponenten (`@`-Auswahl, Zeitleistenbalken, Anwesenheit, Profilbild), Bildvorschau, Tastenkürzel; Passkeys werden erst bei Bedarf geladen |
 | `resources/js/realtime.js` | Echo/Reverb-Verbindung; das Layout lädt die Datei nur, wenn Live-Updates eingeschaltet sind |
-| `routes/web.php` | Routen; alles hinter dem Login außer `/login`, Passkey-Anmeldung, Sprachwahl (`/locale`), `/health` und dem signierten Abmeldelink aus Benachrichtigungs-Mails |
+| `routes/web.php` | Routen; alles hinter dem Login außer `/login`, Passkey-Anmeldung, „Passwort vergessen“ (`/forgot-password`, `/reset-password/{token}`), Sprachwahl (`/locale`), `/health`, dem signierten Link zum Bestätigen einer neuen E-Mail-Adresse (`/email/confirm/…`) und dem signierten Abmeldelink aus Benachrichtigungs-Mails |
 | `app/Mcp` | MCP-Server für KI-Agenten (Tools unter `app/Mcp/Tools`) |
 | `tests/Feature` | Feature-Tests je Funktionsbereich |
 

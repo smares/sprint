@@ -51,7 +51,7 @@ class BundledStatusNotificationsTest extends TestCase
 
     private function bulk(array $tasks)
     {
-        return Livewire::test('pages::projects.show', ['project' => $this->project])->call('startSelecting')
+        return Livewire::test('pages::projects.show', ['project' => $this->project])->set('selecting', true)
             ->set('selected', array_map(fn (Task $task) => (string) $task->id, $tasks));
     }
 

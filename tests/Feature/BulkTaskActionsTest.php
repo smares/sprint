@@ -37,7 +37,7 @@ class BulkTaskActionsTest extends TestCase
 
     private function list(array $selected = [])
     {
-        $page = Livewire::test('pages::projects.show', ['project' => $this->project])->call('startSelecting');
+        $page = Livewire::test('pages::projects.show', ['project' => $this->project])->set('selecting', true);
 
         return $selected === [] ? $page : $page->set('selected', array_map(fn (Task $task) => (string) $task->id, $selected));
     }
@@ -71,13 +71,13 @@ class BulkTaskActionsTest extends TestCase
 
     public function test_the_list_offers_selecting_to_editors_only(): void
     {
-        $this->task('Eins');
+        $task = $this->task('Eins');
 
         Livewire::test('pages::projects.show', ['project' => $this->project])->assertSee('Aufgabe auswählen')->assertDontSee('Auswahl beenden');
 
         $viewer = User::factory()->create();
         $this->project->setRole($viewer, ProjectRole::Viewer);
-        Livewire::actingAs($viewer)->test('pages::projects.show', ['project' => $this->project])->assertDontSee('Aufgabe auswählen')->call('startSelecting')->assertForbidden();
+        Livewire::actingAs($viewer)->test('pages::projects.show', ['project' => $this->project])->assertDontSee('Aufgabe auswählen')->call('selectTask', $task->id)->assertForbidden();
     }
 
     public function test_the_checkbox_is_for_selecting_and_a_button_of_its_own_completes(): void
@@ -292,7 +292,7 @@ class BulkTaskActionsTest extends TestCase
         $keep = $this->task('Behalten');
         $child = $this->task('Kind', ['parent_id' => $a->id]);
 
-        $page = Livewire::test('pages::projects.show', ['project' => $this->project])->call('openTask', $a->id)->call('startSelecting')
+        $page = Livewire::test('pages::projects.show', ['project' => $this->project])->call('openTask', $a->id)->set('selecting', true)
             ->set('selected', [(string) $a->id, (string) $b->id])->call('bulkDelete');
 
         $this->assertNull(Task::find($a->id));

@@ -111,7 +111,7 @@ class RealtimeTest extends TestCase
         Event::fake([TaskChanged::class]);
 
         Livewire::test('pages::projects.show', ['project' => $this->project])
-            ->call('startSelecting')
+            ->set('selecting', true)
             ->set('selected', $tasks->pluck('id')->map(fn ($id) => (string) $id)->all())
             ->call('bulkComplete');
 
@@ -126,7 +126,7 @@ class RealtimeTest extends TestCase
         Event::fake([TaskChanged::class]);
 
         Livewire::test('pages::projects.show', ['project' => $this->project])
-            ->call('startSelecting')
+            ->set('selecting', true)
             ->set('selected', $tasks->pluck('id')->map(fn ($id) => (string) $id)->all())
             ->call('bulkDelete');
 

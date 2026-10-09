@@ -56,7 +56,7 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::define('administer', fn (User $user) => $user->is_admin);
 
-        Event::listen(function (NotificationSent $sent) {
+        Event::listen(function (NotificationSent $sent): void {
             if ($sent->channel === 'database' && $sent->notifiable instanceof User && $this->app->make(RealtimeService::class)->enabled()) {
                 broadcast(new InboxUpdated($sent->notifiable->id));
             }
@@ -64,7 +64,7 @@ class AppServiceProvider extends ServiceProvider
 
         // The mail header (resources/views/vendor/mail/html/header.blade.php) shows the logo as cid:sprint-logo.png:
         // embedded in the mail, it shows without a public APP_URL and is not blocked like data: URLs are in Gmail and Outlook.
-        Event::listen(function (MessageSending $sending) {
+        Event::listen(function (MessageSending $sending): void {
             if (str_contains((string) $sending->message->getHtmlBody(), 'cid:sprint-logo.png')) {
                 $sending->message->embedFromPath(resource_path('images/mail-logo.png'), 'sprint-logo.png', 'image/png');
             }

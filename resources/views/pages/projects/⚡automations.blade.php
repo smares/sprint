@@ -245,13 +245,7 @@ new class extends Component
 
     private function days(string $key, string $value): ?int
     {
-        if (! preg_match('/^-?\d{1,3}$/', $value) || (int) $value === 0) {
-            $this->addError($key, __('Enter a number of days between -365 and 365, not 0.'));
-
-            return null;
-        }
-
-        if (abs((int) $value) > 365) {
+        if (! preg_match('/^-?\d{1,3}$/', $value) || (int) $value === 0 || abs((int) $value) > 365) {
             $this->addError($key, __('Enter a number of days between -365 and 365, not 0.'));
 
             return null;

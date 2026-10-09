@@ -46,9 +46,11 @@ new class extends Component
 };
 ?>
 
-<div>
+{{-- The component is kept across page changes (@persist in the layout), so the dialog must be closed by hand: when an entry is chosen
+     and on every navigation, or it would stay open on the next page. --}}
+<div x-on:livewire:navigate.window="$flux.modal('command-palette').close()">
     <flux:modal name="command-palette" variant="bare" class="my-[12vh] max-h-screen w-full max-w-[32rem] overflow-y-hidden" x-on:close="$wire.set('query', '')">
-        <flux:command class="inline-flex max-h-[76vh] flex-col border-none shadow-lg [&_ui-option-empty]:hidden">
+        <flux:command class="inline-flex max-h-[76vh] flex-col border-none shadow-lg [&_ui-option-empty]:hidden" x-on:click="if ($event.target.closest('[data-flux-command-item]')) { $flux.modal('command-palette').close() }">
             <flux:command.input wire:model.live.debounce.250ms="query" :placeholder="__('Jump to or search for tasks…')" closable autofocus />
 
             <flux:command.items>

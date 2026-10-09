@@ -127,6 +127,15 @@ class CommandPaletteTest extends TestCase
         Livewire::test('command-palette')->set('query', '<b>fett</b>')->assertDontSeeHtml('<b>fett</b>');
     }
 
+    public function test_the_palette_closes_when_an_entry_is_chosen_and_on_every_page_change(): void
+    {
+        // The layout keeps the component across page changes (@persist): left open, the dialog would still be there on the next page
+        $palette = Livewire::test('command-palette');
+
+        $palette->assertSeeHtml('x-on:livewire:navigate.window="$flux.modal(\'command-palette\').close()"')
+            ->assertSeeHtml('$event.target.closest(\'[data-flux-command-item]\')');
+    }
+
     public function test_the_flux_texts_are_german(): void
     {
         $this->assertSame('Nichts gefunden', __('No results found'));

@@ -10,13 +10,15 @@ use Livewire\Attributes\Url;
 
 /**
  * For project views that show a task in a flyout over the list or board.
- * The open task lives in the URL (`?task=5`), so it survives reloads and can be shared.
+ * The open task lives in the URL (`?task=5`), so it survives reloads and can be shared. Each change is a new browser
+ * history entry, so the browser's back button closes the flyout (or goes back to the task before) instead of leaving
+ * the page.
  *
  * @property Project $project
  */
 trait OpensTaskPanel
 {
-    #[Url(as: 'task')]
+    #[Url(as: 'task', history: true)]
     public string $openTaskId = '';
 
     #[On('open-task')]

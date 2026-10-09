@@ -61,6 +61,18 @@ trait EditsTasksInBulk
         $this->selected = [];
     }
 
+    /**
+     * The first tick of a checkbox starts the selection with that task.
+     */
+    public function selectTask(int $taskId): void
+    {
+        Gate::authorize('edit', $this->project);
+
+        $this->selecting = true;
+        $this->selected = [(string) $taskId];
+        unset($this->selectedIds);
+    }
+
     public function stopSelecting(): void
     {
         $this->reset('selecting', 'selected', 'bulkStatus', 'bulkAssignee', 'bulkDueDate', 'bulkClearDueDate', 'bulkAddTags', 'bulkRemoveTags');
@@ -91,6 +103,8 @@ trait EditsTasksInBulk
     public function togglePage(): void
     {
         Gate::authorize('edit', $this->project);
+
+        $this->selecting = true;
 
         $page = $this->tasks->pluck('id')->map(fn ($id) => (string) $id)->all();
         $current = array_map(strval(...), $this->selected);

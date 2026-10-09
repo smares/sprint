@@ -73,11 +73,36 @@ class BulkTaskActionsTest extends TestCase
     {
         $this->task('Eins');
 
-        Livewire::test('pages::projects.show', ['project' => $this->project])->assertSee('Auswählen')->assertDontSee('Auswahl beenden');
+        Livewire::test('pages::projects.show', ['project' => $this->project])->assertSee('Aufgabe auswählen')->assertDontSee('Auswahl beenden');
 
         $viewer = User::factory()->create();
         $this->project->setRole($viewer, ProjectRole::Viewer);
-        Livewire::actingAs($viewer)->test('pages::projects.show', ['project' => $this->project])->assertDontSee('Auswählen')->call('startSelecting')->assertForbidden();
+        Livewire::actingAs($viewer)->test('pages::projects.show', ['project' => $this->project])->assertDontSee('Aufgabe auswählen')->call('startSelecting')->assertForbidden();
+    }
+
+    public function test_the_checkbox_is_for_selecting_and_a_button_of_its_own_completes(): void
+    {
+        $task = $this->task('Eins');
+
+        $page = Livewire::test('pages::projects.show', ['project' => $this->project])
+            ->assertSee('Als erledigt markieren')
+            ->call('selectTask', $task->id)
+            ->assertSet('selecting', true)
+            ->assertSet('selected', [(string) $task->id]);
+
+        $this->assertFalse($task->fresh()->isDone());
+
+        $page->call('toggleDone', $task->id);
+        $this->assertTrue($task->fresh()->isDone());
+    }
+
+    public function test_the_checkbox_of_a_viewer_cannot_start_a_selection(): void
+    {
+        $task = $this->task('Eins');
+        $viewer = User::factory()->create();
+        $this->project->setRole($viewer, ProjectRole::Viewer);
+
+        Livewire::actingAs($viewer)->test('pages::projects.show', ['project' => $this->project])->call('selectTask', $task->id)->assertForbidden();
     }
 
     public function test_selecting_shows_checkboxes_and_the_action_bar_with_a_count(): void

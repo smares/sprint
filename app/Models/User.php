@@ -25,6 +25,7 @@ use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Sanctum\HasApiTokens;
+use NotificationChannels\WebPush\HasPushSubscriptions;
 use SensitiveParameter;
 
 #[Fillable(['name', 'email', 'password', 'is_admin', 'locale', 'deactivated_at', 'digest_enabled', 'reminders_enabled', 'celebrations_enabled', 'absent_from', 'absent_until', 'quiet_from', 'quiet_until', 'quiet_days'])]
@@ -32,7 +33,7 @@ use SensitiveParameter;
 class User extends Authenticatable implements HasLocalePreference, PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasApiTokens, HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
+    use HasApiTokens, HasFactory, HasPushSubscriptions, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
 
     /**
      * @var array<string, mixed>
@@ -184,8 +185,8 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
     }
 
     /**
-     * Whether an email may go out to this person right now: not during an absence or a quiet time. The inbox gets
-     * everything regardless.
+     * Whether an email or a push notification may go out to this person right now: not during an absence or a quiet
+     * time. The inbox gets everything regardless.
      */
     public function wantsMailNow(): bool
     {
@@ -223,11 +224,14 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
 
     /**
      * End all sessions, "stay signed in" cookies and API tokens, except the given session (the person's current one).
+     * Push notifications stop on every device too, since a browser cannot be told apart from the server; whoever
+     * still wants them turns them on again in the profile.
      */
     public function signOutEverywhere(?string $exceptSessionId = null): void
     {
         $this->forceFill(['remember_token' => Str::random(60)])->save();
         $this->tokens()->delete();
+        $this->pushSubscriptions()->delete();
 
         if (config('session.driver') === 'database') {
             DB::table(config('session.table', 'sessions'))

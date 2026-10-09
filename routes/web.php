@@ -49,6 +49,11 @@ Route::middleware(['auth', 'password.confirm', 'throttle:6,1'])->group(function 
 Route::get('/email/confirm/{user}/{hash}', ConfirmEmailController::class)->middleware(['signed', 'throttle:6,1'])->name('email.confirm');
 
 Route::post('/logout', function (Request $request) {
+    // This browser's push subscription, if any (app.js): no notifications for the next person on a shared device
+    if ($request->filled('push_endpoint')) {
+        $request->user()->deletePushSubscription($request->string('push_endpoint')->toString());
+    }
+
     Auth::logout();
     $request->session()->invalidate();
     $request->session()->regenerateToken();

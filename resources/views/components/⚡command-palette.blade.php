@@ -5,6 +5,7 @@ use App\Services\TaskSearchService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as SupportCollection;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 new class extends Component
@@ -46,6 +47,17 @@ new class extends Component
     public function favoriteIds(): array
     {
         return auth()->user()->favoriteProjects()->pluck('projects.id')->all();
+    }
+
+    /**
+     * The palette stays on the page across page changes (@persist), so its project list is built again when favorites
+     * or projects change elsewhere (projects page, project settings).
+     */
+    #[On('favorites-changed')]
+    #[On('project-updated')]
+    public function refreshProjects(): void
+    {
+        unset($this->projects, $this->favoriteIds);
     }
 
     /**

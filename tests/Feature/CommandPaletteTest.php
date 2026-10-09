@@ -88,6 +88,22 @@ class CommandPaletteTest extends TestCase
         $this->assertNotContains($alpha->id, $palette->instance()->favoriteIds);
     }
 
+    public function test_the_kept_palette_picks_up_favorites_and_renamed_projects_without_a_reload(): void
+    {
+        $alpha = $this->project('Alpha');
+        $this->project('Beta');
+        $palette = Livewire::test('command-palette');
+        $this->assertSame(['Alpha', 'Beta'], $palette->instance()->projects->pluck('name')->all());
+
+        // Starring on the projects page tells the palette, which stays on the page (@persist)
+        Livewire::test('pages::projects.index')->call('toggleFavorite', $this->project('Gamma')->id)->assertDispatched('favorites-changed');
+        $palette->dispatch('favorites-changed');
+        $this->assertSame(['Gamma', 'Alpha', 'Beta'], $palette->instance()->projects->pluck('name')->all());
+
+        $alpha->update(['name' => 'Alpha neu']);
+        $palette->dispatch('project-updated')->assertSee('Alpha neu');
+    }
+
     public function test_names_starting_with_the_query_come_first_and_favourites_lead_within_each(): void
     {
         $this->project('Web Shop');

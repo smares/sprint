@@ -9,7 +9,7 @@
         @if ($subtask->is_section)
             <li wire:key="section-{{ $subtask->id }}" wire:sort:item="{{ $subtask->id }}" class="flex items-center gap-2 border-b border-zinc-200 pb-1 pt-3 dark:border-zinc-700">
                 @if ($canEdit)
-                    <flux:input size="sm" variant="filled" class="max-w-xs font-semibold" wire:model.blur="sectionTitles.{{ $subtask->id }}" aria-label="{{ __('Heading') }}" />
+                    <flux:input size="sm" variant="filled" class="max-w-xs font-semibold" wire:model.live.blur="sectionTitles.{{ $subtask->id }}" aria-label="{{ __('Heading') }}" />
                     <flux:button size="xs" variant="ghost" icon="trash" wire:click="deleteSection({{ $subtask->id }})" aria-label="{{ __('Delete heading') }}" />
                 @else
                     <flux:heading size="sm">{{ $subtask->title }}</flux:heading>

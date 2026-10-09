@@ -229,7 +229,7 @@ new class extends Component
             <li wire:key="field-{{ $field->id }}" wire:sort:item="{{ $field->id }}" class="space-y-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
                 <div class="flex items-center gap-3">
                     <flux:icon.bars-2 variant="micro" class="shrink-0 text-zinc-400" />
-                    <flux:input size="sm" wire:model.blur="names.{{ $field->id }}" aria-label="{{ __('Name') }}" class="min-w-0 flex-1" />
+                    <flux:input size="sm" wire:model.live.blur="names.{{ $field->id }}" aria-label="{{ __('Name') }}" class="min-w-0 flex-1" />
                     <flux:badge size="sm">{{ $field->type->label() }}</flux:badge>
                     <flux:checkbox wire:model.live="inList.{{ $field->id }}" :label="__('In list')" />
                     <flux:button size="xs" variant="ghost" icon="trash" wire:click="confirmDelete({{ $field->id }})" aria-label="{{ __('Delete field') }}" />
@@ -240,7 +240,7 @@ new class extends Component
                         @foreach ($field->options as $option)
                             <li wire:key="option-{{ $option->id }}" wire:sort:item="{{ $option->id }}" class="flex items-center gap-2">
                                 <x-color-badge size="sm" :color="$option->color" class="shrink-0">&nbsp;</x-color-badge>
-                                <flux:input size="sm" wire:model.blur="optionNames.{{ $option->id }}" aria-label="{{ __('Option') }}" class="min-w-0 flex-1" />
+                                <flux:input size="sm" wire:model.live.blur="optionNames.{{ $option->id }}" aria-label="{{ __('Option') }}" class="min-w-0 flex-1" />
                                 <flux:color-picker type="button" size="sm" with-confirmation :swatches="\App\Color::swatches()" wire:model.live="optionColors.{{ $option->id }}" aria-label="{{ __('Color') }}" />
                                 <flux:button size="xs" variant="ghost" icon="x-mark" wire:click="removeOption({{ $option->id }})" aria-label="{{ __('Remove option') }}" />
                             </li>

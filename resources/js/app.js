@@ -492,3 +492,19 @@ document.addEventListener('keydown', (event) => {
         actions[event.key]()
     }
 })
+
+// Sprint as an app on the home screen: the service worker (ProgressiveWebAppController) keeps the built assets and an offline page.
+// Not with the Vite dev server, whose files are not in the build. The offline page shows the language last used here.
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}))
+}
+
+// Also after wire:navigate page changes, such as the one after logging in
+const rememberLocale = () => {
+    try {
+        localStorage.setItem('sprint.locale', document.documentElement.lang.slice(0, 2))
+    } catch {}
+}
+
+rememberLocale()
+document.addEventListener('livewire:navigated', rememberLocale)

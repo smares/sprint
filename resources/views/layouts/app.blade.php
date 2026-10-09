@@ -7,6 +7,8 @@
         <link rel="icon" href="/favicon.ico" sizes="48x48">
         <link rel="icon" href="/favicon.svg" type="image/svg+xml">
         <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+        <link rel="manifest" href="{{ route('pwa.manifest', absolute: false) }}">
+        <meta name="apple-mobile-web-app-title" content="{{ config('app.name') }}">
         <meta name="theme-color" content="#18181b">
         @if ($realtime = app(\App\Services\RealtimeService::class)->clientConfig())
             <script>window.sprintRealtime = @js($realtime)</script>
@@ -108,6 +110,16 @@
         @persist('toast')
             <flux:toast />
             <x-celebration />
+        @endpersist
+
+        {{-- Without a connection nothing can be saved; pages that are not loaded yet show the offline page of the service worker --}}
+        @persist('connection')
+            <div x-data="{ online: navigator.onLine }" x-on:online.window="online = true" x-on:offline.window="online = false" x-show="! online" style="display: none" role="status" class="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex justify-center px-4">
+                <div class="flex items-center gap-2 rounded-full bg-zinc-800 px-4 py-2 text-sm text-white shadow-lg dark:bg-zinc-100 dark:text-zinc-900">
+                    <flux:icon.signal-slash variant="micro" />
+                    {{ __('No connection. Changes cannot be saved right now.') }}
+                </div>
+            </div>
         @endpersist
 
         <x-file-preview />

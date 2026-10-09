@@ -4,6 +4,7 @@ use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\AvatarController;
 use App\Http\Controllers\ConfirmEmailController;
 use App\Http\Controllers\HealthController;
+use App\Http\Controllers\ProgressiveWebAppController;
 use App\Http\Controllers\ProjectExportController;
 use App\Services\LocaleService;
 use Illuminate\Http\RedirectResponse;
@@ -24,6 +25,12 @@ Route::post('/locale', function (Request $request): RedirectResponse {
 })->name('locale.update');
 
 Route::get('/health', HealthController::class)->middleware('throttle:60,1')->name('health');
+
+Route::controller(ProgressiveWebAppController::class)->group(function () {
+    Route::get('/manifest.webmanifest', 'manifest')->name('pwa.manifest');
+    Route::get('/sw.js', 'serviceWorker')->name('pwa.service-worker');
+    Route::get('/offline', 'offline')->name('offline');
+});
 
 Route::livewire('/login', 'pages::login')->name('login')->middleware('guest');
 Route::livewire('/forgot-password', 'pages::forgot-password')->name('password.request')->middleware('guest');

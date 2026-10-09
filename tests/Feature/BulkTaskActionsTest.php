@@ -317,4 +317,18 @@ class BulkTaskActionsTest extends TestCase
         $page->call('bulkDelete')->assertForbidden();
         $this->assertNotNull(Task::find($task->id));
     }
+
+    public function test_the_done_button_comes_before_the_checkbox_in_one_cell(): void
+    {
+        $this->task('Eins');
+
+        $html = Livewire::test('pages::projects.show', ['project' => $this->project])->html();
+
+        $done = strpos($html, 'aria-label="Als erledigt markieren"');
+        $select = strpos($html, 'aria-label="Aufgabe auswählen"');
+        $this->assertNotFalse($done);
+        $this->assertNotFalse($select);
+        $this->assertLessThan($select, $done);
+        $this->assertStringContainsString('max-sm:size-10!', $html);
+    }
 }

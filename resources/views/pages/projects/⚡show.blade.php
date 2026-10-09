@@ -645,16 +645,19 @@ new class extends Component
         <div class="overflow-x-auto">
         <flux:table>
             <flux:table.columns>
-                <flux:table.column class="w-10">
-                    @if ($this->canEdit)
-                        <flux:checkbox :checked="$selecting && $this->tasks->isNotEmpty() && $this->tasks->pluck('id')->diff($this->selectedIds)->isEmpty()" wire:click="togglePage" aria-label="{{ __('Select all visible tasks') }}" />
-                    @endif
+                {{-- Done button first, then the selection checkbox: two things, so they get one column and some room between them --}}
+                <flux:table.column class="w-20 max-sm:w-24">
+                    <div class="flex items-center gap-3">
+                        <span class="w-6 shrink-0 max-sm:w-10"><span class="sr-only">{{ __('Done') }}</span></span>
+                        @if ($this->canEdit)
+                            <flux:checkbox :checked="$selecting && $this->tasks->isNotEmpty() && $this->tasks->pluck('id')->diff($this->selectedIds)->isEmpty()" wire:click="togglePage" aria-label="{{ __('Select all visible tasks') }}" />
+                        @endif
+                    </div>
                 </flux:table.column>
-                <flux:table.column class="w-10"><span class="sr-only">{{ __('Done') }}</span></flux:table.column>
                 <flux:table.column sortable :sorted="$sortBy === 'title'" :direction="$sortDirection" wire:click="sort('title')">{{ __('Task') }}</flux:table.column>
                 <flux:table.column sortable :sorted="$sortBy === 'status'" :direction="$sortDirection" wire:click="sort('status')">{{ __('Status') }}</flux:table.column>
                 <flux:table.column class="max-md:hidden">{{ __('Assignee') }}</flux:table.column>
-                <flux:table.column sortable :sorted="$sortBy === 'due'" :direction="$sortDirection" wire:click="sort('due')">{{ __('Due') }}</flux:table.column>
+                <flux:table.column class="max-sm:hidden" sortable :sorted="$sortBy === 'due'" :direction="$sortDirection" wire:click="sort('due')">{{ __('Due') }}</flux:table.column>
                 @foreach ($this->listFields as $field)
                     <flux:table.column wire:key="column-{{ $field->id }}" class="max-md:hidden" sortable :sorted="$sortBy === 'field:'.$field->id" :direction="$sortDirection" wire:click="sort('field:{{ $field->id }}')">{{ $field->name }}</flux:table.column>
                 @endforeach
@@ -663,33 +666,33 @@ new class extends Component
                 @foreach ($this->tasks as $task)
                     <flux:table.row wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" :wire:sort:item="$sortBy === '' && $this->canEdit && ! $selecting ? $task->id : null">
                         <flux:table.cell>
-                            @if ($this->canEdit)
-                                @if ($selecting)
-                                    <flux:checkbox
-                                        :checked="in_array((string) $task->id, array_map('strval', $selected), true)"
-                                        x-on:click="$wire.selected = $wire.selected.includes('{{ $task->id }}') ? $wire.selected.filter((id) => id !== '{{ $task->id }}') : [...$wire.selected, '{{ $task->id }}']"
-                                        aria-label="{{ __('Select task') }}"
-                                    />
-                                @else
-                                    <flux:checkbox :checked="false" wire:click="selectTask({{ $task->id }})" aria-label="{{ __('Select task') }}" />
+                            <div class="flex items-center gap-3">
+                                <flux:button
+                                    size="xs"
+                                    variant="ghost"
+                                    icon="check-circle"
+                                    icon:variant="{{ $task->isDone() ? 'solid' : 'outline' }}"
+                                    :class="'shrink-0 max-sm:size-10! '.($task->isDone() ? 'text-green-600! dark:text-green-500!' : 'text-zinc-400! hover:text-green-600! dark:text-zinc-500! dark:hover:text-green-500!')"
+                                    :disabled="! $this->canEdit"
+                                    wire:click="toggleDone({{ $task->id }})"
+                                    aria-label="{{ $task->isDone() ? __('Reopen task') : __('Mark as done') }}"
+                                    tooltip="{{ $task->isDone() ? __('Reopen task') : __('Mark as done') }}"
+                                />
+                                @if ($this->canEdit)
+                                    @if ($selecting)
+                                        <flux:checkbox
+                                            :checked="in_array((string) $task->id, array_map('strval', $selected), true)"
+                                            x-on:click="$wire.selected = $wire.selected.includes('{{ $task->id }}') ? $wire.selected.filter((id) => id !== '{{ $task->id }}') : [...$wire.selected, '{{ $task->id }}']"
+                                            aria-label="{{ __('Select task') }}"
+                                        />
+                                    @else
+                                        <flux:checkbox :checked="false" wire:click="selectTask({{ $task->id }})" aria-label="{{ __('Select task') }}" />
+                                    @endif
                                 @endif
-                            @endif
+                            </div>
                         </flux:table.cell>
-                        <flux:table.cell>
-                            <flux:button
-                                size="xs"
-                                variant="ghost"
-                                icon="check-circle"
-                                icon:variant="{{ $task->isDone() ? 'solid' : 'outline' }}"
-                                :class="$task->isDone() ? 'text-green-600! dark:text-green-500!' : 'text-zinc-300! hover:text-green-600! dark:text-zinc-600!'"
-                                :disabled="! $this->canEdit"
-                                wire:click="toggleDone({{ $task->id }})"
-                                aria-label="{{ $task->isDone() ? __('Reopen task') : __('Mark as done') }}"
-                                tooltip="{{ $task->isDone() ? __('Reopen task') : __('Mark as done') }}"
-                            />
-                        </flux:table.cell>
-                        <flux:table.cell class="min-w-44 whitespace-normal">
-                            <span class="me-1.5 inline-block min-w-4 select-none text-end align-baseline text-xs tabular-nums text-zinc-300 dark:text-zinc-600" data-row-number="{{ $loop->iteration }}" title="{{ __('Row :number', ['number' => $loop->iteration]) }}">{{ $loop->iteration }}</span><x-task-title-link :task="$task" :open="(string) $task->id === $openTaskId" />
+                        <flux:table.cell class="min-w-44 whitespace-normal max-sm:min-w-0">
+                            <span class="me-1.5 inline-block min-w-4 select-none max-sm:hidden text-end align-baseline text-xs tabular-nums text-zinc-300 dark:text-zinc-600" data-row-number="{{ $loop->iteration }}" title="{{ __('Row :number', ['number' => $loop->iteration]) }}">{{ $loop->iteration }}</span><x-task-title-link :task="$task" :open="(string) $task->id === $openTaskId" />
                             @if ($progress = $this->progress[$task->id] ?? null)
                                 <flux:badge size="sm" icon="list-bullet" class="ms-1">{{ $progress['done'] }}/{{ $progress['total'] }}</flux:badge>
                             @endif
@@ -706,7 +709,7 @@ new class extends Component
                                 <flux:text size="sm" class="block" title="{{ $task->collaborators->pluck('name')->join(', ') }}">{{ trans_choice('{1} + :count collaborator|[2,*] + :count collaborators', $task->collaborators->count()) }}</flux:text>
                             @endif
                         </flux:table.cell>
-                        <flux:table.cell>
+                        <flux:table.cell class="max-sm:hidden">
                             @if ($task->due_date)
                                 <flux:text :class="$task->isOverdue() ? 'text-red-500' : ''">{{ $task->due_date->isoFormat('L') }}</flux:text>
                             @endif

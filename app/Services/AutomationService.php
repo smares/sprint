@@ -42,7 +42,7 @@ class AutomationService
      */
     public function record(Task $task, ActivityType $type, array $data): void
     {
-        if ($this->running instanceof Automation || ! $this->canTrigger($type)) {
+        if ($this->running instanceof Automation || ! AutomationTrigger::forActivity($type) instanceof AutomationTrigger) {
             return;
         }
 
@@ -59,17 +59,17 @@ class AutomationService
         }
     }
 
-    private function canTrigger(ActivityType $type): bool
-    {
-        return collect(AutomationTrigger::cases())->contains(fn (AutomationTrigger $trigger) => $trigger->activityType() === $type);
-    }
-
     /**
      * @param  array<string, mixed>  $data
      */
     private function process(Task $task, ActivityType $type, array $data): void
     {
-        $rules = Automation::query()->enabled()->where('project_id', $task->project_id)->with(['creator', 'project'])->get();
+        // Only the rules for this kind of change; most changes find none and cost a single query
+        $rules = Automation::query()->enabled()
+            ->where('project_id', $task->project_id)
+            ->where('trigger', AutomationTrigger::forActivity($type))
+            ->with(['creator', 'project'])
+            ->get();
 
         if ($rules->isEmpty()) {
             return;
@@ -81,13 +81,18 @@ class AutomationService
             return;
         }
 
+        $ran = false;
+
         foreach ($rules as $rule) {
             if ($rule->matches($current, $type, $data)) {
                 $this->run($rule, $current);
+                $ran = true;
             }
         }
 
-        $this->carryOver($current, $task);
+        if ($ran) {
+            $this->carryOver($current, $task);
+        }
     }
 
     private function run(Automation $rule, Task $task): void
@@ -121,7 +126,7 @@ class AutomationService
             AutomationAction::SetAssignee => $this->setAssignee($task, $value === null ? null : $this->viewer($task, (int) $value), $value === null),
             AutomationAction::SetStatus => $this->setStatus($task, (int) $value),
             AutomationAction::AddTag => $this->addTag($task, $project->tags()->find((int) $value)),
-            AutomationAction::ShiftDueDate => $task->update(['due_date' => ($task->due_date ?? today())->copy()->addDays((int) $value)]),
+            AutomationAction::ShiftDueDate => $this->shiftDueDate($task, (int) $value),
             AutomationAction::Comment => $this->comment($rule, $task, trim((string) $value)),
             AutomationAction::Notify => $this->notify($rule, $task, $this->viewer($task, (int) $value)),
         };
@@ -162,6 +167,22 @@ class AutomationService
         }
 
         $task->logSyncChanges(ActivityType::TagsAdded, ActivityType::TagsRemoved, $task->tags()->syncWithoutDetaching([$tag->id]), fn () => [$tag->name]);
+    }
+
+    /**
+     * Moves the due date by some days (from today if there is none). A start that would then lie after the
+     * due date moves to the due date, as in the bulk edit.
+     */
+    private function shiftDueDate(Task $task, int $days): void
+    {
+        $due = ($task->due_date ?? today())->copy()->addDays($days);
+        $changes = ['due_date' => $due];
+
+        if ($task->start_date !== null && $task->start_date->greaterThan($due)) {
+            $changes['start_date'] = $due;
+        }
+
+        $task->update($changes);
     }
 
     private function comment(Automation $rule, Task $task, string $text): void

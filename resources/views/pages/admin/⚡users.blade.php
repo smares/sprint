@@ -192,7 +192,8 @@ new class extends Component
                 </div>
                 {{-- On phones the actions get their own line under the name; the buttons keep their places in every row. --}}
                 <div class="flex items-center gap-1 max-sm:w-full max-sm:ps-11">
-                    <flux:checkbox wire:model.live="admins.{{ $user->id }}" :label="__('Administrator')" class="me-2" />
+                    {{-- The margin is on a wrapper: on the checkbox itself it would sit between the box and its label --}}
+                    <div class="me-2"><flux:checkbox wire:model.live="admins.{{ $user->id }}" :label="__('Administrator')" /></div>
                     <flux:button size="xs" variant="ghost" icon="key" wire:click="resetPassword({{ $user->id }})" wire:confirm="{{ __('Generate a new password for :name? The old one will no longer work, and all sessions and API tokens are signed out.', ['name' => $user->name]) }}" :aria-label="__('Generate new password')" :tooltip="__('Generate new password')" />
                     @if ($user->two_factor_secret || $user->passkeys_count)
                         <flux:button size="xs" variant="ghost" icon="shield-exclamation" wire:click="resetSecondFactors({{ $user->id }})" wire:confirm="{{ __('Reset two-factor authentication and passkeys for :name? Afterwards the password alone is enough again.', ['name' => $user->name]) }}" :aria-label="__('Reset two-factor and passkeys')" :tooltip="__('Reset two-factor and passkeys')" />

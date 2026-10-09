@@ -105,6 +105,13 @@ trait EditsTasksInBulk
             ? array_values(array_diff($current, $page))
             : array_values(array_unique([...$current, ...$page]));
 
+        // Unticking the last ones ends the selection, as the bar has nothing left to act on
+        if ($this->selected === []) {
+            $this->stopSelecting();
+
+            return;
+        }
+
         unset($this->selectedIds);
     }
 

@@ -331,4 +331,18 @@ class BulkTaskActionsTest extends TestCase
         $this->assertLessThan($select, $done);
         $this->assertStringContainsString('max-sm:size-10!', $html);
     }
+
+    public function test_unticking_everything_ends_the_selection(): void
+    {
+        $a = $this->task('Eins');
+        $this->task('Zwei');
+
+        Livewire::test('pages::projects.show', ['project' => $this->project])
+            ->call('togglePage')->assertSet('selecting', true)->assertCount('selected', 2)
+            ->call('togglePage')->assertSet('selecting', false)->assertSet('selected', [])
+            ->assertDontSee('Auswahl beenden');
+
+        $html = Livewire::test('pages::projects.show', ['project' => $this->project])->call('selectTask', $a->id)->html();
+        $this->assertStringContainsString('if ($wire.selected.length === 0) { $wire.stopSelecting() }', $html);
+    }
 }

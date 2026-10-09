@@ -682,7 +682,7 @@ new class extends Component
                                     @if ($selecting)
                                         <flux:checkbox
                                             :checked="in_array((string) $task->id, array_map('strval', $selected), true)"
-                                            x-on:click="$wire.selected = $wire.selected.includes('{{ $task->id }}') ? $wire.selected.filter((id) => id !== '{{ $task->id }}') : [...$wire.selected, '{{ $task->id }}']"
+                                            x-on:click="$wire.selected = $wire.selected.includes('{{ $task->id }}') ? $wire.selected.filter((id) => id !== '{{ $task->id }}') : [...$wire.selected, '{{ $task->id }}']; if ($wire.selected.length === 0) { $wire.stopSelecting() }"
                                             aria-label="{{ __('Select task') }}"
                                         />
                                     @else

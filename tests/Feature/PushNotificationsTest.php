@@ -49,7 +49,10 @@ class PushNotificationsTest extends TestCase
         $ec = openssl_pkey_get_details($key)['ec'];
         $encode = fn (string $bytes) => rtrim(strtr(base64_encode($bytes), '+/', '-_'), '=');
 
-        return [$encode("\x04".$ec['x'].$ec['y']), $encode(random_bytes(16))];
+        // OpenSSL drops leading zero bytes (about one key in 130); a browser always sends both coordinates with 32 bytes
+        $coordinate = fn (string $bytes) => str_pad($bytes, 32, "\0", STR_PAD_LEFT);
+
+        return [$encode("\x04".$coordinate($ec['x']).$coordinate($ec['y'])), $encode(random_bytes(16))];
     }
 
     private function subscribe(User $user, string $endpoint = self::ENDPOINT): PushSubscription

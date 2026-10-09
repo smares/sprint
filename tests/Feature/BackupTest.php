@@ -6,9 +6,11 @@ use App\Models\User;
 use App\Services\BackupService;
 use App\Services\HealthCheckService;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
+use Mockery;
 use PDO;
 use RuntimeException;
 use Tests\TestCase;
@@ -136,5 +138,30 @@ class BackupTest extends TestCase
         $this->artisan('sprint:backup')->expectsOutputToContain('Backup failed')->assertFailed();
 
         $this->assertFalse(app(BackupService::class)->lastRun()['ok']);
+    }
+
+    public function test_a_failed_upload_counts_as_a_failure(): void
+    {
+        $disk = Mockery::mock(FilesystemAdapter::class);
+        $disk->shouldReceive('writeStream')->once()->andReturn(false);
+        Storage::set('failing', $disk);
+        config(['sprint.backup.disk' => 'failing']);
+
+        $this->artisan('sprint:backup')->expectsOutputToContain('could not be stored')->assertFailed();
+
+        $this->assertFalse(app(BackupService::class)->lastRun()['ok']);
+    }
+
+    public function test_attachments_are_stored_without_compression(): void
+    {
+        Storage::disk('local')->put('attachments/1/2/foto.jpg', str_repeat('a', 2000));
+
+        $this->artisan('sprint:backup')->assertSuccessful();
+
+        $zip = new ZipArchive;
+        $zip->open(Storage::disk('backups')->path(Storage::disk('backups')->files()[0]));
+        $this->assertSame(ZipArchive::CM_STORE, $zip->statName('attachments/attachments/1/2/foto.jpg')['comp_method']);
+        $this->assertNotSame(ZipArchive::CM_STORE, $zip->statName('database.sqlite')['comp_method']);
+        $zip->close();
     }
 }

@@ -31,10 +31,12 @@ class SendDueReminders extends Command
         Task::query()
             ->where('is_section', false)
             ->open()
-            ->whereDate('due_date', $tomorrow)
+            // A range instead of whereDate(), which wraps the column in a function and cannot use its index
+            ->where('due_date', '>=', $tomorrow->toDateString())
+            ->where('due_date', '<', $tomorrow->copy()->addDay()->toDateString())
             ->whereIn('project_id', Project::query()->whereNull('archived_at')->select('id'))
-            ->with(['project', 'collaborators', 'notificationMutes'])
-            ->chunkById(200, function ($tasks) use (&$sent) {
+            ->with(['project', 'assignee', 'collaborators', 'notificationMutes'])
+            ->chunkById(200, function ($tasks) use (&$sent): void {
                 foreach ($tasks as $task) {
                     foreach ($task->usersToNotify()->filter(fn (User $user) => $user->reminders_enabled) as $user) {
                         $user->notify(new TaskDueTomorrow($task));

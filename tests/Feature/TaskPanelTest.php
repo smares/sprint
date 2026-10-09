@@ -192,6 +192,13 @@ class TaskPanelTest extends TestCase
         Livewire::test('pages::tasks.show', ['task' => $this->task])->assertSee('Projekte');
     }
 
+    public function test_whole_cards_and_rows_open_the_task(): void
+    {
+        // app.js opens the task for a click anywhere on an element with data-opens-task
+        $this->list()->assertSeeHtml('data-opens-task="'.$this->task->id.'"');
+        $this->board()->assertSeeHtml('data-opens-task="'.$this->task->id.'"');
+    }
+
     public function test_task_titles_in_list_and_board_still_link_to_the_full_page_for_new_tabs(): void
     {
         $this->list()->assertSeeHtml('href="'.route('tasks.show', $this->task).'"');

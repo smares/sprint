@@ -1,6 +1,6 @@
 @props(['project'])
 
-{{-- Setup entries for managers; Status and Tags open as modals, Felder, Automatisierungen and Mitglieder are pages. --}}
+{{-- Setup entries for managers; Status and Tags open as modals (see x-project-header), Felder, Automatisierungen and Mitglieder are pages. --}}
 <flux:dropdown align="end">
     <flux:button icon="cog-6-tooth" aria-label="{{ __('Set up project') }}" tooltip="{{ __('Set up project') }}" />
 
@@ -15,8 +15,3 @@
         <flux:menu.item icon="users" href="{{ route('projects.members', $project) }}" wire:navigate>{{ __('Members') }}</flux:menu.item>
     </flux:menu>
 </flux:dropdown>
-
-{{-- The dialogs load right after the page in one shared request, not as part of it. --}}
-<livewire:project-settings :project="$project" defer.bundle />
-<livewire:project-statuses :project="$project" defer.bundle />
-<livewire:project-tags :project="$project" defer.bundle />

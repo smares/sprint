@@ -34,3 +34,11 @@
 @can('edit', $project)
     <livewire:task-create :project="$project" />
 @endcan
+
+@can('manage', $project)
+    {{-- The dialogs of the setup menu load right after the page in one shared request, not as part of it. They stand
+         outside the toolbar: as its flex items their empty roots would each add a gap and push the buttons off the right edge. --}}
+    <livewire:project-settings :project="$project" defer.bundle />
+    <livewire:project-statuses :project="$project" defer.bundle />
+    <livewire:project-tags :project="$project" defer.bundle />
+@endcan

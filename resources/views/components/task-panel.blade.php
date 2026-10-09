@@ -1,11 +1,17 @@
 @props(['task'])
 
-{{-- Side panel with the full task next to a list or board; a full-screen sheet on phones. --}}
+{{-- The full task in a Flux flyout over the list or board (a sheet on phones): behind it nothing can be used, so one task is worked on at a time. --}}
 @if ($task)
-    <aside
+    <flux:modal
+        name="task-panel"
+        variant="flyout"
+        :closable="false"
+        wire:close="closeTask"
+        x-data
+        x-init="$nextTick(() => $flux.modal('task-panel').show())"
         aria-label="{{ __('Task') }}"
-        class="fixed inset-0 z-40 overflow-y-auto bg-white p-5 dark:bg-zinc-800 lg:inset-y-auto lg:start-auto lg:end-0 lg:top-14 lg:bottom-0 lg:z-20 lg:w-[38rem] lg:border-s lg:border-zinc-200 lg:shadow-xl lg:dark:border-zinc-700"
+        class="w-full p-5! md:max-w-[38rem]"
     >
         <livewire:pages::tasks.show :task="$task" :panel="true" :key="'panel-'.$task->id" />
-    </aside>
+    </flux:modal>
 @endif

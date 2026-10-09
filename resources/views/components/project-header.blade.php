@@ -1,4 +1,4 @@
-@props(['project', 'active', 'presence' => null, 'stacked' => false])
+@props(['project', 'active', 'presence' => null])
 
 {{-- Breadcrumbs, title and the same toolbar for list, board, calendar and timeline. --}}
 <flux:breadcrumbs class="mb-4">
@@ -10,7 +10,7 @@
     <flux:callout class="mb-4" icon="archive-box" :heading="__('Archived')" :text="__('This project is archived and read-only.')" />
 @endif
 
-<div @class(['mb-6 flex flex-col gap-4', 'lg:flex-row lg:items-center lg:justify-between' => ! $stacked])>
+<div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
     <div>
         <flux:heading size="xl">{{ $project->name }}</flux:heading>
         @if ($project->description)

@@ -56,6 +56,16 @@ class TaskPanelTest extends TestCase
             ->assertSeeHtml('aria-label="Aufgabe"');
     }
 
+    public function test_the_task_opens_in_a_flyout_that_closes_the_task_again(): void
+    {
+        $list = $this->list()->call('openTask', $this->task->id);
+
+        $list->assertSeeHtml('data-modal="task-panel"')->assertSeeHtml('data-flux-flyout')
+            ->assertSeeHtml('wire:close="closeTask"')->assertSeeHtml('$flux.modal(\'task-panel\').show()');
+
+        $this->list()->assertDontSeeHtml('data-modal="task-panel"');
+    }
+
     public function test_opening_and_closing_by_event_and_action(): void
     {
         $other = Task::factory()->for($this->project)->create(['title' => 'Zweite']);

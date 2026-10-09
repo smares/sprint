@@ -10,7 +10,7 @@ Wichtige Einstellungen und Eigenheiten im laufenden Betrieb. Alle Werte stehen i
 
 ## E-Mail und Tageszusammenfassung
 
-Ohne funktionierenden Mailversand (`MAIL_*`) kommen weder Benachrichtigungen noch der Link für „Passwort vergessen“ an; dann setzt ein Administrator das Passwort unter *Benutzer* zurück.
+Ohne funktionierenden Mailversand (`MAIL_*`) kommen weder Benachrichtigungen noch die Mail an neue Benutzer noch der Link für „Passwort vergessen“ an; dann setzt ein Administrator das Passwort unter *Benutzer* zurück.
 
 - Der Posteingang liegt in der Tabelle `notifications` und wird über dieselbe Queue befüllt wie die Mails (Worker nötig)
 - E-Mails brauchen einen Mailer: `MAIL_MAILER` und die übrigen `MAIL_*`-Variablen in `.env` (lokal reicht `log`, dann landen die Mails in `storage/logs`); `MAIL_FROM_ADDRESS` und `MAIL_FROM_NAME` bestimmen den Absender. Versendet wird über die Queue, ohne laufenden Worker kommt nichts an

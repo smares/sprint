@@ -23,9 +23,9 @@ composer refactor:check  # Rector prüfen (ohne Änderungen); composer refactor 
 | `app/Enums` | Aufzählungen: `ProjectRole`, `CustomFieldType`, `RepeatUnit`, `RepeatMode`, `ActivityType` (Einträge im Verlauf samt Satz), `AutomationTrigger`, `AutomationAction` |
 | `app/Models` | Eloquent-Modelle: `Project`, `Task`, `TaskStatus`, `TaskActivity`, `Tag`, `Comment`, `Attachment`, `CustomField`, `CustomFieldOption`, `CustomFieldValue`, `SavedFilter`, `Automation` (Regel eines Projekts), `Reaction` (Emoji auf Aufgabe oder Kommentar, eine je Person), `Team`, `User`, `UserAvatar` (Profilbild, eigene Tabelle) |
 | `app/Policies` | Berechtigungen: `ProjectPolicy` (sehen, bearbeiten, verwalten), `CommentPolicy`, `SavedFilterPolicy` |
-| `app/Services` | Dienste (Klassen mit Endung `Service`): `MarkdownService` (Markdown samt Erwähnungen und Bildern zu sicherem HTML), `TaskSearchService`, `TaskCsvService`, `DailyDigestService`, `HealthCheckService`, `InboxTextService`, `LocaleService` (Sprachen, ISO-Datumsformate), `RealtimeService` (Reverb), `DateService`, `BackupService`, `AutomationService` (führt Regeln nach einer Änderung aus) |
+| `app/Services` | Dienste (Klassen mit Endung `Service`): `MarkdownService` (Markdown samt Erwähnungen und Bildern zu sicherem HTML), `TaskSearchService`, `TaskCsvService`, `DailyDigestService`, `HealthCheckService`, `InboxTextService`, `LocaleService` (Sprachen, ISO-Datumsformate), `RealtimeService` (Reverb), `DateService`, `BackupService`, `AutomationService` (führt Regeln nach einer Änderung aus), `CelebrationService` (würfelt das Einhorn) |
 | `resources/views/pages` | Seiten als Livewire-Komponenten (Projekte, Board, Status, Mitglieder, Aufgaben, Administration, Login) |
-| `app/Concerns` | Traits: `ShowsProject` (gemeinsamer Teil von Liste, Board, Kalender, Zeitleiste), `ListensForRealtime`, `OpensTaskPanel`, `EditsTasksInBulk`, `ConfirmsPassword`, `HasPosition` (manuelle Reihenfolge der Modelle), `HasReactions` (Reactions auf Aufgabe und Kommentar) |
+| `app/Concerns` | Traits: `ShowsProject` (gemeinsamer Teil von Liste, Board, Kalender, Zeitleiste), `ListensForRealtime`, `OpensTaskPanel` (Aufgabe im Flyout), `QuickAddsTasks` (Aufgaben direkt eintragen), `EditsTasksInBulk`, `ConfirmsPassword`, `HasPosition` (manuelle Reihenfolge der Modelle), `HasReactions` (Reactions auf Aufgabe und Kommentar) |
 | `resources/views/components` | Blade-Komponenten (u. a. `x-project-header`, `x-task-title-link`, `x-markdown`, `x-markdown-editor`, `x-task-subtree`) und kleine Livewire-Komponenten mit ⚡ (`task-create`, Projekt-Dialoge, Glocke, Befehlspalette) |
 | `resources/js/app.js` | Alpine-Komponenten (`@`-Auswahl, Zeitleistenbalken, Anwesenheit, Profilbild), Bildvorschau, Tastenkürzel; Passkeys werden erst bei Bedarf geladen |
 | `resources/js/realtime.js` | Echo/Reverb-Verbindung; das Layout lädt die Datei nur, wenn Live-Updates eingeschaltet sind |
@@ -44,7 +44,7 @@ Eine Regel (`Automation`) gehört zu einem Projekt: **Auslöser** (Status wechse
 
 ## Release
 
-Ein Release entsteht über den Workflow *Release* (Actions → Release → *Run workflow*, Zweig `main`) mit einer Version wie `0.1.0` (Vorabversionen wie `1.0.0-rc.1` sind erlaubt). Er baut das Docker-Image mit dem Flux-Pro-Zugang aus den Secrets, je Architektur (`amd64`, `arm64`) auf einem Runner der jeweiligen Architektur ohne Emulation, schiebt es nach `ghcr.io/smares/sprint` (Tags `0.1.0`, `0.1`, bei einer Hauptversion auch `latest`), legt den Tag `v0.1.0` samt GitHub-Release mit automatisch erzeugten Hinweisen an gibt die Version als `APP_VERSION` ins Image (sie steht im Menü am Avatar) und prüft zuletzt, dass das Paket privat ist. Mit *dry run* baut er nur (beide Architekturen), auf jedem Zweig, und veröffentlicht nichts. Das Image ist privat zu halten, weil es Flux Pro enthält; siehe [Fertiges Image](deployment-docker.md#fertiges-image).
+Ein Release entsteht über den Workflow *Release* (Actions → Release → *Run workflow*, Zweig `main`) mit einer Version wie `0.1.0` (Vorabversionen wie `1.0.0-rc.1` sind erlaubt). Er baut das Docker-Image mit dem Flux-Pro-Zugang aus den Secrets, je Architektur (`amd64`, `arm64`) auf einem Runner der jeweiligen Architektur ohne Emulation, schiebt es nach `ghcr.io/smares/sprint` (Tags `0.1.0`, `0.1`, bei einer Hauptversion auch `latest`), legt den Tag `v0.1.0` samt GitHub-Release mit automatisch erzeugten Hinweisen an, gibt die Version als `APP_VERSION` ins Image (sie steht im Menü am Avatar) und prüft zuletzt, dass das Paket privat ist. Mit *dry run* baut er nur (beide Architekturen), auf jedem Zweig, und veröffentlicht nichts. Das Image ist privat zu halten, weil es Flux Pro enthält; siehe [Fertiges Image](deployment-docker.md#fertiges-image).
 
 ## Tests und CI
 
@@ -54,7 +54,7 @@ GitHub Actions führt die Tests auf PHP 8.3, 8.4 und 8.5 aus (`.github/workflows
 
 ## Arbeitsweise
 
-- Branches tragen ein Präfix: `feat/…`, `fix/…`, `refactor/…`, `perf/…`, `chore/…`, `test/…`, `docs/…`
+- Branches tragen ein Präfix: `feat/…`, `fix/…`, `refactor/…`, `perf/…`, `chore/…`, `ci/…`, `test/…`, `docs/…`
 - Änderungen laufen über Pull Requests nach `main`; gemergt wird per Merge-Commit, damit aufeinander aufbauende PRs nicht in Konflikte laufen
 - Schleifen und Hooks, die bei `false` abbrechen: `Collection::each()` (auch `->each->methode()`) und `chunk()`/`chunkById()` hören auf, sobald die Closure `false` liefert, und ein Eloquent- oder Event-Listener, der `false` liefert, bricht das Ereignis ab (bei den `*ing`-Ereignissen stoppt schon jeder Rückgabewert die übrigen Listener). Deshalb eine einfache `foreach`-Schleife nehmen, wenn die Closure etwas wie `delete()` aufruft, das `false` liefern kann, und Listener ohne Rückgabewert (`void`) schreiben
-- Vor dem Commit: `vendor/bin/pint --dirty` und `composer test`
+- Vor dem Commit: `vendor/bin/pint --dirty`, `composer analyse`, `composer refactor:check` und `composer test`

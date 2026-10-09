@@ -9,7 +9,7 @@
             ['c', __('Create a task')],
             ['j', __('Open the next task')],
             ['k', __('Open the previous task')],
-            ['Esc', __('Close the task panel')],
+            ['Esc', __('Close the task')],
         ],
         __('Open task') => [
             ['e', __('Mark as done or open again')],

@@ -2,11 +2,12 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Notifications\EmailChanged;
+// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Notifications\ResetPassword;
 use App\Notifications\VerifyNewEmail;
 use App\Services\LocaleService;
+use Carbon\CarbonInterface;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Translation\HasLocalePreference;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -26,7 +27,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Sanctum\HasApiTokens;
 use SensitiveParameter;
 
-#[Fillable(['name', 'email', 'password', 'is_admin', 'locale', 'deactivated_at', 'digest_enabled', 'reminders_enabled', 'celebrations_enabled', 'absent_from', 'absent_until'])]
+#[Fillable(['name', 'email', 'password', 'is_admin', 'locale', 'deactivated_at', 'digest_enabled', 'reminders_enabled', 'celebrations_enabled', 'absent_from', 'absent_until', 'quiet_from', 'quiet_until', 'quiet_days'])]
 #[Hidden(['password', 'remember_token', 'two_factor_secret', 'two_factor_recovery_codes'])]
 class User extends Authenticatable implements HasLocalePreference, PasskeyUser
 {
@@ -57,6 +58,7 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
             'avatar_updated_at' => 'datetime',
             'absent_from' => 'date',
             'absent_until' => 'date',
+            'quiet_days' => 'array',
         ];
     }
 
@@ -156,6 +158,38 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
     public function absenceNote(): ?string
     {
         return $this->isAbsent() ? __('away until :date', ['date' => $this->absent_until->isoFormat('L')]) : null;
+    }
+
+    /**
+     * Do not disturb (profile): no emails between quiet_from and quiet_until ("18:30" to "08:00" spans midnight) and
+     * all day on quiet_days (ISO weekdays, 1 = Monday). Times are in the app's time zone.
+     */
+    public function isQuietAt(CarbonInterface $moment): bool
+    {
+        $moment = $moment->copy()->setTimezone(config('app.timezone'));
+
+        if (in_array($moment->dayOfWeekIso, $this->quiet_days ?? [], true)) {
+            return true;
+        }
+
+        if ($this->quiet_from === null || $this->quiet_until === null || $this->quiet_from === $this->quiet_until) {
+            return false;
+        }
+
+        $time = $moment->format('H:i');
+
+        return $this->quiet_from < $this->quiet_until
+            ? $this->quiet_from <= $time && $time < $this->quiet_until
+            : $time >= $this->quiet_from || $time < $this->quiet_until;
+    }
+
+    /**
+     * Whether an email may go out to this person right now: not during an absence or a quiet time. The inbox gets
+     * everything regardless.
+     */
+    public function wantsMailNow(): bool
+    {
+        return ! $this->isAbsent() && ! $this->isQuietAt(now());
     }
 
     /**

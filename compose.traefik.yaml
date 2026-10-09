@@ -20,7 +20,7 @@ x-sprint: &sprint
     - storage:/app/storage
 
 services:
-  app:
+  sprint:
     <<: *sprint
     container_name: sprint
     environment:
@@ -52,7 +52,7 @@ services:
     command: [php, artisan, queue:work, --tries=3, --max-time=3600]
     stop_signal: SIGTERM
     depends_on:
-      app:
+      sprint:
         condition: service_healthy
 
   scheduler:
@@ -60,7 +60,7 @@ services:
     container_name: sprint-scheduler
     command: [php, artisan, schedule:work]
     depends_on:
-      app:
+      sprint:
         condition: service_healthy
 
   # Live-Updates; startet nur mit COMPOSE_PROFILES=realtime in .env
@@ -76,7 +76,7 @@ services:
       start_period: 30s
       start_interval: 2s
     depends_on:
-      app:
+      sprint:
         condition: service_healthy
 
 networks:

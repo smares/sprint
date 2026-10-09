@@ -2,7 +2,7 @@
 # The image is private (it contains Flux Pro): log in once on the server with
 # `docker login ghcr.io` (a token with read:packages); see docs/deployment-docker.md.
 #
-#   docker compose -f compose.image.yaml up -d                       app, queue worker and scheduler
+#   docker compose -f compose.image.yaml up -d                       sprint (web), queue worker and scheduler
 #   docker compose -f compose.image.yaml --profile realtime up -d    plus Reverb for live updates
 #
 # SPRINT_VERSION picks the version (a release like 0.1.0, or "latest"). Settings come from .env
@@ -31,7 +31,7 @@ x-sprint: &sprint
   restart: unless-stopped
 
 services:
-  app:
+  sprint:
     <<: *sprint
     environment:
       <<: *environment
@@ -54,14 +54,14 @@ services:
     command: [php, artisan, queue:work, --tries=3, --max-time=3600]
     stop_signal: SIGTERM
     depends_on:
-      app:
+      sprint:
         condition: service_healthy
 
   scheduler:
     <<: *sprint
     command: [php, artisan, schedule:work]
     depends_on:
-      app:
+      sprint:
         condition: service_healthy
 
   reverb:
@@ -75,7 +75,7 @@ services:
       start_period: 30s
       start_interval: 2s
     depends_on:
-      app:
+      sprint:
         condition: service_healthy
 
 volumes:

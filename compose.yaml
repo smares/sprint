@@ -1,6 +1,6 @@
 # Sprint with Docker Compose; see docs/deployment-docker.md.
 #
-#   docker compose up -d --build                       app, queue worker and scheduler
+#   docker compose up -d --build                       sprint (web), queue worker and scheduler
 #   docker compose --profile realtime up -d --build    plus Reverb for live updates
 #
 # Settings come from .env (APP_KEY, APP_URL, mail …). The SQLite database, attachments
@@ -33,7 +33,7 @@ x-sprint: &sprint
   restart: unless-stopped
 
 services:
-  app:
+  sprint:
     <<: *sprint
     environment:
       <<: *environment
@@ -56,14 +56,14 @@ services:
     command: [php, artisan, queue:work, --tries=3, --max-time=3600]
     stop_signal: SIGTERM
     depends_on:
-      app:
+      sprint:
         condition: service_healthy
 
   scheduler:
     <<: *sprint
     command: [php, artisan, schedule:work]
     depends_on:
-      app:
+      sprint:
         condition: service_healthy
 
   reverb:
@@ -77,7 +77,7 @@ services:
       start_period: 30s
       start_interval: 2s
     depends_on:
-      app:
+      sprint:
         condition: service_healthy
 
 secrets:

@@ -73,6 +73,35 @@ class CommandPaletteTest extends TestCase
             ->assertDontSee('Buchhaltung');
     }
 
+    public function test_favourites_lead_in_their_own_order_followed_by_the_rest_alphabetically(): void
+    {
+        $alpha = $this->project('Alpha');
+        $this->project('Beta');
+        $gamma = $this->project('Gamma');
+        $delta = $this->project('Delta');
+        $this->user->favoriteProjects()->attach([$gamma->id => ['position' => 1], $delta->id => ['position' => 2]]);
+
+        $palette = Livewire::test('command-palette');
+
+        $this->assertSame(['Gamma', 'Delta', 'Alpha', 'Beta'], $palette->instance()->projects->pluck('name')->all());
+        $palette->assertSeeInOrder(['Gamma', 'Delta', 'Alpha', 'Beta']);
+        $this->assertNotContains($alpha->id, $palette->instance()->favoriteIds);
+    }
+
+    public function test_names_starting_with_the_query_come_first_and_favourites_lead_within_each(): void
+    {
+        $this->project('Web Shop');
+        $this->project('Neue Website');
+        $favouriteInside = $this->project('Alte Website');
+        $favouriteStart = $this->project('Website Relaunch');
+        $this->user->favoriteProjects()->attach([$favouriteInside->id => ['position' => 1], $favouriteStart->id => ['position' => 2]]);
+        $this->project('Website Archiv');
+
+        $names = Livewire::test('command-palette')->set('query', 'web')->instance()->projects->pluck('name')->all();
+
+        $this->assertSame(['Website Relaunch', 'Web Shop', 'Website Archiv', 'Alte Website', 'Neue Website'], $names);
+    }
+
     public function test_admins_also_get_the_admin_destinations_and_all_projects(): void
     {
         $this->user->forceFill(['is_admin' => true])->save();

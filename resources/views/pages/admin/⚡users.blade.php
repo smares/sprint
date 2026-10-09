@@ -1,5 +1,6 @@
 <?php
 
+use App\Concerns\ConfirmsAutosave;
 use App\Models\User;
 use App\Notifications\AccountCreated;
 use App\Services\LocaleService;
@@ -14,6 +15,8 @@ use Livewire\Component;
 
 new class extends Component
 {
+    use ConfirmsAutosave;
+
     public string $name = '';
 
     public string $email = '';
@@ -98,6 +101,7 @@ new class extends Component
 
         $user->update(['is_admin' => $value]);
         unset($this->users);
+        $this->confirmSaved();
     }
 
     public function resetPassword(int $userId): void

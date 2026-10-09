@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\ActivityType;
+use App\Concerns\ConfirmsAutosave;
 use App\Concerns\EditsMarkdown;
 use App\Concerns\ListensForRealtime;
 use App\Enums\CustomFieldType;
@@ -28,6 +29,7 @@ use Livewire\WithFileUploads;
 
 new class extends Component
 {
+    use ConfirmsAutosave;
     use EditsMarkdown;
     use ListensForRealtime;
     use WithFileUploads;
@@ -209,6 +211,7 @@ new class extends Component
     public function updatedNotificationsOn(bool $value): void
     {
         $this->task->setMutedBy(auth()->user(), ! $value);
+        $this->confirmSaved();
     }
 
     #[Computed]
@@ -497,6 +500,7 @@ new class extends Component
 
         $this->task->project->tasks()->whereKey($sectionId)->update(['title' => $title]);
         $this->resetSubtaskCaches();
+        $this->confirmSaved();
     }
 
     public function deleteSection(int $sectionId): void

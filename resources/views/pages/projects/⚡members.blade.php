@@ -1,5 +1,6 @@
 <?php
 
+use App\Concerns\ConfirmsAutosave;
 use App\Enums\ProjectRole;
 use App\Models\Project;
 use App\Models\Team;
@@ -14,6 +15,8 @@ use Livewire\Component;
 
 new class extends Component
 {
+    use ConfirmsAutosave;
+
     public Project $project;
 
     public string $newUserId = '';
@@ -142,6 +145,7 @@ new class extends Component
 
         $this->project->setRole($member, $role);
         $this->refresh();
+        $this->confirmSaved();
     }
 
     public function remove(int $userId): void
@@ -182,6 +186,7 @@ new class extends Component
 
         $this->project->setTeamRole($team, $role);
         $this->refresh();
+        $this->confirmSaved();
     }
 
     public function removeTeam(int $teamId): void

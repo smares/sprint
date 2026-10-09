@@ -2,7 +2,7 @@
 
 Vorher: die [Checkliste](deployment.md#checkliste-für-jeden-host). Das meiste davon übernimmt hier das Image.
 
-Im Repository liegen ein `Dockerfile` und eine `compose.yaml`. Alle Dienste nutzen dasselbe Image ([FrankenPHP](https://frankenphp.dev): Caddy und PHP in einem Prozess, läuft ohne Root-Rechte):
+Im Repository liegen ein `Dockerfile` und eine `compose.yaml`. Alle Dienste nutzen dasselbe Image ([FrankenPHP](https://frankenphp.dev): Caddy und PHP in einem Prozess, läuft ohne Root-Rechte). Die Basis-Images von Docker Hub (FrankenPHP, Composer, Node) lädt der Build über Googles Spiegel `mirror.gcr.io`, damit er nicht an den Abruflimits oder Ausfällen von Docker Hub scheitert:
 
 | Dienst | Aufgabe |
 |---|---|

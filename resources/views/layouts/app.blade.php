@@ -35,7 +35,7 @@
                 <flux:spacer />
 
                 <flux:modal.trigger name="command-palette" shortcut="cmd.k">
-                    <flux:input as="button" size="sm" icon="magnifying-glass" placeholder="{{ __('Search or jump to…') }}" kbd="⌘K" class="me-2 hidden w-64 sm:block" aria-label="{{ __('Open command palette') }}" />
+                    <flux:input as="button" size="sm" icon="magnifying-glass" placeholder="{{ __('Search or jump to…') }}" kbd="⌘K" class="mx-2 hidden w-64 sm:block" aria-label="{{ __('Open command palette') }}" />
                 </flux:modal.trigger>
 
                 <flux:modal.trigger name="command-palette">

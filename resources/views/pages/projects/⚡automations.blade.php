@@ -274,7 +274,7 @@ new class extends Component
     /**
      * The rule as one sentence for the list.
      */
-    public function triggerSentence(Automation $rule): string
+    protected function triggerSentence(Automation $rule): string
     {
         $name = fn (array $names) => $names[$rule->trigger_value] ?? '–';
 
@@ -290,7 +290,7 @@ new class extends Component
     /**
      * @return list<string>
      */
-    public function conditionSentences(Automation $rule): array
+    protected function conditionSentences(Automation $rule): array
     {
         $conditions = $rule->conditions ?? [];
 
@@ -304,7 +304,7 @@ new class extends Component
     /**
      * @return list<string>
      */
-    public function actionSentences(Automation $rule): array
+    protected function actionSentences(Automation $rule): array
     {
         return array_map(fn (array $step) => match ($step['type']) {
             AutomationAction::SetAssignee => $step['value'] === null ? __('Remove the assignee') : __('Set the assignee to :name', ['name' => $this->userNames[$step['value']] ?? '–']),

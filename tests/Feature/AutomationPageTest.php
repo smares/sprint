@@ -10,6 +10,7 @@ use App\Models\Project;
 use App\Models\Tag;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Exceptions\MethodNotFoundException;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -230,5 +231,21 @@ class AutomationPageTest extends TestCase
 
         Livewire::actingAs($this->editor)->test('pages::projects.automations', ['project' => $this->project])->assertForbidden();
         $this->assertModelExists($rule);
+    }
+
+    public function test_the_sentences_of_rules_cannot_be_called_from_the_browser(): void
+    {
+        $foreign = Automation::factory()->create([
+            'actions' => [['type' => AutomationAction::Comment->value, 'value' => 'Geheimer Text']],
+        ]);
+
+        foreach (['triggerSentence', 'conditionSentences', 'actionSentences'] as $method) {
+            try {
+                $this->page()->call($method, $foreign->id);
+                $this->fail("{$method} is callable");
+            } catch (MethodNotFoundException) {
+                $this->addToAssertionCount(1);
+            }
+        }
     }
 }

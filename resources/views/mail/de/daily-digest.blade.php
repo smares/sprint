@@ -6,7 +6,7 @@
 **{{ $heading }}**
 
 @foreach ($tasks[$key]->take($limit) as $task)
-- [{{ $task->title }}]({{ route('tasks.show', $task) }}) · {{ $task->project->name }} · {{ $task->due_date->isoFormat('L') }}
+- [{{ \App\Services\MarkdownService::escape($task->title) }}]({{ route('tasks.show', $task) }}) · {{ \App\Services\MarkdownService::escape($task->project->name) }} · {{ $task->due_date->isoFormat('L') }}
 @endforeach
 @if ($tasks[$key]->count() > $limit)
 - … und {{ $tasks[$key]->count() - $limit }} weitere

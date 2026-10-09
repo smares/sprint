@@ -104,4 +104,18 @@ class PasswordResetTest extends TestCase
     {
         $this->actingAs($this->user)->get(route('password.request'))->assertRedirect();
     }
+
+    public function test_a_wrong_link_does_not_reveal_whether_the_address_has_an_account(): void
+    {
+        $known = Livewire::test('pages::reset-password', ['token' => 'falsch'])
+            ->set('email', 'anna@example.com')->set('password', 'neues-passwort')->set('passwordConfirmation', 'neues-passwort')
+            ->call('save')->errors()->first('email');
+
+        $unknown = Livewire::test('pages::reset-password', ['token' => 'falsch'])
+            ->set('email', 'niemand@example.com')->set('password', 'neues-passwort')->set('passwordConfirmation', 'neues-passwort')
+            ->call('save')->errors()->first('email');
+
+        $this->assertSame($known, $unknown);
+        $this->assertSame(__(Password::INVALID_TOKEN), $unknown);
+    }
 }

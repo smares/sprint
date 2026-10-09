@@ -47,6 +47,7 @@ Dauerhaft liegt alles im Volume `storage`: SQLite-Datenbank (`storage/database/d
   ```ini
   TRUSTED_PROXIES=*        # oder die Adressen des Proxys, kommagetrennt (CIDR erlaubt)
   ```
+  `*` nur, wenn der App-Port ausschließlich für den Proxy erreichbar ist (`HTTP_BIND=127.0.0.1` oder Firewall). Sonst kann jeder, der den Port direkt anspricht, mit einem eigenen `X-Forwarded-For` eine fremde IP vortäuschen und so die Begrenzung der Anmeldeversuche umgehen; dann die Adresse des Proxys eintragen.
 
 ## Live-Updates
 

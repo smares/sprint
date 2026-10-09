@@ -50,7 +50,7 @@ COPY --chown=$USER:$USER --from=vendor /app/vendor ./vendor
 COPY --chown=$USER:$USER . .
 COPY --chown=$USER:$USER --from=assets /app/public/build ./public/build
 
-RUN --mount=type=bind,from=composer:2,source=/usr/bin/composer,target=/usr/bin/composer \
+RUN --mount=type=bind,from=mirror.gcr.io/library/composer:2,source=/usr/bin/composer,target=/usr/bin/composer \
     mkdir -p bootstrap/cache storage/app/private storage/database storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs \
     && chown -R "$USER:$USER" bootstrap/cache storage \
     && su "$USER" -c "composer dump-autoload --optimize --no-dev --no-interaction"

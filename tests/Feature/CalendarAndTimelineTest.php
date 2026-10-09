@@ -270,6 +270,13 @@ class CalendarAndTimelineTest extends TestCase
         }
     }
 
+    public function test_the_view_switcher_keeps_its_width_when_the_first_or_last_view_is_shown(): void
+    {
+        $this->get(route('projects.show', $this->project))->assertSee('border-s-transparent!', false)->assertDontSee('border-e-transparent!', false);
+        $this->get(route('projects.board', $this->project))->assertDontSee('border-s-transparent!', false)->assertDontSee('border-e-transparent!', false);
+        $this->get(route('projects.timeline', $this->project))->assertSee('border-e-transparent!', false)->assertDontSee('border-s-transparent!', false);
+    }
+
     public function test_people_without_access_cannot_open_the_new_views(): void
     {
         $outsider = User::factory()->create();

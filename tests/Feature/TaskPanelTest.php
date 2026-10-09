@@ -130,7 +130,7 @@ class TaskPanelTest extends TestCase
             ->assertSeeHtml('placeholder="Aufgabe beschreiben … (Markdown, @ für Erwähnungen)"');
 
         Livewire::test('task-create', ['project' => $this->project])
-            ->assertSeeHtml('placeholder="Aufgabe beschreiben … (Markdown)"');
+            ->assertSeeHtml('placeholder="Aufgabe beschreiben … (Markdown, @ für Erwähnungen)"');
     }
 
     public function test_the_page_itself_does_not_dispatch_panel_events(): void

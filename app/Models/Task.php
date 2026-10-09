@@ -160,10 +160,7 @@ class Task extends Model
                     MarkdownService::mentionedUserIds($task->getOriginal('description')),
                 );
 
-                Notification::send(
-                    $task->usersToMention($added, $actor),
-                    new UserMentioned($task, 'description', (string) $task->description, $actor?->name),
-                );
+                $task->notifyMentionedInDescription($added, $actor);
             }
 
             app(AutomationService::class)->flush();
@@ -604,6 +601,19 @@ class Task extends Model
         $viewers = $this->project->viewerIds($candidates);
 
         return $candidates->filter(fn (User $user) => in_array($user->id, $viewers, true))->values();
+    }
+
+    /**
+     * Tells the given people (those who may be told, see usersToMention) that the description mentions them.
+     *
+     * @param  iterable<int>  $userIds
+     */
+    public function notifyMentionedInDescription(iterable $userIds, ?User $actor): void
+    {
+        Notification::send(
+            $this->usersToMention($userIds, $actor),
+            new UserMentioned($this, 'description', (string) $this->description, $actor?->name),
+        );
     }
 
     /**

@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use App\Notifications\AccountCreated;
 use App\Services\LocaleService;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
@@ -67,13 +68,14 @@ new class extends Component
 
         $password = $validated['password'] ?: Str::password(16, symbols: false);
 
-        User::create([
+        $user = User::create([
             'name' => trim($validated['name']),
             'email' => $validated['email'],
             'password' => $password,
             'is_admin' => $this->makeAdmin,
             'locale' => $validated['locale'],
         ]);
+        $user->notify(new AccountCreated(auth()->user()->name));
 
         $this->shownPassword = $password;
         $this->shownFor = $validated['email'];

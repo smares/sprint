@@ -1,0 +1,1 @@
+Du wurdest in {{ config('app.name') }} angelegt

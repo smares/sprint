@@ -17,6 +17,16 @@ Ohne funktionierenden Mailversand (`MAIL_*`) kommen weder Benachrichtigungen noc
 - Das **Einhorn** beim Erledigen von Aufgaben (siehe [Funktionen](features.md)) erscheint mit der Wahrscheinlichkeit `SPRINT_CELEBRATION_CHANCE` (Standard `0.06`, also etwa jede sechzehnte Aufgabe; `0` schaltet es für alle ab).
 - Die **Tageszusammenfassung** (werktags 07:30, einstellbar mit `SPRINT_DIGEST_TIME`) braucht den Scheduler: ein Cron-Eintrag, der jede Minute `php artisan schedule:run` startet, z. B. `* * * * * cd /pfad/zu/sprint && php artisan schedule:run >> /dev/null 2>&1`. Die Uhrzeit gilt in der Zeitzone der Anwendung (`APP_TIMEZONE`, in `.env.example` `Europe/Berlin`); sie bestimmt auch, was „heute“ und „überfällig“ heißt, und gilt für die Zeiten unter *Bitte nicht stören* im Profil. Zum Ausprobieren: `php artisan digest:send --user=anna@example.com`
 
+## Push-Benachrichtigungen
+
+Neue Einträge im Posteingang erscheinen auf Wunsch auch als Benachrichtigung des Browsers bzw. Handys (Web Push), auch wenn Sprint geschlossen ist. Jede Person schaltet sie im Profil pro Gerät ein. Ohne Einrichtung zeigt das Profil nur einen Hinweis; alles andere läuft wie bisher.
+
+- **Schlüssel (VAPID) erzeugen**, einmal pro Installation: `php artisan webpush:vapid --show` und die beiden Zeilen als `VAPID_PUBLIC_KEY` und `VAPID_PRIVATE_KEY` in `.env` (bzw. die Umgebung in Dokploy) eintragen. Sie weisen Sprint gegenüber den Push-Diensten von Google, Apple, Mozilla und Microsoft aus; ein Konto dort braucht es nicht. Der private Schlüssel ist geheim wie `APP_KEY`, und beide dürfen sich nicht ändern: Mit neuen Schlüsseln muss jede Person Push auf ihren Geräten neu einschalten. Optional `VAPID_SUBJECT` (eine `mailto:`-Adresse oder URL für die Push-Dienste, sonst `APP_URL`)
+- **PHP-Erweiterung `gmp` oder `bcmath`** für die Verschlüsselung (im Docker-Image enthalten); fehlen beide, bleibt Push aus
+- **HTTPS** (lokal genügt `localhost`) und der **Queue-Worker**: Push wird wie die Mails über die Queue verschickt
+- Der Server sendet nur an die Push-Dienste der Browser (Google, Mozilla, Apple, Microsoft), nie an andere Adressen
+- **iPhone und iPad** erlauben Push nur, wenn Sprint zum Home-Bildschirm hinzugefügt ist (ab iOS 16.4)
+
 ## Live-Updates (Reverb)
 
 Mit [Laravel Reverb](https://laravel.com/docs/reverb) aktualisieren sich die Seiten ohne Neuladen, wenn jemand anderes etwas ändert. Ohne Reverb läuft Sprint wie bisher; es wird dann nichts gesendet und der Browser öffnet keine Verbindung.

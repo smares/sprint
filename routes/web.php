@@ -4,6 +4,7 @@ use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\AvatarController;
 use App\Http\Controllers\ConfirmEmailController;
 use App\Http\Controllers\HealthController;
+use App\Http\Controllers\ProgressiveWebAppController;
 use App\Http\Controllers\ProjectExportController;
 use App\Services\LocaleService;
 use Illuminate\Http\RedirectResponse;
@@ -25,6 +26,12 @@ Route::post('/locale', function (Request $request): RedirectResponse {
 
 Route::get('/health', HealthController::class)->middleware('throttle:60,1')->name('health');
 
+Route::controller(ProgressiveWebAppController::class)->group(function () {
+    Route::get('/manifest.webmanifest', 'manifest')->name('pwa.manifest');
+    Route::get('/sw.js', 'serviceWorker')->name('pwa.service-worker');
+    Route::get('/offline', 'offline')->name('offline');
+});
+
 Route::livewire('/login', 'pages::login')->name('login')->middleware('guest');
 Route::livewire('/forgot-password', 'pages::forgot-password')->name('password.request')->middleware('guest');
 Route::livewire('/reset-password/{token}', 'pages::reset-password')->name('password.reset')->middleware('guest');
@@ -42,6 +49,11 @@ Route::middleware(['auth', 'password.confirm', 'throttle:6,1'])->group(function 
 Route::get('/email/confirm/{user}/{hash}', ConfirmEmailController::class)->middleware(['signed', 'throttle:6,1'])->name('email.confirm');
 
 Route::post('/logout', function (Request $request) {
+    // This browser's push subscription, if any (app.js): no notifications for the next person on a shared device
+    if ($request->filled('push_endpoint')) {
+        $request->user()->deletePushSubscription($request->string('push_endpoint')->toString());
+    }
+
     Auth::logout();
     $request->session()->invalidate();
     $request->session()->regenerateToken();

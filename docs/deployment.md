@@ -34,6 +34,9 @@ Anleitungen für typische Hosts:
    MAIL_HOST=...  MAIL_PORT=587  MAIL_USERNAME=...  MAIL_PASSWORD=...
    MAIL_FROM_ADDRESS=sprint@example.com
    MAIL_FROM_NAME=Sprint
+
+   # optional, für Push-Benachrichtigungen: php artisan webpush:vapid --show
+   VAPID_PUBLIC_KEY=...  VAPID_PRIVATE_KEY=...
    ```
    Hinter einem Proxy oder Load Balancer, der TLS beendet, zusätzlich `TRUSTED_PROXIES` mit den Adressen des Proxys (kommagetrennt, CIDR erlaubt), sonst erzeugt Laravel `http`-Links. `*` nur, wenn die App ausschließlich über den Proxy erreichbar ist: Wer sie direkt erreicht, könnte sonst per `X-Forwarded-For` eine fremde IP vortäuschen und die Begrenzung der Anmeldeversuche umgehen.
 

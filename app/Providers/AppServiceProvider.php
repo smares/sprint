@@ -4,9 +4,11 @@ namespace App\Providers;
 
 use App\Events\InboxUpdated;
 use App\Models\User;
+use App\Notifications\InboxPush;
 use App\Services\AutomationService;
 use App\Services\CelebrationService;
 use App\Services\LocaleService;
+use App\Services\PushService;
 use App\Services\RealtimeService;
 use App\Services\TaskSearchService;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -14,6 +16,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
 use Illuminate\Mail\Events\MessageSending;
+use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Notifications\Events\NotificationSent;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -59,6 +62,14 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(function (NotificationSent $sent): void {
             if ($sent->channel === 'database' && $sent->notifiable instanceof User && $this->app->make(RealtimeService::class)->enabled()) {
                 broadcast(new InboxUpdated($sent->notifiable->id));
+            }
+        });
+
+        // Every new inbox entry also goes to the devices the person turned push notifications on for
+        Event::listen(function (NotificationSent $sent): void {
+            if ($sent->channel === 'database' && $sent->notifiable instanceof User && $sent->response instanceof DatabaseNotification
+                && PushService::configured() && $sent->notifiable->pushSubscriptions()->exists()) {
+                $sent->notifiable->notify(new InboxPush($sent->response));
             }
         });
 

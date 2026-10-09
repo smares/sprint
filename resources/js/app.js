@@ -306,6 +306,129 @@ const registerEmojiField = () => {
     }))
 }
 
+// Push notifications for this device (profile): the browser subscribes with the installation's public key (VAPID) and
+// the subscription is stored for the person. iPhones and iPads only offer it to Sprint opened from the home screen.
+const keyBytes = (base64) => {
+    const padded = (base64 + '='.repeat((4 - base64.length % 4) % 4)).replace(/-/g, '+').replace(/_/g, '/')
+
+    return Uint8Array.from(atob(padded), (char) => char.charCodeAt(0))
+}
+
+const sameBytes = (a, b) => a.length === b.length && a.every((byte, index) => byte === b[index])
+
+// The worker is registered on every page in production; in development only once push needs it
+const pushRegistration = async () => {
+    if (! await navigator.serviceWorker.getRegistration('/')) {
+        await navigator.serviceWorker.register('/sw.js')
+    }
+
+    return navigator.serviceWorker.ready
+}
+
+const registerPushToggle = () => {
+    window.Alpine.data('pushToggle', (publicKey) => ({
+        state: 'loading',
+        busy: false,
+
+        async init() {
+            const appleMobile = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+            const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true
+
+            if (! publicKey || ! ('serviceWorker' in navigator) || ! ('PushManager' in window) || ! ('Notification' in window)) {
+                this.state = appleMobile && ! standalone ? 'install' : 'unsupported'
+
+                return
+            }
+
+            if (Notification.permission === 'denied') {
+                this.state = 'denied'
+
+                return
+            }
+
+            const subscription = await (await pushRegistration()).pushManager.getSubscription()
+
+            this.state = subscription && await this.$wire.hasPushSubscription(subscription.endpoint) ? 'on' : 'off'
+        },
+
+        async turnOn() {
+            this.busy = true
+
+            try {
+                if (await Notification.requestPermission() !== 'granted') {
+                    this.state = Notification.permission === 'denied' ? 'denied' : 'off'
+
+                    return
+                }
+
+                const registration = await pushRegistration()
+                const key = keyBytes(publicKey)
+                let subscription = await registration.pushManager.getSubscription()
+
+                // One made with other keys (the installation got new ones) cannot be used any more
+                if (subscription && ! sameBytes(new Uint8Array(subscription.options.applicationServerKey ?? []), key)) {
+                    await subscription.unsubscribe()
+                    subscription = null
+                }
+
+                subscription ??= await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key })
+
+                const { endpoint, keys } = subscription.toJSON()
+                const encoding = (PushManager.supportedContentEncodings ?? []).includes('aes128gcm') ? 'aes128gcm' : 'aesgcm'
+
+                this.state = await this.$wire.savePushSubscription(endpoint, keys.p256dh, keys.auth, encoding) === true ? 'on' : 'failed'
+            } catch {
+                this.state = 'failed'
+            } finally {
+                this.busy = false
+            }
+        },
+
+        async turnOff() {
+            this.busy = true
+
+            try {
+                const subscription = await (await pushRegistration()).pushManager.getSubscription()
+
+                if (subscription) {
+                    await subscription.unsubscribe()
+                    await this.$wire.removePushSubscription(subscription.endpoint)
+                }
+
+                this.state = 'off'
+            } finally {
+                this.busy = false
+            }
+        },
+    }))
+}
+
+// Logging out ends push notifications on this device too (a shared computer would otherwise keep getting them):
+// the form takes the browser's subscription along, the server forgets it.
+document.addEventListener('submit', async (event) => {
+    const form = event.target
+
+    if (! form.matches('form[data-logout]') || form.dataset.pushChecked || ! ('serviceWorker' in navigator)) {
+        return
+    }
+
+    event.preventDefault()
+
+    try {
+        const subscription = await (await navigator.serviceWorker.getRegistration('/'))?.pushManager.getSubscription()
+
+        if (subscription) {
+            const field = Object.assign(document.createElement('input'), { type: 'hidden', name: 'push_endpoint', value: subscription.endpoint })
+
+            form.append(field)
+            await subscription.unsubscribe()
+        }
+    } catch {}
+
+    form.dataset.pushChecked = 'true'
+    form.submit()
+})
+
 // The task flyout (components/task-panel.blade.php). Flux does not close it by itself: Esc, a click next to it,
 // the close button and switching to another task go through here and ask first if the task has unsaved input.
 const registerTaskFlyout = () => {
@@ -383,6 +506,7 @@ const registerAll = () => {
     registerPresence()
     registerAvatarPicker()
     registerEmojiField()
+    registerPushToggle()
 }
 
 if (window.Alpine) {
@@ -492,3 +616,19 @@ document.addEventListener('keydown', (event) => {
         actions[event.key]()
     }
 })
+
+// Sprint as an app on the home screen: the service worker (ProgressiveWebAppController) keeps the built assets and an offline page.
+// Not with the Vite dev server, whose files are not in the build. The offline page shows the language last used here.
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}))
+}
+
+// Also after wire:navigate page changes, such as the one after logging in
+const rememberLocale = () => {
+    try {
+        localStorage.setItem('sprint.locale', document.documentElement.lang.slice(0, 2))
+    } catch {}
+}
+
+rememberLocale()
+document.addEventListener('livewire:navigated', rememberLocale)

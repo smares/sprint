@@ -171,21 +171,22 @@ class TaskActivityTest extends TestCase
         $this->assertContains('hat die Aufgabe unter „Oben“ verschoben', $task->activities()->get()->map->sentence()->all());
     }
 
-    public function test_page_shows_comments_and_changes_in_time_order(): void
+    public function test_comments_come_first_and_the_activity_below_says_who_commented(): void
     {
         $task = Task::factory()->create();
         $this->travelTo(now()->addMinute());
-        Comment::factory()->for($task)->create(['user_id' => $this->user->id, 'body' => 'Mein Kommentar']);
+        $comment = Comment::factory()->for($task)->create(['user_id' => $this->user->id, 'body' => 'Mein Kommentar']);
         $this->travelTo(now()->addMinute());
         $task->update(['title' => 'Anderer Titel']);
 
         $this->get(route('tasks.show', $task))
             ->assertOk()
-            ->assertSeeInOrder(['hat die Aufgabe angelegt', 'Mein Kommentar', 'hat den Titel von'])
-            ->assertSee('Anna Autorin');
+            ->assertSeeInOrder(['Kommentare</', 'Mein Kommentar', 'Kommentar schreiben', 'Aktivität</', 'hat die Aufgabe angelegt', 'Anna Autorin', 'hat kommentiert', 'Zum Kommentar', 'hat den Titel von'], false)
+            ->assertSee('id="comment-'.$comment->id.'"', false)
+            ->assertSee('href="#comment-'.$comment->id.'"', false);
     }
 
-    public function test_long_feeds_show_the_latest_entries_and_load_earlier_ones_on_request(): void
+    public function test_long_lists_show_the_latest_entries_and_load_earlier_ones_on_request(): void
     {
         $task = Task::factory()->create();
 
@@ -194,15 +195,63 @@ class TaskActivityTest extends TestCase
             Comment::factory()->for($task)->create(['user_id' => $this->user->id, 'body' => sprintf('Kommentar %03d', $number)]);
         }
 
-        Livewire::test('pages::tasks.show', ['task' => $task])
+        $page = Livewire::test('pages::tasks.show', ['task' => $task])
             ->assertSee('Kommentar 055')
             ->assertSee('Kommentar 006')
             ->assertDontSee('Kommentar 005')
+            ->assertSee('Frühere Kommentare anzeigen')
             ->assertDontSee('hat die Aufgabe angelegt')
-            ->assertSee('Frühere Einträge anzeigen')
-            ->call('showEarlierFeed')
-            ->assertSeeInOrder(['hat die Aufgabe angelegt', 'Kommentar 001', 'Kommentar 055'])
+            ->assertSee('Frühere Einträge anzeigen');
+
+        $page->call('showEarlierComments')
+            ->assertSeeInOrder(['Kommentar 001', 'Kommentar 055'])
+            ->assertDontSee('Frühere Kommentare anzeigen')
+            ->assertDontSee('hat die Aufgabe angelegt');
+
+        $page->call('showEarlierFeed')
+            ->assertSee('hat die Aufgabe angelegt')
             ->assertDontSee('Frühere Einträge anzeigen');
+    }
+
+    public function test_going_to_an_older_comment_loads_it_first_and_scrolls_to_it(): void
+    {
+        $task = Task::factory()->create();
+        $comments = collect(range(1, 55))->map(function (int $number) use ($task) {
+            $this->travelTo(now()->addMinute());
+
+            return Comment::factory()->for($task)->create(['user_id' => $this->user->id, 'body' => sprintf('Kommentar %03d', $number)]);
+        });
+
+        Livewire::test('pages::tasks.show', ['task' => $task])
+            ->assertDontSee('Kommentar 003')
+            ->call('showComment', $comments[2]->id)
+            ->assertSet('commentLimit', 100)
+            ->assertSee('Kommentar 003')
+            ->call('showComment', $comments[54]->id)
+            ->assertSet('commentLimit', 100);
+
+        Livewire::test('pages::tasks.show', ['task' => $task])
+            ->call('showComment', $comments[54]->id)
+            ->assertSet('commentLimit', 50);
+    }
+
+    public function test_only_comments_of_this_task_can_be_gone_to(): void
+    {
+        $other = Comment::factory()->for(Task::factory())->create(['user_id' => $this->user->id]);
+
+        Livewire::test('pages::tasks.show', ['task' => Task::factory()->create()])
+            ->call('showComment', $other->id)
+            ->assertNotFound();
+    }
+
+    public function test_comments_and_activity_say_so_when_there_is_nothing_yet(): void
+    {
+        $task = Task::factory()->create();
+        $task->activities()->delete();
+
+        Livewire::test('pages::tasks.show', ['task' => $task])
+            ->assertSee('Noch keine Kommentare.')
+            ->assertSee('Noch keine Aktivität.');
     }
 
     public function test_deleted_people_show_as_someone(): void

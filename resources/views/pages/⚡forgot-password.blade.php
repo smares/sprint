@@ -69,4 +69,6 @@ new class extends Component
             <flux:link :href="route('login')" wire:navigate class="text-sm">{{ __('Back to sign in') }}</flux:link>
         </div>
     </flux:card>
+
+    <x-locale-switch />
 </div>

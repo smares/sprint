@@ -47,7 +47,7 @@ class AccountCreatedMailTest extends TestCase
 
         $html = (string) (new AccountCreated)->toMail($user)->render();
 
-        $this->assertStringContainsString('Für dich wurde ein Konto in Sprint angelegt.', $html);
+        $this->assertStringContainsString('für dich wurde ein Konto in Sprint angelegt.', $html);
     }
 
     public function test_the_command_sends_the_mail_too(): void

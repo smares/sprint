@@ -324,7 +324,7 @@ new class extends Component
         <flux:breadcrumbs.item>{{ __('Automations') }}</flux:breadcrumbs.item>
     </flux:breadcrumbs>
 
-    <div class="mb-6 flex items-start gap-4">
+    <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start">
         <div class="min-w-0 flex-1">
             <flux:heading size="xl" class="mb-1">{{ __('Automations') }}</flux:heading>
             <flux:text>{{ __('A rule does something on a task as soon as it changes, for example set the assignee when the status becomes “Done”. Changes made by a rule are shown in the history under the rule’s name; rules do not trigger each other.') }}</flux:text>
@@ -344,9 +344,9 @@ new class extends Component
                         @unless ($rule->enabled)
                             <flux:badge size="sm">{{ __('Off') }}</flux:badge>
                         @endunless
-                        <flux:switch wire:click="toggle({{ $rule->id }})" :checked="$rule->enabled" aria-label="{{ __('Turn on or off') }}" />
-                        <flux:button size="xs" variant="ghost" icon="pencil-square" wire:click="openForm({{ $rule->id }})" aria-label="{{ __('Edit automation') }}" />
-                        <flux:button size="xs" variant="ghost" icon="trash" wire:click="confirmDelete({{ $rule->id }})" aria-label="{{ __('Delete automation') }}" />
+                        <flux:switch wire:click="toggle({{ $rule->id }})" :checked="$rule->enabled" aria-label="{{ __('Turn “:name” on or off', ['name' => $rule->name]) }}" />
+                        <flux:button size="sm" variant="ghost" icon="pencil-square" wire:click="openForm({{ $rule->id }})" aria-label="{{ __('Edit automation') }}" tooltip="{{ __('Edit automation') }}" />
+                        <flux:button size="sm" variant="ghost" icon="trash" wire:click="confirmDelete({{ $rule->id }})" aria-label="{{ __('Delete automation') }}" tooltip="{{ __('Delete automation') }}" />
                     </div>
 
                     <div class="ms-7 mt-2 space-y-1">

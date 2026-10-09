@@ -50,7 +50,7 @@
 
                 <flux:dropdown position="bottom" align="end">
                     <flux:profile :name="auth()->user()->name" initials="{{ auth()->user()->initials() }}" :avatar="auth()->user()->avatarUrl()" class="max-sm:[&>span.truncate]:hidden" />
-                    <flux:menu>
+                    <flux:menu class="min-w-60!">
                         <div class="px-2 py-1.5">
                             <flux:text size="sm" class="mb-1.5">{{ __('Appearance') }}</flux:text>
                             <flux:radio.group x-data variant="segmented" x-model="$flux.appearance" size="sm">

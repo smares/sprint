@@ -11,9 +11,19 @@
             <a href="{{ route('projects.show', $project) }}" wire:navigate class="hover:underline">{{ $project->name }}</a>
         </flux:heading>
         <flux:text class="mt-1 line-clamp-2">{{ $project->description }}</flux:text>
-        <div class="mt-4 flex gap-2">
+        {{-- Overdue and due this week only when there are any; each opens the list filtered to them --}}
+        <div class="mt-4 flex flex-wrap gap-2">
             <flux:badge color="blue">{{ __(':count open', ['count' => $project->open_tasks_count]) }}</flux:badge>
-            <flux:badge>{{ __(':count total', ['count' => $project->tasks_count]) }}</flux:badge>
+            @if ($project->overdue_tasks_count > 0)
+                <a href="{{ route('projects.show', [$project, 'dates' => 'overdue']) }}" wire:navigate class="rounded-md hover:opacity-80">
+                    <flux:badge color="red" icon="exclamation-triangle">{{ __(':count overdue', ['count' => $project->overdue_tasks_count]) }}</flux:badge>
+                </a>
+            @endif
+            @if ($project->due_soon_tasks_count > 0)
+                <a href="{{ route('projects.show', [$project, 'dates' => 'soon']) }}" wire:navigate class="rounded-md hover:opacity-80">
+                    <flux:badge color="amber" icon="clock">{{ __(':count due this week', ['count' => $project->due_soon_tasks_count]) }}</flux:badge>
+                </a>
+            @endif
         </div>
     </flux:card>
 

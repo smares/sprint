@@ -25,6 +25,7 @@ Dauerhaft liegt alles im Volume `storage`: SQLite-Datenbank (`storage/database/d
    docker compose build
    docker compose run --rm --no-deps app php artisan key:generate --show
    ```
+   Für Push-Benachrichtigungen (optional) ebenso die VAPID-Schlüssel erzeugen und beide Zeilen in `.env` übernehmen: `docker compose run --rm --no-deps app php artisan webpush:vapid --show` (siehe [Konfiguration](configuration.md#push-benachrichtigungen)).
 4. **Starten** und den ersten Administrator anlegen:
    ```bash
    docker compose up -d

@@ -2,7 +2,7 @@
 
 # Sprint
 
-Sprint ist eine schlanke Aufgabenverwaltung für Teams: Projekte, Aufgaben und Subtasks, Liste, Kanban-Board, Kalender und Zeitleiste, Kommentare mit Markdown und `@`-Erwähnungen, Benachrichtigungen per Mail und im Posteingang, ein MCP-Server für KI-Agenten. Die Oberfläche gibt es auf Deutsch und Englisch.
+Sprint ist eine schlanke Aufgabenverwaltung für Teams: Projekte, Aufgaben und Subtasks, Liste, Kanban-Board, Kalender und Zeitleiste, Kommentare mit Markdown und `@`-Erwähnungen, Benachrichtigungen per Mail, im Posteingang und als Push auf Browser und Handy, ein MCP-Server für KI-Agenten. Die Oberfläche gibt es auf Deutsch und Englisch.
 
 Gebaut mit Laravel 13, Livewire 4 und [Flux UI Pro](https://fluxui.dev) (kommerzielle Lizenz nötig).
 

@@ -66,7 +66,7 @@
                         <flux:modal.trigger name="keyboard-shortcuts">
                             <flux:menu.item icon="command-line" kbd="?">{{ __('Keyboard shortcuts') }}</flux:menu.item>
                         </flux:modal.trigger>
-                        <form method="POST" action="{{ route('logout') }}">
+                        <form method="POST" action="{{ route('logout') }}" data-logout>
                             @csrf
                             <flux:menu.item as="button" type="submit" icon="arrow-right-start-on-rectangle">{{ __('Log out') }}</flux:menu.item>
                         </form>

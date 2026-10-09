@@ -46,7 +46,7 @@ new class extends Component
     #[Url(as: 'tag')]
     public string $tagFilter = '';
 
-    /** '' for all tasks, 'none' for tasks without start and due date, 'dated' for tasks with one of them. */
+    /** '' for all tasks, 'none' for tasks without start and due date, 'dated' for tasks with one of them, 'overdue' and 'soon' (due this week) for open tasks by due date. */
     #[Url(as: 'dates')]
     public string $dateFilter = '';
 
@@ -102,7 +102,25 @@ new class extends Component
             ->when(ctype_digit($this->tagFilter), fn ($q) => $q->whereHas('tags', fn ($tags) => $tags->whereKey((int) $this->tagFilter)))
             ->when($this->dateFilter === 'none', fn ($q) => $q->whereNull('start_date')->whereNull('due_date'))
             ->when($this->dateFilter === 'dated', fn ($q) => $q->where(fn ($dated) => $dated->whereNotNull('start_date')->orWhereNotNull('due_date')))
+            ->when($this->dateFilter === 'overdue', fn ($q) => $q->overdue())
+            ->when($this->dateFilter === 'soon', fn ($q) => $q->dueSoon())
             ->tap(fn ($q) => $this->applyFieldFilters($q));
+    }
+
+    /**
+     * The date filters besides "with and without date", value => label.
+     *
+     * @return array<string, string>
+     */
+    #[Computed]
+    public function dateFilterLabels(): array
+    {
+        return [
+            'dated' => __('With date'),
+            'none' => __('Without date'),
+            'overdue' => __('Overdue'),
+            'soon' => __('Due this week'),
+        ];
     }
 
     /**
@@ -311,8 +329,8 @@ new class extends Component
             $filters->push(['key' => 'tag', 'label' => $tag->name]);
         }
 
-        if (in_array($this->dateFilter, ['none', 'dated'], true)) {
-            $filters->push(['key' => 'dates', 'label' => $this->dateFilter === 'none' ? __('Without date') : __('With date')]);
+        if (array_key_exists($this->dateFilter, $this->dateFilterLabels)) {
+            $filters->push(['key' => 'dates', 'label' => $this->dateFilterLabels[$this->dateFilter]]);
         }
 
         return $filters;
@@ -400,7 +418,7 @@ new class extends Component
 
         $tag = (string) ($filters['tag'] ?? '');
         $this->tagFilter = $tag !== '' && ctype_digit($tag) && $this->tagOptions->contains('id', (int) $tag) ? $tag : '';
-        $this->dateFilter = in_array($filters['dates'] ?? '', ['none', 'dated'], true) ? $filters['dates'] : '';
+        $this->dateFilter = is_string($filters['dates'] ?? null) && array_key_exists($filters['dates'], $this->dateFilterLabels) ? $filters['dates'] : '';
 
         $this->fieldFilters = [];
 
@@ -618,8 +636,9 @@ new class extends Component
 
             <flux:select variant="listbox" wire:model.live="dateFilter" :label="__('Dates')">
                 <flux:select.option value="">{{ __('With and without date') }}</flux:select.option>
-                <flux:select.option value="dated">{{ __('With date') }}</flux:select.option>
-                <flux:select.option value="none">{{ __('Without date') }}</flux:select.option>
+                @foreach ($this->dateFilterLabels as $value => $label)
+                    <flux:select.option value="{{ $value }}">{{ $label }}</flux:select.option>
+                @endforeach
             </flux:select>
 
             @if ($this->tagOptions->isNotEmpty())

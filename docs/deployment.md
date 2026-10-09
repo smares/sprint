@@ -6,6 +6,7 @@ Anleitungen für typische Hosts:
 
 - [Laravel Forge](deployment-forge.md): eigener Server mit dauerhafter Platte
 - [Laravel Cloud](deployment-laravel-cloud.md): flüchtiges Dateisystem, Datenbank und Bucket als Ressourcen
+- [Traefik, selbst verwaltet](deployment-traefik.md): fertiges Image hinter einem eigenen Traefik, ohne veröffentlichte Ports
 - [Docker Compose](deployment-docker.md): Image samt Worker und Scheduler, selbst gebaut oder als fertiges Release-Image von `ghcr.io`, Daten im Volume
 - [Dokploy](deployment-dokploy.md): dasselbe Setup hinter Traefik, Domain und HTTPS über die Oberfläche
 

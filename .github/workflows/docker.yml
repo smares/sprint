@@ -7,6 +7,7 @@ on:
       - .dockerignore
       - compose.yaml
       - compose.image.yaml
+      - compose.traefik.yaml
       - docker/**
       - composer.lock
       - package-lock.json
@@ -50,7 +51,9 @@ jobs:
           echo "COMPOSER_AUTH='$(jq -cn --arg user "$FLUX_USERNAME" --arg key "$FLUX_LICENSE_KEY" '{"http-basic": {"composer.fluxui.dev": {"username": $user, "password": $key}}}')'" >> .env
 
       - name: The compose file for the finished image is valid
-        run: SPRINT_VERSION=0.0.0 docker compose -f compose.image.yaml config --quiet
+        run: |
+          SPRINT_VERSION=0.0.0 docker compose -f compose.image.yaml config --quiet
+          SPRINT_VERSION=0.0.0 SPRINT_HOST=sprint.example.com docker compose -f compose.traefik.yaml config --quiet
 
       - name: Build image
         run: docker compose build

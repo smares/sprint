@@ -280,7 +280,7 @@ new class extends Component
     #[Computed]
     public function users(): Collection
     {
-        return $this->project->eligibleUsers()->orderBy('name')->get(['id', 'name']);
+        return $this->project->eligibleUsers()->orderBy('name')->get(['id', 'name', 'absent_from', 'absent_until']);
     }
 
     /**
@@ -603,7 +603,7 @@ new class extends Component
                 <flux:select.option value="">{{ __('All people') }}</flux:select.option>
                 <flux:select.option value="me">{{ __('Only mine') }}</flux:select.option>
                 @foreach ($this->users as $user)
-                    <flux:select.option value="{{ $user->id }}">{{ $user->name }}</flux:select.option>
+                    <flux:select.option value="{{ $user->id }}">{{ $user->labelledName() }}</flux:select.option>
                 @endforeach
             </flux:select>
 
@@ -706,7 +706,7 @@ new class extends Component
                             <x-color-badge size="sm" :color="$task->status->color">{{ $task->status->name }}</x-color-badge>
                         </flux:table.cell>
                         <flux:table.cell class="max-md:hidden">
-                            {{ $task->assignee?->name }}
+                            {{ $task->assignee?->labelledName() }}
                             @if ($task->collaborators->isNotEmpty())
                                 <flux:text size="sm" class="block" title="{{ $task->collaborators->pluck('name')->join(', ') }}">{{ trans_choice('{1} + :count collaborator|[2,*] + :count collaborators', $task->collaborators->count()) }}</flux:text>
                             @endif
@@ -785,7 +785,7 @@ new class extends Component
                     <flux:select.option value="">{{ __('Leave unchanged') }}</flux:select.option>
                     <flux:select.option value="none">{{ __('Nobody') }}</flux:select.option>
                     @foreach ($this->users as $user)
-                        <flux:select.option value="{{ $user->id }}">{{ $user->name }}</flux:select.option>
+                        <flux:select.option value="{{ $user->id }}">{{ $user->labelledName() }}</flux:select.option>
                     @endforeach
                 </flux:select>
 

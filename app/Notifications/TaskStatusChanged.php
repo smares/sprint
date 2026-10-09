@@ -4,6 +4,7 @@ namespace App\Notifications;
 
 use App\Models\Task;
 use App\Notifications\Concerns\BuildsLocalizedMail;
+use App\Notifications\Concerns\PausesMailWhileAbsent;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -11,7 +12,7 @@ use Illuminate\Notifications\Notification;
 
 class TaskStatusChanged extends Notification implements ShouldQueueAfterCommit
 {
-    use BuildsLocalizedMail, Queueable;
+    use BuildsLocalizedMail, PausesMailWhileAbsent, Queueable;
 
     public function __construct(
         public Task $task,
@@ -19,14 +20,6 @@ class TaskStatusChanged extends Notification implements ShouldQueueAfterCommit
         public string $newStatus,
         public ?string $changedBy = null,
     ) {}
-
-    /**
-     * @return list<string>
-     */
-    public function via(object $notifiable): array
-    {
-        return ['mail', 'database'];
-    }
 
     public function toMail(object $notifiable): MailMessage
     {

@@ -21,7 +21,12 @@ class SendDailyDigest extends Command
             ->active()
             ->where('digest_enabled', true)
             ->when($this->option('user'), fn ($users, string $email) => $users->where('email', $email))
-            ->each(function (User $user) use ($digest, &$sent) {
+            ->each(function (User $user) use ($digest, &$sent): void {
+                // No summary mails during a planned absence
+                if ($user->isAbsent()) {
+                    return;
+                }
+
                 $tasks = $digest->tasksFor($user);
 
                 if (collect($tasks)->every->isEmpty()) {

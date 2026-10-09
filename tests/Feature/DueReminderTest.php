@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Notifications\TaskDueTomorrow;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -112,5 +113,22 @@ class DueReminderTest extends TestCase
         Livewire::test('pages::profile')->assertSet('reminders', true)->set('reminders', false);
 
         $this->assertFalse($this->anna->fresh()->reminders_enabled);
+    }
+
+    public function test_assignees_are_loaded_with_the_tasks_and_not_one_by_one(): void
+    {
+        Notification::fake();
+        foreach (range(1, 3) as $index) {
+            $person = User::factory()->create();
+            $this->project->setRole($person, ProjectRole::Editor);
+            $this->taskDue('2026-10-09', ['assignee_id' => $person->id]);
+        }
+
+        DB::enableQueryLog();
+        $this->artisan('reminders:send')->expectsOutputToContain('3 reminder(s)')->assertSuccessful();
+
+        $singleUserLookups = collect(DB::getQueryLog())
+            ->filter(fn (array $query) => preg_match('/from "users" where "users"\."id" = \? limit 1/', $query['query']) === 1);
+        $this->assertCount(0, $singleUserLookups);
     }
 }

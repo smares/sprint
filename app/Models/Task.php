@@ -125,19 +125,21 @@ class Task extends Model
             $automation = app(AutomationService::class)->running();
             $actorName = $automation?->label() ?? $actor?->name;
 
+            // Looked up once: the history, the celebration and the notifications all need the old status
+            $old = null;
+
             if ($task->wasChanged('status_id')) {
                 $task->setRelation('status', $task->statusById($task->status_id));
+                $old = $task->statusById($task->getOriginal('status_id'));
             }
 
-            $task->logChanges();
+            $task->logChanges($old);
 
-            if ($task->wasChanged('status_id') && $task->isDone() && ! $task->statusById($task->getOriginal('status_id'))?->is_done) {
+            if ($task->wasChanged('status_id') && $task->isDone() && ! $old?->is_done) {
                 app(CelebrationService::class)->taskCompleted();
             }
 
             if ($task->wasChanged('status_id')) {
-                $old = $task->statusById($task->getOriginal('status_id'));
-
                 foreach ($task->usersToNotify($actor) as $recipient) {
                     $change = ['task' => $task, 'from' => $old?->name ?? '–', 'to' => $task->status->name];
 
@@ -610,6 +612,10 @@ class Task extends Model
      */
     public function notifyMentionedInDescription(iterable $userIds, ?User $actor): void
     {
+        if (collect($userIds)->isEmpty()) {
+            return;
+        }
+
         Notification::send(
             $this->usersToMention($userIds, $actor),
             new UserMentioned($this, 'description', (string) $this->description, $actor?->name),
@@ -703,14 +709,14 @@ class Task extends Model
     /**
      * Record what the last save changed on the task itself.
      */
-    private function logChanges(): void
+    private function logChanges(?TaskStatus $oldStatus): void
     {
         $date = fn (mixed $value) => $value === null ? '–' : Carbon::parse($value)->toDateString();
         $userName = fn (mixed $id) => $id === null ? '–' : ($this->userById((int) $id)?->name ?? '–');
 
         if ($this->wasChanged('status_id')) {
             $this->logActivity(ActivityType::StatusChanged, [
-                'from' => $this->statusById($this->getOriginal('status_id'))?->name ?? '–',
+                'from' => $oldStatus?->name ?? '–',
                 'to' => $this->loadMissing('status')->status->name,
             ]);
         }

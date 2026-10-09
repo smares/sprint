@@ -35,7 +35,7 @@ class BackupService
 
         try {
             $zip = new ZipArchive;
-            $zip->open($zipPath, ZipArchive::OVERWRITE);
+            throw_unless($zip->open($zipPath, ZipArchive::OVERWRITE) === true, RuntimeException::class, 'The backup archive could not be created.');
 
             $databaseCopy = $this->copyDatabase();
             if ($databaseCopy !== null) {
@@ -44,13 +44,15 @@ class BackupService
 
             $attachments = $this->addAttachments($zip);
 
-            $zip->close();
+            throw_unless($zip->close(), RuntimeException::class, 'The backup archive could not be written.');
 
+            // Disks such as s3 report a failed upload only through the return value ('throw' => false)
             $stream = fopen($zipPath, 'r');
-            Storage::disk(config('sprint.backup.disk'))->writeStream($file, $stream);
+            $written = Storage::disk(config('sprint.backup.disk'))->writeStream($file, $stream);
             if (is_resource($stream)) {
                 fclose($stream);
             }
+            throw_unless($written, RuntimeException::class, 'The backup could not be stored on the disk "'.config('sprint.backup.disk').'".');
 
             $result = ['file' => $file, 'bytes' => (int) filesize($zipPath), 'database' => $databaseCopy !== null, 'attachments' => $attachments];
         } finally {
@@ -153,7 +155,9 @@ class BackupService
                 continue;
             }
 
+            // Stored, not compressed: images, PDFs and archives hardly shrink, and compressing costs time every night
             $zip->addFile($disk->path($file), 'attachments/'.$file);
+            $zip->setCompressionName('attachments/'.$file, ZipArchive::CM_STORE);
             $count++;
         }
 

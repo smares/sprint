@@ -218,4 +218,41 @@ class ReactionTest extends TestCase
         $this->task->delete();
         $this->assertSame(0, Reaction::query()->count());
     }
+
+    public function test_deleting_a_task_also_removes_the_reactions_of_its_comments_and_subtasks(): void
+    {
+        $child = Task::factory()->for($this->task->project)->create(['parent_id' => $this->task->id]);
+        $grandchild = Task::factory()->for($this->task->project)->create(['parent_id' => $child->id]);
+        $comment = Comment::factory()->for($child)->create(['user_id' => $this->anna->id]);
+        $other = Task::factory()->for($this->task->project)->create();
+
+        $comment->toggleReaction($this->bernd, '❤️');
+        $grandchild->toggleReaction($this->bernd, '👍');
+        $other->toggleReaction($this->bernd, '🎉');
+
+        $this->task->delete();
+
+        $this->assertSame(['🎉'], Reaction::query()->pluck('emoji')->all());
+    }
+
+    public function test_deleting_a_project_removes_all_its_reactions(): void
+    {
+        Comment::factory()->for($this->task)->create(['user_id' => $this->anna->id])->toggleReaction($this->bernd, '❤️');
+        $this->task->toggleReaction($this->bernd, '👍');
+        Task::factory()->create()->toggleReaction($this->bernd, '🎉');
+
+        $this->task->project->delete();
+
+        $this->assertSame(['🎉'], Reaction::query()->pluck('emoji')->all());
+    }
+
+    public function test_the_emoji_menu_is_only_built_when_opened(): void
+    {
+        Comment::factory()->for($this->task)->count(3)->create(['user_id' => $this->anna->id]);
+
+        $html = $this->page($this->bernd)->html();
+
+        $this->assertSame(4, substr_count($html, '<template x-if="built">'));
+        $this->assertStringNotContainsString(__('Any other emoji …'), preg_replace('#<template x-if="built">.*?</template>#s', '', $html));
+    }
 }

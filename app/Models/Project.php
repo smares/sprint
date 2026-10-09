@@ -32,7 +32,7 @@ class Project extends Model
 
     protected static function booted(): void
     {
-        static::deleting(function (self $project) {
+        static::deleting(function (self $project): void {
             $taskIds = $project->tasks()->pluck('id')->all();
 
             foreach (array_chunk($taskIds, 500) as $chunk) {
@@ -40,6 +40,7 @@ class Project extends Model
             }
 
             app(TaskSearchService::class)->forgetMany($taskIds);
+            Reaction::deleteForTasks($taskIds);
         });
 
         static::created(function (self $project) {

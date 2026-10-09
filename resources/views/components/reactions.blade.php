@@ -23,10 +23,13 @@
         @endforeach
 
         @if ($canReact)
-            <flux:dropdown>
-                <flux:button type="button" size="xs" variant="ghost" icon="face-smile" aria-label="{{ __('React') }}" :tooltip="__('React')" />
+            {{-- The menu's content is only built once it is opened: a task page has a menu under every comment --}}
+            <flux:dropdown x-data="{ built: false }">
+                <flux:button type="button" size="xs" variant="ghost" icon="face-smile" aria-label="{{ __('React') }}" :tooltip="__('React')" x-on:click="built = true" />
 
-                <flux:popover class="w-64 space-y-3 p-3">
+                <flux:popover class="w-64 p-3">
+                    <template x-if="built">
+                    <div class="space-y-3">
                     <div class="flex justify-between gap-1">
                         @foreach (\App\Emoji::quick() as $emoji => $label)
                             <button type="button" class="rounded-md p-1.5 text-xl leading-none hover:bg-zinc-100 dark:hover:bg-zinc-700" title="{{ $label }}" aria-label="{{ $label }}" wire:click="react('{{ $target }}', {{ $id }}, '{{ $emoji }}')">{{ $emoji }}</button>
@@ -38,6 +41,8 @@
                         <flux:input size="sm" x-model="emoji" x-on:keydown.enter.prevent="send()" maxlength="32" :placeholder="__('Any other emoji …')" :aria-label="__('Any other emoji …')" />
                         <flux:text size="sm" class="text-zinc-500">{{ __('Type or paste one, then press Enter. Windows: Win + . · Mac: Ctrl + Cmd + Space') }}</flux:text>
                     </div>
+                    </div>
+                    </template>
                 </flux:popover>
             </flux:dropdown>
         @endif

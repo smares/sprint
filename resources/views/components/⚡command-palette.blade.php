@@ -12,29 +12,51 @@ new class extends Component
 {
     public string $query = '';
 
+    /** Without a search text: the favorites and this many more, the recently opened ones first. */
+    public const int RECENT_PROJECTS = 10;
+
+    /** While typing: at most this many matching projects. */
+    public const int MAX_MATCHES = 20;
+
     /**
-     * Projects the person can open; while typing only those whose name contains the text, so that
-     * every keystroke renders a handful of entries instead of all projects. Names that start with the
-     * text come before names that only contain it, and within each the person's favourites lead in
-     * their own order, followed by the rest alphabetically.
+     * Projects the person can open, kept short so that the palette stays small with many projects. Without a search
+     * text the favourites in their own order, then the RECENT_PROJECTS last opened ones (topped up alphabetically for
+     * someone who has not opened enough yet). While typing those whose name contains the text: names that start with
+     * it first, favourites leading within each, the rest alphabetically, at most MAX_MATCHES.
      */
     #[Computed]
     public function projects(): Collection
     {
         $query = mb_strtolower(trim($this->query));
         $favoritePositions = array_flip($this->favoriteIds);
-        $startsWithQuery = fn (Project $project): bool => str_starts_with(mb_strtolower($project->name), $query);
         $favoritePosition = fn (Project $project): int => $favoritePositions[$project->id] ?? PHP_INT_MAX;
 
-        return Project::visibleTo(auth()->user())
+        $projects = Project::visibleTo(auth()->user())
             ->whereNull('archived_at')
             ->orderBy('name')
-            ->get(['id', 'name'])
-            ->when($query !== '', fn (Collection $projects) => $projects->filter(fn (Project $project) => str_contains(mb_strtolower($project->name), $query)))
+            ->get(['id', 'name']);
+
+        if ($query === '') {
+            [$favorites, $others] = $projects->partition(fn (Project $project) => isset($favoritePositions[$project->id]));
+            $recentRanks = array_flip(auth()->user()->visitedProjects()->pluck('projects.id')->all());
+            [$recent, $rest] = $others->partition(fn (Project $project) => isset($recentRanks[$project->id]));
+            $recent = $recent->sortBy(fn (Project $project) => $recentRanks[$project->id])->take(self::RECENT_PROJECTS);
+
+            return $favorites->sortBy($favoritePosition)
+                ->concat($recent)
+                ->concat($rest->take(self::RECENT_PROJECTS - $recent->count()))
+                ->values();
+        }
+
+        $startsWithQuery = fn (Project $project): bool => str_starts_with(mb_strtolower($project->name), $query);
+
+        return $projects
+            ->filter(fn (Project $project) => str_contains(mb_strtolower($project->name), $query))
             ->sortBy([
                 fn (Project $a, Project $b) => $startsWithQuery($b) <=> $startsWithQuery($a),
                 fn (Project $a, Project $b) => $favoritePosition($a) <=> $favoritePosition($b),
             ])
+            ->take(self::MAX_MATCHES)
             ->values();
     }
 
@@ -50,11 +72,12 @@ new class extends Component
     }
 
     /**
-     * The palette stays on the page across page changes (@persist), so its project list is built again when favorites
-     * or projects change elsewhere (projects page, project settings).
+     * The palette stays on the page across page changes (@persist), so its project list is built again when favorites,
+     * projects or the recently opened ones change elsewhere (projects page, project settings, opening a project).
      */
     #[On('favorites-changed')]
     #[On('project-updated')]
+    #[On('project-visited')]
     public function refreshProjects(): void
     {
         unset($this->projects, $this->favoriteIds);

@@ -3,7 +3,7 @@
 namespace App\Notifications;
 
 use App\Notifications\Concerns\BuildsLocalizedMail;
-use App\Notifications\Concerns\PausesMailWhileAbsent;
+use App\Notifications\Concerns\PausesMail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -14,7 +14,7 @@ use Illuminate\Notifications\Notification;
  */
 class TasksStatusChanged extends Notification implements ShouldQueueAfterCommit
 {
-    use BuildsLocalizedMail, PausesMailWhileAbsent, Queueable;
+    use BuildsLocalizedMail, PausesMail, Queueable;
 
     /** How many tasks the mail lists before it says "and n more". */
     public const LISTED = 25;

@@ -48,6 +48,16 @@ new class extends Component
 
     public string $absentUntil = '';
 
+    /** Do not disturb: a daily quiet time (H:i, may span midnight) and weekdays without email (1 = Monday). */
+    public bool $quietHours = false;
+
+    public string $quietFrom = '18:00';
+
+    public string $quietUntil = '08:00';
+
+    /** @var list<int|string> */
+    public array $quietDays = [];
+
     /** The picture as the browser cropped and shrank it (see `avatarPicker` in app.js). */
     public ?TemporaryUploadedFile $avatarUpload = null;
 
@@ -66,6 +76,11 @@ new class extends Component
         $this->reminders = auth()->user()->reminders_enabled;
         $this->celebrations = auth()->user()->celebrations_enabled;
         $this->locale = auth()->user()->preferredLocale();
+        $this->quietHours = auth()->user()->quiet_from !== null;
+        $this->quietFrom = auth()->user()->quiet_from ?? $this->quietFrom;
+        $this->quietUntil = auth()->user()->quiet_until ?? $this->quietUntil;
+        $this->quietDays = array_map(strval(...), auth()->user()->quiet_days ?? []);
+
         // An absence that is over is not shown again
         if (auth()->user()->hasPlannedAbsence()) {
             $this->absentFrom = auth()->user()->absent_from->toDateString();
@@ -82,6 +97,28 @@ new class extends Component
 
         auth()->user()->update(['absent_from' => $validated['absentFrom'], 'absent_until' => $validated['absentUntil']]);
         Flux::toast(variant: 'success', text: __('Absence saved.'));
+    }
+
+    public function saveQuietTimes(): void
+    {
+        $validated = $this->validate([
+            'quietHours' => ['boolean'],
+            'quietFrom' => ['exclude_unless:quietHours,true', 'required', 'date_format:H:i'],
+            'quietUntil' => ['exclude_unless:quietHours,true', 'required', 'date_format:H:i', 'different:quietFrom'],
+            'quietDays' => ['array'],
+            'quietDays.*' => ['integer', 'between:1,7'],
+        ], attributes: ['quietFrom' => __('From'), 'quietUntil' => __('Until')]);
+
+        $days = array_values(array_unique(array_map(intval(...), $validated['quietDays'])));
+        sort($days);
+
+        auth()->user()->update([
+            'quiet_from' => $validated['quietHours'] ? $validated['quietFrom'] : null,
+            'quiet_until' => $validated['quietHours'] ? $validated['quietUntil'] : null,
+            'quiet_days' => $days === [] ? null : $days,
+        ]);
+
+        Flux::toast(variant: 'success', text: __('Do not disturb saved.'));
     }
 
     public function clearAbsence(): void
@@ -333,6 +370,32 @@ new class extends Component
             <flux:switch wire:model.live="reminders" :label="__('Reminder the day before')" :description="__('An entry in your inbox the day before a task you are assigned to or collaborate on is due.')" />
 
             <flux:switch wire:model.live="celebrations" :label="__('Celebrate completed tasks')" :description="__('Now and then a unicorn flies across the screen when you complete a task. Not shown if your device is set to reduce motion.')" />
+
+            <flux:separator />
+
+            <form wire:submit="saveQuietTimes" class="space-y-4">
+                <div>
+                    <flux:heading>{{ __('Do not disturb') }}</flux:heading>
+                    <flux:text class="mt-1">{{ __('No emails at these times; your inbox still collects everything. Times are in the time zone :zone.', ['zone' => config('app.timezone')]) }}</flux:text>
+                </div>
+
+                <flux:switch wire:model.live="quietHours" :label="__('Every day')" :description="__('No emails between these times, for example from 18:30 to 08:00.')" />
+
+                @if ($quietHours)
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <flux:time-picker wire:model="quietFrom" :label="__('From')" time-format="24-hour" />
+                        <flux:time-picker wire:model="quietUntil" :label="__('Until')" time-format="24-hour" />
+                    </div>
+                @endif
+
+                <flux:checkbox.group wire:model="quietDays" variant="pills" :label="__('All day')" :description="__('No emails at all on these days, for example at the weekend.')">
+                    @foreach (range(1, 7) as $day)
+                        <flux:checkbox value="{{ $day }}" :label="now()->startOfWeek()->addDays($day - 1)->isoFormat('dd')" />
+                    @endforeach
+                </flux:checkbox.group>
+
+                <flux:button type="submit" variant="primary">{{ __('Save') }}</flux:button>
+            </form>
 
             <flux:separator />
 

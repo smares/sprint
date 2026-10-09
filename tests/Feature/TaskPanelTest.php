@@ -124,6 +124,15 @@ class TaskPanelTest extends TestCase
         $this->assertNotNull($panel);
     }
 
+    public function test_the_description_fields_have_a_placeholder_like_the_comment_field(): void
+    {
+        Livewire::test('pages::tasks.show', ['task' => $this->task->fresh()->forceFill(['description' => null])])
+            ->assertSeeHtml('placeholder="Aufgabe beschreiben … (Markdown, @ für Erwähnungen)"');
+
+        Livewire::test('task-create', ['project' => $this->project])
+            ->assertSeeHtml('placeholder="Aufgabe beschreiben … (Markdown)"');
+    }
+
     public function test_the_page_itself_does_not_dispatch_panel_events(): void
     {
         Livewire::test('pages::tasks.show', ['task' => $this->task])

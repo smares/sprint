@@ -986,7 +986,7 @@ new class extends Component
 
     <form wire:submit="save" class="space-y-4">
         <flux:input wire:model="title" :label="__('Title')" />
-        <x-markdown-editor wire:model="description" :label="__('Description')" :rows="3" :mentions="$this->mentionOptions" :images="$this->canEdit ? $this->imageAttachments : null" />
+        <x-markdown-editor wire:model="description" :label="__('Description')" :placeholder="__('Describe the task … (Markdown, @ for mentions)')" :rows="3" :mentions="$this->mentionOptions" :images="$this->canEdit ? $this->imageAttachments : null" />
 
         <x-reactions :reactable="$task" target="task" :can-react="$this->canEdit" />
 

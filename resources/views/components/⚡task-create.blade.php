@@ -97,7 +97,7 @@ new class extends Component
         <form wire:submit="create" class="space-y-6">
             <flux:heading size="lg">{{ __('New task') }}</flux:heading>
             <flux:input wire:model="title" :label="__('Title')" autofocus />
-            <flux:textarea wire:model="description" :label="__('Description')" rows="3" />
+            <flux:textarea wire:model="description" :label="__('Description')" :placeholder="__('Describe the task … (Markdown)')" rows="3" />
             <div class="grid grid-cols-2 gap-4">
                 <flux:select variant="listbox" wire:model="statusId" :label="__('Status')">
                     @foreach ($this->statuses as $status)

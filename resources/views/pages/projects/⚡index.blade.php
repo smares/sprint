@@ -134,7 +134,7 @@ new class extends Component
             {{-- Each person sorts their own favorites by dragging --}}
             <div class="mb-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" wire:sort="moveFavorite" wire:sort:config="{ delay: 250, delayOnTouchOnly: true, touchStartThreshold: 12 }">
                 @foreach ($this->favorites as $project)
-                    <x-project-card :project="$project" favorite sortable wire:key="favorite-{{ $project->id }}" wire:sort:item="{{ $project->id }}" />
+                    <x-project-card :project="$project" favorite wire:key="favorite-{{ $project->id }}" wire:sort:item="{{ $project->id }}" />
                 @endforeach
             </div>
 

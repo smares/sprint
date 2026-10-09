@@ -46,14 +46,14 @@ class TaskPanelTest extends TestCase
     public function test_the_task_in_the_url_opens_next_to_the_list_and_the_board(): void
     {
         $this->get(route('projects.show', ['project' => $this->project, 'task' => $this->task->id]))
-            ->assertOk()->assertSee('aria-label="Aufgabe"', false)->assertSee('Als Seite öffnen');
+            ->assertOk()->assertSee('data-modal="task-panel"', false)->assertSee('Als Seite öffnen');
 
         Livewire::withQueryParams(['task' => $this->task->id])->test('pages::projects.show', ['project' => $this->project])
             ->assertSet('openTaskId', (string) $this->task->id)
-            ->assertSeeHtml('aria-label="Aufgabe"');
+            ->assertSeeHtml('data-modal="task-panel"');
 
         Livewire::withQueryParams(['task' => $this->task->id])->test('pages::projects.board', ['project' => $this->project])
-            ->assertSeeHtml('aria-label="Aufgabe"');
+            ->assertSeeHtml('data-modal="task-panel"');
     }
 
     public function test_the_task_opens_in_a_flyout_that_closes_the_task_again(): void
@@ -61,9 +61,24 @@ class TaskPanelTest extends TestCase
         $list = $this->list()->call('openTask', $this->task->id);
 
         $list->assertSeeHtml('data-modal="task-panel"')->assertSeeHtml('data-flux-flyout')
-            ->assertSeeHtml('wire:close="closeTask"')->assertSeeHtml('$flux.modal(\'task-panel\').show()');
+            ->assertSeeHtml('wire:close="closeTask"')->assertSeeHtml('x-data="taskFlyout(');
 
         $this->list()->assertDontSeeHtml('data-modal="task-panel"');
+    }
+
+    public function test_closing_the_flyout_goes_through_the_check_for_unsaved_input(): void
+    {
+        // Flux does not close it by itself (no click outside, no Esc); taskFlyout in app.js asks first when something is unsaved
+        $this->list()->call('openTask', $this->task->id)
+            ->assertSeeHtml('disable-click-outside')
+            ->assertSeeHtml('disable-escape')
+            ->assertSeeHtml('x-on:keydown.window.capture="onKeydown($event)"')
+            ->assertSeeHtml('x-on:click="onClick($event)"')
+            ->assertSeeHtml('x-on:close-task="guard($event)"')
+            ->assertSeeHtml('x-on:open-task="guard($event)"')
+            ->assertSee('Ungespeicherte Änderungen an dieser Aufgabe verwerfen?');
+
+        Livewire::test('pages::tasks.show', ['task' => $this->task, 'panel' => true])->assertSeeHtml('data-flyout-close');
     }
 
     public function test_opening_and_closing_by_event_and_action(): void
@@ -71,9 +86,9 @@ class TaskPanelTest extends TestCase
         $other = Task::factory()->for($this->project)->create(['title' => 'Zweite']);
 
         $list = $this->list();
-        $list->call('openTask', $this->task->id)->assertSet('openTaskId', (string) $this->task->id)->assertSeeHtml('aria-label="Aufgabe"');
+        $list->call('openTask', $this->task->id)->assertSet('openTaskId', (string) $this->task->id)->assertSeeHtml('data-modal="task-panel"');
         $list->dispatch('open-task', id: $other->id)->assertSet('openTaskId', (string) $other->id);
-        $list->dispatch('close-task')->assertSet('openTaskId', '')->assertDontSeeHtml('aria-label="Aufgabe"');
+        $list->dispatch('close-task')->assertSet('openTaskId', '')->assertDontSeeHtml('data-modal="task-panel"');
 
         $board = $this->board();
         $board->call('openTask', $this->task->id)->assertSet('openTaskId', (string) $this->task->id);
@@ -91,9 +106,9 @@ class TaskPanelTest extends TestCase
         $list->call('openTask', 99999)->assertSet('openTaskId', '');
 
         Livewire::withQueryParams(['task' => $foreign->id])->test('pages::projects.show', ['project' => $this->project])
-            ->assertDontSee('Fremde Aufgabe')->assertDontSeeHtml('aria-label="Aufgabe"');
+            ->assertDontSee('Fremde Aufgabe')->assertDontSeeHtml('data-modal="task-panel"');
         Livewire::withQueryParams(['task' => 'abc'])->test('pages::projects.show', ['project' => $this->project])
-            ->assertDontSeeHtml('aria-label="Aufgabe"');
+            ->assertDontSeeHtml('data-modal="task-panel"');
     }
 
     public function test_only_people_who_may_see_the_project_get_a_panel(): void

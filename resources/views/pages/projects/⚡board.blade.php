@@ -193,7 +193,7 @@ new class extends Component
                     wire:sort:config="{ delay: 250, delayOnTouchOnly: true, touchStartThreshold: 12 }"
                 >
                     @foreach ($this->columns[$status->id] as $task)
-                        <flux:kanban.card wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" :wire:sort:item="$this->canEdit ? $task->id : null">
+                        <flux:kanban.card wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" class="cursor-pointer" :wire:sort:item="$this->canEdit ? $task->id : null">
                             <x-task-title-link :task="$task" :open="(string) $task->id === $openTaskId" />
 
                             @if ($progress = $this->progress[$task->id] ?? null)

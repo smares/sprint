@@ -378,6 +378,29 @@ document.addEventListener('click', (event) => {
     }))
 })
 
+// A click anywhere on a task card (board) or row (list) opens the task in the flyout, like a click on its title. Clicks on
+// something with its own job (links, buttons, checkboxes, fields) and selecting text are left alone; with Cmd/Ctrl the
+// task opens in a new tab.
+document.addEventListener('click', (event) => {
+    const card = event.target.closest?.('[data-opens-task]')
+
+    if (! card || event.defaultPrevented || event.button !== 0 || window.getSelection()?.toString()) {
+        return
+    }
+
+    if (event.target.closest('a, button, input, textarea, select, label, [role=checkbox], [role=button], ui-checkbox, ui-select, ui-dropdown')) {
+        return
+    }
+
+    if (event.metaKey || event.ctrlKey) {
+        window.open(card.querySelector('a[href*="/tasks/"]')?.href, '_blank')
+
+        return
+    }
+
+    window.Livewire.dispatch('open-task', { id: Number(card.dataset.opensTask) })
+})
+
 // Keyboard shortcuts, listed in the overview behind "?" (components/keyboard-shortcuts.blade.php).
 // They never fire while typing, with a modifier key held or while a dialog is open (the task flyout allows j, k and e).
 const typingIn = (target) => target.closest?.('input, textarea, select, [contenteditable], [role=combobox], [role=listbox], ui-select, ui-date-picker, ui-editor')

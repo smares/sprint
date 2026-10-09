@@ -60,6 +60,7 @@ new class extends Component
     {
         $notification = $this->ownNotification($id);
         $notification->markAsRead();
+        $this->dispatch('inbox-changed');
 
         $task = $this->tasks->get($notification->data['task_id'] ?? null);
 
@@ -78,6 +79,7 @@ new class extends Component
         $notification->read_at === null ? $notification->markAsRead() : $notification->markAsUnread();
 
         unset($this->notifications, $this->hasUnread);
+        $this->dispatch('inbox-changed');
     }
 
     public function markAllRead(): void
@@ -85,6 +87,7 @@ new class extends Component
         auth()->user()->unreadNotifications()->update(['read_at' => now()]);
 
         unset($this->notifications, $this->hasUnread);
+        $this->dispatch('inbox-changed');
     }
 
     public function remove(string $id): void
@@ -92,6 +95,7 @@ new class extends Component
         $this->ownNotification($id)->delete();
 
         unset($this->notifications, $this->hasUnread);
+        $this->dispatch('inbox-changed');
     }
 
     public function rendering(View $view): void

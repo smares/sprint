@@ -1160,12 +1160,15 @@ new class extends Component
         @endif
 
         @if ($this->canEdit)
+            {{-- On phones duplicate and delete show only their icon, so the row fits --}}
             <div class="flex gap-3">
                 <flux:button type="submit" variant="primary">{{ __('Save') }}</flux:button>
-                <flux:button type="button" icon="document-duplicate" wire:click="duplicate">{{ __('Duplicate') }}</flux:button>
+                <flux:button type="button" icon="document-duplicate" square class="sm:hidden" wire:click="duplicate" :aria-label="__('Duplicate')" :tooltip="__('Duplicate')" />
+                <flux:button type="button" icon="document-duplicate" class="max-sm:hidden" wire:click="duplicate">{{ __('Duplicate') }}</flux:button>
                 <flux:spacer />
                 <flux:modal.trigger name="delete-task">
-                    <flux:button variant="danger" icon="trash">{{ __('Delete') }}</flux:button>
+                    <flux:button variant="danger" icon="trash" square class="sm:hidden" :aria-label="__('Delete')" :tooltip="__('Delete')" />
+                    <flux:button variant="danger" icon="trash" class="max-sm:hidden">{{ __('Delete') }}</flux:button>
                 </flux:modal.trigger>
             </div>
         @endif
@@ -1188,8 +1191,8 @@ new class extends Component
     @endif
 
     @if ($this->canEdit)
-        <form wire:submit="addSubtask({{ $task->id }})" class="mt-3 flex items-center gap-2">
-            <flux:input size="sm" wire:model="newSubtaskTitles.{{ $task->id }}" :aria-label="__('New subtask')" :placeholder="__('New subtask')" class="max-w-sm" />
+        <form wire:submit="addSubtask({{ $task->id }})" class="mt-3 flex flex-wrap items-center gap-2">
+            <flux:input size="sm" wire:model="newSubtaskTitles.{{ $task->id }}" :aria-label="__('New subtask')" :placeholder="__('New subtask')" class="max-sm:basis-full sm:max-w-sm" />
             <flux:button size="sm" type="submit" icon="plus">{{ __('Add') }}</flux:button>
             <flux:button size="sm" type="button" icon="bars-3-bottom-left" wire:click="addSection({{ $task->id }})">{{ __('Heading') }}</flux:button>
         </form>
@@ -1323,7 +1326,7 @@ new class extends Component
                             </flux:timeline.indicator>
 
                             <flux:timeline.content>
-                                <flux:text size="sm"><strong class="font-medium text-zinc-800 dark:text-white">{{ $comment->authorName() ?? __('Someone') }}</strong> {{ __('commented') }} · {{ $comment->created_at->isoFormat('L LT') }} · <flux:link href="#comment-{{ $comment->id }}" variant="subtle" wire:click.prevent="showComment({{ $comment->id }})" class="text-sm">{{ __('Go to comment') }}</flux:link></flux:text>
+                                <flux:text size="sm"><strong class="font-medium text-zinc-800 dark:text-white">{{ $comment->authorName() ?? __('Someone') }}</strong> {{ __('commented') }} · {{ $comment->created_at->isoFormat('L LT') }} · <flux:link href="#comment-{{ $comment->id }}" variant="subtle" wire:click.prevent="showComment({{ $comment->id }})" class="text-[length:inherit]!">{{ __('Go to comment') }}</flux:link></flux:text>
                             </flux:timeline.content>
                         </flux:timeline.item>
                     @else

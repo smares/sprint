@@ -200,7 +200,7 @@ new class extends Component
                             <div class="flex items-center gap-3">
                                 <x-color-badge size="sm" :color="$tag->color" class="shrink-0" title="{{ __('Tasks with this tag') }}">{{ $tag->tasks_count }}</x-color-badge>
                                 <flux:input size="sm" wire:model.live.blur="names.{{ $tag->id }}" aria-label="{{ __('Name') }}" class="min-w-0 flex-1" />
-                                <flux:color-picker type="button" size="sm" with-confirmation :swatches="\App\Color::swatches()" wire:model.live="colors.{{ $tag->id }}" aria-label="{{ __('Color') }}" />
+                                <flux:color-picker type="button" size="sm" class="shrink-0 sm:w-32" with-confirmation :swatches="\App\Color::swatches()" wire:model.live="colors.{{ $tag->id }}" aria-label="{{ __('Color') }}" />
                                 <flux:button size="xs" variant="ghost" icon="trash" wire:click="confirmDelete({{ $tag->id }})" aria-label="{{ __('Delete tag') }}" />
                             </div>
 

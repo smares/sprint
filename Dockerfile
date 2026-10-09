@@ -7,7 +7,7 @@ ARG PHP_VERSION=8.4
 
 FROM dunglas/frankenphp:1-php${PHP_VERSION}-bookworm AS base
 
-RUN install-php-extensions intl opcache pcntl pdo_mysql pdo_pgsql zip \
+RUN install-php-extensions gmp intl opcache pcntl pdo_mysql pdo_pgsql zip \
     && cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 
 COPY docker/php.ini "$PHP_INI_DIR/conf.d/zz-sprint.ini"

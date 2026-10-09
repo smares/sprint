@@ -1,18 +1,23 @@
 <?php
 
 use App\Models\UserAvatar;
+use App\Notifications\TestPush;
 use App\Services\LocaleService;
+use App\Services\PushService;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Renderless;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
+use NotificationChannels\WebPush\PushSubscription;
 
 new class extends Component
 {
@@ -180,6 +185,66 @@ new class extends Component
         auth()->user()->update(['celebrations_enabled' => $value]);
 
         Flux::toast(variant: 'success', text: $value ? __('Celebrations turned on.') : __('Celebrations turned off.'));
+    }
+
+    /**
+     * Whether this browser's subscription (see pushToggle in app.js) is stored for the person.
+     */
+    #[Renderless]
+    public function hasPushSubscription(string $endpoint): bool
+    {
+        return auth()->user()->pushSubscriptions()->where('endpoint', $endpoint)->exists();
+    }
+
+    /**
+     * Stores the subscription the browser made with the installation's public key; the same browser again replaces it,
+     * and a browser someone else used before is moved over to this person.
+     */
+    #[Renderless]
+    public function savePushSubscription(string $endpoint, string $publicKey, string $authToken, string $contentEncoding): bool
+    {
+        abort_unless(PushService::configured(), 404);
+
+        Validator::make(compact('endpoint', 'publicKey', 'authToken', 'contentEncoding'), [
+            'endpoint' => ['required', 'max:'.PushSubscription::ENDPOINT_MAX_LENGTH, fn (string $attribute, string $value, Closure $fail) => PushService::isPushServiceEndpoint($value) || $fail(__('This browser\'s push service is not supported.'))],
+            'publicKey' => ['required', 'string', 'max:255'],
+            'authToken' => ['required', 'string', 'max:255'],
+            'contentEncoding' => ['required', Rule::in(['aesgcm', 'aes128gcm'])],
+        ])->validate();
+
+        auth()->user()->updatePushSubscription($endpoint, $publicKey, $authToken, $contentEncoding);
+
+        Flux::toast(variant: 'success', text: __('Push notifications turned on for this device.'));
+
+        return true;
+    }
+
+    #[Renderless]
+    public function removePushSubscription(string $endpoint): void
+    {
+        auth()->user()->deletePushSubscription($endpoint);
+
+        Flux::toast(variant: 'success', text: __('Push notifications turned off for this device.'));
+    }
+
+    /**
+     * A test notification to every device the person turned push on for, a few times a minute at most.
+     */
+    #[Renderless]
+    public function sendTestPush(): void
+    {
+        $key = 'test-push:'.auth()->id();
+
+        if (RateLimiter::tooManyAttempts($key, 3)) {
+            Flux::toast(variant: 'warning', text: __('Please wait a moment before sending another test.'));
+
+            return;
+        }
+
+        RateLimiter::hit($key);
+        auth()->user()->notify(new TestPush);
+
+        Flux::toast(text: __('Test sent. It should appear in a few seconds.'));
     }
 
     public function saveProfile(): void
@@ -373,13 +438,42 @@ new class extends Component
 
             <flux:separator />
 
+            {{-- The state of this browser is only known in the browser, see pushToggle in app.js --}}
+            <div x-data="pushToggle(@js(PushService::publicKey()))" class="space-y-3">
+                <div>
+                    <flux:heading>{{ __('Push notifications') }}</flux:heading>
+                    <flux:text class="mt-1">{{ __('New entries in your inbox also appear as a notification on this device, even when Sprint is closed. Turn them on on each device you want them on; absence and do not disturb apply to them as well.') }}</flux:text>
+                </div>
+
+                @if (PushService::configured())
+                    <flux:text x-show="state === 'unsupported'" x-cloak>{{ __('This browser does not support push notifications.') }}</flux:text>
+                    <flux:text x-show="state === 'install'" x-cloak>{{ __('On iPhone and iPad, first add Sprint to the home screen (Share → Add to Home Screen) and turn push notifications on in the app opened from there.') }}</flux:text>
+                    <flux:text x-show="state === 'denied'" x-cloak>{{ __('Notifications are blocked for Sprint in this browser. Allow them in the site settings of the browser and reload the page.') }}</flux:text>
+                    <flux:text x-show="state === 'failed'" x-cloak class="text-red-600! dark:text-red-400!">{{ __('Push notifications could not be turned on. Please try again.') }}</flux:text>
+
+                    <div x-show="state === 'off' || state === 'failed'" x-cloak>
+                        <flux:button icon="bell" x-on:click="turnOn" x-bind:disabled="busy">{{ __('Turn on for this device') }}</flux:button>
+                    </div>
+
+                    <div x-show="state === 'on'" x-cloak class="flex flex-wrap items-center gap-2">
+                        <flux:badge color="green" icon="check">{{ __('On for this device') }}</flux:badge>
+                        <flux:button size="sm" wire:click="sendTestPush">{{ __('Send a test') }}</flux:button>
+                        <flux:button size="sm" variant="ghost" x-on:click="turnOff" x-bind:disabled="busy">{{ __('Turn off') }}</flux:button>
+                    </div>
+                @else
+                    <flux:text>{{ __('Not set up on this installation yet: the administrator needs to create the keys (see the documentation, “Push notifications”).') }}</flux:text>
+                @endif
+            </div>
+
+            <flux:separator />
+
             <form wire:submit="saveQuietTimes" class="space-y-4">
                 <div>
                     <flux:heading>{{ __('Do not disturb') }}</flux:heading>
-                    <flux:text class="mt-1">{{ __('No emails at these times; your inbox still collects everything. Times are in the time zone :zone.', ['zone' => config('app.timezone')]) }}</flux:text>
+                    <flux:text class="mt-1">{{ __('No emails or push notifications at these times; your inbox still collects everything. Times are in the time zone :zone.', ['zone' => config('app.timezone')]) }}</flux:text>
                 </div>
 
-                <flux:switch wire:model.live="quietHours" :label="__('Every day')" :description="__('No emails between these times, for example from 18:30 to 08:00.')" />
+                <flux:switch wire:model.live="quietHours" :label="__('Every day')" :description="__('No emails or push notifications between these times, for example from 18:30 to 08:00.')" />
 
                 @if ($quietHours)
                     <div class="grid gap-4 sm:grid-cols-2">
@@ -388,7 +482,7 @@ new class extends Component
                     </div>
                 @endif
 
-                <flux:checkbox.group wire:model="quietDays" variant="pills" :label="__('All day')" :description="__('No emails at all on these days, for example at the weekend.')">
+                <flux:checkbox.group wire:model="quietDays" variant="pills" :label="__('All day')" :description="__('No emails or push notifications at all on these days, for example at the weekend.')">
                     @foreach (range(1, 7) as $day)
                         <flux:checkbox value="{{ $day }}" :label="now()->startOfWeek()->addDays($day - 1)->isoFormat('dd')" />
                     @endforeach
@@ -402,7 +496,7 @@ new class extends Component
             <form wire:submit="saveAbsence" class="space-y-4">
                 <div>
                     <flux:heading>{{ __('Absence') }}</flux:heading>
-                    <flux:text class="mt-1">{{ __('While you are away you get no emails; your inbox still collects everything. Others see “away until …” next to your name.') }}</flux:text>
+                    <flux:text class="mt-1">{{ __('While you are away you get no emails or push notifications; your inbox still collects everything. Others see “away until …” next to your name.') }}</flux:text>
                 </div>
 
                 <div class="grid gap-4 sm:grid-cols-2">

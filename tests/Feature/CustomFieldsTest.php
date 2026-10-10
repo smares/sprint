@@ -249,12 +249,13 @@ class CustomFieldsTest extends TestCase
 
     public function test_deleting_a_field_removes_it_from_the_task_page(): void
     {
+        // Not "Kunde": Faker has it as a last name, so a person on the page could carry it
         $task = $this->task();
-        CustomField::factory()->for($this->project)->create(['name' => 'Kunde']);
-        $this->get(route('tasks.show', $task))->assertSee('Kunde');
+        CustomField::factory()->for($this->project)->create(['name' => 'Rechnungskreis']);
+        $this->get(route('tasks.show', $task))->assertSee('Rechnungskreis');
 
-        $this->project->customFields()->where('name', 'Kunde')->delete();
+        $this->project->customFields()->where('name', 'Rechnungskreis')->delete();
 
-        $this->get(route('tasks.show', $task))->assertDontSee('Kunde');
+        $this->get(route('tasks.show', $task))->assertDontSee('Rechnungskreis');
     }
 }

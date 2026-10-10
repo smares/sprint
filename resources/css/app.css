@@ -169,6 +169,13 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
     display: none;
 }
 
+/* A table column that stays at the start while the table scrolls sideways (task lists, workload): it covers what passes
+   underneath with the page background, and once Flux marks the table as scrolled (data-scrolled-right) a light shadow
+   shows that more lies beneath. */
+@utility pinned-column {
+    @apply sticky start-0 z-10 bg-white dark:bg-zinc-800 after:pointer-events-none after:absolute after:inset-y-0 after:end-0 after:w-8 after:translate-x-full in-data-scrolled-right:after:inset-shadow-[8px_0px_8px_-8px_rgba(0,0,0,0.08)] dark:in-data-scrolled-right:after:inset-shadow-[8px_0px_8px_-8px_rgba(0,0,0,0.5)];
+}
+
 /* Toasts: Flux keeps them 1.5rem off the edges and up to 24rem wide, more than a phone has, so long ones stuck to the left
    edge and short ones sat on the right. On phones they are centred with the page's gutter on both sides. */
 @media (width < 40rem) {

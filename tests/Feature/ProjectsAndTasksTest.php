@@ -259,6 +259,18 @@ class ProjectsAndTasksTest extends TestCase
             ->assertDontSee('Für andere');
     }
 
+    public function test_my_tasks_show_the_project_on_phones_too_and_keep_the_title_in_place_when_scrolling(): void
+    {
+        Task::factory()->create(['title' => 'Für mich', 'assignee_id' => $this->user->id]);
+
+        $html = $this->get('/tasks/mine')->assertOk()->getContent();
+        $start = (int) strpos($html, 'data-flux-table');
+        $table = substr($html, $start, strpos($html, '</table>', $start) - $start);
+
+        $this->assertStringNotContainsString('hidden" data-flux-c', $table);
+        $this->assertSame(2, substr_count($table, 'pinned-column'));
+    }
+
     public function test_overdue_detection(): void
     {
         $this->assertTrue(Task::factory()->make(['due_date' => now()->subDay()])->isOverdue());

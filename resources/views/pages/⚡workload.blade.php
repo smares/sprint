@@ -111,15 +111,13 @@ new class extends Component
         </div>
     </div>
 
-    {{-- On narrow screens the weeks scroll sideways under the names, which stay in place (as in the task list) --}}
-    @php($pinned = 'sticky start-0 z-10 bg-white dark:bg-zinc-800 after:pointer-events-none after:absolute after:inset-y-0 after:end-0 after:w-8 after:translate-x-full in-data-scrolled-right:after:inset-shadow-[8px_0px_8px_-8px_rgba(0,0,0,0.08)] dark:in-data-scrolled-right:after:inset-shadow-[8px_0px_8px_-8px_rgba(0,0,0,0.5)]')
-
     @if ($this->people->isEmpty())
         <flux:text>{{ __('Nobody in this team yet.') }}</flux:text>
     @else
         <flux:table>
             <flux:table.columns>
-                <flux:table.column :class="$pinned">{{ __('Person') }}</flux:table.column>
+                {{-- On narrow screens the weeks scroll sideways under the names, which stay in place (as in the task lists) --}}
+                <flux:table.column class="pinned-column">{{ __('Person') }}</flux:table.column>
                 <flux:table.column align="end">{{ __('Overdue') }}</flux:table.column>
                 @foreach ($this->weeks as $week)
                     <flux:table.column align="end" wire:key="week-{{ $loop->index }}"><span title="{{ $week['range'] }}">{{ $loop->first ? __('This week') : $week['label'] }}</span></flux:table.column>
@@ -131,7 +129,7 @@ new class extends Component
                 @foreach ($this->people as $person)
                     @php($row = $this->load[$person->id])
                     <flux:table.row wire:key="person-{{ $person->id }}" data-person="{{ $person->id }}">
-                        <flux:table.cell :class="$pinned">
+                        <flux:table.cell class="pinned-column">
                             <div class="flex items-center gap-2">
                                 <x-user-avatar size="xs" :user="$person" />
                                 <span class="font-medium text-zinc-800 dark:text-white">{{ $person->name }}</span>

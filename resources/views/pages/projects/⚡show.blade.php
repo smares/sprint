@@ -665,7 +665,7 @@ new class extends Component
              before it; on phones only the title, so it leaves room for the rest); sticky cells need a background to cover what passes underneath. --}}
         @php
             $pinnedDone = 'sm:sticky sm:start-0 sm:z-10 sm:bg-white sm:dark:bg-zinc-800';
-            $pinnedTitle = 'sticky start-0 sm:start-20 z-10 bg-white dark:bg-zinc-800 after:pointer-events-none after:absolute after:inset-y-0 after:end-0 after:w-8 after:translate-x-full in-data-scrolled-right:after:inset-shadow-[8px_0px_8px_-8px_rgba(0,0,0,0.08)] dark:in-data-scrolled-right:after:inset-shadow-[8px_0px_8px_-8px_rgba(0,0,0,0.5)]';
+            $pinnedTitle = 'pinned-column sm:start-20';
         @endphp
         <flux:table>
             <flux:table.columns>

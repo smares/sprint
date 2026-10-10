@@ -691,17 +691,7 @@ new class extends Component
                     <flux:table.row wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" class="cursor-pointer" :wire:sort:item="$sortBy === '' && $this->canEdit && ! $selecting ? $task->id : null">
                         <flux:table.cell :class="$pinnedDone">
                             <div class="flex items-center gap-3">
-                                <flux:button
-                                    size="xs"
-                                    variant="ghost"
-                                    icon="check-circle"
-                                    icon:variant="{{ $task->isDone() ? 'solid' : 'outline' }}"
-                                    :class="'shrink-0 max-sm:size-10! '.($task->isDone() ? 'text-green-600! dark:text-green-500!' : 'text-zinc-400! hover:text-green-600! dark:text-zinc-500! dark:hover:text-green-500!')"
-                                    :disabled="! $this->canEdit"
-                                    wire:click="toggleDone({{ $task->id }})"
-                                    aria-label="{{ $task->isDone() ? __('Reopen task') : __('Mark as done') }}"
-                                    tooltip="{{ $task->isDone() ? __('Reopen task') : __('Mark as done') }}"
-                                />
+                                <x-task-done-button :task="$task" :editable="$this->canEdit" />
                                 {{-- Keyed by the selection mode: unticked again in the browser when the selection ends, the box would otherwise
                                      keep its tick (the server draws it unticked before and after) and the next click would select the task anew --}}
                                 @if ($this->canEdit)
@@ -718,16 +708,8 @@ new class extends Component
                                 @endif
                             </div>
                         </flux:table.cell>
-                        {{-- Badges are separated by plain spaces, not margins: a space at the start of a wrapped line disappears, so tags
-                             that wrap begin flush with the title. A pixel above and below keeps wrapped lines of badges apart. --}}
                         <flux:table.cell :class="'min-w-56 whitespace-normal max-sm:min-w-[45vw] '.$pinnedTitle">
-                            <span class="me-1.5 inline-block min-w-4 select-none max-sm:hidden text-end align-baseline text-xs tabular-nums text-zinc-300 dark:text-zinc-600" data-row-number="{{ $loop->iteration }}" title="{{ __('Row :number', ['number' => $loop->iteration]) }}">{{ $loop->iteration }}</span><x-task-title-link :task="$task" :open="(string) $task->id === $openTaskId" />
-                            @if ($progress = $this->progress[$task->id] ?? null)
-                                <flux:badge size="sm" icon="list-bullet" class="my-px">{{ $progress['done'] }}/{{ $progress['total'] }}</flux:badge>
-                            @endif
-                            @foreach ($task->tags as $tag)
-                                <x-color-badge size="sm" :color="$tag->color" class="my-px">{{ $tag->name }}</x-color-badge>
-                            @endforeach
+                            <x-task-title-line :task="$task" :open="(string) $task->id === $openTaskId" :progress="$this->progress[$task->id] ?? null" :number="$loop->iteration" />
                         </flux:table.cell>
                         <flux:table.cell>
                             <x-color-badge size="sm" :color="$task->status->color">{{ $task->status->name }}</x-color-badge>
@@ -746,9 +728,7 @@ new class extends Component
                             </div>
                         </flux:table.cell>
                         <flux:table.cell>
-                            @if ($task->due_date)
-                                <flux:text :class="$task->isOverdue() ? 'text-red-500' : ''">{{ $task->due_date->isoFormat('L') }}</flux:text>
-                            @endif
+                            <x-task-due :task="$task" />
                         </flux:table.cell>
                         @foreach ($this->listFields as $field)
                             <flux:table.cell wire:key="cell-{{ $task->id }}-{{ $field->id }}">

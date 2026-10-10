@@ -4,12 +4,14 @@ namespace App\Concerns;
 
 use App\Models\Project;
 use App\Models\Task;
+use Illuminate\Database\Eloquent\Builder;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 
 /**
- * For project views that show a task in a flyout over the list or board.
+ * For views that show a task in a flyout over the list or board: the project views and "My tasks".
+ * Which tasks a view may open is up to tasksForPanel(), by default those of its project.
  * The open task lives in the URL (`?task=5`), so it survives reloads and can be shared. Each change is a new browser
  * history entry, so the browser's back button closes the flyout (or goes back to the task before) instead of leaving
  * the page.
@@ -24,7 +26,7 @@ trait OpensTaskPanel
     #[On('open-task')]
     public function openTask(int|string $id): void
     {
-        if ($this->project->tasks()->where('is_section', false)->whereKey($id)->exists()) {
+        if ($this->tasksForPanel()->where('is_section', false)->whereKey($id)->exists()) {
             $this->openTaskId = (string) $id;
         }
     }
@@ -60,6 +62,16 @@ trait OpensTaskPanel
             return null;
         }
 
-        return $this->project->tasks()->where('is_section', false)->find((int) $this->openTaskId);
+        return $this->tasksForPanel()->where('is_section', false)->find((int) $this->openTaskId);
+    }
+
+    /**
+     * The tasks this view may open in the flyout.
+     *
+     * @return Builder<Task>
+     */
+    protected function tasksForPanel(): Builder
+    {
+        return Task::query()->where('project_id', $this->project->getKey());
     }
 }

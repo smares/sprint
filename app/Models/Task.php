@@ -34,7 +34,7 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
-#[Fillable(['project_id', 'parent_id', 'is_section', 'assignee_id', 'creator_id', 'title', 'description', 'status_id', 'position', 'start_date', 'due_date', 'repeat_unit', 'repeat_interval', 'repeat_mode', 'repeat_until'])]
+#[Fillable(['project_id', 'parent_id', 'is_section', 'assignee_id', 'creator_id', 'title', 'description', 'status_id', 'position', 'start_date', 'due_date', 'completed_at', 'repeat_unit', 'repeat_interval', 'repeat_mode', 'repeat_until'])]
 class Task extends Model
 {
     /** @use HasFactory<TaskFactory> */
@@ -96,6 +96,15 @@ class Task extends Model
     {
         static::creating(function (self $task) {
             $task->status_id ??= $task->project->defaultStatus()->id;
+        });
+
+        // The completion time follows the status: set when the task becomes done, kept while it moves between done
+        // statuses, cleared when it is reopened
+        static::saving(function (self $task) {
+            if (! $task->exists || $task->isDirty('status_id')) {
+                $done = (bool) $task->statusById($task->status_id)?->is_done;
+                $task->completed_at = $done ? ($task->completed_at ?? now()) : null;
+            }
         });
 
         static::created(function (self $task) {
@@ -179,6 +188,7 @@ class Task extends Model
         return [
             'due_date' => 'date',
             'start_date' => 'date',
+            'completed_at' => 'datetime',
             'repeat_unit' => RepeatUnit::class,
             'repeat_mode' => RepeatMode::class,
             'repeat_until' => 'date',

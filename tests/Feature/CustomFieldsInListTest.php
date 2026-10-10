@@ -69,6 +69,19 @@ class CustomFieldsInListTest extends TestCase
         $this->list()->assertDontSee('Müller AG')->assertDontSeeHtml("sort('field:{$text->id}')");
     }
 
+    public function test_every_column_shows_on_phones_too_and_the_title_stays_in_place_when_scrolling_sideways(): void
+    {
+        $this->task('Eilig', 'Dringend');
+
+        $html = $this->list()->html();
+        $start = (int) strpos($html, 'data-flux-table');
+        $table = substr($html, $start, strpos($html, '</table>', $start) - $start);
+
+        $this->assertStringNotContainsString('hidden" data-flux-c', $table);
+        $this->assertSame(2, substr_count($table, 'sticky start-0 sm:start-20'));
+        $this->assertSame(2, substr_count($table, 'sm:sticky sm:start-0'));
+    }
+
     public function test_text_number_and_date_fields_are_formatted(): void
     {
         $task = $this->task('Mit Werten');

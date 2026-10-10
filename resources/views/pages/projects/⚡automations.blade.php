@@ -444,7 +444,8 @@ new class extends Component
 
             <div class="space-y-3">
                 <flux:heading>{{ __('When') }}</flux:heading>
-                <div class="grid gap-3 sm:grid-cols-2">
+                {{-- A field trigger takes three things in a row: the trigger, the field and the value --}}
+                <div @class(['grid gap-3', 'sm:grid-cols-3' => $trigger === 'field_set', 'sm:grid-cols-2' => $trigger !== 'field_set'])>
                     <flux:select variant="listbox" wire:model.live="trigger" aria-label="{{ __('When') }}">
                         @foreach (\App\Enums\AutomationTrigger::cases() as $case)
                             <flux:select.option value="{{ $case->value }}">{{ $case->label() }}</flux:select.option>
@@ -457,29 +458,35 @@ new class extends Component
                         @endforeach
                     </flux:select>
 
-                    {{-- A field trigger also takes the value, entered like on the task; left empty, any value counts --}}
-                    @if ($field = $this->triggerField())
-                        <div class="sm:col-span-2" wire:key="trigger-field-{{ $field->id }}">
-                            @switch($field->type)
+                    {{-- The value, entered like on the task; left empty, any value counts. Until a field is chosen the column stays empty. --}}
+                    @if ($trigger === 'field_set')
+                        <div wire:key="trigger-field-{{ $this->triggerField()?->id }}">
+                            @switch($this->triggerField()?->type)
+                                @case(null)
+                                    <flux:input disabled :placeholder="__('Any value')" aria-label="{{ __('Value') }}" />
+                                    @break
                                 @case(\App\Enums\CustomFieldType::Select)
-                                    <flux:select variant="listbox" wire:model="triggerFieldValue" :label="__('Value')" :placeholder="__('Any value')" clearable>
-                                        @foreach ($field->options as $option)
+                                    <flux:select variant="listbox" wire:model="triggerFieldValue" :placeholder="__('Any value')" clearable aria-label="{{ __('Value') }}">
+                                        @foreach ($this->triggerField()->options as $option)
                                             <flux:select.option value="{{ $option->id }}">{{ $option->name }}</flux:select.option>
                                         @endforeach
                                     </flux:select>
                                     @break
                                 @case(\App\Enums\CustomFieldType::Number)
-                                    <flux:input wire:model="triggerFieldValue" type="number" step="any" :label="__('Value')" :placeholder="__('Any value')" />
+                                    <flux:input wire:model="triggerFieldValue" type="number" step="any" :placeholder="__('Any value')" aria-label="{{ __('Value') }}" />
                                     @break
                                 @case(\App\Enums\CustomFieldType::Date)
-                                    <flux:date-picker wire:model="triggerFieldValue" :label="__('Value')" locale="{{ app()->getLocale() }}" :placeholder="__('Any value')" clearable />
+                                    <flux:date-picker wire:model="triggerFieldValue" locale="{{ app()->getLocale() }}" :placeholder="__('Any value')" clearable aria-label="{{ __('Value') }}" />
                                     @break
                                 @default
-                                    <flux:input wire:model="triggerFieldValue" :label="__('Value')" :placeholder="__('Any value')" :description:trailing="__('Upper and lower case do not matter.')" />
+                                    <flux:input wire:model="triggerFieldValue" :placeholder="__('Any value')" aria-label="{{ __('Value') }}" />
                             @endswitch
                         </div>
                     @endif
                 </div>
+                @if ($this->triggerField()?->type === \App\Enums\CustomFieldType::Text)
+                    <flux:text size="sm" class="text-zinc-500">{{ __('Upper and lower case do not matter.') }}</flux:text>
+                @endif
                 <flux:error name="triggerValue" />
                 <flux:error name="triggerFieldValue" />
             </div>

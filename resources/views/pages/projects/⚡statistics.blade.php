@@ -7,6 +7,7 @@ use App\Models\Task;
 use App\Services\ProjectStatisticsService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Number;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -20,6 +21,12 @@ new class extends Component
 
     /** How many of the longest-standing tasks are listed. */
     public const STUCK_TASKS = 10;
+
+    /** How many months the charts of cycle time and punctuality cover. */
+    public const MONTHS = 6;
+
+    /** The period the headline figures of cycle time and punctuality look back on. */
+    public const RECENT_DAYS = 90;
 
     public Project $project;
 
@@ -39,6 +46,32 @@ new class extends Component
     public function stuck(): Collection
     {
         return app(ProjectStatisticsService::class)->stuckTasks($this->project, self::STUCK_TASKS);
+    }
+
+    /**
+     * @return list<array{month: string, completed: int, median: ?float, p85: ?float, dated: int, on_time: ?int}>
+     */
+    #[Computed]
+    public function cycle(): array
+    {
+        return app(ProjectStatisticsService::class)->monthlyCycle($this->project, self::MONTHS);
+    }
+
+    /**
+     * @return array{completed: int, median: ?float, p85: ?float, dated: int, on_time: ?int}
+     */
+    #[Computed]
+    public function recent(): array
+    {
+        return app(ProjectStatisticsService::class)->recentCycle($this->project, self::RECENT_DAYS);
+    }
+
+    /**
+     * A number of days like "4.5 days" in the person's language, or a dash.
+     */
+    protected function days(?float $days): string
+    {
+        return $days === null ? '–' : trans_choice(':count day|:count days', $days, ['count' => Number::format($days, maxPrecision: 1, locale: app()->getLocale())]);
     }
 
     #[Computed]
@@ -112,6 +145,98 @@ new class extends Component
                 </div>
             </flux:chart>
         </section>
+
+        <div class="grid gap-10 lg:grid-cols-2">
+            <section class="space-y-4">
+                <div>
+                    <flux:heading size="lg">{{ __('Cycle time') }}</flux:heading>
+                    <flux:text class="mt-1">{{ __('How long a task takes from being created to done. Half of them are done within the median, 85 % within the second figure: a realistic answer to “when will it be ready?”.') }}</flux:text>
+                </div>
+
+                <div class="flex flex-wrap gap-x-8 gap-y-2">
+                    <flux:text>{{ __('Median') }}: <strong class="font-medium text-zinc-800 dark:text-white" data-stat="median">{{ $this->days($this->recent['median']) }}</strong></flux:text>
+                    <flux:text>{{ __('85 % within') }}: <strong class="font-medium text-zinc-800 dark:text-white" data-stat="p85">{{ $this->days($this->recent['p85']) }}</strong></flux:text>
+                    <flux:text class="text-zinc-500">{{ trans_choice('last :days days, :count task|last :days days, :count tasks', $this->recent['completed'], ['days' => self::RECENT_DAYS]) }}</flux:text>
+                </div>
+
+                <flux:chart :value="$this->cycle" wire:key="cycle-{{ md5(json_encode($this->cycle)) }}">
+                    <flux:chart.viewport class="aspect-[2/1]">
+                        <flux:chart.svg>
+                            <flux:chart.line field="p85" class="text-amber-500" curve="none" />
+                            <flux:chart.point field="p85" class="text-amber-500" />
+                            <flux:chart.line field="median" class="text-blue-500" curve="none" />
+                            <flux:chart.point field="median" class="text-blue-500" />
+
+                            <flux:chart.axis axis="x" field="month">
+                                <flux:chart.axis.tick />
+                                <flux:chart.axis.line />
+                            </flux:chart.axis>
+
+                            <flux:chart.axis axis="y" tick-count="4">
+                                <flux:chart.axis.grid />
+                                <flux:chart.axis.tick />
+                            </flux:chart.axis>
+
+                            <flux:chart.cursor />
+                        </flux:chart.svg>
+                    </flux:chart.viewport>
+
+                    <flux:chart.tooltip>
+                        <flux:chart.tooltip.heading field="month" />
+                        <flux:chart.tooltip.value field="median" :label="__('Median (days)')" />
+                        <flux:chart.tooltip.value field="p85" :label="__('85 % within (days)')" />
+                        <flux:chart.tooltip.value field="completed" :label="__('Completed')" />
+                    </flux:chart.tooltip>
+
+                    <div class="flex justify-center gap-4 pt-3">
+                        <flux:chart.legend :label="__('Median')">
+                            <flux:chart.legend.indicator class="bg-blue-500" />
+                        </flux:chart.legend>
+                        <flux:chart.legend :label="__('85 % within')">
+                            <flux:chart.legend.indicator class="bg-amber-500" />
+                        </flux:chart.legend>
+                    </div>
+                </flux:chart>
+            </section>
+
+            <section class="space-y-4">
+                <div>
+                    <flux:heading size="lg">{{ __('Done on time') }}</flux:heading>
+                    <flux:text class="mt-1">{{ __('Of the completed tasks with a due date, how many were done by it. If the share drops, the dates are too tight or there is too much at once.') }}</flux:text>
+                </div>
+
+                <div class="flex flex-wrap gap-x-8 gap-y-2">
+                    <flux:text>{{ __('On time') }}: <strong class="font-medium text-zinc-800 dark:text-white" data-stat="on-time">{{ $this->recent['on_time'] === null ? '–' : $this->recent['on_time'].' %' }}</strong></flux:text>
+                    <flux:text class="text-zinc-500">{{ trans_choice('last :days days, :count task with a due date|last :days days, :count tasks with a due date', $this->recent['dated'], ['days' => self::RECENT_DAYS]) }}</flux:text>
+                </div>
+
+                <flux:chart :value="$this->cycle" wire:key="on-time-{{ md5(json_encode($this->cycle)) }}">
+                    <flux:chart.viewport class="aspect-[2/1]">
+                        <flux:chart.svg>
+                            <flux:chart.bar field="on_time" class="text-green-500 dark:text-green-600" radius="2" width="50%" />
+
+                            <flux:chart.axis axis="x" field="month">
+                                <flux:chart.axis.tick />
+                                <flux:chart.axis.line />
+                            </flux:chart.axis>
+
+                            <flux:chart.axis axis="y" tick-values="[0, 25, 50, 75, 100]" tick-suffix=" %">
+                                <flux:chart.axis.grid />
+                                <flux:chart.axis.tick />
+                            </flux:chart.axis>
+
+                            <flux:chart.cursor type="area" />
+                        </flux:chart.svg>
+                    </flux:chart.viewport>
+
+                    <flux:chart.tooltip>
+                        <flux:chart.tooltip.heading field="month" />
+                        <flux:chart.tooltip.value field="on_time" :label="__('On time')" suffix=" %" />
+                        <flux:chart.tooltip.value field="dated" :label="__('With a due date')" />
+                    </flux:chart.tooltip>
+                </flux:chart>
+            </section>
+        </div>
 
         <section class="space-y-4">
             <div>

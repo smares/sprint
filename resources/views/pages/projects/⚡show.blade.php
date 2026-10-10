@@ -661,11 +661,16 @@ new class extends Component
     @if ($this->tasks->isEmpty())
         <flux:callout icon="check-circle" :heading="__('No tasks')" :text="__('Nothing to do here with these filters.')" />
     @else
-        <div class="overflow-x-auto">
+        {{-- Every column shows on every screen and the table scrolls sideways. The title stays in place (from sm with the done column
+             before it; on phones only the title, so it leaves room for the rest); sticky cells need a background to cover what passes underneath. --}}
+        @php
+            $pinnedDone = 'sm:sticky sm:start-0 sm:z-10 sm:bg-white sm:dark:bg-zinc-800';
+            $pinnedTitle = 'sticky start-0 sm:start-20 z-10 bg-white dark:bg-zinc-800 after:pointer-events-none after:absolute after:inset-y-0 after:end-0 after:w-8 after:translate-x-full in-data-scrolled-right:after:inset-shadow-[8px_0px_8px_-8px_rgba(0,0,0,0.08)] dark:in-data-scrolled-right:after:inset-shadow-[8px_0px_8px_-8px_rgba(0,0,0,0.5)]';
+        @endphp
         <flux:table>
             <flux:table.columns>
                 {{-- Done button first, then the selection checkbox: two things, so they get one column and some room between them --}}
-                <flux:table.column class="w-20 max-sm:w-24">
+                <flux:table.column :class="'w-20 min-w-20 max-sm:w-24 max-sm:min-w-24 '.$pinnedDone">
                     <div class="flex items-center gap-3">
                         <span class="w-6 shrink-0 max-sm:w-10"><span class="sr-only">{{ __('Done') }}</span></span>
                         @if ($this->canEdit)
@@ -673,18 +678,18 @@ new class extends Component
                         @endif
                     </div>
                 </flux:table.column>
-                <flux:table.column sortable :sorted="$sortBy === 'title'" :direction="$sortDirection" wire:click="sort('title')">{{ __('Task') }}</flux:table.column>
+                <flux:table.column :class="$pinnedTitle" sortable :sorted="$sortBy === 'title'" :direction="$sortDirection" wire:click="sort('title')">{{ __('Task') }}</flux:table.column>
                 <flux:table.column sortable :sorted="$sortBy === 'status'" :direction="$sortDirection" wire:click="sort('status')">{{ __('Status') }}</flux:table.column>
-                <flux:table.column class="max-md:hidden">{{ __('Assignee') }}</flux:table.column>
-                <flux:table.column class="max-sm:hidden" sortable :sorted="$sortBy === 'due'" :direction="$sortDirection" wire:click="sort('due')">{{ __('Due') }}</flux:table.column>
+                <flux:table.column>{{ __('Assignee') }}</flux:table.column>
+                <flux:table.column sortable :sorted="$sortBy === 'due'" :direction="$sortDirection" wire:click="sort('due')">{{ __('Due') }}</flux:table.column>
                 @foreach ($this->listFields as $field)
-                    <flux:table.column wire:key="column-{{ $field->id }}" class="max-md:hidden" sortable :sorted="$sortBy === 'field:'.$field->id" :direction="$sortDirection" wire:click="sort('field:{{ $field->id }}')">{{ $field->name }}</flux:table.column>
+                    <flux:table.column wire:key="column-{{ $field->id }}" sortable :sorted="$sortBy === 'field:'.$field->id" :direction="$sortDirection" wire:click="sort('field:{{ $field->id }}')">{{ $field->name }}</flux:table.column>
                 @endforeach
             </flux:table.columns>
             <flux:table.rows :wire:sort="$sortBy === '' && $this->canEdit && ! $selecting ? 'moveTask' : null" wire:sort:config="{ delay: 250, delayOnTouchOnly: true, touchStartThreshold: 12 }">
                 @foreach ($this->tasks as $task)
                     <flux:table.row wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" class="cursor-pointer" :wire:sort:item="$sortBy === '' && $this->canEdit && ! $selecting ? $task->id : null">
-                        <flux:table.cell>
+                        <flux:table.cell :class="$pinnedDone">
                             <div class="flex items-center gap-3">
                                 <flux:button
                                     size="xs"
@@ -712,7 +717,7 @@ new class extends Component
                         </flux:table.cell>
                         {{-- Badges are separated by plain spaces, not margins: a space at the start of a wrapped line disappears, so tags
                              that wrap begin flush with the title. A pixel above and below keeps wrapped lines of badges apart. --}}
-                        <flux:table.cell class="min-w-44 whitespace-normal max-sm:min-w-0">
+                        <flux:table.cell :class="'min-w-56 whitespace-normal max-sm:min-w-[45vw] '.$pinnedTitle">
                             <span class="me-1.5 inline-block min-w-4 select-none max-sm:hidden text-end align-baseline text-xs tabular-nums text-zinc-300 dark:text-zinc-600" data-row-number="{{ $loop->iteration }}" title="{{ __('Row :number', ['number' => $loop->iteration]) }}">{{ $loop->iteration }}</span><x-task-title-link :task="$task" :open="(string) $task->id === $openTaskId" />
                             @if ($progress = $this->progress[$task->id] ?? null)
                                 <flux:badge size="sm" icon="list-bullet" class="my-px">{{ $progress['done'] }}/{{ $progress['total'] }}</flux:badge>
@@ -725,7 +730,7 @@ new class extends Component
                             <x-color-badge size="sm" :color="$task->status->color">{{ $task->status->name }}</x-color-badge>
                         </flux:table.cell>
                         {{-- Only the avatar; the name and an absence show on hover --}}
-                        <flux:table.cell class="max-md:hidden">
+                        <flux:table.cell>
                             <div class="flex items-center gap-1.5">
                                 @if ($task->assignee)
                                     <x-user-avatar size="xs" :user="$task->assignee" :tooltip="$task->assignee->labelledName()" />
@@ -737,13 +742,13 @@ new class extends Component
                                 @endif
                             </div>
                         </flux:table.cell>
-                        <flux:table.cell class="max-sm:hidden">
+                        <flux:table.cell>
                             @if ($task->due_date)
                                 <flux:text :class="$task->isOverdue() ? 'text-red-500' : ''">{{ $task->due_date->isoFormat('L') }}</flux:text>
                             @endif
                         </flux:table.cell>
                         @foreach ($this->listFields as $field)
-                            <flux:table.cell wire:key="cell-{{ $task->id }}-{{ $field->id }}" class="max-md:hidden">
+                            <flux:table.cell wire:key="cell-{{ $task->id }}-{{ $field->id }}">
                                 <x-field-value :task="$task" :field="$field" :show-empty="false" />
                             </flux:table.cell>
                         @endforeach
@@ -751,7 +756,6 @@ new class extends Component
                 @endforeach
             </flux:table.rows>
         </flux:table>
-        </div>
 
         @if ($this->totalTasks > $this->tasks->count())
             <div wire:intersect="loadMore" class="mt-4 flex items-center justify-center gap-3">

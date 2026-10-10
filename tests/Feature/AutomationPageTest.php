@@ -118,6 +118,24 @@ class AutomationPageTest extends TestCase
             ->assertSee('Handelt mit den Rechten von Olaf');
     }
 
+    public function test_a_rule_can_start_when_a_select_field_gets_a_value(): void
+    {
+        $priority = $this->project->customFields()->where('name', 'Priorität')->firstOrFail();
+        $urgent = $priority->options->firstWhere('name', 'Dringend');
+        $foreignOption = Project::factory()->create()->customFields()->firstOrFail()->options->first();
+
+        $page = $this->page()->call('openForm')->set('trigger', 'field_set')->assertSee('Priorität: Dringend');
+        $this->fill($page, [['type' => 'set_assignee', 'value' => (string) $this->anna->id]], 'field_set', (string) $foreignOption->id)
+            ->call('save')->assertHasErrors('triggerValue');
+
+        $page->set('triggerValue', (string) $urgent->id)->call('save')->assertHasNoErrors()
+            ->assertSee('Wenn „Priorität“ auf „Dringend“ gesetzt wird');
+
+        $rule = Automation::query()->sole();
+        $this->assertSame(AutomationTrigger::FieldSet, $rule->trigger);
+        $this->assertSame($urgent->id, $rule->trigger_value);
+    }
+
     public function test_values_that_do_not_belong_to_the_project_are_rejected(): void
     {
         $foreign = Project::factory()->create();

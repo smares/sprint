@@ -2,7 +2,9 @@
 
 use App\Enums\AutomationAction;
 use App\Enums\AutomationTrigger;
+use App\Enums\CustomFieldType;
 use App\Models\Automation;
+use App\Models\CustomField;
 use App\Models\Project;
 use App\Models\User;
 use Flux\Flux;
@@ -78,6 +80,41 @@ new class extends Component
     }
 
     /**
+     * The options of the project's select fields with the name of their field, in the fields' order.
+     *
+     * @return array<int, array{field: string, option: string}>
+     */
+    #[Computed]
+    public function fieldOptions(): array
+    {
+        $options = [];
+
+        foreach ($this->project->customFields()->where('type', CustomFieldType::Select)->with('options')->get() as $field) {
+            /** @var CustomField $field */
+            foreach ($field->options as $option) {
+                $options[$option->id] = ['field' => $field->name, 'option' => $option->name];
+            }
+        }
+
+        return $options;
+    }
+
+    /**
+     * What the trigger can be narrowed down to, as id => label.
+     *
+     * @return array<int, string>
+     */
+    protected function triggerChoices(): array
+    {
+        return match (AutomationTrigger::tryFrom($this->trigger)) {
+            AutomationTrigger::StatusChanged => $this->statusNames,
+            AutomationTrigger::TagAdded => $this->tagNames,
+            AutomationTrigger::FieldSet => array_map(fn (array $names) => $names['field'].': '.$names['option'], $this->fieldOptions),
+            default => $this->userNames,
+        };
+    }
+
+    /**
      * @return array<int, string>
      */
     #[Computed]
@@ -140,7 +177,7 @@ new class extends Component
         ], attributes: ['name' => __('Name'), 'trigger' => __('When'), 'actions' => __('Then'), 'actions.*.type' => __('Action')]);
 
         $trigger = AutomationTrigger::from($validated['trigger']);
-        $triggerValue = $this->idOf('triggerValue', array_keys($trigger === AutomationTrigger::StatusChanged ? $this->statusNames : ($trigger === AutomationTrigger::TagAdded ? $this->tagNames : $this->userNames)), $trigger->valueIsOptional());
+        $triggerValue = $this->idOf('triggerValue', array_keys($this->triggerChoices()), $trigger->valueIsOptional());
         $conditions = array_filter([
             'status_id' => $this->idOf('conditionStatus', array_keys($this->statusNames), true),
             'assignee_id' => $this->idOf('conditionAssignee', array_keys($this->userNames), true),
@@ -276,6 +313,7 @@ new class extends Component
         return match ($rule->trigger) {
             AutomationTrigger::StatusChanged => __('When the status changes to “:name”', ['name' => $name($this->statusNames)]),
             AutomationTrigger::TagAdded => __('When the tag “:name” is added', ['name' => $name($this->tagNames)]),
+            AutomationTrigger::FieldSet => __('When “:field” is set to “:option”', $this->fieldOptions[$rule->trigger_value] ?? ['field' => '–', 'option' => '–']),
             AutomationTrigger::AssigneeChanged => $rule->trigger_value === null
                 ? __('When the assignee changes')
                 : __('When the assignee changes to :name', ['name' => $name($this->userNames)]),
@@ -380,7 +418,7 @@ new class extends Component
                     </flux:select>
 
                     <flux:select variant="listbox" wire:model="triggerValue" :placeholder="$trigger === 'assignee_changed' ? __('Anyone') : __('Choose …')" clearable aria-label="{{ __('Value') }}">
-                        @foreach (match ($trigger) { 'status_changed' => $this->statusNames, 'tag_added' => $this->tagNames, default => $this->userNames } as $id => $label)
+                        @foreach ($this->triggerChoices() as $id => $label)
                             <flux:select.option value="{{ $id }}" wire:key="trigger-{{ $trigger }}-{{ $id }}">{{ $label }}</flux:select.option>
                         @endforeach
                     </flux:select>

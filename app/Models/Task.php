@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Concerns\HasPosition;
 use App\Concerns\HasReactions;
 use App\Enums\ActivityType;
+use App\Enums\CustomFieldType;
 use App\Enums\RepeatMode;
 use App\Enums\RepeatUnit;
 use App\Notifications\TasksStatusChanged;
@@ -687,7 +688,8 @@ class Task extends Model
     }
 
     /**
-     * Store, change or (with null) remove the value of a custom field and record the change.
+     * Store, change or (with null) remove the value of a custom field and record the change. For a select field the
+     * entry also keeps the chosen option, which is what an automation on that value looks for.
      *
      * @param  array{option_id: ?int, value: ?string}|null  $attributes
      */
@@ -711,7 +713,10 @@ class Task extends Model
             'name' => $field->name,
             'from' => $field->text($old) ?? '–',
             'to' => $field->text($new) ?? '–',
+            ...($field->type === CustomFieldType::Select && $new !== null ? ['option_id' => (int) $new] : []),
         ]);
+
+        app(AutomationService::class)->flush();
     }
 
     /**

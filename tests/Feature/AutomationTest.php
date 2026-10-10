@@ -134,6 +134,54 @@ class AutomationTest extends TestCase
         $this->assertSame($this->anna->id, $second->fresh()->assignee_id);
     }
 
+    public function test_a_field_trigger_reacts_when_the_select_field_gets_the_value(): void
+    {
+        $priority = $this->project->customFields()->where('name', 'Priorität')->firstOrFail();
+        $urgent = $priority->options->firstWhere('name', 'Dringend');
+        $high = $priority->options->firstWhere('name', 'Hoch');
+        $this->rule(AutomationTrigger::FieldSet, $urgent->id, [['type' => AutomationAction::SetAssignee, 'value' => $this->anna->id]], ['name' => 'Eilt']);
+        $other = $this->task();
+        $task = $this->task();
+
+        $this->actingAs($this->bernd);
+        $other->setFieldValue($priority, ['option_id' => $high->id, 'value' => null]);
+        $task->setFieldValue($priority, ['option_id' => $urgent->id, 'value' => null]);
+
+        $this->assertNotSame($this->anna->id, $other->fresh()->assignee_id);
+        $this->assertSame($this->anna->id, $task->assignee_id);
+        $entry = $task->activities()->where('type', ActivityType::AssigneeChanged)->sole();
+        $this->assertNull($entry->user_id);
+        $this->assertSame('Eilt', $entry->data['automation']);
+
+        // Setting it again, to another value or clearing it does not fire once more
+        $task->update(['assignee_id' => $this->bernd->id]);
+        $task->setFieldValue($priority, ['option_id' => $urgent->id, 'value' => null]);
+        $task->setFieldValue($priority, ['option_id' => $high->id, 'value' => null]);
+        $task->setFieldValue($priority, null);
+        $this->assertSame($this->bernd->id, $task->fresh()->assignee_id);
+    }
+
+    public function test_a_field_trigger_on_the_task_page_shows_what_the_rule_changed_and_a_second_save_keeps_it(): void
+    {
+        $priority = $this->project->customFields()->where('name', 'Priorität')->firstOrFail();
+        $urgent = $priority->options->firstWhere('name', 'Dringend');
+        $review = $this->project->statuses()->create(['name' => 'Review', 'color' => 'amber', 'position' => 5]);
+        $this->rule(AutomationTrigger::FieldSet, $urgent->id, [['type' => AutomationAction::SetStatus, 'value' => $review->id], ['type' => AutomationAction::SetAssignee, 'value' => $this->anna->id]]);
+        $task = $this->task(['assignee_id' => null]);
+
+        $page = Livewire::actingAs($this->bernd)->test('pages::tasks.show', ['task' => $task])
+            ->set("fieldValues.{$priority->id}", (string) $urgent->id)
+            ->call('save')->assertHasNoErrors()
+            ->assertSet('statusId', (string) $review->id)
+            ->assertSet('assigneeId', (string) $this->anna->id);
+
+        $page->set('title', 'Neuer Titel')->call('save')->assertHasNoErrors();
+
+        $task->refresh();
+        $this->assertSame($review->id, $task->status_id);
+        $this->assertSame($this->anna->id, $task->assignee_id);
+    }
+
     public function test_conditions_must_hold_after_the_change(): void
     {
         $bug = Tag::factory()->for($this->project)->create();

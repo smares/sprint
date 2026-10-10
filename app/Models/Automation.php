@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\Gate;
  * like the field's values; null for any value).
  *
  * `conditions` is `{status_id?, tag_id?, assignee_id?}` and is checked against the task after the change;
- * `actions` is a list of `{type, value}` (an id, a number of days or a text, depending on the type).
+ * `actions` is a list of `{type, value}` (an id, a number of days, a text or `{field, value}`, depending on the type).
  */
 #[Fillable(['project_id', 'created_by', 'name', 'trigger', 'trigger_value', 'trigger_field_value', 'conditions', 'actions', 'enabled'])]
 class Automation extends Model

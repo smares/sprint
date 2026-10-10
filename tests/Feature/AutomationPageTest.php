@@ -151,6 +151,37 @@ class AutomationPageTest extends TestCase
         $this->assertNull($rule->fresh()->trigger_field_value);
     }
 
+    public function test_a_rule_sets_a_field_with_a_value_that_fits_it_but_never_the_field_it_reacts_to(): void
+    {
+        $priority = $this->project->customFields()->where('name', 'Priorität')->firstOrFail();
+        $high = $priority->options->firstWhere('name', 'Hoch');
+        $effort = CustomField::factory()->for($this->project)->create(['name' => 'Aufwand', 'type' => CustomFieldType::Number]);
+
+        $page = $this->page()->call('openForm');
+        $this->fill($page, [['type' => 'set_field', 'field' => (string) $effort->id, 'value' => 'viel']])
+            ->call('save')->assertHasErrors('actions.0.value');
+
+        // Reacting to "Priorität" and setting it again is refused; the field is not even offered
+        $page->set('trigger', 'field_set')->set('triggerValue', (string) $priority->id)
+            ->set('actions', [['type' => 'set_field', 'field' => (string) $priority->id, 'value' => (string) $high->id]])
+            ->call('save')->assertHasErrors('actions.0.field');
+
+        $page->set('actions', [
+            ['type' => 'set_field', 'field' => (string) $effort->id, 'value' => '2.5'],
+            ['type' => 'set_field', 'field' => (string) $effort->id, 'value' => ''],
+        ])->call('save')->assertHasNoErrors()
+            ->assertSee('„Aufwand“ auf „2.5“ setzen')
+            ->assertSee('„Aufwand“ leeren');
+
+        $rule = Automation::query()->sole();
+        $this->assertEquals([
+            ['type' => 'set_field', 'value' => ['field' => $effort->id, 'value' => '2.5']],
+            ['type' => 'set_field', 'value' => ['field' => $effort->id, 'value' => null]],
+        ], $rule->actions);
+
+        $page->call('openForm', $rule->id)->assertSet('actions.0.field', (string) $effort->id)->assertSet('actions.0.value', '2.5');
+    }
+
     public function test_values_that_do_not_belong_to_the_project_are_rejected(): void
     {
         $foreign = Project::factory()->create();
@@ -208,7 +239,7 @@ class AutomationPageTest extends TestCase
             ->call('openForm', $rule->id)
             ->assertSet('name', 'Alt')
             ->assertSet('triggerValue', (string) $this->project->doneStatus()->id)
-            ->assertSet('actions', [['type' => 'shift_due_date', 'value' => '3']])
+            ->assertSet('actions', [['type' => 'shift_due_date', 'value' => '3', 'field' => '']])
             ->set('name', 'Neu')
             ->call('save')
             ->assertHasNoErrors();
@@ -268,13 +299,13 @@ class AutomationPageTest extends TestCase
 
     public function test_a_new_rule_starts_without_a_chosen_action(): void
     {
-        $page = $this->page()->call('openForm')->assertSet('actions', [['type' => '', 'value' => '']]);
+        $page = $this->page()->call('openForm')->assertSet('actions', [['type' => '', 'value' => '', 'field' => '']]);
 
         $page->set('name', 'Ohne Aktion')->set('triggerValue', (string) $this->project->doneStatus()->id)
             ->call('save')->assertHasErrors('actions.0.type');
 
         $this->assertSame(0, Automation::count());
-        $page->call('addAction')->assertSet('actions.1', ['type' => '', 'value' => '']);
+        $page->call('addAction')->assertSet('actions.1', ['type' => '', 'value' => '', 'field' => '']);
     }
 
     public function test_the_sentences_of_rules_cannot_be_called_from_the_browser(): void

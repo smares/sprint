@@ -5,8 +5,10 @@ namespace App\Services;
 use App\Enums\ActivityType;
 use App\Enums\AutomationAction;
 use App\Enums\AutomationTrigger;
+use App\Enums\CustomFieldType;
 use App\Models\Automation;
 use App\Models\Comment;
+use App\Models\CustomField;
 use App\Models\Tag;
 use App\Models\Task;
 use App\Models\User;
@@ -126,6 +128,7 @@ class AutomationService
             AutomationAction::SetAssignee => $this->setAssignee($task, $value === null ? null : $this->viewer($task, (int) $value), $value === null),
             AutomationAction::SetStatus => $this->setStatus($task, (int) $value),
             AutomationAction::AddTag => $this->addTag($task, $project->tags()->find((int) $value)),
+            AutomationAction::SetField => $this->setField($rule, $task, is_array($value) ? $value : []),
             AutomationAction::ShiftDueDate => $this->shiftDueDate($task, (int) $value),
             AutomationAction::Comment => $this->comment($rule, $task, trim((string) $value)),
             AutomationAction::Notify => $this->notify($rule, $task, $this->viewer($task, (int) $value)),
@@ -167,6 +170,35 @@ class AutomationService
         }
 
         $task->logSyncChanges(ActivityType::TagsAdded, ActivityType::TagsRemoved, $task->tags()->syncWithoutDetaching([$tag->id]), fn () => [$tag->name]);
+    }
+
+    /**
+     * Sets (or with a null value clears) a custom field of the project. A rule never sets the field it reacts to,
+     * and a value that no longer fits the field (a deleted option) is left alone.
+     *
+     * @param  array{field?: mixed, value?: mixed}  $value
+     */
+    private function setField(Automation $rule, Task $task, array $value): void
+    {
+        $field = $task->project->customFields()->with('options')->find((int) ($value['field'] ?? 0));
+
+        if (! $field instanceof CustomField || ($rule->trigger === AutomationTrigger::FieldSet && $rule->trigger_value === $field->id)) {
+            return;
+        }
+
+        if (($value['value'] ?? null) === null) {
+            $task->setFieldValue($field, null);
+
+            return;
+        }
+
+        $stored = $field->storedFromInput((string) $value['value']);
+
+        if ($stored !== null) {
+            $task->setFieldValue($field, $field->type === CustomFieldType::Select
+                ? ['option_id' => (int) $stored, 'value' => null]
+                : ['option_id' => null, 'value' => $stored]);
+        }
     }
 
     /**

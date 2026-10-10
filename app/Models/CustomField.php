@@ -100,6 +100,19 @@ class CustomField extends Model
     }
 
     /**
+     * What to store for a value chosen in a form: an option id of this field for select fields, otherwise the value
+     * as parse() takes it; null when it does not fit the field.
+     */
+    public function storedFromInput(string $input): ?string
+    {
+        if ($this->type === CustomFieldType::Select) {
+            return $this->options->contains('id', (int) $input) ? (string) (int) $input : null;
+        }
+
+        return $this->parse($input)['value'] ?? null;
+    }
+
+    /**
      * Whether a stored value is the given one: numbers by amount, texts regardless of case and surrounding spaces,
      * options and dates exactly.
      */

@@ -199,9 +199,7 @@ new class extends Component
         $this->repeatInterval = (string) ($this->task->repeat_interval ?? 1);
         $this->repeatMode = $this->task->repeat_mode?->value ?? RepeatMode::Schedule->value;
         $this->repeatUntil = $this->task->repeat_until?->format('Y-m-d') ?? '';
-        $this->fieldValues = $this->task->fieldValues
-            ->mapWithKeys(fn ($value) => [$value->custom_field_id => (string) ($value->option_id ?? $value->value)])
-            ->all();
+        $this->fieldValues = $this->storedFieldValues();
         $this->notificationsOn = ! $this->task->isMutedBy(auth()->user());
         $this->parentId = (string) ($this->task->parent_id ?? '');
         $this->sectionTitles = $this->subtreeTasks->where('is_section', true)->pluck('title', 'id')->all();
@@ -239,12 +237,19 @@ new class extends Component
     }
 
     /**
+     * Writes the fields the form changed; the others stay as they are (an automation may have set them meanwhile).
+     *
      * @param  array<int|string, string|null>  $input
+     * @param  array<int, string>  $before  The stored values when saving began.
      */
-    private function saveFieldValues(array $input): void
+    private function saveFieldValues(array $input, array $before): void
     {
         foreach ($this->customFields as $field) {
             $new = trim((string) ($input[$field->id] ?? ''));
+
+            if ($new === ($before[$field->id] ?? '')) {
+                continue;
+            }
 
             $this->task->setFieldValue($field, match (true) {
                 $new === '' => null,
@@ -428,7 +433,7 @@ new class extends Component
     }
 
     /**
-     * An automation may have changed the task while it was saved (status, assignee, dates, tags). The form shows
+     * An automation may have changed the task while it was saved (status, assignee, dates, tags, fields). The form shows
      * what is stored now, so saving again does not undo the rule.
      */
     private function showChangesByAutomations(): void
@@ -440,6 +445,19 @@ new class extends Component
         $this->dueDate = $this->task->due_date?->format('Y-m-d') ?? '';
         $this->startDate = $this->task->start_date?->format('Y-m-d') ?? '';
         $this->tagIds = $this->task->tags->pluck('id')->map(fn ($id) => (string) $id)->all();
+        $this->fieldValues = $this->storedFieldValues();
+    }
+
+    /**
+     * The task's field values as the form holds them: field id => option id or value.
+     *
+     * @return array<int, string>
+     */
+    private function storedFieldValues(): array
+    {
+        return $this->task->fieldValues()->get()
+            ->mapWithKeys(fn ($value) => [$value->custom_field_id => (string) ($value->option_id ?? $value->value)])
+            ->all();
     }
 
     /**
@@ -640,6 +658,11 @@ new class extends Component
             return ['blockers' => $blockers, 'blocking' => $blocking];
         });
 
+        // What the form changed is measured against what was stored before saving: an automation that fires during the
+        // save may add tags or set fields, and those must not be undone by the form's unchanged values
+        $tagsBefore = $this->task->tags()->pluck('tags.id')->all();
+        $fieldsBefore = $this->storedFieldValues();
+
         $parentChanged = ($validated['parentId'] ?: null) !== $this->task->parent_id;
 
         $this->task->update([
@@ -659,9 +682,13 @@ new class extends Component
             'repeat_until' => ($validated['repeatUnit'] ?: null) ? ($validated['repeatUntil'] ?: null) : null,
         ]);
 
-        $this->saveFieldValues($validated['fieldValues'] ?? []);
+        $this->saveFieldValues($validated['fieldValues'] ?? [], $fieldsBefore);
 
-        $tagChanges = $this->task->tags()->sync($validated['tagIds']);
+        $tagIds = array_map(intval(...), $validated['tagIds']);
+        $tagChanges = $this->task->tags()->sync(array_values(array_unique([
+            ...array_diff($this->task->tags()->pluck('tags.id')->all(), array_diff($tagsBefore, $tagIds)),
+            ...array_diff($tagIds, $tagsBefore),
+        ])));
         $collaboratorChanges = $this->task->collaborators()->sync(
             array_values(array_diff($validated['collaboratorIds'], [(string) $validated['assigneeId']]))
         );

@@ -100,6 +100,19 @@ class CustomField extends Model
     }
 
     /**
+     * Whether a stored value is the given one: numbers by amount, texts regardless of case and surrounding spaces,
+     * options and dates exactly.
+     */
+    public function valueEquals(string $stored, string $expected): bool
+    {
+        return match ($this->type) {
+            CustomFieldType::Select, CustomFieldType::Date => $stored === $expected,
+            CustomFieldType::Number => is_numeric($stored) && is_numeric($expected) && (float) $stored === (float) $expected,
+            CustomFieldType::Text => mb_strtolower(trim($stored)) === mb_strtolower(trim($expected)),
+        };
+    }
+
+    /**
      * @return HasMany<CustomFieldValue, $this>
      */
     public function values(): HasMany

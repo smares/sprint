@@ -4,8 +4,8 @@ namespace App\Enums;
 
 /**
  * What starts an automation; the value is stored in automations.trigger. `automations.trigger_value` narrows it
- * down: the status moved to, the person assigned, the tag added or the option a select field is set to (an option
- * belongs to exactly one field, so its id names both).
+ * down: the status moved to, the person assigned, the tag added or the custom field that gets a value
+ * (which value, if any, is in `automations.trigger_field_value`).
  */
 enum AutomationTrigger: string
 {
@@ -55,7 +55,7 @@ enum AutomationTrigger: string
             self::StatusChanged => __('Status changes to'),
             self::AssigneeChanged => __('Assignee changes to'),
             self::TagAdded => __('Tag is added'),
-            self::FieldSet => __('Field gets the value'),
+            self::FieldSet => __('Field gets a value'),
         };
     }
 }

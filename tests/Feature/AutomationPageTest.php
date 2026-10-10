@@ -4,8 +4,10 @@ namespace Tests\Feature;
 
 use App\Enums\AutomationAction;
 use App\Enums\AutomationTrigger;
+use App\Enums\CustomFieldType;
 use App\Enums\ProjectRole;
 use App\Models\Automation;
+use App\Models\CustomField;
 use App\Models\Project;
 use App\Models\Tag;
 use App\Models\User;
@@ -118,22 +120,35 @@ class AutomationPageTest extends TestCase
             ->assertSee('Handelt mit den Rechten von Olaf');
     }
 
-    public function test_a_rule_can_start_when_a_select_field_gets_a_value(): void
+    public function test_a_field_rule_takes_the_field_first_and_then_a_value_that_fits_it(): void
     {
         $priority = $this->project->customFields()->where('name', 'Priorität')->firstOrFail();
         $urgent = $priority->options->firstWhere('name', 'Dringend');
-        $foreignOption = Project::factory()->create()->customFields()->firstOrFail()->options->first();
+        $effort = CustomField::factory()->for($this->project)->create(['name' => 'Aufwand', 'type' => CustomFieldType::Number]);
+        $foreign = Project::factory()->create()->customFields()->firstOrFail();
 
-        $page = $this->page()->call('openForm')->set('trigger', 'field_set')->assertSee('Priorität: Dringend');
-        $this->fill($page, [['type' => 'set_assignee', 'value' => (string) $this->anna->id]], 'field_set', (string) $foreignOption->id)
+        $page = $this->page()->call('openForm')->set('trigger', 'field_set')->assertSee('Priorität')->assertSee('Aufwand');
+        $this->fill($page, [['type' => 'set_assignee', 'value' => (string) $this->anna->id]], 'field_set', (string) $foreign->id)
             ->call('save')->assertHasErrors('triggerValue');
 
-        $page->set('triggerValue', (string) $urgent->id)->call('save')->assertHasNoErrors()
+        // Choosing the field offers its options; one of another field does not fit
+        $page->set('triggerValue', (string) $priority->id)->assertSee('Dringend')
+            ->set('triggerFieldValue', (string) $foreign->options->first()->id)->call('save')->assertHasErrors('triggerFieldValue');
+
+        $page->set('triggerFieldValue', (string) $urgent->id)->call('save')->assertHasNoErrors()
             ->assertSee('Wenn „Priorität“ auf „Dringend“ gesetzt wird');
 
         $rule = Automation::query()->sole();
         $this->assertSame(AutomationTrigger::FieldSet, $rule->trigger);
-        $this->assertSame($urgent->id, $rule->trigger_value);
+        $this->assertSame($priority->id, $rule->trigger_value);
+        $this->assertSame((string) $urgent->id, $rule->trigger_field_value);
+
+        // A number field takes a number; left empty, any value counts
+        $page->call('openForm', $rule->id)->assertSet('triggerFieldValue', (string) $urgent->id)
+            ->set('triggerValue', (string) $effort->id)->assertSet('triggerFieldValue', '')
+            ->set('triggerFieldValue', 'viel')->call('save')->assertHasErrors('triggerFieldValue');
+        $page->set('triggerFieldValue', '')->call('save')->assertHasNoErrors()->assertSee('Wenn „Aufwand“ einen Wert bekommt');
+        $this->assertNull($rule->fresh()->trigger_field_value);
     }
 
     public function test_values_that_do_not_belong_to_the_project_are_rejected(): void

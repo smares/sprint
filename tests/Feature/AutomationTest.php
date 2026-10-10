@@ -5,8 +5,10 @@ namespace Tests\Feature;
 use App\Enums\ActivityType;
 use App\Enums\AutomationAction;
 use App\Enums\AutomationTrigger;
+use App\Enums\CustomFieldType;
 use App\Enums\ProjectRole;
 use App\Models\Automation;
+use App\Models\CustomField;
 use App\Models\Project;
 use App\Models\Tag;
 use App\Models\Task;
@@ -139,7 +141,7 @@ class AutomationTest extends TestCase
         $priority = $this->project->customFields()->where('name', 'Priorität')->firstOrFail();
         $urgent = $priority->options->firstWhere('name', 'Dringend');
         $high = $priority->options->firstWhere('name', 'Hoch');
-        $this->rule(AutomationTrigger::FieldSet, $urgent->id, [['type' => AutomationAction::SetAssignee, 'value' => $this->anna->id]], ['name' => 'Eilt']);
+        $this->rule(AutomationTrigger::FieldSet, $priority->id, [['type' => AutomationAction::SetAssignee, 'value' => $this->anna->id]], ['name' => 'Eilt', 'trigger_field_value' => (string) $urgent->id]);
         $other = $this->task();
         $task = $this->task();
 
@@ -161,12 +163,39 @@ class AutomationTest extends TestCase
         $this->assertSame($this->bernd->id, $task->fresh()->assignee_id);
     }
 
+    public function test_a_field_trigger_compares_text_number_and_date_by_their_kind(): void
+    {
+        $customer = CustomField::factory()->for($this->project)->create(['name' => 'Kundenname', 'type' => CustomFieldType::Text]);
+        $effort = CustomField::factory()->for($this->project)->create(['name' => 'Aufwand', 'type' => CustomFieldType::Number]);
+        $review = CustomField::factory()->for($this->project)->create(['name' => 'Review am', 'type' => CustomFieldType::Date]);
+        $comment = fn (string $text) => [['type' => AutomationAction::Comment, 'value' => $text]];
+        $this->rule(AutomationTrigger::FieldSet, $customer->id, $comment('Kunde'), ['trigger_field_value' => 'Müller AG']);
+        $this->rule(AutomationTrigger::FieldSet, $effort->id, $comment('Aufwand'), ['trigger_field_value' => '8']);
+        $this->rule(AutomationTrigger::FieldSet, $review->id, $comment('Review'), ['trigger_field_value' => '2026-12-24']);
+        $this->rule(AutomationTrigger::FieldSet, $customer->id, $comment('Irgendein Kunde'));
+        $task = $this->task();
+        $set = fn (CustomField $field, string $value) => $task->setFieldValue($field, ['option_id' => null, 'value' => $value]);
+
+        $this->actingAs($this->bernd);
+        $set($customer, 'Meier GmbH');
+        $set($effort, '8.5');
+        $set($review, '2026-12-23');
+        $this->assertSame(['Irgendein Kunde'], $task->comments()->pluck('body')->all());
+
+        $set($customer, '  müller ag ');
+        $set($effort, '8.0');
+        $set($review, '2026-12-24');
+        $task->setFieldValue($customer, null);
+
+        $this->assertSame(['Irgendein Kunde', 'Kunde', 'Irgendein Kunde', 'Aufwand', 'Review'], $task->comments()->orderBy('id')->pluck('body')->all());
+    }
+
     public function test_a_field_trigger_on_the_task_page_shows_what_the_rule_changed_and_a_second_save_keeps_it(): void
     {
         $priority = $this->project->customFields()->where('name', 'Priorität')->firstOrFail();
         $urgent = $priority->options->firstWhere('name', 'Dringend');
         $review = $this->project->statuses()->create(['name' => 'Review', 'color' => 'amber', 'position' => 5]);
-        $this->rule(AutomationTrigger::FieldSet, $urgent->id, [['type' => AutomationAction::SetStatus, 'value' => $review->id], ['type' => AutomationAction::SetAssignee, 'value' => $this->anna->id]]);
+        $this->rule(AutomationTrigger::FieldSet, $priority->id, [['type' => AutomationAction::SetStatus, 'value' => $review->id], ['type' => AutomationAction::SetAssignee, 'value' => $this->anna->id]], ['trigger_field_value' => (string) $urgent->id]);
         $task = $this->task(['assignee_id' => null]);
 
         $page = Livewire::actingAs($this->bernd)->test('pages::tasks.show', ['task' => $task])

@@ -59,24 +59,24 @@ new class extends Component
     @if ($this->tasks->isEmpty())
         <flux:callout icon="check-circle" :heading="__('All done')" :text="__('You have no open tasks assigned or none you are involved in.')" />
     @else
-        <div class="overflow-x-auto">
+        {{-- Every column shows on every screen and the table scrolls sideways under the title, which stays in place --}}
         <flux:table>
             <flux:table.columns>
-                <flux:table.column>{{ __('Task') }}</flux:table.column>
-                <flux:table.column class="max-md:hidden">{{ __('Project') }}</flux:table.column>
+                <flux:table.column class="pinned-column">{{ __('Task') }}</flux:table.column>
+                <flux:table.column>{{ __('Project') }}</flux:table.column>
                 <flux:table.column>{{ __('Status') }}</flux:table.column>
                 <flux:table.column>{{ __('Due') }}</flux:table.column>
             </flux:table.columns>
             <flux:table.rows>
                 @foreach ($this->tasks as $task)
                     <flux:table.row wire:key="task-{{ $task->id }}">
-                        <flux:table.cell class="min-w-44 whitespace-normal">
+                        <flux:table.cell class="pinned-column min-w-56 whitespace-normal max-sm:min-w-[45vw]">
                             <a href="{{ route('tasks.show', $task) }}" wire:navigate class="font-medium text-zinc-800 hover:underline dark:text-white">{{ $task->title }}</a>
                             @if ($task->parent)
                                 <flux:text size="sm" class="block">{{ __('in :title', ['title' => $task->parent->title]) }}</flux:text>
                             @endif
                         </flux:table.cell>
-                        <flux:table.cell class="max-md:hidden"><flux:link variant="subtle" :href="route('projects.show', $task->project)" wire:navigate>{{ $task->project->name }}</flux:link></flux:table.cell>
+                        <flux:table.cell><flux:link variant="subtle" :href="route('projects.show', $task->project)" wire:navigate>{{ $task->project->name }}</flux:link></flux:table.cell>
                         <flux:table.cell>
                             <x-color-badge size="sm" :color="$task->status->color">{{ $task->status->name }}</x-color-badge>
                         </flux:table.cell>
@@ -89,7 +89,6 @@ new class extends Component
                 @endforeach
             </flux:table.rows>
         </flux:table>
-        </div>
 
         @if ($this->totalTasks > $this->tasks->count())
             <div wire:intersect="loadMore" class="mt-4 flex items-center justify-center gap-3">

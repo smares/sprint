@@ -332,6 +332,21 @@ class BulkTaskActionsTest extends TestCase
         $this->assertStringContainsString('max-sm:size-10!', $html);
     }
 
+    public function test_the_checkboxes_are_drawn_anew_when_the_selection_starts_and_ends(): void
+    {
+        $task = $this->task('Eins');
+
+        // Same markup before and after would let the browser keep a tick set by hand, so the boxes are keyed by the mode
+        $page = Livewire::test('pages::projects.show', ['project' => $this->project])
+            ->assertSeeHtml('wire:key="select-'.$task->id.'-off"')->assertSeeHtml('wire:key="select-page-off"');
+
+        $page->call('selectTask', $task->id)
+            ->assertSeeHtml('wire:key="select-'.$task->id.'-on"')->assertSeeHtml('wire:key="select-page-on"');
+
+        $page->call('stopSelecting')
+            ->assertSeeHtml('wire:key="select-'.$task->id.'-off"')->assertSet('selected', []);
+    }
+
     public function test_unticking_everything_ends_the_selection(): void
     {
         $a = $this->task('Eins');

@@ -40,7 +40,7 @@ new class extends Component
 
     public string $conditionTag = '';
 
-    /** @var list<array{type: string, value: string}> */
+    /** @var list<array{type: string, value: string, field: string}> `field` is only used by "set a field". */
     public array $actions = [];
 
     public string $deletingId = '';
@@ -137,8 +137,10 @@ new class extends Component
         $this->conditionAssignee = (string) ($rule?->conditions['assignee_id'] ?? '');
         $this->conditionTag = (string) ($rule?->conditions['tag_id'] ?? '');
         $this->actions = $rule === null
-            ? [['type' => '', 'value' => '']]
-            : array_map(fn (array $step) => ['type' => $step['type']->value, 'value' => (string) ($step['value'] ?? '')], $rule->steps());
+            ? [['type' => '', 'value' => '', 'field' => '']]
+            : array_map(fn (array $step) => is_array($step['value'])
+                ? ['type' => $step['type']->value, 'value' => (string) ($step['value']['value'] ?? ''), 'field' => (string) ($step['value']['field'] ?? '')]
+                : ['type' => $step['type']->value, 'value' => (string) ($step['value'] ?? ''), 'field' => ''], $rule->steps());
 
         Flux::modal('automation-form')->show();
     }
@@ -158,13 +160,18 @@ new class extends Component
     {
         if ($key !== null && str_ends_with($key, '.type')) {
             $this->actions[(int) $key]['value'] = '';
+            $this->actions[(int) $key]['field'] = '';
+        }
+
+        if ($key !== null && str_ends_with($key, '.field')) {
+            $this->actions[(int) $key]['value'] = '';
         }
     }
 
     public function addAction(): void
     {
         if (count($this->actions) < self::MAX_ACTIONS) {
-            $this->actions[] = ['type' => '', 'value' => ''];
+            $this->actions[] = ['type' => '', 'value' => '', 'field' => ''];
         }
     }
 
@@ -195,7 +202,7 @@ new class extends Component
         $steps = [];
 
         foreach ($this->actions as $index => $action) {
-            $steps[] = ['type' => $action['type'], 'value' => $this->actionValue($index, AutomationAction::from($action['type']), trim($action['value']))];
+            $steps[] = ['type' => $action['type'], 'value' => $this->actionValue($index, AutomationAction::from($action['type']), trim($action['value']), $trigger === AutomationTrigger::FieldSet ? $triggerValue : null)];
         }
 
         if ($this->getErrorBag()->isNotEmpty()) {
@@ -285,9 +292,7 @@ new class extends Component
             return null;
         }
 
-        $stored = $field->type === CustomFieldType::Select
-            ? ($field->options->contains('id', (int) $value) ? $value : null)
-            : $field->parse($value)['value'] ?? null;
+        $stored = $field->storedFromInput($value);
 
         if ($stored === null) {
             $this->addError('triggerFieldValue', __('This value does not fit the field.'));
@@ -296,7 +301,11 @@ new class extends Component
         return $stored;
     }
 
-    private function actionValue(int $index, AutomationAction $action, string $value): int|string|null
+    /**
+     * @param  ?int  $triggerFieldId  The field the rule reacts to, which it must not set itself.
+     * @return int|string|array{field: int, value: ?string}|null
+     */
+    private function actionValue(int $index, AutomationAction $action, string $value, ?int $triggerFieldId): int|string|array|null
     {
         $key = "actions.$index.value";
 
@@ -307,7 +316,42 @@ new class extends Component
             AutomationAction::AddTag => $this->idOf($key, array_keys($this->tagNames), false),
             AutomationAction::ShiftDueDate => $this->days($key, $value),
             AutomationAction::Comment => $this->text($key, $value),
+            AutomationAction::SetField => $this->fieldStep($index, $value, $triggerFieldId),
         };
+    }
+
+    /**
+     * The field to set and its value (empty clears it).
+     *
+     * @return array{field: int, value: ?string}|null
+     */
+    private function fieldStep(int $index, string $value, ?int $triggerFieldId): ?array
+    {
+        $fieldId = $this->idOf("actions.$index.field", $this->fields->keys()->all(), false);
+
+        if ($fieldId === null) {
+            return null;
+        }
+
+        if ($fieldId === $triggerFieldId) {
+            $this->addError("actions.$index.field", __('A rule cannot set the field it reacts to.'));
+
+            return null;
+        }
+
+        if ($value === '') {
+            return ['field' => $fieldId, 'value' => null];
+        }
+
+        $stored = $this->fields->get($fieldId)?->storedFromInput($value);
+
+        if ($stored === null) {
+            $this->addError("actions.$index.value", __('This value does not fit the field.'));
+
+            return null;
+        }
+
+        return ['field' => $fieldId, 'value' => $stored];
     }
 
     private function days(string $key, string $value): ?int
@@ -380,7 +424,20 @@ new class extends Component
             AutomationAction::ShiftDueDate => trans_choice('Move the due date by :count day|Move the due date by :count days', abs((int) $step['value']), ['count' => (int) $step['value']]),
             AutomationAction::Comment => __('Comment: “:text”', ['text' => Str::limit((string) $step['value'], 80)]),
             AutomationAction::Notify => __('Notify :name', ['name' => $this->userNames[$step['value']] ?? '–']),
+            AutomationAction::SetField => $this->fieldStepSentence((array) $step['value']),
         }, $rule->steps());
+    }
+
+    /**
+     * @param  array{field?: mixed, value?: mixed}  $step
+     */
+    private function fieldStepSentence(array $step): string
+    {
+        $field = $this->fields->get((int) ($step['field'] ?? 0));
+
+        return ($step['value'] ?? null) === null
+            ? __('Clear “:field”', ['field' => $field->name ?? '–'])
+            : __('Set “:field” to “:value”', ['field' => $field->name ?? '–', 'value' => $field?->text((string) $step['value']) ?? '–']);
     }
 
     public function rendering(View $view): void
@@ -554,6 +611,41 @@ new class extends Component
                                             @endforeach
                                         </flux:select>
                                         @break
+                                    @case('set_field')
+                                        {{-- The field, then its value entered like on the task; left empty, the field is cleared --}}
+                                        @php($actionField = $this->fields->get((int) $action['field']))
+                                        <div class="grid gap-2 sm:grid-cols-2">
+                                            <flux:select variant="listbox" wire:model.live="actions.{{ $index }}.field" :placeholder="__('Choose a field …')" aria-label="{{ __('Field') }}">
+                                                @foreach ($this->fields as $field)
+                                                    @if ($trigger !== 'field_set' || (string) $field->id !== $triggerValue)
+                                                        <flux:select.option value="{{ $field->id }}">{{ $field->name }}</flux:select.option>
+                                                    @endif
+                                                @endforeach
+                                            </flux:select>
+                                            <div wire:key="action-{{ $index }}-field-{{ $actionField?->id }}">
+                                                @switch($actionField?->type)
+                                                    @case(null)
+                                                        <flux:input disabled :placeholder="__('Empty (clears the field)')" aria-label="{{ __('Value') }}" />
+                                                        @break
+                                                    @case(\App\Enums\CustomFieldType::Select)
+                                                        <flux:select variant="listbox" wire:model="actions.{{ $index }}.value" :placeholder="__('Empty (clears the field)')" clearable aria-label="{{ __('Value') }}">
+                                                            @foreach ($actionField->options as $option)
+                                                                <flux:select.option value="{{ $option->id }}">{{ $option->name }}</flux:select.option>
+                                                            @endforeach
+                                                        </flux:select>
+                                                        @break
+                                                    @case(\App\Enums\CustomFieldType::Number)
+                                                        <flux:input wire:model="actions.{{ $index }}.value" type="number" step="any" :placeholder="__('Empty (clears the field)')" aria-label="{{ __('Value') }}" />
+                                                        @break
+                                                    @case(\App\Enums\CustomFieldType::Date)
+                                                        <flux:date-picker wire:model="actions.{{ $index }}.value" locale="{{ app()->getLocale() }}" :placeholder="__('Empty (clears the field)')" clearable aria-label="{{ __('Value') }}" />
+                                                        @break
+                                                    @default
+                                                        <flux:input wire:model="actions.{{ $index }}.value" :placeholder="__('Empty (clears the field)')" aria-label="{{ __('Value') }}" />
+                                                @endswitch
+                                            </div>
+                                        </div>
+                                        @break
                                     @case('shift_due_date')
                                         <flux:input type="number" min="-365" max="365" wire:model="actions.{{ $index }}.value" placeholder="{{ __('Days, e.g. 7 or -2') }}" aria-label="{{ __('Days') }}" />
                                         @break
@@ -567,6 +659,7 @@ new class extends Component
                             @endif
                         </div>
                         <flux:error :name="'actions.'.$index.'.type'" />
+                        <flux:error :name="'actions.'.$index.'.field'" />
                         <flux:error :name="'actions.'.$index.'.value'" />
                     </div>
                 @endforeach

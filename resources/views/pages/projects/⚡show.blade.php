@@ -711,14 +711,14 @@ new class extends Component
                             </div>
                         </flux:table.cell>
                         {{-- Badges are separated by plain spaces, not margins: a space at the start of a wrapped line disappears, so tags
-                             that wrap begin flush with the title. --}}
+                             that wrap begin flush with the title. A pixel above and below keeps wrapped lines of badges apart. --}}
                         <flux:table.cell class="min-w-44 whitespace-normal max-sm:min-w-0">
                             <span class="me-1.5 inline-block min-w-4 select-none max-sm:hidden text-end align-baseline text-xs tabular-nums text-zinc-300 dark:text-zinc-600" data-row-number="{{ $loop->iteration }}" title="{{ __('Row :number', ['number' => $loop->iteration]) }}">{{ $loop->iteration }}</span><x-task-title-link :task="$task" :open="(string) $task->id === $openTaskId" />
                             @if ($progress = $this->progress[$task->id] ?? null)
-                                <flux:badge size="sm" icon="list-bullet">{{ $progress['done'] }}/{{ $progress['total'] }}</flux:badge>
+                                <flux:badge size="sm" icon="list-bullet" class="my-px">{{ $progress['done'] }}/{{ $progress['total'] }}</flux:badge>
                             @endif
                             @foreach ($task->tags as $tag)
-                                <x-color-badge size="sm" :color="$tag->color">{{ $tag->name }}</x-color-badge>
+                                <x-color-badge size="sm" :color="$tag->color" class="my-px">{{ $tag->name }}</x-color-badge>
                             @endforeach
                         </flux:table.cell>
                         <flux:table.cell>

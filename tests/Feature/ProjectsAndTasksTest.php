@@ -90,6 +90,17 @@ class ProjectsAndTasksTest extends TestCase
         }
     }
 
+    public function test_both_create_dialogs_offer_cancel_before_create(): void
+    {
+        $project = Project::factory()->create();
+
+        // The close button labelled "Abbrechen" right before the submit button (the date picker has a cancel of its own)
+        $footer = '/<ui-close[^>]*>\s*<button[^>]*>\s*Abbrechen\s*<\/button>\s*<\/ui-close>\s*<button type="submit"/';
+
+        $this->assertMatchesRegularExpression($footer, Livewire::test('task-create', ['project' => $project])->html());
+        $this->assertMatchesRegularExpression($footer, Livewire::test('pages::projects.index')->html());
+    }
+
     public function test_the_new_task_dialog_can_start_with_a_status_and_due_date(): void
     {
         $project = Project::factory()->create();

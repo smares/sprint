@@ -151,12 +151,23 @@ class ProjectStatisticsTest extends TestCase
             ->assertSee('letzte 90 Tage, 2 Aufgaben mit Fälligkeit');
     }
 
+    public function test_the_line_charts_leave_out_months_without_data_instead_of_drawing_them_as_zero(): void
+    {
+        $this->completed('2026-10-01 08:00', 2);
+
+        Livewire::test('pages::projects.statistics', ['project' => $this->project])
+            ->assertSee('Okt 2026')
+            ->assertDontSee('Sep 2026')
+            ->assertSee('In den letzten Monaten wurde keine Aufgabe mit Fälligkeit erledigt.');
+    }
+
     public function test_a_project_without_activity_shows_empty_weeks_and_no_stuck_tasks(): void
     {
         Livewire::test('pages::projects.statistics', ['project' => $this->project])
             ->assertSee('Keine offene Aufgabe steht über den ersten Status hinaus.')
             ->assertSeeHtml('data-stat="median">–')
             ->assertSeeHtml('data-stat="on-time">–')
+            ->assertSee('In den letzten Monaten wurde keine Aufgabe erledigt.')
             ->assertSee('data-stat="open">0', false);
     }
 }

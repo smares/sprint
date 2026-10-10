@@ -58,6 +58,16 @@ new class extends Component
     }
 
     /**
+     * The months that have something to show for a figure: a line would draw a month without data as 0.
+     *
+     * @return list<array{month: string, completed: int, median: ?float, p85: ?float, dated: int, on_time: ?int}>
+     */
+    protected function monthsWith(string $field): array
+    {
+        return array_values(array_filter($this->cycle, fn (array $month) => $month[$field] !== null));
+    }
+
+    /**
      * @return array{completed: int, median: ?float, p85: ?float, dated: int, on_time: ?int}
      */
     #[Computed]
@@ -99,7 +109,7 @@ new class extends Component
             @endphp
             <div>
                 <flux:heading size="lg">{{ __('Created and completed per week') }}</flux:heading>
-                <flux:text class="mt-1">{{ __('Are more tasks finished than added? If the gray bars stay higher for weeks, the backlog grows.') }}</flux:text>
+                <flux:text class="mt-1">{{ __('Are more tasks finished than added? If the gray line stays above the green one for weeks, the backlog grows.') }}</flux:text>
             </div>
 
             <div class="flex flex-wrap gap-x-8 gap-y-2">
@@ -107,43 +117,53 @@ new class extends Component
                 <flux:text>{{ __('Last 4 weeks') }}: <strong class="font-medium text-zinc-800 dark:text-white" data-stat="created">{{ trans_choice(':count created|:count created', $created) }}</strong>, <strong class="font-medium text-zinc-800 dark:text-white" data-stat="completed">{{ trans_choice(':count completed|:count completed', $completed) }}</strong></flux:text>
             </div>
 
-            <flux:chart :value="$this->flow" wire:key="flow-{{ md5(json_encode($this->flow)) }}">
-                <flux:chart.viewport class="aspect-[2/1] sm:aspect-[4/1]">
-                    <flux:chart.svg>
-                        <flux:chart.group width="70%">
-                            <flux:chart.bar field="created" class="text-zinc-300 dark:text-zinc-600" radius="2" />
-                            <flux:chart.bar field="completed" class="text-green-500 dark:text-green-600" radius="2" />
-                        </flux:chart.group>
+            <flux:card class="p-4 sm:p-6">
+                <flux:chart :value="$this->flow" wire:key="flow-{{ md5(json_encode($this->flow)) }}" class="grid gap-4">
+                    {{-- The week under the pointer, otherwise the current one --}}
+                    <flux:chart.summary class="flex flex-wrap items-end gap-x-8 gap-y-2">
+                        <div>
+                            <flux:text size="sm">{{ __('Created') }}</flux:text>
+                            <flux:heading size="xl" class="mt-1 tabular-nums"><flux:chart.summary.value field="created" /></flux:heading>
+                        </div>
+                        <div>
+                            <flux:text size="sm">{{ __('Completed') }}</flux:text>
+                            <flux:heading size="xl" class="mt-1 tabular-nums text-green-600 dark:text-green-500"><flux:chart.summary.value field="completed" /></flux:heading>
+                        </div>
+                        <flux:text size="sm" class="tabular-nums"><flux:chart.summary.value field="range" /></flux:text>
+                    </flux:chart.summary>
 
-                        <flux:chart.axis axis="x" field="week">
-                            <flux:chart.axis.tick />
-                            <flux:chart.axis.line />
-                        </flux:chart.axis>
+                    <flux:chart.viewport class="aspect-[2/1] sm:aspect-[4/1]">
+                        <flux:chart.svg>
+                            <flux:chart.line field="created" class="text-zinc-400 dark:text-zinc-500" curve="none" stroke-dasharray="4 4" />
+                            <flux:chart.point field="created" class="text-zinc-400 dark:text-zinc-500" r="3" />
+                            <flux:chart.line field="completed" class="text-green-500" curve="none" />
+                            <flux:chart.area field="completed" class="text-green-500/10" curve="none" />
+                            <flux:chart.point field="completed" class="text-green-500" r="3" />
 
-                        <flux:chart.axis axis="y" tick-count="4">
-                            <flux:chart.axis.grid />
-                            <flux:chart.axis.tick />
-                        </flux:chart.axis>
+                            <flux:chart.axis axis="x" field="week">
+                                <flux:chart.axis.tick />
+                                <flux:chart.axis.line />
+                            </flux:chart.axis>
 
-                        <flux:chart.cursor type="area" />
-                    </flux:chart.svg>
-                </flux:chart.viewport>
+                            <flux:chart.axis axis="y" tick-count="4">
+                                <flux:chart.axis.grid />
+                                <flux:chart.axis.tick />
+                            </flux:chart.axis>
 
-                <flux:chart.tooltip>
-                    <flux:chart.tooltip.heading field="range" />
-                    <flux:chart.tooltip.value field="created" :label="__('Created')" />
-                    <flux:chart.tooltip.value field="completed" :label="__('Completed')" />
-                </flux:chart.tooltip>
+                            <flux:chart.cursor class="text-zinc-400" stroke-dasharray="4,4" />
+                        </flux:chart.svg>
+                    </flux:chart.viewport>
 
-                <div class="flex justify-center gap-4 pt-3">
-                    <flux:chart.legend :label="__('Created')">
-                        <flux:chart.legend.indicator class="bg-zinc-300 dark:bg-zinc-600" />
-                    </flux:chart.legend>
-                    <flux:chart.legend :label="__('Completed')">
-                        <flux:chart.legend.indicator class="bg-green-500 dark:bg-green-600" />
-                    </flux:chart.legend>
-                </div>
-            </flux:chart>
+                    <div class="flex justify-center gap-4">
+                        <flux:chart.legend :label="__('Created')">
+                            <flux:chart.legend.indicator class="bg-zinc-400 dark:bg-zinc-500" />
+                        </flux:chart.legend>
+                        <flux:chart.legend :label="__('Completed')">
+                            <flux:chart.legend.indicator class="bg-green-500" />
+                        </flux:chart.legend>
+                    </div>
+                </flux:chart>
+            </flux:card>
         </section>
 
         <div class="grid gap-10 lg:grid-cols-2">
@@ -159,44 +179,51 @@ new class extends Component
                     <flux:text class="text-zinc-500">{{ trans_choice('last :days days, :count task|last :days days, :count tasks', $this->recent['completed'], ['days' => self::RECENT_DAYS]) }}</flux:text>
                 </div>
 
-                <flux:chart :value="$this->cycle" wire:key="cycle-{{ md5(json_encode($this->cycle)) }}">
-                    <flux:chart.viewport class="aspect-[2/1]">
-                        <flux:chart.svg>
-                            <flux:chart.line field="p85" class="text-amber-500" curve="none" />
-                            <flux:chart.point field="p85" class="text-amber-500" />
-                            <flux:chart.line field="median" class="text-blue-500" curve="none" />
-                            <flux:chart.point field="median" class="text-blue-500" />
+                @php($cycleMonths = $this->monthsWith('median'))
+                <flux:card class="p-4 sm:p-6">
+                    @if ($cycleMonths === [])
+                        <flux:text>{{ __('No task was completed in the last months.') }}</flux:text>
+                    @else
+                    <flux:chart :value="$cycleMonths" wire:key="cycle-{{ md5(json_encode($cycleMonths)) }}">
+                        <flux:chart.viewport class="aspect-[2/1]">
+                            <flux:chart.svg>
+                                <flux:chart.line field="p85" class="text-amber-500" curve="none" />
+                                <flux:chart.point field="p85" class="text-amber-500" r="3" />
+                                <flux:chart.line field="median" class="text-blue-500" curve="none" />
+                                <flux:chart.point field="median" class="text-blue-500" r="3" />
 
-                            <flux:chart.axis axis="x" field="month">
-                                <flux:chart.axis.tick />
-                                <flux:chart.axis.line />
-                            </flux:chart.axis>
+                                <flux:chart.axis axis="x" field="month">
+                                    <flux:chart.axis.tick />
+                                    <flux:chart.axis.line />
+                                </flux:chart.axis>
 
-                            <flux:chart.axis axis="y" tick-count="4">
-                                <flux:chart.axis.grid />
-                                <flux:chart.axis.tick />
-                            </flux:chart.axis>
+                                <flux:chart.axis axis="y" tick-count="4">
+                                    <flux:chart.axis.grid />
+                                    <flux:chart.axis.tick />
+                                </flux:chart.axis>
 
-                            <flux:chart.cursor />
-                        </flux:chart.svg>
-                    </flux:chart.viewport>
+                                <flux:chart.cursor class="text-zinc-400" stroke-dasharray="4,4" />
+                            </flux:chart.svg>
+                        </flux:chart.viewport>
 
-                    <flux:chart.tooltip>
-                        <flux:chart.tooltip.heading field="month" />
-                        <flux:chart.tooltip.value field="median" :label="__('Median (days)')" />
-                        <flux:chart.tooltip.value field="p85" :label="__('85 % within (days)')" />
-                        <flux:chart.tooltip.value field="completed" :label="__('Completed')" />
-                    </flux:chart.tooltip>
+                        <flux:chart.tooltip>
+                            <flux:chart.tooltip.heading field="month" />
+                            <flux:chart.tooltip.value field="median" :label="__('Median (days)')" />
+                            <flux:chart.tooltip.value field="p85" :label="__('85 % within (days)')" />
+                            <flux:chart.tooltip.value field="completed" :label="__('Completed')" />
+                        </flux:chart.tooltip>
 
-                    <div class="flex justify-center gap-4 pt-3">
-                        <flux:chart.legend :label="__('Median')">
-                            <flux:chart.legend.indicator class="bg-blue-500" />
-                        </flux:chart.legend>
-                        <flux:chart.legend :label="__('85 % within')">
-                            <flux:chart.legend.indicator class="bg-amber-500" />
-                        </flux:chart.legend>
-                    </div>
-                </flux:chart>
+                        <div class="flex justify-center gap-4 pt-3">
+                            <flux:chart.legend :label="__('Median')">
+                                <flux:chart.legend.indicator class="bg-blue-500" />
+                            </flux:chart.legend>
+                            <flux:chart.legend :label="__('85 % within')">
+                                <flux:chart.legend.indicator class="bg-amber-500" />
+                            </flux:chart.legend>
+                        </div>
+                    </flux:chart>
+                    @endif
+                </flux:card>
             </section>
 
             <section class="space-y-4">
@@ -210,31 +237,40 @@ new class extends Component
                     <flux:text class="text-zinc-500">{{ trans_choice('last :days days, :count task with a due date|last :days days, :count tasks with a due date', $this->recent['dated'], ['days' => self::RECENT_DAYS]) }}</flux:text>
                 </div>
 
-                <flux:chart :value="$this->cycle" wire:key="on-time-{{ md5(json_encode($this->cycle)) }}">
-                    <flux:chart.viewport class="aspect-[2/1]">
-                        <flux:chart.svg>
-                            <flux:chart.bar field="on_time" class="text-green-500 dark:text-green-600" radius="2" width="50%" />
+                @php($punctualMonths = $this->monthsWith('on_time'))
+                <flux:card class="p-4 sm:p-6">
+                    @if ($punctualMonths === [])
+                        <flux:text>{{ __('No task with a due date was completed in the last months.') }}</flux:text>
+                    @else
+                    <flux:chart :value="$punctualMonths" wire:key="on-time-{{ md5(json_encode($punctualMonths)) }}">
+                        <flux:chart.viewport class="aspect-[2/1]">
+                            <flux:chart.svg>
+                                <flux:chart.line field="on_time" class="text-green-500" curve="none" />
+                                <flux:chart.area field="on_time" class="text-green-500/10" curve="none" />
+                                <flux:chart.point field="on_time" class="text-green-500" r="3" />
 
-                            <flux:chart.axis axis="x" field="month">
-                                <flux:chart.axis.tick />
-                                <flux:chart.axis.line />
-                            </flux:chart.axis>
+                                <flux:chart.axis axis="x" field="month">
+                                    <flux:chart.axis.tick />
+                                    <flux:chart.axis.line />
+                                </flux:chart.axis>
 
-                            <flux:chart.axis axis="y" tick-values="[0, 25, 50, 75, 100]" tick-suffix=" %">
-                                <flux:chart.axis.grid />
-                                <flux:chart.axis.tick />
-                            </flux:chart.axis>
+                                <flux:chart.axis axis="y" tick-values="[0, 25, 50, 75, 100]" tick-suffix=" %">
+                                    <flux:chart.axis.grid />
+                                    <flux:chart.axis.tick />
+                                </flux:chart.axis>
 
-                            <flux:chart.cursor type="area" />
-                        </flux:chart.svg>
-                    </flux:chart.viewport>
+                                <flux:chart.cursor class="text-zinc-400" stroke-dasharray="4,4" />
+                            </flux:chart.svg>
+                        </flux:chart.viewport>
 
-                    <flux:chart.tooltip>
-                        <flux:chart.tooltip.heading field="month" />
-                        <flux:chart.tooltip.value field="on_time" :label="__('On time')" suffix=" %" />
-                        <flux:chart.tooltip.value field="dated" :label="__('With a due date')" />
-                    </flux:chart.tooltip>
-                </flux:chart>
+                        <flux:chart.tooltip>
+                            <flux:chart.tooltip.heading field="month" />
+                            <flux:chart.tooltip.value field="on_time" :label="__('On time')" suffix=" %" />
+                            <flux:chart.tooltip.value field="dated" :label="__('With a due date')" />
+                        </flux:chart.tooltip>
+                    </flux:chart>
+                    @endif
+                </flux:card>
             </section>
         </div>
 

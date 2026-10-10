@@ -126,6 +126,7 @@ new class extends Component
                     <div class="px-2 pb-1 pt-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">{{ __('Go to') }}</div>
                     <flux:command.item icon="folder" x-on:click="Livewire.navigate('{{ route('projects.index') }}')">{{ __('Projects') }}</flux:command.item>
                     <flux:command.item icon="check-circle" x-on:click="Livewire.navigate('{{ route('tasks.mine') }}')">{{ __('My tasks') }}</flux:command.item>
+                    <flux:command.item icon="calendar-date-range" x-on:click="Livewire.navigate('{{ route('workload') }}')">{{ __('Workload') }}</flux:command.item>
                     <flux:command.item icon="bell" x-on:click="Livewire.navigate('{{ route('inbox') }}')">{{ __('Inbox') }}</flux:command.item>
                     <flux:command.item icon="magnifying-glass" x-on:click="Livewire.navigate('{{ route('search') }}')">{{ __('Search') }}</flux:command.item>
                     <flux:command.item icon="user" x-on:click="Livewire.navigate('{{ route('profile') }}')">{{ __('Profile') }}</flux:command.item>

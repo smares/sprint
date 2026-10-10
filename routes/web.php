@@ -90,5 +90,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/avatars/{user}', AvatarController::class)->name('avatars.show');
 
     Route::livewire('/tasks/mine', 'pages::tasks.mine')->name('tasks.mine');
+    Route::livewire('/workload', 'pages::workload')->name('workload');
     Route::livewire('/tasks/{task}', 'pages::tasks.show')->name('tasks.show');
 });

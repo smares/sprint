@@ -28,6 +28,7 @@
                 <flux:navbar class="ms-4 max-lg:hidden">
                     <flux:navbar.item href="{{ route('projects.index') }}" :current="request()->routeIs('projects.*')" wire:navigate>{{ __('Projects') }}</flux:navbar.item>
                     <flux:navbar.item href="{{ route('tasks.mine') }}" :current="request()->routeIs('tasks.mine')" wire:navigate>{{ __('My tasks') }}</flux:navbar.item>
+                    <flux:navbar.item href="{{ route('workload') }}" :current="request()->routeIs('workload')" wire:navigate>{{ __('Workload') }}</flux:navbar.item>
                     @can('administer')
                         <flux:navbar.item href="{{ route('admin.teams') }}" :current="request()->routeIs('admin.teams')" wire:navigate>{{ __('Teams') }}</flux:navbar.item>
                         <flux:navbar.item href="{{ route('admin.users') }}" :current="request()->routeIs('admin.users')" wire:navigate>{{ __('Users') }}</flux:navbar.item>
@@ -86,6 +87,7 @@
                 <flux:navlist variant="outline">
                     <flux:navlist.item icon="folder" href="{{ route('projects.index') }}" :current="request()->routeIs('projects.*')" wire:navigate>{{ __('Projects') }}</flux:navlist.item>
                     <flux:navlist.item icon="check-circle" href="{{ route('tasks.mine') }}" :current="request()->routeIs('tasks.mine')" wire:navigate>{{ __('My tasks') }}</flux:navlist.item>
+                    <flux:navlist.item icon="calendar-date-range" href="{{ route('workload') }}" :current="request()->routeIs('workload')" wire:navigate>{{ __('Workload') }}</flux:navlist.item>
                     <flux:navlist.item icon="bell" href="{{ route('inbox') }}" :current="request()->routeIs('inbox')" wire:navigate>{{ __('Inbox') }}</flux:navlist.item>
                     <flux:navlist.item icon="magnifying-glass" href="{{ route('search') }}" :current="request()->routeIs('search')" wire:navigate>{{ __('Search') }}</flux:navlist.item>
                     @can('administer')

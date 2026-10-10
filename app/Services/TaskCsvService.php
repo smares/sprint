@@ -24,7 +24,7 @@ use Throwable;
  * spreadsheets from other tools (for example Asana) by looking at the column names.
  *
  * @phpstan-type Message array{line: int, message: string}
- * @phpstan-type PlannedTask array{line: int, file_id: string, title: string, description: ?string, status_id: ?int, assignee_id: ?int, collaborator_ids: list<int>, start_date: ?string, due_date: ?string, tag_ids: list<int>, new_tags: list<string>, fields: array<int, array{option_id: ?int, value: ?string}>, parent_ref: string}
+ * @phpstan-type PlannedTask array{line: int, file_id: string, title: string, description: ?string, status_id: ?int, assignee_id: ?int, collaborator_ids: list<int>, start_date: ?string, due_date: ?string, completed_at: ?string, tag_ids: list<int>, new_tags: list<string>, fields: array<int, array{option_id: ?int, value: ?string}>, parent_ref: string}
  */
 class TaskCsvService
 {
@@ -83,7 +83,7 @@ class TaskCsvService
                 $task->title,
                 $task->description,
                 $task->status->name,
-                $task->isDone() ? 'yes' : '',
+                $task->isDone() ? ($task->completed_at?->toDateString() ?? 'yes') : '',
                 $task->assignee?->email,
                 $task->collaborators->pluck('email')->join(', '),
                 $task->start_date?->toDateString(),
@@ -353,11 +353,14 @@ class TaskCsvService
 
     /**
      * @param  Closure(string): void  $warn
-     * @return array{start_date: ?string, due_date: ?string}
+     * @return array{start_date: ?string, due_date: ?string, completed_at: ?string}
      */
     private function planDates(array $row, Closure $warn): array
     {
         $dates = ['start_date' => null, 'due_date' => null];
+
+        // "completed" may hold the day it was done (our export, Asana's "Completed At") or just a yes
+        $completedAt = $this->parseDate(trim($row['completed'] ?? ''));
 
         foreach (array_keys($dates) as $column) {
             if (($row[$column] ?? '') !== '') {
@@ -374,7 +377,7 @@ class TaskCsvService
             $warn('start-after-due');
         }
 
-        return $dates;
+        return $dates + ['completed_at' => $completedAt];
     }
 
     /**
@@ -468,6 +471,7 @@ class TaskCsvService
                     'creator_id' => $user->id,
                     'start_date' => $planned['start_date'],
                     'due_date' => $planned['due_date'],
+                    'completed_at' => $planned['completed_at'],
                     'position' => $position,
                 ]);
 

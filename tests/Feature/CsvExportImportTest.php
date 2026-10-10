@@ -77,7 +77,7 @@ class CsvExportImportTest extends TestCase
         $this->assertSame($priority->options->first()->name, $first['field:priorität']);
         $this->assertSame('Kind', $second['title']);
         $this->assertSame((string) $parent->id, $second['parent_id']);
-        $this->assertSame('yes', $second['completed']);
+        $this->assertSame(now()->toDateString(), $second['completed']);
         $this->assertSame('Erledigt', $second['status']);
     }
 
@@ -173,6 +173,8 @@ class CsvExportImportTest extends TestCase
         $this->assertSame('2026-12-24', $plan['tasks'][0]['due_date']);
         $this->assertSame(['Alpha', 'Beta'], $plan['tasks'][0]['new_tags']);
         $this->assertSame($this->project->doneStatus()->id, $plan['tasks'][1]['status_id']);
+        $this->assertNull($plan['tasks'][0]['completed_at']);
+        $this->assertSame('2026-02-01', $plan['tasks'][1]['completed_at']);
         $this->assertSame('title:planung', $plan['tasks'][1]['parent_ref']);
     }
 
@@ -253,7 +255,9 @@ class CsvExportImportTest extends TestCase
     public function test_an_export_can_be_imported_into_another_project(): void
     {
         $parent = Task::factory()->for($this->project)->create(['title' => 'Eltern', 'assignee_id' => $this->user->id, 'due_date' => '2026-12-01', 'position' => 0]);
+        $this->travelTo('2026-09-15 10:00');
         Task::factory()->for($this->project)->done()->create(['title' => 'Kind', 'parent_id' => $parent->id]);
+        $this->travelBack();
         Task::factory()->for($this->project)->create(['title' => '=Formel', 'position' => 1]);
         $target = Project::factory()->create();
         $target->setRole($this->user, ProjectRole::Editor);
@@ -265,6 +269,8 @@ class CsvExportImportTest extends TestCase
         $this->assertSame(['Eltern', 'Kind', '=Formel'], $target->tasks()->orderBy('id')->pluck('title')->all());
         $copy = $target->tasks()->where('title', 'Kind')->firstOrFail();
         $this->assertTrue($copy->isDone());
+        $this->assertSame('2026-09-15', $copy->completed_at->toDateString());
+        $this->assertNull($target->tasks()->where('title', 'Eltern')->value('completed_at'));
         $this->assertSame($target->tasks()->where('title', 'Eltern')->value('id'), $copy->parent_id);
         $this->assertSame($this->user->id, $target->tasks()->where('title', 'Eltern')->value('assignee_id'));
     }

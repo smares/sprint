@@ -20,9 +20,31 @@ class TaskStatus extends Model
 
     use HasPosition;
 
+    protected static function booted(): void
+    {
+        static::updated(function (self $status) {
+            if ($status->wasChanged('is_done')) {
+                $status->syncCompletedAt();
+            }
+        });
+    }
+
     protected function casts(): array
     {
         return ['is_done' => 'boolean', 'color' => ColorCast::class];
+    }
+
+    /**
+     * Gives the tasks in this status the completion time that fits it (now for done tasks that have none, none for
+     * open ones), after the status became done or open, or after tasks were moved here without saving each one.
+     */
+    public function syncCompletedAt(): void
+    {
+        if ($this->is_done) {
+            $this->tasks()->whereNull('completed_at')->update(['completed_at' => now()]);
+        } else {
+            $this->tasks()->whereNotNull('completed_at')->update(['completed_at' => null]);
+        }
     }
 
     /**

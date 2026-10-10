@@ -206,6 +206,7 @@ new class extends Component
 
         if ($needsReplacement) {
             $status->tasks()->update(['status_id' => $this->replacementId]);
+            $this->project->statuses()->findOrFail($this->replacementId)->syncCompletedAt();
         }
 
         $status->delete();

@@ -18,10 +18,13 @@ use Illuminate\Support\Facades\Gate;
  * The rule acts under its own name, with the rights of the person who created it: if they may no longer
  * edit the project, the rule switches itself off instead of running.
  *
+ * A field trigger names the field in `trigger_value` and the value it waits for in `trigger_field_value` (stored
+ * like the field's values; null for any value).
+ *
  * `conditions` is `{status_id?, tag_id?, assignee_id?}` and is checked against the task after the change;
  * `actions` is a list of `{type, value}` (an id, a number of days or a text, depending on the type).
  */
-#[Fillable(['project_id', 'created_by', 'name', 'trigger', 'trigger_value', 'conditions', 'actions', 'enabled'])]
+#[Fillable(['project_id', 'created_by', 'name', 'trigger', 'trigger_value', 'trigger_field_value', 'conditions', 'actions', 'enabled'])]
 class Automation extends Model
 {
     /** @use HasFactory<AutomationFactory> */
@@ -100,6 +103,7 @@ class Automation extends Model
             AutomationTrigger::StatusChanged => $task->status_id === $this->trigger_value,
             AutomationTrigger::AssigneeChanged => $this->trigger_value === null || $task->assignee_id === $this->trigger_value,
             AutomationTrigger::TagAdded => in_array($this->trigger_value, $data['ids'] ?? [], true),
+            AutomationTrigger::FieldSet => $this->fieldGetsTheValue($data),
         };
 
         if (! $triggered) {
@@ -111,6 +115,24 @@ class Automation extends Model
         return (! isset($conditions['status_id']) || $task->status_id === (int) $conditions['status_id'])
             && (! isset($conditions['assignee_id']) || $task->assignee_id === (int) $conditions['assignee_id'])
             && (! isset($conditions['tag_id']) || $task->tags()->whereKey((int) $conditions['tag_id'])->exists());
+    }
+
+    /**
+     * Whether the change gave the rule's field a value, and the one the rule waits for if it names one.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function fieldGetsTheValue(array $data): bool
+    {
+        if (($data['field_id'] ?? null) !== $this->trigger_value || ($data['value'] ?? null) === null) {
+            return false;
+        }
+
+        if ($this->trigger_field_value === null) {
+            return true;
+        }
+
+        return CustomField::query()->find($this->trigger_value)?->valueEquals((string) $data['value'], $this->trigger_field_value) ?? false;
     }
 
     /**

@@ -428,6 +428,21 @@ new class extends Component
     }
 
     /**
+     * An automation may have changed the task while it was saved (status, assignee, dates, tags). The form shows
+     * what is stored now, so saving again does not undo the rule.
+     */
+    private function showChangesByAutomations(): void
+    {
+        $this->task->refresh();
+
+        $this->statusId = (string) $this->task->status_id;
+        $this->assigneeId = (string) ($this->task->assignee_id ?? '');
+        $this->dueDate = $this->task->due_date?->format('Y-m-d') ?? '';
+        $this->startDate = $this->task->start_date?->format('Y-m-d') ?? '';
+        $this->tagIds = $this->task->tags->pluck('id')->map(fn ($id) => (string) $id)->all();
+    }
+
+    /**
      * Lets the list or board behind the flyout refresh itself.
      */
     private function announceChange(): void
@@ -656,6 +671,7 @@ new class extends Component
         $this->task->logSyncChanges(ActivityType::CollaboratorsAdded, ActivityType::CollaboratorsRemoved, $collaboratorChanges, $names(User::class, 'name'));
         $this->task->logSyncChanges(ActivityType::BlockersAdded, ActivityType::BlockersRemoved, $dependencyChanges['blockers'], $names(Task::class, 'title'));
         $this->task->logSyncChanges(ActivityType::BlockingAdded, ActivityType::BlockingRemoved, $dependencyChanges['blocking'], $names(Task::class, 'title'));
+        $this->showChangesByAutomations();
         $this->forgetComments();
 
         $this->announceChange();

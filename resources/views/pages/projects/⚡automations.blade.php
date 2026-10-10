@@ -2,7 +2,9 @@
 
 use App\Enums\AutomationAction;
 use App\Enums\AutomationTrigger;
+use App\Enums\CustomFieldType;
 use App\Models\Automation;
+use App\Models\CustomField;
 use App\Models\Project;
 use App\Models\User;
 use Flux\Flux;
@@ -28,6 +30,9 @@ new class extends Component
     public string $trigger = 'status_changed';
 
     public string $triggerValue = '';
+
+    /** For a field trigger: the value it waits for (an option id, a number, a date or a text); empty for any value. */
+    public string $triggerFieldValue = '';
 
     public string $conditionStatus = '';
 
@@ -78,6 +83,38 @@ new class extends Component
     }
 
     /**
+     * @return Collection<int, CustomField>
+     */
+    #[Computed]
+    public function fields(): Collection
+    {
+        return $this->project->customFields()->with('options')->get()->keyBy('id');
+    }
+
+    /**
+     * The field chosen for a field trigger, if any.
+     */
+    protected function triggerField(): ?CustomField
+    {
+        return $this->trigger === AutomationTrigger::FieldSet->value ? $this->fields->get((int) $this->triggerValue) : null;
+    }
+
+    /**
+     * What the trigger can be narrowed down to, as id => label.
+     *
+     * @return array<int, string>
+     */
+    protected function triggerChoices(): array
+    {
+        return match (AutomationTrigger::tryFrom($this->trigger)) {
+            AutomationTrigger::StatusChanged => $this->statusNames,
+            AutomationTrigger::TagAdded => $this->tagNames,
+            AutomationTrigger::FieldSet => $this->fields->map(fn (CustomField $field) => $field->name)->all(),
+            default => $this->userNames,
+        };
+    }
+
+    /**
      * @return array<int, string>
      */
     #[Computed]
@@ -95,6 +132,7 @@ new class extends Component
         $this->name = $rule->name ?? '';
         $this->trigger = ($rule->trigger ?? AutomationTrigger::StatusChanged)->value;
         $this->triggerValue = (string) ($rule?->trigger_value ?? '');
+        $this->triggerFieldValue = $rule->trigger_field_value ?? '';
         $this->conditionStatus = (string) ($rule?->conditions['status_id'] ?? '');
         $this->conditionAssignee = (string) ($rule?->conditions['assignee_id'] ?? '');
         $this->conditionTag = (string) ($rule?->conditions['tag_id'] ?? '');
@@ -108,6 +146,12 @@ new class extends Component
     public function updatedTrigger(): void
     {
         $this->triggerValue = '';
+        $this->triggerFieldValue = '';
+    }
+
+    public function updatedTriggerValue(): void
+    {
+        $this->triggerFieldValue = '';
     }
 
     public function updatedActions(mixed $value, ?string $key = null): void
@@ -140,7 +184,8 @@ new class extends Component
         ], attributes: ['name' => __('Name'), 'trigger' => __('When'), 'actions' => __('Then'), 'actions.*.type' => __('Action')]);
 
         $trigger = AutomationTrigger::from($validated['trigger']);
-        $triggerValue = $this->idOf('triggerValue', array_keys($trigger === AutomationTrigger::StatusChanged ? $this->statusNames : ($trigger === AutomationTrigger::TagAdded ? $this->tagNames : $this->userNames)), $trigger->valueIsOptional());
+        $triggerValue = $this->idOf('triggerValue', array_keys($this->triggerChoices()), $trigger->valueIsOptional());
+        $triggerFieldValue = $this->fieldValue($this->triggerField(), trim($this->triggerFieldValue));
         $conditions = array_filter([
             'status_id' => $this->idOf('conditionStatus', array_keys($this->statusNames), true),
             'assignee_id' => $this->idOf('conditionAssignee', array_keys($this->userNames), true),
@@ -161,6 +206,7 @@ new class extends Component
             'name' => trim($validated['name']),
             'trigger' => $trigger,
             'trigger_value' => $triggerValue,
+            'trigger_field_value' => $triggerFieldValue,
             'conditions' => $conditions === [] ? null : $conditions,
             'actions' => $steps,
             'created_by' => auth()->id(),
@@ -230,6 +276,26 @@ new class extends Component
         return (int) $value;
     }
 
+    /**
+     * The value a field trigger waits for, stored like the field's values; null for any value (or no field trigger).
+     */
+    private function fieldValue(?CustomField $field, string $value): ?string
+    {
+        if (! $field instanceof CustomField || $value === '') {
+            return null;
+        }
+
+        $stored = $field->type === CustomFieldType::Select
+            ? ($field->options->contains('id', (int) $value) ? $value : null)
+            : $field->parse($value)['value'] ?? null;
+
+        if ($stored === null) {
+            $this->addError('triggerFieldValue', __('This value does not fit the field.'));
+        }
+
+        return $stored;
+    }
+
     private function actionValue(int $index, AutomationAction $action, string $value): int|string|null
     {
         $key = "actions.$index.value";
@@ -276,6 +342,12 @@ new class extends Component
         return match ($rule->trigger) {
             AutomationTrigger::StatusChanged => __('When the status changes to “:name”', ['name' => $name($this->statusNames)]),
             AutomationTrigger::TagAdded => __('When the tag “:name” is added', ['name' => $name($this->tagNames)]),
+            AutomationTrigger::FieldSet => $rule->trigger_field_value === null
+                ? __('When “:field” gets a value', ['field' => $this->fields->get((int) $rule->trigger_value)->name ?? '–'])
+                : __('When “:field” is set to “:value”', [
+                    'field' => $this->fields->get((int) $rule->trigger_value)->name ?? '–',
+                    'value' => $this->fields->get((int) $rule->trigger_value)?->text($rule->trigger_field_value) ?? '–',
+                ]),
             AutomationTrigger::AssigneeChanged => $rule->trigger_value === null
                 ? __('When the assignee changes')
                 : __('When the assignee changes to :name', ['name' => $name($this->userNames)]),
@@ -372,20 +444,51 @@ new class extends Component
 
             <div class="space-y-3">
                 <flux:heading>{{ __('When') }}</flux:heading>
-                <div class="grid gap-3 sm:grid-cols-2">
+                {{-- A field trigger takes three things in a row: the trigger, the field and the value --}}
+                <div @class(['grid gap-3', 'sm:grid-cols-3' => $trigger === 'field_set', 'sm:grid-cols-2' => $trigger !== 'field_set'])>
                     <flux:select variant="listbox" wire:model.live="trigger" aria-label="{{ __('When') }}">
                         @foreach (\App\Enums\AutomationTrigger::cases() as $case)
                             <flux:select.option value="{{ $case->value }}">{{ $case->label() }}</flux:select.option>
                         @endforeach
                     </flux:select>
 
-                    <flux:select variant="listbox" wire:model="triggerValue" :placeholder="$trigger === 'assignee_changed' ? __('Anyone') : __('Choose …')" clearable aria-label="{{ __('Value') }}">
-                        @foreach (match ($trigger) { 'status_changed' => $this->statusNames, 'tag_added' => $this->tagNames, default => $this->userNames } as $id => $label)
+                    <flux:select variant="listbox" wire:model.live="triggerValue" :placeholder="match ($trigger) { 'assignee_changed' => __('Anyone'), 'field_set' => __('Choose a field …'), default => __('Choose …') }" clearable aria-label="{{ $trigger === 'field_set' ? __('Field') : __('Value') }}">
+                        @foreach ($this->triggerChoices() as $id => $label)
                             <flux:select.option value="{{ $id }}" wire:key="trigger-{{ $trigger }}-{{ $id }}">{{ $label }}</flux:select.option>
                         @endforeach
                     </flux:select>
+
+                    {{-- The value, entered like on the task; left empty, any value counts. Until a field is chosen the column stays empty. --}}
+                    @if ($trigger === 'field_set')
+                        <div wire:key="trigger-field-{{ $this->triggerField()?->id }}">
+                            @switch($this->triggerField()?->type)
+                                @case(null)
+                                    <flux:input disabled :placeholder="__('Any value')" aria-label="{{ __('Value') }}" />
+                                    @break
+                                @case(\App\Enums\CustomFieldType::Select)
+                                    <flux:select variant="listbox" wire:model="triggerFieldValue" :placeholder="__('Any value')" clearable aria-label="{{ __('Value') }}">
+                                        @foreach ($this->triggerField()->options as $option)
+                                            <flux:select.option value="{{ $option->id }}">{{ $option->name }}</flux:select.option>
+                                        @endforeach
+                                    </flux:select>
+                                    @break
+                                @case(\App\Enums\CustomFieldType::Number)
+                                    <flux:input wire:model="triggerFieldValue" type="number" step="any" :placeholder="__('Any value')" aria-label="{{ __('Value') }}" />
+                                    @break
+                                @case(\App\Enums\CustomFieldType::Date)
+                                    <flux:date-picker wire:model="triggerFieldValue" locale="{{ app()->getLocale() }}" :placeholder="__('Any value')" clearable aria-label="{{ __('Value') }}" />
+                                    @break
+                                @default
+                                    <flux:input wire:model="triggerFieldValue" :placeholder="__('Any value')" aria-label="{{ __('Value') }}" />
+                            @endswitch
+                        </div>
+                    @endif
                 </div>
+                @if ($this->triggerField()?->type === \App\Enums\CustomFieldType::Text)
+                    <flux:text size="sm" class="text-zinc-500">{{ __('Upper and lower case do not matter.') }}</flux:text>
+                @endif
                 <flux:error name="triggerValue" />
+                <flux:error name="triggerFieldValue" />
             </div>
 
             <div class="space-y-3">

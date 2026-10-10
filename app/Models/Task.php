@@ -687,7 +687,8 @@ class Task extends Model
     }
 
     /**
-     * Store, change or (with null) remove the value of a custom field and record the change.
+     * Store, change or (with null) remove the value of a custom field and record the change. The entry also keeps the
+     * field and the stored value, which is what an automation on that field looks for.
      *
      * @param  array{option_id: ?int, value: ?string}|null  $attributes
      */
@@ -711,7 +712,11 @@ class Task extends Model
             'name' => $field->name,
             'from' => $field->text($old) ?? '–',
             'to' => $field->text($new) ?? '–',
+            'field_id' => $field->id,
+            'value' => $new === null ? null : (string) $new,
         ]);
+
+        app(AutomationService::class)->flush();
     }
 
     /**

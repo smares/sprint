@@ -178,8 +178,9 @@ new class extends Component
             <flux:heading size="lg">{{ __('New project') }}</flux:heading>
             <flux:input wire:model="name" :label="__('Name')" autofocus />
             <flux:textarea wire:model="description" :label="__('Description')" rows="3" />
-            <div class="flex">
+            <div class="flex gap-2">
                 <flux:spacer />
+                <flux:modal.close><flux:button variant="ghost">{{ __('Cancel') }}</flux:button></flux:modal.close>
                 <flux:button type="submit" variant="primary">{{ __('Create') }}</flux:button>
             </div>
         </form>

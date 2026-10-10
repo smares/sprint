@@ -126,8 +126,9 @@ new class extends Component
                 <flux:date-picker wire:model="startDate" :label="__('Starts on')" locale="{{ app()->getLocale() }}" :placeholder="__('Select a date')" clearable />
                 <flux:date-picker wire:model="dueDate" :label="__('Due on')" locale="{{ app()->getLocale() }}" :placeholder="__('Select a date')" clearable />
             </div>
-            <div class="flex">
+            <div class="flex gap-2">
                 <flux:spacer />
+                <flux:modal.close><flux:button variant="ghost">{{ __('Cancel') }}</flux:button></flux:modal.close>
                 <flux:button type="submit" variant="primary">{{ __('Create') }}</flux:button>
             </div>
         </form>

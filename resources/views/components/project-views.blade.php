@@ -6,10 +6,11 @@
         'board' => [__('Board'), 'view-columns', 'projects.board'],
         'calendar' => [__('Calendar'), 'calendar-days', 'projects.calendar'],
         'timeline' => [__('Timeline'), 'arrow-turn-down-right', 'projects.timeline'],
+        'statistics' => [__('Statistics'), 'presentation-chart-line', 'projects.statistics'],
     ];
 
     // In a group, Flux gives a filled first or last button one border fewer than an outlined one: without a transparent
-    // stand-in the group gets a pixel narrower and, aligned to the right, the other views shift when list or timeline is shown.
+    // stand-in the group gets a pixel narrower and, aligned to the right, the other views shift when the first or last one is shown.
     $sameWidth = fn ($loop) => $loop->first ? 'border-s! border-s-transparent!' : ($loop->last ? 'border-e! border-e-transparent!' : '');
 @endphp
 

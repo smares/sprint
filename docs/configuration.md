@@ -33,7 +33,7 @@ Mit [Laravel Reverb](https://laravel.com/docs/reverb) aktualisieren sich die Sei
 
 Was live ist:
 
-- **Liste, Board, Kalender und Zeitleiste** eines Projekts laden neu, sobald eine Aufgabe, ein Kommentar oder ein Anhang im Projekt geändert wird (bei Massenaktionen und CSV-Import eine einzige Meldung statt einer je Aufgabe)
+- **Liste, Board, Kalender, Zeitleiste und Statistik** eines Projekts laden neu, sobald eine Aufgabe, ein Kommentar oder ein Anhang im Projekt geändert wird (bei Massenaktionen und CSV-Import eine einzige Meldung statt einer je Aufgabe)
 - **Aufgabenseite:** neue Kommentare, Anhänge und Unteraufgaben erscheinen sofort; speichert jemand anderes die Aufgabe, erscheint ein Hinweis mit „Neu laden“, ohne dass deine ungespeicherten Eingaben überschrieben werden
 - **Wer ist gerade da:** Avatare im Projekt-Kopf und ein Hinweis an der Aufgabe („Anna sieht sich diese Aufgabe auch gerade an“)
 - **Posteingang:** die Glocke zählt sofort hoch und zeigt eine Meldung

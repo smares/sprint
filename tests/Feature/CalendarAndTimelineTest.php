@@ -274,7 +274,8 @@ class CalendarAndTimelineTest extends TestCase
     {
         $this->get(route('projects.show', $this->project))->assertSee('border-s-transparent!', false)->assertDontSee('border-e-transparent!', false);
         $this->get(route('projects.board', $this->project))->assertDontSee('border-s-transparent!', false)->assertDontSee('border-e-transparent!', false);
-        $this->get(route('projects.timeline', $this->project))->assertSee('border-e-transparent!', false)->assertDontSee('border-s-transparent!', false);
+        $this->get(route('projects.timeline', $this->project))->assertDontSee('border-s-transparent!', false)->assertDontSee('border-e-transparent!', false);
+        $this->get(route('projects.statistics', $this->project))->assertSee('border-e-transparent!', false)->assertDontSee('border-s-transparent!', false);
     }
 
     public function test_people_without_access_cannot_open_the_new_views(): void

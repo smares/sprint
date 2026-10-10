@@ -674,7 +674,7 @@ new class extends Component
                     <div class="flex items-center gap-3">
                         <span class="w-6 shrink-0 max-sm:w-10"><span class="sr-only">{{ __('Done') }}</span></span>
                         @if ($this->canEdit)
-                            <flux:checkbox :checked="$selecting && $this->tasks->isNotEmpty() && $this->tasks->pluck('id')->diff($this->selectedIds)->isEmpty()" wire:click="togglePage" aria-label="{{ __('Select all visible tasks') }}" />
+                            <flux:checkbox wire:key="select-page-{{ $selecting ? 'on' : 'off' }}" :checked="$selecting && $this->tasks->isNotEmpty() && $this->tasks->pluck('id')->diff($this->selectedIds)->isEmpty()" wire:click="togglePage" aria-label="{{ __('Select all visible tasks') }}" />
                         @endif
                     </div>
                 </flux:table.column>
@@ -702,15 +702,18 @@ new class extends Component
                                     aria-label="{{ $task->isDone() ? __('Reopen task') : __('Mark as done') }}"
                                     tooltip="{{ $task->isDone() ? __('Reopen task') : __('Mark as done') }}"
                                 />
+                                {{-- Keyed by the selection mode: unticked again in the browser when the selection ends, the box would otherwise
+                                     keep its tick (the server draws it unticked before and after) and the next click would select the task anew --}}
                                 @if ($this->canEdit)
                                     @if ($selecting)
                                         <flux:checkbox
+                                            wire:key="select-{{ $task->id }}-on"
                                             :checked="in_array((string) $task->id, array_map('strval', $selected), true)"
                                             x-on:click="$wire.selected = $wire.selected.includes('{{ $task->id }}') ? $wire.selected.filter((id) => id !== '{{ $task->id }}') : [...$wire.selected, '{{ $task->id }}']; if ($wire.selected.length === 0) { $wire.stopSelecting() }"
                                             aria-label="{{ __('Select task') }}"
                                         />
                                     @else
-                                        <flux:checkbox :checked="false" wire:click="selectTask({{ $task->id }})" aria-label="{{ __('Select task') }}" />
+                                        <flux:checkbox wire:key="select-{{ $task->id }}-off" :checked="false" wire:click="selectTask({{ $task->id }})" aria-label="{{ __('Select task') }}" />
                                     @endif
                                 @endif
                             </div>

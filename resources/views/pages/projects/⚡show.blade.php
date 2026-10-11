@@ -528,7 +528,7 @@ new class extends Component
             <flux:button icon="funnel">
                 {{ __('Filter') }}
                 @if ($this->activeFilters->isNotEmpty())
-                    <flux:badge size="sm" color="blue" inset="top bottom">{{ $this->activeFilters->count() }}</flux:badge>
+                    <flux:badge size="sm" color="orange" inset="top bottom">{{ $this->activeFilters->count() }}</flux:badge>
                 @endif
             </flux:button>
         </flux:modal.trigger>
@@ -540,7 +540,7 @@ new class extends Component
         <flux:badge size="sm" color="zinc">{{ $this->statusFilterLabel }}</flux:badge>
 
         @foreach ($this->activeFilters as $filter)
-            <flux:badge wire:key="active-{{ $filter['key'] }}" size="sm" color="blue" as="button" type="button" wire:click="clearFilter('{{ $filter['key'] }}')" title="{{ __('Remove filter') }}">
+            <flux:badge wire:key="active-{{ $filter['key'] }}" size="sm" color="orange" as="button" type="button" wire:click="clearFilter('{{ $filter['key'] }}')" title="{{ __('Remove filter') }}">
                 {{ $filter['label'] }}
                 <flux:icon.x-mark variant="micro" class="ms-1" />
             </flux:badge>
@@ -581,7 +581,7 @@ new class extends Component
                         <span class="truncate">{{ $saved->name }}</span>
                     </flux:button>
                     @if ($saved->isShared())
-                        <flux:badge size="sm" color="blue">{{ __('Shared') }}</flux:badge>
+                        <flux:badge size="sm">{{ __('Shared') }}</flux:badge>
                     @endif
                     @can('delete', $saved)
                         <flux:button size="xs" variant="ghost" icon="trash" wire:click="deleteFilter({{ $saved->id }})" wire:confirm="{{ __('Delete view “:name”?', ['name' => $saved->name]) }}" aria-label="{{ __('Delete view') }}" />
@@ -659,7 +659,7 @@ new class extends Component
     </flux:modal>
 
     @if ($this->tasks->isEmpty())
-        <flux:callout icon="check-circle" :heading="__('No tasks')" :text="__('Nothing to do here with these filters.')" />
+        <x-empty-state icon="check-circle" :heading="__('No tasks')" :text="__('Nothing to do here with these filters.')" />
     @else
         {{-- Every column shows on every screen and the table scrolls sideways. The title stays in place (from sm with the done column
              before it; on phones only the title, so it leaves room for the rest); sticky cells need a background to cover what passes underneath. --}}
@@ -667,78 +667,71 @@ new class extends Component
             $pinnedDone = 'sm:sticky sm:start-0 sm:z-10 sm:bg-white sm:dark:bg-zinc-800';
             $pinnedTitle = 'pinned-column sm:start-20';
         @endphp
-        <flux:table>
-            <flux:table.columns>
-                {{-- Done button first, then the selection checkbox: two things, so they get one column and some room between them --}}
-                <flux:table.column :class="'w-20 min-w-20 max-sm:w-24 max-sm:min-w-24 '.$pinnedDone">
-                    <div class="flex items-center gap-3">
-                        <span class="w-6 shrink-0 max-sm:w-10"><span class="sr-only">{{ __('Done') }}</span></span>
-                        @if ($this->canEdit)
-                            <flux:checkbox wire:key="select-page-{{ $selecting ? 'on' : 'off' }}" :checked="$selecting && $this->tasks->isNotEmpty() && $this->tasks->pluck('id')->diff($this->selectedIds)->isEmpty()" wire:click="togglePage" aria-label="{{ __('Select all visible tasks') }}" />
-                        @endif
-                    </div>
-                </flux:table.column>
-                <flux:table.column :class="$pinnedTitle" sortable :sorted="$sortBy === 'title'" :direction="$sortDirection" wire:click="sort('title')">{{ __('Task') }}</flux:table.column>
-                <flux:table.column sortable :sorted="$sortBy === 'status'" :direction="$sortDirection" wire:click="sort('status')">{{ __('Status') }}</flux:table.column>
-                <flux:table.column>{{ __('Assignee') }}</flux:table.column>
-                <flux:table.column sortable :sorted="$sortBy === 'due'" :direction="$sortDirection" wire:click="sort('due')">{{ __('Due') }}</flux:table.column>
-                @foreach ($this->listFields as $field)
-                    <flux:table.column wire:key="column-{{ $field->id }}" sortable :sorted="$sortBy === 'field:'.$field->id" :direction="$sortDirection" wire:click="sort('field:{{ $field->id }}')">{{ $field->name }}</flux:table.column>
-                @endforeach
-            </flux:table.columns>
-            <flux:table.rows :wire:sort="$sortBy === '' && $this->canEdit && ! $selecting ? 'moveTask' : null" wire:sort:config="{ delay: 250, delayOnTouchOnly: true, touchStartThreshold: 12 }">
-                @foreach ($this->tasks as $task)
-                    <flux:table.row wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" class="cursor-pointer" :wire:sort:item="$sortBy === '' && $this->canEdit && ! $selecting ? $task->id : null">
-                        <flux:table.cell :class="$pinnedDone">
-                            <div class="flex items-center gap-3">
-                                <x-task-done-button :task="$task" :editable="$this->canEdit" />
-                                {{-- Keyed by the selection mode: unticked again in the browser when the selection ends, the box would otherwise
-                                     keep its tick (the server draws it unticked before and after) and the next click would select the task anew --}}
-                                @if ($this->canEdit)
-                                    @if ($selecting)
-                                        <flux:checkbox
-                                            wire:key="select-{{ $task->id }}-on"
-                                            :checked="in_array((string) $task->id, array_map('strval', $selected), true)"
-                                            x-on:click="$wire.selected = $wire.selected.includes('{{ $task->id }}') ? $wire.selected.filter((id) => id !== '{{ $task->id }}') : [...$wire.selected, '{{ $task->id }}']; if ($wire.selected.length === 0) { $wire.stopSelecting() }"
-                                            aria-label="{{ __('Select task') }}"
-                                        />
-                                    @else
-                                        <flux:checkbox wire:key="select-{{ $task->id }}-off" :checked="false" wire:click="selectTask({{ $task->id }})" aria-label="{{ __('Select task') }}" />
+        <div class="surface px-3">
+            <flux:table>
+                <flux:table.columns>
+                    {{-- Done button first, then the selection checkbox: two things, so they get one column and some room between them --}}
+                    <flux:table.column :class="'w-20 min-w-20 max-sm:w-24 max-sm:min-w-24 '.$pinnedDone">
+                        <div class="flex items-center gap-3">
+                            <span class="w-6 shrink-0 max-sm:w-10"><span class="sr-only">{{ __('Done') }}</span></span>
+                            @if ($this->canEdit)
+                                <flux:checkbox wire:key="select-page-{{ $selecting ? 'on' : 'off' }}" :checked="$selecting && $this->tasks->isNotEmpty() && $this->tasks->pluck('id')->diff($this->selectedIds)->isEmpty()" wire:click="togglePage" aria-label="{{ __('Select all visible tasks') }}" />
+                            @endif
+                        </div>
+                    </flux:table.column>
+                    <flux:table.column :class="$pinnedTitle" sortable :sorted="$sortBy === 'title'" :direction="$sortDirection" wire:click="sort('title')">{{ __('Task') }}</flux:table.column>
+                    <flux:table.column sortable :sorted="$sortBy === 'status'" :direction="$sortDirection" wire:click="sort('status')">{{ __('Status') }}</flux:table.column>
+                    <flux:table.column>{{ __('Assignee') }}</flux:table.column>
+                    <flux:table.column sortable :sorted="$sortBy === 'due'" :direction="$sortDirection" wire:click="sort('due')">{{ __('Due') }}</flux:table.column>
+                    @foreach ($this->listFields as $field)
+                        <flux:table.column wire:key="column-{{ $field->id }}" sortable :sorted="$sortBy === 'field:'.$field->id" :direction="$sortDirection" wire:click="sort('field:{{ $field->id }}')">{{ $field->name }}</flux:table.column>
+                    @endforeach
+                </flux:table.columns>
+                <flux:table.rows :wire:sort="$sortBy === '' && $this->canEdit && ! $selecting ? 'moveTask' : null" wire:sort:config="{ delay: 250, delayOnTouchOnly: true, touchStartThreshold: 12 }">
+                    @foreach ($this->tasks as $task)
+                        <flux:table.row wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" class="cursor-pointer" :wire:sort:item="$sortBy === '' && $this->canEdit && ! $selecting ? $task->id : null">
+                            <flux:table.cell :class="$pinnedDone">
+                                <div class="flex items-center gap-3">
+                                    <x-task-done-button :task="$task" :editable="$this->canEdit" />
+                                    {{-- Keyed by the selection mode: unticked again in the browser when the selection ends, the box would otherwise
+                                         keep its tick (the server draws it unticked before and after) and the next click would select the task anew --}}
+                                    @if ($this->canEdit)
+                                        @if ($selecting)
+                                            <flux:checkbox
+                                                wire:key="select-{{ $task->id }}-on"
+                                                :checked="in_array((string) $task->id, array_map('strval', $selected), true)"
+                                                x-on:click="$wire.selected = $wire.selected.includes('{{ $task->id }}') ? $wire.selected.filter((id) => id !== '{{ $task->id }}') : [...$wire.selected, '{{ $task->id }}']; if ($wire.selected.length === 0) { $wire.stopSelecting() }"
+                                                aria-label="{{ __('Select task') }}"
+                                            />
+                                        @else
+                                            <flux:checkbox wire:key="select-{{ $task->id }}-off" :checked="false" wire:click="selectTask({{ $task->id }})" aria-label="{{ __('Select task') }}" />
+                                        @endif
                                     @endif
-                                @endif
-                            </div>
-                        </flux:table.cell>
-                        <flux:table.cell :class="'min-w-56 whitespace-normal max-sm:min-w-[45vw] '.$pinnedTitle">
-                            <x-task-title-line :task="$task" :open="(string) $task->id === $openTaskId" :progress="$this->progress[$task->id] ?? null" :number="$loop->iteration" />
-                        </flux:table.cell>
-                        <flux:table.cell>
-                            <x-color-badge size="sm" :color="$task->status->color">{{ $task->status->name }}</x-color-badge>
-                        </flux:table.cell>
-                        {{-- Only the avatar; the name and an absence show on hover --}}
-                        <flux:table.cell>
-                            <div class="flex items-center gap-1.5">
-                                @if ($task->assignee)
-                                    <x-user-avatar size="xs" :user="$task->assignee" :tooltip="$task->assignee->labelledName()" />
-                                @endif
-                                @if ($task->collaborators->isNotEmpty())
-                                    <flux:tooltip :content="__('Collaborators').': '.$task->collaborators->map->labelledName()->join(', ')">
-                                        <flux:text size="sm">+{{ $task->collaborators->count() }}</flux:text>
-                                    </flux:tooltip>
-                                @endif
-                            </div>
-                        </flux:table.cell>
-                        <flux:table.cell>
-                            <x-task-due :task="$task" />
-                        </flux:table.cell>
-                        @foreach ($this->listFields as $field)
-                            <flux:table.cell wire:key="cell-{{ $task->id }}-{{ $field->id }}">
-                                <x-field-value :task="$task" :field="$field" :show-empty="false" />
+                                </div>
                             </flux:table.cell>
-                        @endforeach
-                    </flux:table.row>
-                @endforeach
-            </flux:table.rows>
-        </flux:table>
+                            <flux:table.cell :class="'min-w-56 whitespace-normal max-sm:min-w-[45vw] '.$pinnedTitle">
+                                <x-task-title-line :task="$task" :open="(string) $task->id === $openTaskId" :progress="$this->progress[$task->id] ?? null" :number="$loop->iteration" />
+                            </flux:table.cell>
+                            <flux:table.cell>
+                                <x-status-badge :status="$task->status" />
+                            </flux:table.cell>
+                            {{-- Assignee first, then collaborators, as on the board; names and absences show on hover --}}
+                            <flux:table.cell>
+                                <x-avatar-stack :users="[$task->assignee, ...$task->collaborators]" />
+                            </flux:table.cell>
+                            <flux:table.cell>
+                                <x-task-due :task="$task" />
+                            </flux:table.cell>
+                            @foreach ($this->listFields as $field)
+                                <flux:table.cell wire:key="cell-{{ $task->id }}-{{ $field->id }}">
+                                    <x-field-value :task="$task" :field="$field" :show-empty="false" />
+                                </flux:table.cell>
+                            @endforeach
+                        </flux:table.row>
+                    @endforeach
+                </flux:table.rows>
+            </flux:table>
+        </div>
 
         @if ($this->totalTasks > $this->tasks->count())
             <div wire:intersect="loadMore" class="mt-4 flex items-center justify-center gap-3">

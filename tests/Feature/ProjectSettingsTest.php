@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Color;
 use App\Enums\ProjectRole;
 use App\Models\Attachment;
 use App\Models\Project;
@@ -43,6 +44,36 @@ class ProjectSettingsTest extends TestCase
 
         $this->settings()->set('description', '')->call('save');
         $this->assertNull($this->project->fresh()->description);
+    }
+
+    public function test_a_project_gets_its_own_color_and_icon_and_keeps_one_without(): void
+    {
+        $this->assertContains($this->project->displayColor(), array_column(Color::SWATCHES, 0));
+        $this->assertNotSame(Color::FALLBACK, $this->project->displayColor());
+        $this->assertSame('W', $this->project->displayIcon());
+
+        $this->settings()->set('color', '#EF4444')->set('icon', ' 🚀 ')->call('save')->assertHasNoErrors();
+
+        $this->project->refresh();
+        $this->assertSame('#ef4444', $this->project->color);
+        $this->assertSame('#ef4444', $this->project->displayColor());
+        $this->assertSame('🚀', $this->project->displayIcon());
+        $this->get(route('projects.show', $this->project))->assertSee('🚀')->assertSee('--badge: #ef4444', false);
+
+        $this->settings()->set('color', '')->set('icon', '')->call('save')->assertHasNoErrors();
+        $this->assertNull($this->project->fresh()->color);
+        $this->assertNull($this->project->fresh()->icon);
+    }
+
+    public function test_the_icon_is_a_single_emoji_or_character_and_the_color_a_hex_value(): void
+    {
+        // An emoji made of several code points counts as one
+        $this->settings()->set('icon', '👩‍💻')->call('save')->assertHasNoErrors();
+        $this->assertSame('👩‍💻', $this->project->fresh()->icon);
+
+        $this->settings()->set('icon', 'AB')->call('save')->assertHasErrors('icon');
+        $this->settings()->set('color', 'red')->call('save')->assertHasErrors('color');
+        $this->assertSame('👩‍💻', $this->project->fresh()->icon);
     }
 
     public function test_the_name_is_required(): void

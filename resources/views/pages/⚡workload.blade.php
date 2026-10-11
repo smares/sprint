@@ -112,49 +112,51 @@ new class extends Component
     </div>
 
     @if ($this->people->isEmpty())
-        <flux:text>{{ __('Nobody in this team yet.') }}</flux:text>
+        <x-empty-state icon="users" :heading="__('Nobody in this team yet.')" />
     @else
-        <flux:table>
-            <flux:table.columns>
-                {{-- On narrow screens the weeks scroll sideways under the names, which stay in place (as in the task lists) --}}
-                <flux:table.column class="pinned-column">{{ __('Person') }}</flux:table.column>
-                <flux:table.column align="end">{{ __('Overdue') }}</flux:table.column>
-                @foreach ($this->weeks as $week)
-                    <flux:table.column align="end" wire:key="week-{{ $loop->index }}"><span title="{{ $week['range'] }}">{{ $loop->first ? __('This week') : $week['label'] }}</span></flux:table.column>
-                @endforeach
-                <flux:table.column align="end">{{ __('No due date') }}</flux:table.column>
-            </flux:table.columns>
+        <div class="surface px-3">
+            <flux:table>
+                <flux:table.columns>
+                    {{-- On narrow screens the weeks scroll sideways under the names, which stay in place (as in the task lists) --}}
+                    <flux:table.column class="pinned-column">{{ __('Person') }}</flux:table.column>
+                    <flux:table.column align="end">{{ __('Overdue') }}</flux:table.column>
+                    @foreach ($this->weeks as $week)
+                        <flux:table.column align="end" wire:key="week-{{ $loop->index }}"><span title="{{ $week['range'] }}">{{ $loop->first ? __('This week') : $week['label'] }}</span></flux:table.column>
+                    @endforeach
+                    <flux:table.column align="end">{{ __('No due date') }}</flux:table.column>
+                </flux:table.columns>
 
-            <flux:table.rows>
-                @foreach ($this->people as $person)
-                    @php($row = $this->load[$person->id])
-                    <flux:table.row wire:key="person-{{ $person->id }}" data-person="{{ $person->id }}">
-                        <flux:table.cell class="pinned-column">
-                            <div class="flex items-center gap-2">
-                                <x-user-avatar size="xs" :user="$person" />
-                                <span class="font-medium text-zinc-800 dark:text-white">{{ $person->name }}</span>
-                            </div>
-                        </flux:table.cell>
-                        <flux:table.cell align="end">
-                            <span title="{{ $this->titlesOf($row['overdue']) }}" @class(['font-medium text-red-600 dark:text-red-400' => $row['overdue'] !== [], 'text-zinc-300 dark:text-zinc-600' => $row['overdue'] === []])>{{ count($row['overdue']) ?: '–' }}</span>
-                        </flux:table.cell>
-                        @foreach ($row['weeks'] as $cell)
-                            <flux:table.cell align="end" wire:key="cell-{{ $person->id }}-{{ $loop->index }}">
-                                <div class="flex flex-col items-end gap-0.5">
-                                    <span title="{{ $this->titlesOf($cell['titles']) }}" @class(['font-medium text-zinc-800 dark:text-white' => $cell['titles'] !== [], 'text-zinc-300 dark:text-zinc-600' => $cell['titles'] === []])>{{ count($cell['titles']) ?: '–' }}</span>
-                                    @if ($cell['absent_days'] > 0)
-                                        <flux:badge size="sm" :color="$cell['titles'] !== [] ? 'amber' : 'zinc'" icon="sun">{{ trans_choice(':count day away|:count days away', $cell['absent_days']) }}</flux:badge>
-                                    @endif
+                <flux:table.rows>
+                    @foreach ($this->people as $person)
+                        @php($row = $this->load[$person->id])
+                        <flux:table.row wire:key="person-{{ $person->id }}" data-person="{{ $person->id }}">
+                            <flux:table.cell class="pinned-column">
+                                <div class="flex items-center gap-2">
+                                    <x-user-avatar size="xs" :user="$person" />
+                                    <span class="font-medium text-zinc-800 dark:text-white">{{ $person->name }}</span>
                                 </div>
                             </flux:table.cell>
-                        @endforeach
-                        <flux:table.cell align="end">
-                            <span class="text-zinc-500 dark:text-zinc-400">{{ $row['undated'] ?: '–' }}</span>
-                        </flux:table.cell>
-                    </flux:table.row>
-                @endforeach
-            </flux:table.rows>
-        </flux:table>
+                            <flux:table.cell align="end">
+                                <span title="{{ $this->titlesOf($row['overdue']) }}" @class(['font-medium text-red-600 dark:text-red-400' => $row['overdue'] !== [], 'text-zinc-300 dark:text-zinc-600' => $row['overdue'] === []])>{{ count($row['overdue']) ?: '–' }}</span>
+                            </flux:table.cell>
+                            @foreach ($row['weeks'] as $cell)
+                                <flux:table.cell align="end" wire:key="cell-{{ $person->id }}-{{ $loop->index }}">
+                                    <div class="flex flex-col items-end gap-0.5">
+                                        <span title="{{ $this->titlesOf($cell['titles']) }}" @class(['font-medium text-zinc-800 dark:text-white' => $cell['titles'] !== [], 'text-zinc-300 dark:text-zinc-600' => $cell['titles'] === []])>{{ count($cell['titles']) ?: '–' }}</span>
+                                        @if ($cell['absent_days'] > 0)
+                                            <flux:badge size="sm" :color="$cell['titles'] !== [] ? 'amber' : 'zinc'" icon="sun">{{ trans_choice(':count day away|:count days away', $cell['absent_days']) }}</flux:badge>
+                                        @endif
+                                    </div>
+                                </flux:table.cell>
+                            @endforeach
+                            <flux:table.cell align="end">
+                                <span class="text-zinc-500 dark:text-zinc-400">{{ $row['undated'] ?: '–' }}</span>
+                            </flux:table.cell>
+                        </flux:table.row>
+                    @endforeach
+                </flux:table.rows>
+            </flux:table>
+        </div>
 
         <flux:text size="sm" class="mt-4 text-zinc-500">{{ __('Hover over a number to see the tasks. Days away count Monday to Friday; amber means there is work due while the person is away.') }}</flux:text>
     @endif

@@ -95,11 +95,18 @@
                     <button
                         type="button"
                         role="option"
-                        class="block w-full truncate rounded px-2 py-1 text-start"
+                        class="flex w-full items-center gap-2 truncate rounded px-2 py-1 text-start"
                         x-bind:class="index === active ? 'bg-zinc-100 dark:bg-zinc-700' : ''"
                         x-on:mousedown.prevent="select(item)"
                     >
-                        <span x-text="item.label"></span>
+                        {{-- People with their round avatar, like everywhere else (see x-user-avatar and User::avatarColor) --}}
+                        <template x-if="item.type === 'user'">
+                            <span class="inline-flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-full text-[0.5625rem] font-medium" x-bind:class="item.avatar ? '' : `bg-${item.color}-200 text-${item.color}-800`" aria-hidden="true">
+                                <template x-if="item.avatar"><img x-bind:src="item.avatar" alt="" class="size-full object-cover"></template>
+                                <template x-if="! item.avatar"><span x-text="item.initials"></span></template>
+                            </span>
+                        </template>
+                        <span class="truncate" x-text="item.label"></span>
                         {{-- Only shown in the list; the mention itself keeps just the name --}}
                         <span x-show="item.note" class="text-xs text-zinc-400" x-text="'(' + item.note + ')'"></span>
                     </button>

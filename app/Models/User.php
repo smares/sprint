@@ -35,6 +35,9 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, HasPushSubscriptions, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
 
+    /** Flux's avatar colors that avatarColor() picks from. Appending keeps everyone's color; reordering changes it. */
+    public const array AVATAR_COLORS = ['red', 'orange', 'amber', 'lime', 'green', 'emerald', 'teal', 'cyan', 'sky', 'blue', 'indigo', 'violet', 'purple', 'fuchsia', 'pink', 'rose'];
+
     /**
      * @var array<string, mixed>
      */
@@ -341,11 +344,20 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
     /**
      * What others see of this person in "who else is here" (presence channels).
      *
-     * @return array{id: int, name: string, initials: string, avatar: string|null}
+     * @return array{id: int, name: string, initials: string, avatar: string|null, color: string}
      */
     public function presenceData(): array
     {
-        return ['id' => $this->id, 'name' => $this->name, 'initials' => $this->initials(), 'avatar' => $this->avatarUrl()];
+        return ['id' => $this->id, 'name' => $this->name, 'initials' => $this->initials(), 'avatar' => $this->avatarUrl(), 'color' => $this->avatarColor()];
+    }
+
+    /**
+     * The color of the initials while there is no profile picture, one of Flux's avatar colors: derived from the id, so a
+     * person keeps it everywhere and after a change of name.
+     */
+    public function avatarColor(): string
+    {
+        return self::AVATAR_COLORS[crc32((string) $this->id) % count(self::AVATAR_COLORS)];
     }
 
     public function initials(): string

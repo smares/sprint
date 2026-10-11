@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\UserAvatar;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Blade;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -41,6 +42,20 @@ class AvatarTest extends TestCase
 
         $this->get(route('profile'))->assertOk()->assertSee('Bild wählen')->assertDontSee('Bild entfernen')->assertDontSee('/avatars/');
         $this->get(route('avatars.show', $this->user))->assertNotFound();
+    }
+
+    public function test_without_a_picture_the_initials_are_round_and_keep_a_color_of_their_own(): void
+    {
+        $color = $this->user->avatarColor();
+
+        $this->assertContains($color, User::AVATAR_COLORS);
+        $this->user->update(['name' => 'Anna Umbenannt']);
+        $this->assertSame($color, $this->user->fresh()->avatarColor());
+        $this->assertSame($color, $this->user->presenceData()['color']);
+
+        $html = Blade::render('<x-user-avatar :user="$user" />', ['user' => $this->user]);
+        $this->assertStringContainsString("bg-{$color}-200", $html);
+        $this->assertStringContainsString('--avatar-radius:calc(infinity*1px)', $html);
     }
 
     public function test_a_picture_is_stored_in_the_database_and_delivered_safely(): void

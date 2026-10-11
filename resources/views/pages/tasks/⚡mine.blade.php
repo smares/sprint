@@ -112,42 +112,49 @@ new class extends Component
     <flux:heading size="xl" class="mb-6">{{ __('My tasks') }}</flux:heading>
 
     @if ($this->tasks->isEmpty())
-        <flux:callout icon="check-circle" :heading="__('All done')" :text="__('You have no open tasks assigned or none you are involved in.')" />
+        <x-empty-state emoji="🎉" :heading="__('All done')" :text="__('You have no open tasks assigned or none you are involved in.')" />
     @else
         {{-- Every column shows on every screen and the table scrolls sideways under the title, which stays in place.
              The rows are built from the same pieces as the project list: done button, title with progress and tags, due date. --}}
-        <flux:table>
-            <flux:table.columns>
-                <flux:table.column class="pinned-column">{{ __('Task') }}</flux:table.column>
-                <flux:table.column>{{ __('Project') }}</flux:table.column>
-                <flux:table.column>{{ __('Status') }}</flux:table.column>
-                <flux:table.column>{{ __('Due') }}</flux:table.column>
-            </flux:table.columns>
-            <flux:table.rows>
-                @foreach ($this->tasks as $task)
-                    <flux:table.row wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" class="cursor-pointer">
-                        <flux:table.cell class="pinned-column min-w-56 whitespace-normal max-sm:min-w-[45vw]">
-                            <div class="flex items-center gap-3">
-                                <x-task-done-button :task="$task" :editable="in_array($task->project_id, $this->editableProjectIds, true)" />
-                                <div class="min-w-0">
-                                    <x-task-title-line :task="$task" :open="(string) $task->id === $openTaskId" :progress="$this->progress[$task->id] ?? null" />
-                                    @if ($task->parent)
-                                        <flux:text size="sm" class="block">{{ __('in :title', ['title' => $task->parent->title]) }}</flux:text>
-                                    @endif
+        <div class="surface px-3">
+            <flux:table>
+                <flux:table.columns>
+                    <flux:table.column class="pinned-column">{{ __('Task') }}</flux:table.column>
+                    <flux:table.column>{{ __('Project') }}</flux:table.column>
+                    <flux:table.column>{{ __('Status') }}</flux:table.column>
+                    <flux:table.column>{{ __('Due') }}</flux:table.column>
+                </flux:table.columns>
+                <flux:table.rows>
+                    @foreach ($this->tasks as $task)
+                        <flux:table.row wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" class="cursor-pointer">
+                            <flux:table.cell class="pinned-column min-w-56 whitespace-normal max-sm:min-w-[45vw]">
+                                <div class="flex items-center gap-3">
+                                    <x-task-done-button :task="$task" :editable="in_array($task->project_id, $this->editableProjectIds, true)" />
+                                    <div class="min-w-0">
+                                        <x-task-title-line :task="$task" :open="(string) $task->id === $openTaskId" :progress="$this->progress[$task->id] ?? null" />
+                                        @if ($task->parent)
+                                            <flux:text size="sm" class="block">{{ __('in :title', ['title' => $task->parent->title]) }}</flux:text>
+                                        @endif
+                                    </div>
                                 </div>
-                            </div>
-                        </flux:table.cell>
-                        <flux:table.cell><flux:link variant="subtle" :href="route('projects.show', $task->project)" wire:navigate>{{ $task->project->name }}</flux:link></flux:table.cell>
-                        <flux:table.cell>
-                            <x-color-badge size="sm" :color="$task->status->color">{{ $task->status->name }}</x-color-badge>
-                        </flux:table.cell>
-                        <flux:table.cell>
-                            <x-task-due :task="$task" />
-                        </flux:table.cell>
-                    </flux:table.row>
-                @endforeach
-            </flux:table.rows>
-        </flux:table>
+                            </flux:table.cell>
+                            <flux:table.cell>
+                                <div class="flex items-center gap-2">
+                                    <x-project-icon :project="$task->project" size="sm" />
+                                    <flux:link variant="subtle" :href="route('projects.show', $task->project)" wire:navigate>{{ $task->project->name }}</flux:link>
+                                </div>
+                            </flux:table.cell>
+                            <flux:table.cell>
+                                <x-status-badge :status="$task->status" />
+                            </flux:table.cell>
+                            <flux:table.cell>
+                                <x-task-due :task="$task" />
+                            </flux:table.cell>
+                        </flux:table.row>
+                    @endforeach
+                </flux:table.rows>
+            </flux:table>
+        </div>
 
         @if ($this->totalTasks > $this->tasks->count())
             <div wire:intersect="loadMore" class="mt-4 flex items-center justify-center gap-3">

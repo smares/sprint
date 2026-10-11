@@ -126,19 +126,20 @@ new class extends Component
         @elseif (app(TaskSearchService::class)->isTooShort($this->terms))
             <flux:text>{{ __('Enter at least :count characters.', ['count' => TaskSearchService::MIN_LIKE_LENGTH]) }}</flux:text>
         @elseif ($this->results->isEmpty())
-            <flux:callout icon="magnifying-glass" :heading="__('No results found')" :text="__('There are no matching tasks for “:query” that you can see.', ['query' => $query])" />
+            <x-empty-state icon="magnifying-glass" :heading="__('No results found')" :text="__('There are no matching tasks for “:query” that you can see.', ['query' => $query])" />
         @else
-            <ul class="divide-y divide-zinc-200 dark:divide-zinc-700">
+            <ul class="surface divide-y divide-zinc-200 px-4 dark:divide-zinc-700">
                 @foreach ($this->results->take($this->limit) as $task)
                     @php($hit = $this->explain($task))
                     <li wire:key="result-{{ $task->id }}" class="py-3">
-                        <div class="flex items-center gap-2">
+                        <div class="flex flex-wrap items-center gap-2">
                             <a href="{{ route('tasks.show', $task) }}" wire:navigate class="font-medium hover:underline">{{ $task->title }}</a>
-                            <x-color-badge size="sm" :color="$task->status->color">{{ $task->status->name }}</x-color-badge>
+                            <x-status-badge :status="$task->status" />
+                            <x-task-due :task="$task" />
                         </div>
-                        <flux:text size="sm">
-                            {{ $task->project->name }}@if ($task->parent) · {{ __('in :title', ['title' => $task->parent->title]) }}@endif
-                            @if ($task->due_date) · {{ __('due :date', ['date' => $task->due_date->isoFormat('L')]) }}@endif
+                        <flux:text size="sm" class="mt-1 flex items-center gap-1.5">
+                            <x-project-icon :project="$task->project" size="sm" />
+                            <span>{{ $task->project->name }}@if ($task->parent) · {{ __('in :title', ['title' => $task->parent->title]) }}@endif</span>
                         </flux:text>
                         @if ($hit)
                             <flux:text size="sm" class="mt-1"><span class="font-medium">{{ $hit['label'] }}:</span> {{ $hit['text'] }}</flux:text>

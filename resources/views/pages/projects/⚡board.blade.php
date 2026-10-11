@@ -59,6 +59,7 @@ new class extends Component
             ->orderBy('position')
             ->orderBy('id')
             ->get()
+            ->loadCount(['comments', 'attachments'])
             ->groupBy('status_id');
 
         return $this->statuses
@@ -182,8 +183,11 @@ new class extends Component
 
     <flux:kanban class="items-start overflow-x-auto pb-4">
         @foreach ($this->statuses as $status)
-            <flux:kanban.column wire:key="column-{{ $status->id }}" class="shrink-0">
-                <flux:kanban.column.header :heading="$status->name" :count="$this->columnTotals[$status->id]" />
+            {{-- The status color as a line along the top of the column and a dot before its name --}}
+            <flux:kanban.column wire:key="column-{{ $status->id }}" class="shrink-0 border-t-3 border-(--badge)" style="--badge: {{ \App\Color::normalize($status->color) }}">
+                <flux:kanban.column.header :heading="$status->name" :count="$this->columnTotals[$status->id]">
+                    <span class="size-2.5 shrink-0 rounded-full bg-(--badge)" aria-hidden="true"></span>
+                </flux:kanban.column.header>
 
                 <flux:kanban.column.cards
                     class="min-h-16"
@@ -193,12 +197,8 @@ new class extends Component
                     wire:sort:config="{ delay: 250, delayOnTouchOnly: true, touchStartThreshold: 12 }"
                 >
                     @foreach ($this->columns[$status->id] as $task)
-                        <flux:kanban.card wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" class="cursor-pointer" :wire:sort:item="$this->canEdit ? $task->id : null">
+                        <flux:kanban.card wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" class="board-card cursor-pointer" :wire:sort:item="$this->canEdit ? $task->id : null">
                             <x-task-title-link :task="$task" :open="(string) $task->id === $openTaskId" />
-
-                            @if ($progress = $this->progress[$task->id] ?? null)
-                                <flux:badge size="sm" icon="list-bullet" class="mt-2">{{ $progress['done'] }}/{{ $progress['total'] }}</flux:badge>
-                            @endif
 
                             @if ($this->listFields->isNotEmpty())
                                 <div class="mt-2 flex flex-wrap gap-1">
@@ -216,20 +216,24 @@ new class extends Component
                                 </div>
                             @endif
 
-                            @if ($task->assignee || $task->collaborators->isNotEmpty() || $task->due_date)
-                                <div class="mt-2 flex items-center justify-between gap-2">
-                                    <div class="flex min-w-0 items-center gap-1.5" title="{{ collect([$task->assignee?->name, ...$task->collaborators->pluck('name')])->filter()->join(', ') }}">
-                                        @if ($task->assignee)
-                                            <x-user-avatar size="xs" :user="$task->assignee" />
-                                            <flux:text size="sm" class="truncate">{{ $task->assignee->labelledName() }}</flux:text>
-                                        @endif
-                                        @if ($task->collaborators->isNotEmpty())
-                                            <flux:text size="sm">+{{ $task->collaborators->count() }}</flux:text>
-                                        @endif
-                                    </div>
-                                    @if ($task->due_date)
-                                        <flux:text size="sm" @class(['shrink-0', 'text-red-500' => $task->isOverdue()])>{{ $task->due_date->isoFormat('L') }}</flux:text>
+                            {{-- One line of facts: who (stacked faces), when, and how much is attached to it --}}
+                            @php
+                                $progress = $this->progress[$task->id] ?? null;
+                                $people = collect([$task->assignee, ...$task->collaborators])->filter()->unique('id')->values();
+                            @endphp
+                            @if ($people->isNotEmpty() || $task->due_date || $progress || $task->comments_count || $task->attachments_count)
+                                <div class="mt-3 flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
+                                    <x-avatar-stack :users="$people" />
+                                    @if ($progress)
+                                        <span class="inline-flex items-center gap-0.5 tabular-nums" title="{{ __('Subtasks') }}"><flux:icon.list-bullet variant="micro" />{{ $progress['done'] }}/{{ $progress['total'] }}</span>
                                     @endif
+                                    @if ($task->comments_count)
+                                        <span class="inline-flex items-center gap-0.5 tabular-nums" title="{{ __('Comments') }}"><flux:icon.chat-bubble-left variant="micro" />{{ $task->comments_count }}</span>
+                                    @endif
+                                    @if ($task->attachments_count)
+                                        <span class="inline-flex items-center gap-0.5 tabular-nums" title="{{ __('Attachments') }}"><flux:icon.paper-clip variant="micro" />{{ $task->attachments_count }}</span>
+                                    @endif
+                                    <x-task-due :task="$task" class="ms-auto" />
                                 </div>
                             @endif
                         </flux:kanban.card>

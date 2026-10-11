@@ -190,7 +190,7 @@ new class extends Component
 
     <ul class="space-y-2">
         @foreach ($this->users as $user)
-            <li wire:key="user-{{ $user->id }}" @class(['flex flex-wrap items-center gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700', 'opacity-60' => ! $user->isActive()])>
+            <li wire:key="user-{{ $user->id }}" @class(['surface flex flex-wrap items-center gap-3 p-3', 'opacity-60' => ! $user->isActive()])>
                 <x-user-avatar size="sm" :user="$user" />
                 <div class="min-w-0 flex-1">
                     <flux:heading class="truncate">{{ $user->name }} @if ($user->is(auth()->user())) <flux:badge size="sm">{{ __('You') }}</flux:badge> @endif @unless ($user->isActive()) <flux:badge size="sm" color="zinc">{{ __('Deactivated') }}</flux:badge> @endunless @if ($user->isAbsent()) <flux:badge size="sm" color="amber">{{ \Illuminate\Support\Str::ucfirst($user->absenceNote()) }}</flux:badge> @endif</flux:heading>

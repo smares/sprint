@@ -18,9 +18,9 @@
         @endif
         @fluxAppearance
     </head>
-    <body class="min-h-screen bg-white dark:bg-zinc-800">
+    <body class="min-h-screen bg-zinc-50 dark:bg-zinc-900">
         @auth
-            <flux:header container class="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
+            <flux:header container class="border-b border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900">
                 <flux:sidebar.toggle class="lg:hidden" icon="bars-2" inset="left" aria-label="{{ __('Menu') }}" />
 
                 <x-app-brand class="max-lg:hidden" />
@@ -52,7 +52,7 @@
                 <livewire:notification-bell />
 
                 <flux:dropdown position="bottom" align="end">
-                    <flux:profile :name="auth()->user()->name" initials="{{ auth()->user()->initials() }}" :avatar="auth()->user()->avatarUrl()" class="max-sm:[&>span.truncate]:hidden" />
+                    <flux:profile circle :name="auth()->user()->name" initials="{{ auth()->user()->initials() }}" :avatar="auth()->user()->avatarUrl()" :avatar:color="auth()->user()->avatarColor()" class="max-sm:[&>span.truncate]:hidden" />
                     <flux:menu class="min-w-60!">
                         <div class="px-2 py-1.5">
                             <flux:text size="sm" class="mb-1.5">{{ __('Appearance') }}</flux:text>
@@ -79,7 +79,7 @@
                 </flux:dropdown>
             </flux:header>
 
-            <flux:sidebar stashable sticky class="border-e border-zinc-200 bg-zinc-50 lg:hidden dark:border-zinc-700 dark:bg-zinc-900">
+            <flux:sidebar stashable sticky class="border-e border-zinc-200 bg-white lg:hidden dark:border-zinc-700 dark:bg-zinc-900">
                 <flux:sidebar.toggle class="lg:hidden" icon="x-mark" aria-label="{{ __('Close menu') }}" />
 
                 <x-app-brand class="px-2" />

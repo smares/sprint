@@ -26,9 +26,16 @@
                     @else
                         <a href="{{ route('tasks.show', $subtask) }}" wire:navigate @class(['hover:underline', 'line-through text-zinc-400' => $subtask->isDone()])>{{ $subtask->title }}</a>
                     @endif
-                    @if ($subtask->assignee)
-                        <flux:text size="sm">{{ $subtask->assignee->labelledName() }}</flux:text>
-                    @endif
+                    {{-- Status, person and due date like in the lists, but quieter: the status only when it says more than open or done --}}
+                    <div class="ms-auto flex shrink-0 items-center gap-2">
+                        @if (! $subtask->isDone() && $subtask->status && $subtask->status->position > 0)
+                            <x-status-badge :status="$subtask->status" class="max-sm:hidden" />
+                        @endif
+                        <x-task-due :task="$subtask" />
+                        @if ($subtask->assignee)
+                            <x-user-avatar size="xs" :user="$subtask->assignee" :tooltip="$subtask->assignee->labelledName()" />
+                        @endif
+                    </div>
                 </div>
 
                 @if ($children->isNotEmpty())

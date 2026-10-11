@@ -375,7 +375,7 @@ new class extends Component
             <flux:tab name="api" icon="key">{{ __('API access') }}</flux:tab>
         </flux:tabs>
 
-        <flux:tab.panel name="profile" class="space-y-8">
+        <flux:tab.panel name="profile" class="surface mt-4 space-y-8 p-4 sm:p-6">
             <div>
                 <flux:heading size="lg">{{ __('Personal details') }}</flux:heading>
                 <flux:text class="mt-1">{{ __('Your name and email address appear on assignments, comments and in notifications.') }}</flux:text>
@@ -513,7 +513,7 @@ new class extends Component
             </form>
         </flux:tab.panel>
 
-        <flux:tab.panel name="security" class="space-y-8">
+        <flux:tab.panel name="security" class="surface mt-4 space-y-8 p-4 sm:p-6">
             <form wire:submit="changePassword" class="space-y-4">
                 <flux:heading size="lg">{{ __('Change password') }}</flux:heading>
                 <flux:input wire:model="currentPassword" type="password" :label="__('Current password')" autocomplete="current-password" />
@@ -527,7 +527,7 @@ new class extends Component
             <livewire:security />
         </flux:tab.panel>
 
-        <flux:tab.panel name="api">
+        <flux:tab.panel name="api" class="surface mt-4 p-4 sm:p-6">
             <livewire:api-tokens />
         </flux:tab.panel>
     </flux:tab.group>

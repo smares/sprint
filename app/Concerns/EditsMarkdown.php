@@ -25,13 +25,13 @@ trait EditsMarkdown
     /**
      * The people offered after @; tasks are looked up while typing (mentionTasks).
      *
-     * @return array{users: list<array{id: int, name: string, note: ?string}>, searchTasks: bool}
+     * @return array{users: list<array{id: int, name: string, note: ?string, initials: string, avatar: ?string, color: string}>, searchTasks: bool}
      */
     #[Computed]
     public function mentionOptions(): array
     {
         return [
-            'users' => $this->users->filter(fn (User $user) => $user->isActive())->map(fn (User $user) => ['id' => $user->id, 'name' => $user->name, 'note' => $user->absenceNote()])->values()->all(),
+            'users' => $this->users->filter(fn (User $user) => $user->isActive())->map(fn (User $user) => ['id' => $user->id, 'name' => $user->name, 'note' => $user->absenceNote(), 'initials' => $user->initials(), 'avatar' => $user->avatarUrl(), 'color' => $user->avatarColor()])->values()->all(),
             'searchTasks' => true,
         ];
     }

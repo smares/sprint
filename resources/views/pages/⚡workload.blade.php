@@ -112,7 +112,7 @@ new class extends Component
     </div>
 
     @if ($this->people->isEmpty())
-        <flux:text>{{ __('Nobody in this team yet.') }}</flux:text>
+        <x-empty-state icon="users" :heading="__('Nobody in this team yet.')" />
     @else
         <div class="surface px-3">
             <flux:table>

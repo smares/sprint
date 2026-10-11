@@ -223,16 +223,7 @@ new class extends Component
                             @endphp
                             @if ($people->isNotEmpty() || $task->due_date || $progress || $task->comments_count || $task->attachments_count)
                                 <div class="mt-3 flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
-                                    @if ($people->isNotEmpty())
-                                        <flux:avatar.group title="{{ $people->map->labelledName()->join(', ') }}">
-                                            @foreach ($people->take(3) as $person)
-                                                <x-user-avatar size="xs" :user="$person" />
-                                            @endforeach
-                                            @if ($people->count() > 3)
-                                                <flux:avatar size="xs" circle>+{{ $people->count() - 3 }}</flux:avatar>
-                                            @endif
-                                        </flux:avatar.group>
-                                    @endif
+                                    <x-avatar-stack :users="$people" />
                                     @if ($progress)
                                         <span class="inline-flex items-center gap-0.5 tabular-nums" title="{{ __('Subtasks') }}"><flux:icon.list-bullet variant="micro" />{{ $progress['done'] }}/{{ $progress['total'] }}</span>
                                     @endif

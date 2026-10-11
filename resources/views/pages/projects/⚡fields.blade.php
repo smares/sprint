@@ -222,18 +222,18 @@ new class extends Component
 ?>
 
 <div class="max-w-4xl">
-    <flux:breadcrumbs class="mb-4">
-        <flux:breadcrumbs.item href="{{ route('projects.index') }}" wire:navigate>{{ __('Projects') }}</flux:breadcrumbs.item>
-        <flux:breadcrumbs.item href="{{ route('projects.show', $project) }}" wire:navigate>{{ $project->name }}</flux:breadcrumbs.item>
-        <flux:breadcrumbs.item>{{ __('Fields') }}</flux:breadcrumbs.item>
-    </flux:breadcrumbs>
+    <x-project-breadcrumbs :project="$project" :current="__('Fields')" />
 
     <flux:heading size="xl" class="mb-1">{{ __('Fields') }}</flux:heading>
     <flux:text class="mb-6">{!! __('Custom fields like <em>Priority</em> or <em>Effort</em> appear on every task in this project. Their order determines how they are displayed.') !!}</flux:text>
 
+    @if ($this->fields->isEmpty())
+        <x-empty-state icon="adjustments-horizontal" :heading="__('No fields yet')" />
+    @endif
+
     <ul class="space-y-3" wire:sort="moveField" wire:sort:config="{ delay: 250, delayOnTouchOnly: true, touchStartThreshold: 12 }">
         @foreach ($this->fields as $field)
-            <li wire:key="field-{{ $field->id }}" wire:sort:item="{{ $field->id }}" class="space-y-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+            <li wire:key="field-{{ $field->id }}" wire:sort:item="{{ $field->id }}" class="surface space-y-3 p-3">
                 <div class="flex flex-wrap items-center gap-3">
                     <flux:icon.bars-2 variant="micro" class="shrink-0 text-zinc-400" />
                     <flux:input size="sm" wire:model.live.blur="names.{{ $field->id }}" aria-label="{{ __('Name') }}" class="min-w-40 flex-1" />

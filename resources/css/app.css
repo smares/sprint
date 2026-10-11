@@ -26,6 +26,11 @@
     }
 }
 
+/* The focus ring in the accent color instead of the browser's black one (Flux leaves focus to the browser). */
+:focus-visible {
+    outline-color: var(--color-accent);
+}
+
 /* A white area on the tinted page (tables, calendar, timeline), so content stands out from the background. */
 @utility surface {
     @apply rounded-xl border border-zinc-200 bg-white shadow-xs dark:border-zinc-700 dark:bg-zinc-800;
@@ -122,9 +127,9 @@
 }
 
 .markdown .mention {
-    background: var(--color-sky-100);
+    background: var(--color-orange-100);
     border-radius: 0.25rem;
-    color: var(--color-sky-800);
+    color: var(--color-orange-800);
     padding: 0.05em 0.35em;
     text-decoration: none;
 }
@@ -149,8 +154,8 @@
 }
 
 .dark .markdown .mention {
-    background: var(--color-sky-900);
-    color: var(--color-sky-200);
+    background: color-mix(in srgb, var(--color-orange-500) 25%, transparent);
+    color: var(--color-orange-200);
 }
 
 /* Colors of tags, statuses and field options come from the color picker as --badge. */

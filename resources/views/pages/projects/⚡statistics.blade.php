@@ -281,37 +281,39 @@ new class extends Component
             </div>
 
             @if ($this->stuck->isEmpty())
-                <flux:text>{{ __('No open task is beyond the first status.') }}</flux:text>
+                <x-empty-state icon="check-badge" :heading="__('No open task is beyond the first status.')" />
             @else
-                <flux:table>
-                    <flux:table.columns>
-                        <flux:table.column>{{ __('Task') }}</flux:table.column>
-                        <flux:table.column class="max-sm:hidden">{{ __('Status') }}</flux:table.column>
-                        <flux:table.column>{{ __('In this status') }}</flux:table.column>
-                        <flux:table.column class="max-sm:hidden">{{ __('Assignee') }}</flux:table.column>
-                    </flux:table.columns>
-                    <flux:table.rows>
-                        @foreach ($this->stuck as $task)
-                            <flux:table.row wire:key="stuck-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" class="cursor-pointer">
-                                <flux:table.cell class="min-w-48 whitespace-normal">
-                                    <x-task-title-link :task="$task" :open="(string) $task->id === $openTaskId" />
-                                </flux:table.cell>
-                                <flux:table.cell class="max-sm:hidden">
-                                    <x-status-badge :status="$task->status" />
-                                </flux:table.cell>
-                                <flux:table.cell>
-                                    @php($days = (int) $task->in_status_since->diffInDays(now()))
-                                    <span title="{{ __('since :date', ['date' => $task->in_status_since->isoFormat('L')]) }}" @class(['font-medium text-amber-600 dark:text-amber-500' => $days >= 14])>{{ trans_choice(':count day|:count days', $days) }}</span>
-                                </flux:table.cell>
-                                <flux:table.cell class="max-sm:hidden">
-                                    @if ($task->assignee)
-                                        <x-user-avatar size="xs" :user="$task->assignee" :tooltip="$task->assignee->labelledName()" />
-                                    @endif
-                                </flux:table.cell>
-                            </flux:table.row>
-                        @endforeach
-                    </flux:table.rows>
-                </flux:table>
+                <div class="surface px-3">
+                    <flux:table>
+                        <flux:table.columns>
+                            <flux:table.column>{{ __('Task') }}</flux:table.column>
+                            <flux:table.column class="max-sm:hidden">{{ __('Status') }}</flux:table.column>
+                            <flux:table.column>{{ __('In this status') }}</flux:table.column>
+                            <flux:table.column class="max-sm:hidden">{{ __('Assignee') }}</flux:table.column>
+                        </flux:table.columns>
+                        <flux:table.rows>
+                            @foreach ($this->stuck as $task)
+                                <flux:table.row wire:key="stuck-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" class="cursor-pointer">
+                                    <flux:table.cell class="min-w-48 whitespace-normal">
+                                        <x-task-title-link :task="$task" :open="(string) $task->id === $openTaskId" />
+                                    </flux:table.cell>
+                                    <flux:table.cell class="max-sm:hidden">
+                                        <x-status-badge :status="$task->status" />
+                                    </flux:table.cell>
+                                    <flux:table.cell>
+                                        @php($days = (int) $task->in_status_since->diffInDays(now()))
+                                        <span title="{{ __('since :date', ['date' => $task->in_status_since->isoFormat('L')]) }}" @class(['font-medium text-amber-600 dark:text-amber-500' => $days >= 14])>{{ trans_choice(':count day|:count days', $days) }}</span>
+                                    </flux:table.cell>
+                                    <flux:table.cell class="max-sm:hidden">
+                                        @if ($task->assignee)
+                                            <x-user-avatar size="xs" :user="$task->assignee" :tooltip="$task->assignee->labelledName()" />
+                                        @endif
+                                    </flux:table.cell>
+                                </flux:table.row>
+                            @endforeach
+                        </flux:table.rows>
+                    </flux:table>
+                </div>
             @endif
         </section>
     </div>

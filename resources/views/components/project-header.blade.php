@@ -1,10 +1,7 @@
 @props(['project', 'active', 'presence' => null])
 
 {{-- Breadcrumbs, title and the same toolbar for list, board, calendar and timeline. --}}
-<flux:breadcrumbs class="mb-4">
-    <flux:breadcrumbs.item href="{{ route('projects.index') }}" wire:navigate>{{ __('Projects') }}</flux:breadcrumbs.item>
-    <flux:breadcrumbs.item>{{ $project->name }}</flux:breadcrumbs.item>
-</flux:breadcrumbs>
+<x-project-breadcrumbs :project="$project" />
 
 @if ($project->archived_at)
     <flux:callout class="mb-4" icon="archive-box" :heading="__('Archived')" :text="__('This project is archived and read-only.')" />

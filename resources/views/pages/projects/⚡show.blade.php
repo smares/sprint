@@ -581,7 +581,7 @@ new class extends Component
                         <span class="truncate">{{ $saved->name }}</span>
                     </flux:button>
                     @if ($saved->isShared())
-                        <flux:badge size="sm" color="blue">{{ __('Shared') }}</flux:badge>
+                        <flux:badge size="sm">{{ __('Shared') }}</flux:badge>
                     @endif
                     @can('delete', $saved)
                         <flux:button size="xs" variant="ghost" icon="trash" wire:click="deleteFilter({{ $saved->id }})" wire:confirm="{{ __('Delete view “:name”?', ['name' => $saved->name]) }}" aria-label="{{ __('Delete view') }}" />
@@ -715,18 +715,9 @@ new class extends Component
                             <flux:table.cell>
                                 <x-status-badge :status="$task->status" />
                             </flux:table.cell>
-                            {{-- Only the avatar; the name and an absence show on hover --}}
+                            {{-- Assignee first, then collaborators, as on the board; names and absences show on hover --}}
                             <flux:table.cell>
-                                <div class="flex items-center gap-1.5">
-                                    @if ($task->assignee)
-                                        <x-user-avatar size="xs" :user="$task->assignee" :tooltip="$task->assignee->labelledName()" />
-                                    @endif
-                                    @if ($task->collaborators->isNotEmpty())
-                                        <flux:tooltip :content="__('Collaborators').': '.$task->collaborators->map->labelledName()->join(', ')">
-                                            <flux:text size="sm">+{{ $task->collaborators->count() }}</flux:text>
-                                        </flux:tooltip>
-                                    @endif
-                                </div>
+                                <x-avatar-stack :users="[$task->assignee, ...$task->collaborators]" />
                             </flux:table.cell>
                             <flux:table.cell>
                                 <x-task-due :task="$task" />

@@ -448,11 +448,7 @@ new class extends Component
 ?>
 
 <div class="max-w-4xl">
-    <flux:breadcrumbs class="mb-4">
-        <flux:breadcrumbs.item href="{{ route('projects.index') }}" wire:navigate>{{ __('Projects') }}</flux:breadcrumbs.item>
-        <flux:breadcrumbs.item href="{{ route('projects.show', $project) }}" wire:navigate>{{ $project->name }}</flux:breadcrumbs.item>
-        <flux:breadcrumbs.item>{{ __('Automations') }}</flux:breadcrumbs.item>
-    </flux:breadcrumbs>
+    <x-project-breadcrumbs :project="$project" :current="__('Automations')" />
 
     <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start">
         <div class="min-w-0 flex-1">
@@ -463,11 +459,11 @@ new class extends Component
     </div>
 
     @if ($this->automations->isEmpty())
-        <flux:text>{{ __('No automations yet.') }}</flux:text>
+        <x-empty-state icon="bolt" :heading="__('No automations yet.')" />
     @else
         <ul class="space-y-3">
             @foreach ($this->automations as $rule)
-                <li wire:key="automation-{{ $rule->id }}" @class(['rounded-lg border border-zinc-200 p-3 dark:border-zinc-700', 'opacity-60' => ! $rule->enabled])>
+                <li wire:key="automation-{{ $rule->id }}" @class(['surface p-3', 'opacity-60' => ! $rule->enabled])>
                     <div class="flex items-center gap-3">
                         <flux:icon.bolt variant="micro" class="shrink-0 text-zinc-400" />
                         <flux:heading class="min-w-0 flex-1 truncate">{{ $rule->name }}</flux:heading>

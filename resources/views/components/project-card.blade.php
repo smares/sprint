@@ -54,20 +54,10 @@
 
                 @if ($project->members->isNotEmpty() || $nextDue)
                     <div class="mt-4 flex items-center justify-between gap-2">
-                        @if ($project->members->isNotEmpty())
-                            <flux:avatar.group title="{{ $project->members->pluck('name')->join(', ') }}">
-                                @foreach ($project->members->take(4) as $member)
-                                    <x-user-avatar size="xs" :user="$member" />
-                                @endforeach
-                                @if ($project->members->count() > 4)
-                                    <flux:avatar size="xs" circle>+{{ $project->members->count() - 4 }}</flux:avatar>
-                                @endif
-                            </flux:avatar.group>
-                        @endif
+                        <x-avatar-stack :users="$project->members" :max="4" />
                         @if ($nextDue)
-                            <flux:text size="sm" class="ms-auto inline-flex items-center gap-1 tabular-nums" title="{{ __('Next due date') }}">
-                                <flux:icon.calendar variant="micro" />{{ $nextDue->isoFormat('L') }}
-                            </flux:text>
+                            {{-- Like a task's due chip (x-task-due), quiet: the overdue ones have their own badge above --}}
+                            <flux:badge size="sm" icon="calendar" class="ms-auto tabular-nums" title="{{ __('Next due date') }}">{{ $nextDue->isoFormat('L') }}</flux:badge>
                         @endif
                     </div>
                 @endif

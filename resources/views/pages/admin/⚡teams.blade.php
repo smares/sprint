@@ -151,7 +151,8 @@ new class extends Component
 
                 <div class="flex flex-wrap gap-2">
                     @forelse ($team->users as $member)
-                        <flux:badge wire:key="team-{{ $team->id }}-user-{{ $member->id }}" size="lg">
+                        <flux:badge wire:key="team-{{ $team->id }}-user-{{ $member->id }}" size="lg" class="gap-1.5 ps-1!">
+                            <x-user-avatar size="xs" :user="$member" />
                             {{ $member->labelledName() }}
                             <flux:badge.close wire:click="removeMember({{ $team->id }}, {{ $member->id }})" />
                         </flux:badge>
@@ -171,7 +172,7 @@ new class extends Component
                 <flux:error :name="'newMembers.'.$team->id" />
             </flux:card>
         @empty
-            <flux:text>{{ __('There are no teams yet.') }}</flux:text>
+            <x-empty-state icon="user-group" :heading="__('There are no teams yet.')" />
         @endforelse
     </div>
 

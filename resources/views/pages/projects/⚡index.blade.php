@@ -98,7 +98,7 @@ new class extends Component
             ->visibleTo(auth()->user())
             ->whereNotNull('archived_at')
             ->orderBy('name')
-            ->get(['id', 'name', 'archived_at']);
+            ->get(['id', 'name', 'color', 'icon', 'archived_at']);
     }
 
     public function create(): void
@@ -171,9 +171,10 @@ new class extends Component
                 <flux:accordion.content>
                     <ul class="space-y-1">
                         @foreach ($this->archivedProjects as $archived)
-                            <li wire:key="archived-{{ $archived->id }}">
+                            <li wire:key="archived-{{ $archived->id }}" class="flex flex-wrap items-center gap-x-2">
+                                <x-project-icon :project="$archived" size="sm" class="opacity-60" />
                                 <flux:link :href="route('projects.show', $archived)" variant="ghost" wire:navigate>{{ $archived->name }}</flux:link>
-                                <flux:text size="sm" class="ms-2 inline">{{ __('archived on :date', ['date' => $archived->archived_at->isoFormat('L')]) }}</flux:text>
+                                <flux:text size="sm" class="inline">{{ __('archived on :date', ['date' => $archived->archived_at->isoFormat('L')]) }}</flux:text>
                             </li>
                         @endforeach
                     </ul>

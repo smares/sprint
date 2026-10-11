@@ -209,18 +209,14 @@ new class extends Component
 ?>
 
 <div class="max-w-4xl">
-    <flux:breadcrumbs class="mb-4">
-        <flux:breadcrumbs.item href="{{ route('projects.index') }}" wire:navigate>{{ __('Projects') }}</flux:breadcrumbs.item>
-        <flux:breadcrumbs.item href="{{ route('projects.show', $project) }}" wire:navigate>{{ $project->name }}</flux:breadcrumbs.item>
-        <flux:breadcrumbs.item>{{ __('Members') }}</flux:breadcrumbs.item>
-    </flux:breadcrumbs>
+    <x-project-breadcrumbs :project="$project" :current="__('Members')" />
 
     <flux:heading size="xl" class="mb-1">{{ __('Members') }}</flux:heading>
     <flux:text class="mb-6">{!! __('Only members can see this project. <strong>View</strong> can read, <strong>Edit</strong> can change and comment on tasks, <strong>Manage</strong> can also change members and statuses. Application administrators always have access.') !!}</flux:text>
 
     <ul class="space-y-2">
         @foreach ($this->members as $member)
-            <li wire:key="member-{{ $member->id }}" class="flex items-center gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+            <li wire:key="member-{{ $member->id }}" class="surface flex items-center gap-3 p-3">
                 <x-user-avatar size="sm" :user="$member" />
                 <div class="min-w-0 flex-1">
                     <flux:heading class="truncate">{{ $member->name }} @unless ($member->isActive()) <flux:badge size="sm" color="zinc">{{ __('Deactivated') }}</flux:badge> @endunless @if ($member->isAbsent()) <flux:badge size="sm" color="amber">{{ \Illuminate\Support\Str::ucfirst($member->absenceNote()) }}</flux:badge> @endif</flux:heading>
@@ -256,7 +252,7 @@ new class extends Component
 
     <ul class="space-y-2">
         @forelse ($this->teams as $team)
-            <li wire:key="team-{{ $team->id }}" class="flex items-center gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+            <li wire:key="team-{{ $team->id }}" class="surface flex items-center gap-3 p-3">
                 <flux:icon.user-group class="shrink-0 text-zinc-400" />
                 <div class="min-w-0 flex-1">
                     <flux:heading class="truncate">{{ $team->name }}</flux:heading>

@@ -148,7 +148,7 @@ new class extends Component
                 </div>
             </div>
         @empty
-            <flux:text>{{ __('No tasks with dates this month.') }}</flux:text>
+            <x-empty-state icon="calendar-days" :heading="__('No tasks with dates this month.')" />
         @endforelse
     </div>
 

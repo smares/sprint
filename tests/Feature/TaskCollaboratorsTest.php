@@ -83,13 +83,17 @@ class TaskCollaboratorsTest extends TestCase
             ->assertDontSee('Nicht meine');
     }
 
-    public function test_list_and_board_show_collaborator_count(): void
+    public function test_list_and_board_show_collaborators_as_stacked_avatars(): void
     {
         $task = Task::factory()->create();
-        $task->collaborators()->attach($people = User::factory()->admin()->count(2)->create());
+        $people = User::factory()->admin()->count(4)->sequence(fn ($sequence) => ['name' => 'Person '.($sequence->index + 1)])->create();
+        $task->collaborators()->attach($people);
 
-        // The list shows only the count; who it is shows on hover
-        $this->get(route('projects.show', $task->project))->assertOk()->assertSee('+2')->assertSee('Beteiligte: '.$people->pluck('name')->join(', '));
-        $this->get(route('projects.board', $task->project))->assertOk()->assertSee('+2');
+        // Three faces with their names on hover, the fourth behind "+1"
+        foreach (['projects.show', 'projects.board'] as $route) {
+            $this->get(route($route, $task->project))->assertOk()
+                ->assertSee('Person 1')->assertSee('Person 3')
+                ->assertSee('+1');
+        }
     }
 }

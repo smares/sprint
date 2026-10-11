@@ -1025,6 +1025,7 @@ new class extends Component
 
     @if ($panel)
         <div class="mb-4 flex items-center gap-2">
+            <x-project-icon :project="$task->project" size="sm" />
             <flux:text size="sm" class="min-w-0 flex-1 truncate">
                 {{ $task->project->name }}
                 @foreach ($this->ancestors as $ancestor)
@@ -1036,14 +1037,11 @@ new class extends Component
             <flux:button size="sm" variant="ghost" icon="x-mark" x-on:click="$dispatch('close-task')" data-flyout-close aria-label="{{ __('Close') }}" tooltip="{{ __('Close') }}" />
         </div>
     @else
-        <flux:breadcrumbs class="mb-4">
-            <flux:breadcrumbs.item href="{{ route('projects.index') }}" wire:navigate>{{ __('Projects') }}</flux:breadcrumbs.item>
-            <flux:breadcrumbs.item href="{{ route('projects.show', $task->project_id) }}" wire:navigate>{{ $task->project->name }}</flux:breadcrumbs.item>
+        <x-project-breadcrumbs :project="$task->project" :current="__('Task')">
             @foreach ($this->ancestors as $ancestor)
                 <flux:breadcrumbs.item href="{{ route('tasks.show', $ancestor) }}" wire:navigate>{{ $ancestor->title }}</flux:breadcrumbs.item>
             @endforeach
-            <flux:breadcrumbs.item>{{ __('Task') }}</flux:breadcrumbs.item>
-        </flux:breadcrumbs>
+        </x-project-breadcrumbs>
     @endif
 
     @unless ($this->canEdit)

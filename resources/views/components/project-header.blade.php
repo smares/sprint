@@ -1,4 +1,4 @@
-@props(['project', 'presence' => null])
+@props(['project', 'active', 'presence' => null])
 
 {{-- Breadcrumbs, title and the same toolbar for list, board, calendar and timeline. --}}
 <x-project-breadcrumbs :project="$project" />
@@ -19,7 +19,7 @@
     </div>
 
     <div class="flex shrink-0 items-center gap-2">
-        {{-- The views (list, board, …) are switched in the sidebar, under the project --}}
+        {{-- The views (list, board, …) are switched in the sidebar under the project, below lg also in the row underneath --}}
         <x-presence :channel="$presence" :one="__(':name is here too')" :many="__(':count people are here too')" class="max-sm:hidden" />
 
         @can('edit', $project)
@@ -33,6 +33,8 @@
         @endcan
     </div>
 </div>
+
+<x-project-views :project="$project" :active="$active" class="-mt-2 mb-6" />
 
 @can('edit', $project)
     <livewire:task-create :project="$project" />

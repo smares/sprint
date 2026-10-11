@@ -125,7 +125,7 @@ new class extends Component
 ?>
 
 <div>
-    <x-project-header :project="$project" :presence="$this->presenceChannel()" />
+    <x-project-header :project="$project" active="calendar" :presence="$this->presenceChannel()" />
 
     <div class="mb-4 flex items-center gap-2">
         <flux:button icon="chevron-left" wire:click="previousMonth" aria-label="{{ __('Previous month') }}" tooltip="{{ __('Previous month') }}" />

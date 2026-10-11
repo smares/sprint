@@ -41,6 +41,22 @@ class LayoutTest extends TestCase
         $this->assertGreaterThanOrEqual(2, substr_count($response->getContent(), route('admin.teams')));
     }
 
+    public function test_below_large_screens_a_view_switcher_sits_under_the_project_title(): void
+    {
+        $project = Project::factory()->create();
+        $html = $this->actingAs(User::factory()->admin()->create())->get(route('projects.board', $project))->assertOk()->getContent();
+
+        $start = (int) strpos($html, 'data-view-switcher');
+        $switcher = substr($html, (int) strrpos(substr($html, 0, $start), '<div'), 60000);
+
+        // Hidden where the sidebar lists the views itself; icons with accessible names on phones, the open view marked
+        $this->assertStringContainsString('lg:hidden', $switcher);
+        foreach (['Liste', 'Kalender', 'Zeitleiste', 'Statistik'] as $label) {
+            $this->assertStringContainsString('aria-label="'.$label.'"', $switcher);
+        }
+        $this->assertStringContainsString('aria-current="page"', $switcher);
+    }
+
     public function test_guests_get_no_navigation(): void
     {
         $this->get(route('login'))->assertOk()->assertDontSee('data-flux-sidebar-toggle', false)->assertDontSee('Darstellung');

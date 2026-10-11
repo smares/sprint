@@ -129,7 +129,7 @@ new class extends Component
 ?>
 
 <div>
-    <x-project-header :project="$project" :presence="$this->presenceChannel()" />
+    <x-project-header :project="$project" active="timeline" :presence="$this->presenceChannel()" />
 
     <div class="mb-4 flex items-center gap-2">
         <flux:button icon="chevron-left" wire:click="earlier" aria-label="{{ __('Earlier') }}" tooltip="{{ __('Earlier') }}" />

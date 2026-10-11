@@ -98,7 +98,7 @@ new class extends Component
 ?>
 
 <div>
-    <x-project-header :project="$project" active="statistics" :presence="$this->presenceChannel()" />
+    <x-project-header :project="$project" :presence="$this->presenceChannel()" />
 
     <div class="space-y-10">
         <section class="space-y-4">

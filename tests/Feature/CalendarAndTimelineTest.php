@@ -254,28 +254,20 @@ class CalendarAndTimelineTest extends TestCase
             ->assertSee(route('projects.show', [$this->project, 'dates' => 'none', 'status' => 'all']));
     }
 
-    public function test_the_view_switcher_links_to_the_other_three_views(): void
+    public function test_every_view_links_to_the_other_views_in_the_sidebar(): void
     {
-        $routes = ['projects.show', 'projects.board', 'projects.calendar', 'projects.timeline'];
+        $routes = ['projects.show', 'projects.board', 'projects.calendar', 'projects.timeline', 'projects.statistics'];
 
         foreach ($routes as $current) {
-            $response = $this->get(route($current, $this->project))->assertOk()
-                ->assertSee('Liste')->assertSee('Board')->assertSee('Kalender')->assertSee('Zeitleiste');
+            $html = $this->get(route($current, $this->project))->assertOk()->getContent();
+            $start = (int) strpos($html, 'data-sidebar-views');
+            $views = substr($html, $start, (int) strpos($html, '</nav>', $start) - $start);
 
-            foreach (array_diff($routes, [$current]) as $other) {
-                $response->assertSee('href="'.route($other, $this->project).'"', false);
+            foreach ($routes as $other) {
+                $this->assertStringContainsString('href="'.route($other, $this->project).'"', $views);
             }
-
-            $response->assertSee('aria-current="page"', false);
+            $this->assertMatchesRegularExpression('/href="'.preg_quote(route($current, $this->project), '/').'"[^>]*data-current/', $views);
         }
-    }
-
-    public function test_the_view_switcher_keeps_its_width_when_the_first_or_last_view_is_shown(): void
-    {
-        $this->get(route('projects.show', $this->project))->assertSee('border-s-transparent!', false)->assertDontSee('border-e-transparent!', false);
-        $this->get(route('projects.board', $this->project))->assertDontSee('border-s-transparent!', false)->assertDontSee('border-e-transparent!', false);
-        $this->get(route('projects.timeline', $this->project))->assertDontSee('border-s-transparent!', false)->assertDontSee('border-e-transparent!', false);
-        $this->get(route('projects.statistics', $this->project))->assertSee('border-e-transparent!', false)->assertDontSee('border-s-transparent!', false);
     }
 
     public function test_people_without_access_cannot_open_the_new_views(): void

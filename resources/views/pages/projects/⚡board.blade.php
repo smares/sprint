@@ -179,7 +179,7 @@ new class extends Component
 ?>
 
 <div>
-    <x-project-header :project="$project" active="board" :presence="$this->presenceChannel()" />
+    <x-project-header :project="$project" :presence="$this->presenceChannel()" />
 
     <flux:kanban class="items-start overflow-x-auto pb-4">
         @foreach ($this->statuses as $status)

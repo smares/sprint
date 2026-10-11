@@ -20,9 +20,9 @@
     </head>
     <body class="min-h-screen bg-zinc-50 dark:bg-zinc-900">
         @auth
-            {{-- On large screens the sidebar is the navigation: the main pages, the projects with the views of the current one
-                 and the person's menu; it can be collapsed to icons (remembered in the browser). On phones it slides in from the
-                 header's menu button. --}}
+            {{-- The sidebar is the navigation on every screen: the main pages, the projects with the views of the current one
+                 and the person's menu. On large screens it can be collapsed to icons (remembered in the browser); on phones it
+                 slides in from the header's menu button. --}}
             <flux:sidebar sticky collapsible class="border-e border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900">
                 <flux:sidebar.header>
                     <flux:sidebar.brand :href="route('projects.index')" :name="config('app.name')" wire:navigate>
@@ -44,7 +44,7 @@
                 <flux:sidebar.nav>
                     <flux:sidebar.item icon="folder" :href="route('projects.index')" :current="request()->routeIs('projects.index')" wire:navigate>{{ __('Projects') }}</flux:sidebar.item>
                     <flux:sidebar.item icon="check-circle" :href="route('tasks.mine')" :current="request()->routeIs('tasks.mine')" wire:navigate>{{ __('My tasks') }}</flux:sidebar.item>
-                    <livewire:notification-bell variant="sidebar" />
+                    <livewire:notification-bell />
                     <flux:sidebar.item icon="calendar-date-range" :href="route('workload')" :current="request()->routeIs('workload')" wire:navigate>{{ __('Workload') }}</flux:sidebar.item>
                     @can('administer')
                         <flux:sidebar.item icon="user-group" :href="route('admin.teams')" :current="request()->routeIs('admin.teams')" wire:navigate>{{ __('Teams') }}</flux:sidebar.item>
@@ -56,14 +56,19 @@
 
                 <flux:sidebar.spacer />
 
-                <flux:dropdown position="top" align="start" class="max-lg:hidden">
+                <flux:dropdown position="top" align="start">
                     <flux:sidebar.profile circle :name="auth()->user()->name" :initials="auth()->user()->initials()" :avatar="auth()->user()->avatarUrl()" :avatar:color="auth()->user()->avatarColor()" />
                     <x-user-menu />
                 </flux:dropdown>
             </flux:sidebar>
 
+            {{-- On phones only what is needed at once: the menu (the sidebar, the same as on large screens), the name and the search.
+                 A dot on the menu button tells that the inbox has something unread. --}}
             <flux:header class="border-b border-zinc-200 bg-white lg:hidden dark:border-zinc-700 dark:bg-zinc-900">
-                <flux:sidebar.toggle icon="bars-2" inset="left" aria-label="{{ __('Menu') }}" />
+                <div class="relative">
+                    <flux:sidebar.toggle icon="bars-2" inset="left" aria-label="{{ __('Menu') }}" />
+                    <livewire:notification-bell variant="dot" :announces="false" />
+                </div>
 
                 <x-app-brand class="ms-2" />
 
@@ -72,14 +77,6 @@
                 <flux:modal.trigger name="command-palette">
                     <flux:button variant="ghost" icon="magnifying-glass" aria-label="{{ __('Find') }}" tooltip="{{ __('Find') }}" />
                 </flux:modal.trigger>
-
-                {{-- The sidebar's inbox entry announces new entries; this one only counts them --}}
-                <livewire:notification-bell :announces="false" />
-
-                <flux:dropdown position="bottom" align="end">
-                    <flux:profile circle :initials="auth()->user()->initials()" :avatar="auth()->user()->avatarUrl()" :avatar:color="auth()->user()->avatarColor()" />
-                    <x-user-menu />
-                </flux:dropdown>
             </flux:header>
         @endauth
 

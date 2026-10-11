@@ -41,30 +41,18 @@ class LayoutTest extends TestCase
         $this->assertGreaterThanOrEqual(2, substr_count($response->getContent(), route('admin.teams')));
     }
 
-    public function test_view_switcher_buttons_keep_accessible_names_without_visible_labels_on_phones(): void
-    {
-        $admin = User::factory()->admin()->create();
-        $project = Project::factory()->create();
-
-        $response = $this->actingAs($admin)->get(route('projects.board', $project))->assertOk();
-
-        foreach (['Liste', 'Kalender', 'Zeitleiste'] as $label) {
-            $response->assertSee('aria-label="'.$label.'"', false);
-        }
-        $response->assertSee('sm:hidden', false);
-    }
-
     public function test_guests_get_no_navigation(): void
     {
         $this->get(route('login'))->assertOk()->assertDontSee('data-flux-sidebar-toggle', false)->assertDontSee('Darstellung');
     }
 
-    public function test_the_timeline_switcher_uses_the_turn_arrow_icon(): void
+    public function test_the_timeline_view_uses_the_turn_arrow_icon_in_the_sidebar(): void
     {
         $project = Project::factory()->create();
         $html = $this->actingAs(User::factory()->admin()->create())->get(route('projects.board', $project))->getContent();
+        $html = substr($html, (int) strpos($html, 'data-sidebar-views'));
 
-        $this->assertStringContainsString('aria-label="Zeitleiste"', $html);
+        $this->assertStringContainsString('Zeitleiste', $html);
 
         $pathOf = function (string $icon) use ($html): bool {
             foreach (['micro', 'mini', 'outline'] as $variant) {

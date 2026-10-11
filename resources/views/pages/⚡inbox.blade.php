@@ -114,13 +114,13 @@ new class extends Component
     </div>
 
     @if ($this->notifications->isEmpty())
-        <flux:callout icon="inbox" :heading="__('Nothing new')" :text="__('Comments, status changes and mentions on tasks you are responsible for or involved in appear here.')" />
+        <x-empty-state emoji="📭" :heading="__('Nothing new')" :text="__('Comments, status changes and mentions on tasks you are responsible for or involved in appear here.')" />
     @else
-        <ul class="divide-y divide-zinc-200 dark:divide-zinc-700">
+        <ul class="surface divide-y divide-zinc-200 px-4 dark:divide-zinc-700">
             @foreach ($this->notifications as $notification)
                 @php($task = $this->tasks->get($notification->data['task_id'] ?? null))
                 <li wire:key="notification-{{ $notification->id }}" class="flex items-start gap-3 py-3">
-                    <span class="mt-2 size-2 shrink-0 rounded-full {{ $notification->read_at === null ? 'bg-blue-500' : 'bg-transparent' }}" aria-label="{{ $notification->read_at === null ? __('unread') : __('read') }}"></span>
+                    <span class="mt-2 size-2 shrink-0 rounded-full {{ $notification->read_at === null ? 'bg-accent' : 'bg-transparent' }}" aria-label="{{ $notification->read_at === null ? __('unread') : __('read') }}"></span>
                     <div class="min-w-0 flex-1">
                         @if ($task)
                             <button type="button" wire:click="open('{{ $notification->id }}')" class="line-clamp-2 w-full text-start font-medium hover:underline">{{ $task->title }}</button>

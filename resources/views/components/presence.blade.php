@@ -13,7 +13,8 @@
         <div class="flex -space-x-2">
             <template x-for="user in users.slice(0, 5)" x-bind:key="user.id">
                 <span
-                    class="inline-flex size-6 items-center justify-center overflow-hidden rounded-sm bg-zinc-200 text-[0.625rem] font-medium text-zinc-800 ring-2 ring-white dark:bg-zinc-600 dark:text-white dark:ring-zinc-900"
+                    class="inline-flex size-6 items-center justify-center overflow-hidden rounded-full text-[0.625rem] font-medium ring-2 ring-white dark:ring-zinc-900"
+                    x-bind:class="user.color ? `bg-${user.color}-200 text-${user.color}-800` : 'bg-zinc-200 text-zinc-800 dark:bg-zinc-600 dark:text-white'"
                     x-bind:title="user.name"
                 >
                     <template x-if="user.avatar"><img x-bind:src="user.avatar" alt="" class="size-full object-cover"></template>

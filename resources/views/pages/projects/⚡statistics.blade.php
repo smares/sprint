@@ -297,7 +297,7 @@ new class extends Component
                                     <x-task-title-link :task="$task" :open="(string) $task->id === $openTaskId" />
                                 </flux:table.cell>
                                 <flux:table.cell class="max-sm:hidden">
-                                    <x-color-badge size="sm" :color="$task->status->color">{{ $task->status->name }}</x-color-badge>
+                                    <x-status-badge :status="$task->status" />
                                 </flux:table.cell>
                                 <flux:table.cell>
                                     @php($days = (int) $task->in_status_since->diffInDays(now()))

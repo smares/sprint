@@ -1055,13 +1055,14 @@ new class extends Component
     @endunless
 
     <form wire:submit="save" class="space-y-4">
-        <flux:input wire:model="title" :label="__('Title')" />
+        {{-- The title as a heading and the properties as a quiet list: both look like text until pointed at or focused --}}
+        <flux:input wire:model="title" :aria-label="__('Title')" class="task-title-input" />
         <x-markdown-editor wire:model="description" :label="__('Description')" :placeholder="__('Describe the task … (Markdown, @ for mentions)')" :rows="3" :mentions="$this->mentionOptions" :images="$this->canEdit ? $this->imageAttachments : null" />
 
         <x-reactions :reactable="$task" target="task" :can-react="$this->canEdit" />
 
-        <div class="divide-y divide-zinc-100 rounded-lg border border-zinc-200 px-3 dark:divide-zinc-800 dark:border-zinc-700">
-            <x-task-field :label="__('Status')">
+        <div class="task-properties">
+            <x-task-field :label="__('Status')" icon="signal">
                 <flux:select size="sm" variant="listbox" wire:model="statusId" :aria-label="__('Status')">
                     @foreach ($task->project->statuses as $status)
                         <flux:select.option value="{{ $status->id }}">{{ $status->name }}</flux:select.option>
@@ -1069,7 +1070,7 @@ new class extends Component
                 </flux:select>
             </x-task-field>
 
-            <x-task-field :label="__('Assignee')">
+            <x-task-field :label="__('Assignee')" icon="user">
                 <flux:select size="sm" variant="listbox" wire:model="assigneeId" :aria-label="__('Assignee')">
                     <flux:select.option value="">{{ __('Nobody') }}</flux:select.option>
                     @foreach ($this->users as $user)
@@ -1078,14 +1079,14 @@ new class extends Component
                 </flux:select>
             </x-task-field>
 
-            <x-task-field :label="__('Dates')">
+            <x-task-field :label="__('Dates')" icon="calendar">
                 <div class="grid gap-2 sm:grid-cols-2">
                     <flux:date-picker size="sm" wire:model="dueDate" :aria-label="__('Due on')" :placeholder="__('Due on')" locale="{{ app()->getLocale() }}" clearable />
                     <flux:date-picker size="sm" wire:model="startDate" :aria-label="__('Starts on')" :placeholder="__('Starts on')" locale="{{ app()->getLocale() }}" clearable />
                 </div>
             </x-task-field>
 
-            <x-task-field :label="__('Recurrence')">
+            <x-task-field :label="__('Recurrence')" icon="arrow-path">
                 <div class="flex flex-wrap items-center gap-2">
                     <flux:select size="sm" variant="listbox" wire:model.live="repeatUnit" :aria-label="__('Repeat')" placeholder="{{ __('Never') }}" class="!w-36">
                         <flux:select.option value="">{{ __('Never') }}</flux:select.option>
@@ -1109,7 +1110,7 @@ new class extends Component
             </x-task-field>
 
             @foreach ($this->customFields as $field)
-                <x-task-field :label="$field->name" wire:key="field-{{ $field->id }}">
+                <x-task-field :label="$field->name" icon="adjustments-horizontal" wire:key="field-{{ $field->id }}">
                     @switch($field->type)
                         @case(\App\Enums\CustomFieldType::Select)
                             <flux:select size="sm" variant="listbox" wire:model="fieldValues.{{ $field->id }}" :aria-label="$field->name" placeholder="–" clearable>
@@ -1119,18 +1120,18 @@ new class extends Component
                             </flux:select>
                             @break
                         @case(\App\Enums\CustomFieldType::Number)
-                            <flux:input size="sm" wire:model="fieldValues.{{ $field->id }}" type="number" step="any" :aria-label="$field->name" />
+                            <flux:input size="sm" wire:model="fieldValues.{{ $field->id }}" type="number" step="any" :aria-label="$field->name" placeholder="–" />
                             @break
                         @case(\App\Enums\CustomFieldType::Date)
                             <flux:date-picker size="sm" wire:model="fieldValues.{{ $field->id }}" :aria-label="$field->name" locale="{{ app()->getLocale() }}" :placeholder="__('Select a date')" clearable />
                             @break
                         @default
-                            <flux:input size="sm" wire:model="fieldValues.{{ $field->id }}" :aria-label="$field->name" />
+                            <flux:input size="sm" wire:model="fieldValues.{{ $field->id }}" :aria-label="$field->name" placeholder="–" />
                     @endswitch
                 </x-task-field>
             @endforeach
 
-            <x-task-field :label="__('Parent task')">
+            <x-task-field :label="__('Parent task')" icon="arrow-turn-left-up">
                 <flux:select size="sm" variant="listbox" wire:model="parentId" searchable :aria-label="__('Parent task')">
                     <x-slot name="search">
                         <flux:select.search wire:model.live.debounce.300ms="parentSearch" :placeholder="__('Search tasks …')" />
@@ -1142,7 +1143,7 @@ new class extends Component
                 </flux:select>
             </x-task-field>
 
-            <x-task-field :label="__('Collaborators')">
+            <x-task-field :label="__('Collaborators')" icon="users">
                 <flux:pillbox size="sm" wire:model="collaboratorIds" multiple searchable :aria-label="__('Collaborators')" :placeholder="__('Choose more people …')">
                     @foreach ($this->users as $user)
                         <flux:pillbox.option wire:key="collaborator-{{ $user->id }}" value="{{ $user->id }}">{{ $user->labelledName() }}</flux:pillbox.option>
@@ -1150,7 +1151,7 @@ new class extends Component
                 </flux:pillbox>
             </x-task-field>
 
-            <x-task-field :label="__('Tags')">
+            <x-task-field :label="__('Tags')" icon="tag">
                 <flux:pillbox size="sm" variant="combobox" wire:model="tagIds" multiple :aria-label="__('Tags')" :placeholder="__('Select tags …')">
                     @if ($this->canEdit)
                         <x-slot name="input">
@@ -1170,7 +1171,7 @@ new class extends Component
                 </flux:pillbox>
             </x-task-field>
 
-            <x-task-field :label="__('Blocked by')">
+            <x-task-field :label="__('Blocked by')" icon="lock-closed">
                 <flux:pillbox size="sm" wire:model="blockerIds" multiple searchable :aria-label="__('Blocked by')" :placeholder="__('Choose tasks …')">
                     <x-slot name="search">
                         <flux:pillbox.search wire:model.live.debounce.300ms="blockerSearch" :placeholder="__('Search tasks …')" />
@@ -1181,7 +1182,7 @@ new class extends Component
                 </flux:pillbox>
             </x-task-field>
 
-            <x-task-field :label="__('Blocking')">
+            <x-task-field :label="__('Blocking')" icon="no-symbol">
                 <flux:pillbox size="sm" wire:model="blockingIds" multiple searchable :aria-label="__('Blocking')" :placeholder="__('Choose tasks …')">
                     <x-slot name="search">
                         <flux:pillbox.search wire:model.live.debounce.300ms="blockingSearch" :placeholder="__('Search tasks …')" />
@@ -1192,7 +1193,7 @@ new class extends Component
                 </flux:pillbox>
             </x-task-field>
 
-            <x-task-field :label="__('Emails about this task')">
+            <x-task-field :label="__('Emails about this task')" icon="envelope">
                 <flux:switch wire:model.live="notificationsOn" :aria-label="__('Emails about this task')" />
                 <flux:text size="sm" class="mt-1">{{ __('Assignees and collaborators get an email for new comments and status changes.') }}</flux:text>
             </x-task-field>
@@ -1305,7 +1306,7 @@ new class extends Component
                 @if ($comment->user)
                     <x-user-avatar size="xs" :user="$comment->user" class="mt-2" />
                 @else
-                    <flux:avatar size="xs" icon="bolt" class="mt-2" />
+                    <flux:avatar circle size="xs" icon="bolt" class="mt-2" />
                 @endif
 
                 <flux:card size="sm" class="min-w-0 flex-1 space-y-1 transition-shadow" data-comment-card>

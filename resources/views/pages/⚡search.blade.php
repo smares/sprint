@@ -126,7 +126,7 @@ new class extends Component
         @elseif (app(TaskSearchService::class)->isTooShort($this->terms))
             <flux:text>{{ __('Enter at least :count characters.', ['count' => TaskSearchService::MIN_LIKE_LENGTH]) }}</flux:text>
         @elseif ($this->results->isEmpty())
-            <flux:callout icon="magnifying-glass" :heading="__('No results found')" :text="__('There are no matching tasks for “:query” that you can see.', ['query' => $query])" />
+            <x-empty-state icon="magnifying-glass" :heading="__('No results found')" :text="__('There are no matching tasks for “:query” that you can see.', ['query' => $query])" />
         @else
             <ul class="divide-y divide-zinc-200 dark:divide-zinc-700">
                 @foreach ($this->results->take($this->limit) as $task)
@@ -134,7 +134,7 @@ new class extends Component
                     <li wire:key="result-{{ $task->id }}" class="py-3">
                         <div class="flex items-center gap-2">
                             <a href="{{ route('tasks.show', $task) }}" wire:navigate class="font-medium hover:underline">{{ $task->title }}</a>
-                            <x-color-badge size="sm" :color="$task->status->color">{{ $task->status->name }}</x-color-badge>
+                            <x-status-badge :status="$task->status" />
                         </div>
                         <flux:text size="sm">
                             {{ $task->project->name }}@if ($task->parent) · {{ __('in :title', ['title' => $task->parent->title]) }}@endif

@@ -139,7 +139,7 @@ new class extends Component
     <div class="space-y-4 sm:hidden">
         @forelse ($agenda as $day)
             <div wire:key="agenda-{{ $day['date']->toDateString() }}">
-                <flux:heading size="sm" @class(['mb-1', 'text-blue-600 dark:text-blue-400' => $day['date']->isToday()])>{{ $day['date']->isoFormat('dd, L') }}</flux:heading>
+                <flux:heading size="sm" @class(['mb-1', 'text-accent-content' => $day['date']->isToday()])>{{ $day['date']->isoFormat('dd, L') }}</flux:heading>
                 <div class="space-y-1">
                     @foreach ($day['tasks'] as $task)
                         <a wire:key="agenda-{{ $day['date']->toDateString() }}-{{ $task->id }}" href="{{ route('tasks.show', $task) }}" wire:navigate style="--badge: {{ $task->status->color }}"
@@ -152,8 +152,8 @@ new class extends Component
         @endforelse
     </div>
 
-    <div class="overflow-x-auto max-sm:hidden">
-        <div class="grid min-w-[56rem] grid-cols-7 border-s border-t border-zinc-200 dark:border-zinc-700">
+    <div class="overflow-x-auto rounded-xl shadow-xs max-sm:hidden">
+        <div class="grid min-w-[56rem] grid-cols-7 border-s border-t border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-800">
             @foreach ($this->weeks[0] as $weekday)
                 <div class="border-e border-b border-zinc-200 bg-zinc-50 p-2 text-sm font-medium dark:border-zinc-700 dark:bg-zinc-900">
                     {{ $weekday['date']->isoFormat('dd') }}
@@ -168,7 +168,7 @@ new class extends Component
                             x-on:dragover.prevent="over = true"
                             x-on:dragleave="over = false"
                             x-on:drop.prevent="over = false; const task = JSON.parse($event.dataTransfer.getData('text/plain') || '{}'); if (task.id) { $wire.moveToDay(task.id, task.from, '{{ $day['date']->toDateString() }}') }"
-                            x-bind:class="over && 'ring-2 ring-inset ring-blue-400'"
+                            x-bind:class="over && 'ring-2 ring-inset ring-accent'"
                             {{-- A click on the day itself (not on a task) opens the dialog with that day as the due date --}}
                             x-on:click="if (! $event.target.closest('a, button')) { $wire.$dispatch('new-task', { dueDate: '{{ $day['date']->toDateString() }}' }) }"
                         @endif
@@ -180,7 +180,7 @@ new class extends Component
                         <div class="flex items-start justify-between">
                             <div @class([
                                 'text-sm',
-                                'inline-flex size-6 items-center justify-center rounded-full bg-blue-600 font-semibold text-white' => $day['date']->isToday(),
+                                'inline-flex size-6 items-center justify-center rounded-full bg-accent font-semibold text-accent-foreground' => $day['date']->isToday(),
                             ])>{{ $day['date']->day }}</div>
 
                             @if ($this->canEdit)

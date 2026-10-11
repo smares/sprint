@@ -11,11 +11,14 @@
 @endif
 
 <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-    <div>
-        <flux:heading size="xl">{{ $project->name }}</flux:heading>
-        @if ($project->description)
-            <flux:text class="mt-1">{{ $project->description }}</flux:text>
-        @endif
+    <div class="flex items-start gap-3">
+        <x-project-icon :project="$project" size="lg" />
+        <div class="min-w-0">
+            <flux:heading size="xl">{{ $project->name }}</flux:heading>
+            @if ($project->description)
+                <flux:text class="mt-1">{{ $project->description }}</flux:text>
+            @endif
+        </div>
     </div>
 
     <div class="flex flex-wrap items-center gap-2">

@@ -14,6 +14,10 @@ new class extends Component
 
     public string $description = '';
 
+    public string $color = '';
+
+    public string $icon = '';
+
     public string $confirmName = '';
 
     public function hydrate(): void
@@ -27,18 +31,44 @@ new class extends Component
 
         $this->name = $this->project->name;
         $this->description = (string) $this->project->description;
+        $this->color = (string) $this->project->color;
+        $this->icon = (string) $this->project->icon;
+    }
+
+    /**
+     * Emojis offered with one click for the project's icon; any other single emoji or character can be typed.
+     *
+     * @return list<string>
+     */
+    public function suggestedIcons(): array
+    {
+        return ['🚀', '💡', '🎯', '📈', '🛠️', '🎨', '📱', '🌐', '📣', '🧪', '📦', '🏠', '💼', '🤝', '📚', '⭐'];
     }
 
     public function save(): void
     {
         Gate::authorize('manage', $this->project);
 
+        $this->icon = trim($this->icon);
+
         $validated = $this->validate([
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:5000'],
-        ], attributes: ['name' => __('Name'), 'description' => __('Description')]);
+            'color' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            // One emoji or character (an emoji may consist of several code points, so it is counted as the eye sees it)
+            'icon' => ['nullable', 'string', 'max:32', function (string $attribute, string $value, \Closure $fail) {
+                if (grapheme_strlen($value) !== 1) {
+                    $fail(__('Choose a single emoji or character.'));
+                }
+            }],
+        ], attributes: ['name' => __('Name'), 'description' => __('Description'), 'color' => __('Color'), 'icon' => __('Icon')]);
 
-        $this->project->update(['name' => trim($validated['name']), 'description' => $validated['description'] ?: null]);
+        $this->project->update([
+            'name' => trim($validated['name']),
+            'description' => $validated['description'] ?: null,
+            'color' => $validated['color'] ? strtolower($validated['color']) : null,
+            'icon' => $validated['icon'] ?: null,
+        ]);
 
         Flux::toast(variant: 'success', text: __('Project saved.'));
         $this->dispatch('project-updated');
@@ -88,6 +118,34 @@ new class extends Component
             <form wire:submit="save" class="space-y-4">
                 <flux:input wire:model="name" :label="__('Name')" />
                 <flux:textarea wire:model="description" :label="__('Description')" rows="3" />
+
+                {{-- Color and icon of the project's tile; left empty, the project keeps a color of its own and its first letter --}}
+                <div class="flex flex-col gap-4 sm:flex-row">
+                    <flux:field class="sm:w-40">
+                        <flux:label>{{ __('Color') }}</flux:label>
+                        <div class="flex items-center gap-1">
+                            <flux:color-picker type="button" size="sm" class="w-full" :swatches="\App\Color::swatches()" wire:model.live="color" :placeholder="__('Automatic')" :aria-label="__('Color')" />
+                            @if ($color !== '')
+                                <flux:button size="sm" variant="ghost" icon="x-mark" wire:click="$set('color', '')" :aria-label="__('Automatic color')" :tooltip="__('Automatic color')" />
+                            @endif
+                        </div>
+                        <flux:error name="color" />
+                    </flux:field>
+                    <flux:field class="flex-1">
+                        <flux:label>{{ __('Icon') }}</flux:label>
+                        <div class="flex items-center gap-2">
+                            <div class="w-14 shrink-0">
+                                <flux:input wire:model.live.debounce.300ms="icon" maxlength="32" class="[&_input]:text-center" :aria-label="__('Icon')" :placeholder="mb_strtoupper(mb_substr($name, 0, 1))" />
+                            </div>
+                            <div class="flex flex-wrap gap-0.5" role="group" aria-label="{{ __('Suggested icons') }}">
+                                @foreach ($this->suggestedIcons() as $emoji)
+                                    <button type="button" wire:key="icon-{{ $loop->index }}" wire:click="$set('icon', '{{ $emoji }}')" @class(['flex size-7 items-center justify-center rounded-md text-base hover:bg-zinc-100 dark:hover:bg-zinc-700', 'bg-zinc-100 ring-1 ring-zinc-300 dark:bg-zinc-700 dark:ring-zinc-500' => $icon === $emoji]) aria-label="{{ $emoji }}">{{ $emoji }}</button>
+                                @endforeach
+                            </div>
+                        </div>
+                        <flux:error name="icon" />
+                    </flux:field>
+                </div>
                 <div class="flex justify-end">
                     <flux:button type="submit" variant="primary">{{ __('Save') }}</flux:button>
                 </div>

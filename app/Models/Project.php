@@ -18,7 +18,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
-#[Fillable(['name', 'description', 'archived_at'])]
+#[Fillable(['name', 'description', 'color', 'icon', 'archived_at'])]
 class Project extends Model
 {
     /** @use HasFactory<ProjectFactory> */
@@ -63,6 +63,29 @@ class Project extends Model
     protected function casts(): array
     {
         return ['archived_at' => 'datetime'];
+    }
+
+    /**
+     * The color the project is shown in: its own, or else one of the swatches (gray aside) picked by its id, so every
+     * project has a color of its own from the start and keeps it.
+     */
+    public function displayColor(): string
+    {
+        if ($this->color !== null && Color::isHex($this->color)) {
+            return strtolower($this->color);
+        }
+
+        $colorful = array_values(array_filter(Color::SWATCHES, fn (array $swatch) => $swatch[0] !== Color::FALLBACK));
+
+        return $colorful[(int) $this->getKey() % count($colorful)][0];
+    }
+
+    /**
+     * What the project's tile shows: its icon, or else the first letter of its name.
+     */
+    public function displayIcon(): string
+    {
+        return $this->icon ?? mb_strtoupper(mb_substr($this->name, 0, 1));
     }
 
     /**

@@ -25,7 +25,12 @@ new class extends Component
                 // Like the list, which these numbers open: top-level tasks only
                 'tasks as overdue_tasks_count' => fn ($query) => $query->topLevel()->overdue(),
                 'tasks as due_soon_tasks_count' => fn ($query) => $query->topLevel()->dueSoon(),
+                // The progress bar: top-level tasks (sections aside) and how many of them are done
+                'tasks as progress_total_count' => fn ($query) => $query->topLevel()->where('tasks.is_section', false),
+                'tasks as progress_done_count' => fn ($query) => $query->topLevel()->where('tasks.is_section', false)->done(),
             ])
+            ->withMin(['tasks as next_due_date' => fn ($query) => $query->open()->where('tasks.due_date', '>=', today()->toDateString())], 'due_date')
+            ->with('members')
             ->orderBy('name')
             ->get();
     }
@@ -130,7 +135,11 @@ new class extends Component
     </div>
 
     @if ($this->projects->isEmpty())
-        <flux:callout icon="folder-open" :heading="__('No projects yet')" :text="__('Create your first project to start managing tasks.')" />
+        <x-empty-state emoji="🚀" :heading="__('No projects yet')" :text="__('Create your first project to start managing tasks.')">
+            <flux:modal.trigger name="create-project">
+                <flux:button variant="primary" icon="plus">{{ __('New project') }}</flux:button>
+            </flux:modal.trigger>
+        </x-empty-state>
     @else
         @php($favoriteIds = $this->favorites->pluck('id')->all())
 

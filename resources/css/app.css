@@ -11,6 +11,24 @@
 @theme {
     --font-sans: ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
         'Noto Color Emoji';
+
+    /* The orange of the logo as Flux's accent: primary buttons, the current navigation item, focus, today. */
+    --color-accent: var(--color-orange-500);
+    --color-accent-content: var(--color-orange-600);
+    --color-accent-foreground: var(--color-white);
+}
+
+@layer theme {
+    .dark {
+        --color-accent: var(--color-orange-500);
+        --color-accent-content: var(--color-orange-400);
+        --color-accent-foreground: var(--color-white);
+    }
+}
+
+/* A white area on the tinted page (tables, calendar, timeline), so content stands out from the background. */
+@utility surface {
+    @apply rounded-xl border border-zinc-200 bg-white shadow-xs dark:border-zinc-700 dark:bg-zinc-800;
 }
 
 .markdown {
@@ -219,4 +237,131 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
     .unicorn-flight {
         display: none;
     }
+}
+
+/* Ticking a task off (task-done-button): the filled check pops, the title is struck through and the row fades before the server
+   takes it away. */
+@keyframes task-check-pop {
+    0% {
+        transform: scale(0.6);
+    }
+
+    60% {
+        transform: scale(1.25);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+.task-check-pop {
+    animation: task-check-pop 0.3s ease-out;
+}
+
+/* New rows and cards (added, loaded or shown by a filter) fade in instead of popping up. */
+tr[data-task-id] {
+    transition: opacity 0.25s ease;
+}
+
+@starting-style {
+    tr[data-task-id],
+    .board-card {
+        opacity: 0;
+    }
+}
+
+[data-completing] [data-task-title] {
+    text-decoration: line-through;
+    text-decoration-color: var(--color-green-600);
+}
+
+[data-completing] {
+    opacity: 0.45;
+    transition: opacity 0.4s ease-in 0.1s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .task-check-pop {
+        animation: none;
+    }
+
+    tr[data-task-id],
+    [data-completing] {
+        transition: none;
+    }
+}
+
+/* Board cards lift a little under the pointer, tilt while they are picked up and leave a faded copy where they would land. */
+.board-card {
+    transition:
+        transform 0.15s ease,
+        box-shadow 0.15s ease,
+        opacity 0.25s ease;
+}
+
+@media (hover: hover) {
+    .board-card:hover {
+        transform: translateY(-1px);
+        box-shadow:
+            0 4px 6px -1px rgb(0 0 0 / 0.08),
+            0 2px 4px -2px rgb(0 0 0 / 0.08);
+    }
+}
+
+.board-card.sortable-chosen {
+    rotate: 2deg;
+    box-shadow:
+        0 10px 15px -3px rgb(0 0 0 / 0.12),
+        0 4px 6px -4px rgb(0 0 0 / 0.12);
+}
+
+.board-card.sortable-ghost {
+    opacity: 0.4;
+    rotate: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .board-card,
+    .board-card:hover,
+    .board-card.sortable-chosen {
+        transition: none;
+        transform: none;
+        rotate: none;
+    }
+}
+
+/* A task's title and properties (tasks/show, also in the flyout) read like text: a large title and a quiet list of values whose
+   fields show their frame only when pointed at, focused or open. Errors keep their red frame. */
+.task-title-input input[data-flux-control] {
+    font-size: 1.375rem;
+    font-weight: 600;
+    line-height: 1.75rem;
+    height: auto;
+    padding-block: 0.375rem;
+}
+
+:is(.task-title-input input[data-flux-control], .task-properties :is([data-flux-select-button], [data-flux-date-picker-button], [data-flux-pillbox-trigger], input[data-flux-control])):not([data-invalid], [aria-invalid='true'], .border-red-500) {
+    border-color: transparent;
+    box-shadow: none;
+    background-color: transparent;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+:is(.task-title-input input[data-flux-control], .task-properties :is([data-flux-select-button], [data-flux-date-picker-button], [data-flux-pillbox-trigger], input[data-flux-control])):not([data-invalid], [aria-invalid='true'], .border-red-500):hover {
+    background-color: var(--color-zinc-100);
+}
+
+:is(.task-title-input input[data-flux-control], .task-properties :is([data-flux-select-button], [data-flux-date-picker-button], [data-flux-pillbox-trigger], input[data-flux-control])):not([data-invalid], [aria-invalid='true'], .border-red-500):is(:focus, :focus-within, [aria-expanded='true'], [data-open]) {
+    border-color: var(--color-zinc-200);
+    background-color: var(--color-white);
+}
+
+.dark :is(.task-title-input input[data-flux-control], .task-properties :is([data-flux-select-button], [data-flux-date-picker-button], [data-flux-pillbox-trigger], input[data-flux-control])):not([data-invalid], [aria-invalid='true'], .border-red-500):hover {
+    background-color: rgb(255 255 255 / 0.06);
+}
+
+.dark :is(.task-title-input input[data-flux-control], .task-properties :is([data-flux-select-button], [data-flux-date-picker-button], [data-flux-pillbox-trigger], input[data-flux-control])):not([data-invalid], [aria-invalid='true'], .border-red-500):is(:focus, :focus-within, [aria-expanded='true'], [data-open]) {
+    border-color: rgb(255 255 255 / 0.1);
+    background-color: rgb(255 255 255 / 0.08);
 }

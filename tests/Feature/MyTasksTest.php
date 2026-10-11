@@ -47,7 +47,7 @@ class MyTasksTest extends TestCase
             ->assertSee('1/2')
             ->assertSeeHtml('aria-label="Als erledigt markieren"')
             ->assertSeeHtml('data-opens-task="'.$task->id.'"')
-            ->assertSeeHtml('text-red-500');
+            ->assertSeeHtml('data-due="red"');
     }
 
     public function test_ticking_a_task_off_completes_it_but_only_where_one_may_edit(): void

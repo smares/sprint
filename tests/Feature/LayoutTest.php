@@ -41,17 +41,20 @@ class LayoutTest extends TestCase
         $this->assertGreaterThanOrEqual(2, substr_count($response->getContent(), route('admin.teams')));
     }
 
-    public function test_view_switcher_buttons_keep_accessible_names_without_visible_labels_on_phones(): void
+    public function test_below_large_screens_a_view_switcher_sits_under_the_project_title(): void
     {
-        $admin = User::factory()->admin()->create();
         $project = Project::factory()->create();
+        $html = $this->actingAs(User::factory()->admin()->create())->get(route('projects.board', $project))->assertOk()->getContent();
 
-        $response = $this->actingAs($admin)->get(route('projects.board', $project))->assertOk();
+        $start = (int) strpos($html, 'data-view-switcher');
+        $switcher = substr($html, (int) strrpos(substr($html, 0, $start), '<div'), 60000);
 
-        foreach (['Liste', 'Kalender', 'Zeitleiste'] as $label) {
-            $response->assertSee('aria-label="'.$label.'"', false);
+        // Hidden where the sidebar lists the views itself; icons with accessible names on phones, the open view marked
+        $this->assertStringContainsString('lg:hidden', $switcher);
+        foreach (['Liste', 'Kalender', 'Zeitleiste', 'Statistik'] as $label) {
+            $this->assertStringContainsString('aria-label="'.$label.'"', $switcher);
         }
-        $response->assertSee('sm:hidden', false);
+        $this->assertStringContainsString('aria-current="page"', $switcher);
     }
 
     public function test_guests_get_no_navigation(): void
@@ -59,12 +62,13 @@ class LayoutTest extends TestCase
         $this->get(route('login'))->assertOk()->assertDontSee('data-flux-sidebar-toggle', false)->assertDontSee('Darstellung');
     }
 
-    public function test_the_timeline_switcher_uses_the_turn_arrow_icon(): void
+    public function test_the_timeline_view_uses_the_turn_arrow_icon_in_the_sidebar(): void
     {
         $project = Project::factory()->create();
         $html = $this->actingAs(User::factory()->admin()->create())->get(route('projects.board', $project))->getContent();
+        $html = substr($html, (int) strpos($html, 'data-sidebar-views'));
 
-        $this->assertStringContainsString('aria-label="Zeitleiste"', $html);
+        $this->assertStringContainsString('Zeitleiste', $html);
 
         $pathOf = function (string $icon) use ($html): bool {
             foreach (['micro', 'mini', 'outline'] as $variant) {

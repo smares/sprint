@@ -88,6 +88,10 @@ class SidebarTest extends TestCase
             ->assertSee('Meine Aufgaben')->assertSee('Auslastung')->assertSee('Posteingang')
             ->assertDontSee(route('admin.users'));
 
-        Livewire::test('notification-bell', ['variant' => 'sidebar'])->assertSee('Posteingang')->assertSeeHtml('>1<');
+        Livewire::test('notification-bell')->assertSee('Posteingang')->assertSeeHtml('>1<');
+        // On phones a dot on the menu button says the same
+        Livewire::test('notification-bell', ['variant' => 'dot', 'announces' => false])->assertSeeHtml('data-unread-dot');
+        $this->me->unreadNotifications->markAsRead();
+        Livewire::test('notification-bell', ['variant' => 'dot', 'announces' => false])->assertDontSeeHtml('data-unread-dot');
     }
 }

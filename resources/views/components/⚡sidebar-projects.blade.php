@@ -80,7 +80,7 @@ new class extends Component
 
 {{-- The projects in the sidebar: the favourites, then the recently opened ones (and the current project in any case), each
      with its tile, which is all that shows when the sidebar is collapsed. Under the current project its views, to switch
-     between list, board and the others. --}}
+     between list, board and the others (the only place to switch them, on phones as on large screens). --}}
 @php
     [$favorites, $others] = $this->projects->partition(fn ($project) => in_array($project->id, $this->favoriteIds, true));
     $groups = array_filter([__('Favorites') => $favorites, __('Recently opened') => $others], fn ($projects) => $projects->isNotEmpty());
@@ -104,7 +104,8 @@ new class extends Component
             </flux:sidebar.item>
 
             @if ($isCurrent)
-                <div class="ms-5 border-s border-zinc-200 ps-2 in-data-flux-sidebar-collapsed-desktop:hidden dark:border-zinc-700" data-sidebar-views>
+                {{-- Collapsed, the views stay as icons right under the project's tile (their names in the tooltip) --}}
+                <div class="ms-5 border-s border-zinc-200 ps-2 in-data-flux-sidebar-collapsed-desktop:ms-0 in-data-flux-sidebar-collapsed-desktop:mb-2 in-data-flux-sidebar-collapsed-desktop:border-s-0 in-data-flux-sidebar-collapsed-desktop:ps-0 dark:border-zinc-700" data-sidebar-views>
                     @foreach (ProjectView::cases() as $view)
                         <flux:sidebar.item wire:key="sidebar-view-{{ $view->value }}" :href="route($view->routeName(), $project)" wire:navigate :icon="$view->icon()" :current="$currentView === $view->value">
                             {{ $view->label() }}

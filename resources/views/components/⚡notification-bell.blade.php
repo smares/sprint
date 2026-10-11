@@ -9,8 +9,8 @@ use Livewire\Component;
 
 new class extends Component
 {
-    /** `sidebar`: the inbox entry of the sidebar with its count; `button`: the bell in the phone header. */
-    public string $variant = 'button';
+    /** `sidebar`: the inbox entry of the sidebar with its count; `dot`: a dot on the phone's menu button while something is unread. */
+    public string $variant = 'sidebar';
 
     /**
      * Whether new entries are announced with a toast. Both entries are on the page on phones, so only one of them says so.
@@ -63,18 +63,17 @@ new class extends Component
 ?>
 
 {{-- With live updates the count arrives over the socket; without them it is fetched every minute. --}}
-<div @unless (app(RealtimeService::class)->enabled()) wire:poll.60s @endunless class="relative">
-    @if ($variant === 'sidebar')
+<div @unless (app(RealtimeService::class)->enabled()) wire:poll.60s @endunless @class(['relative' => $variant === 'sidebar', 'pointer-events-none absolute end-1 top-1' => $variant === 'dot'])>
+    @if ($variant === 'dot')
+        @if ($this->unread > 0)
+            <span class="block size-2.5 rounded-full bg-red-500 ring-2 ring-white dark:ring-zinc-900" data-unread-dot></span>
+            <span class="sr-only">{{ __('Inbox, :count unread', ['count' => $this->unread]) }}</span>
+        @endif
+    @else
         <flux:sidebar.item icon="inbox" :href="route('inbox')" wire:navigate :current="$onInbox" :badge="$this->unread > 0 ? ($this->unread > 99 ? '99+' : (string) $this->unread) : null" badge:color="red" :aria-label="$this->unread > 0 ? __('Inbox, :count unread', ['count' => $this->unread]) : __('Inbox')">{{ __('Inbox') }}</flux:sidebar.item>
         {{-- Collapsed, only the icon shows: a dot tells that something is unread --}}
         @if ($this->unread > 0)
             <span aria-hidden="true" class="pointer-events-none absolute start-7 top-1.5 hidden size-2 rounded-full bg-red-500 in-data-flux-sidebar-collapsed-desktop:block"></span>
-        @endif
-    @else
-        <flux:button href="{{ route('inbox') }}" wire:navigate variant="ghost" icon="bell" aria-label="{{ $this->unread > 0 ? __('Inbox, :count unread', ['count' => $this->unread]) : __('Inbox') }}" tooltip="{{ $this->unread > 0 ? __('Inbox, :count unread', ['count' => $this->unread]) : __('Inbox') }}" />
-
-        @if ($this->unread > 0)
-            <span aria-hidden="true" class="pointer-events-none absolute -end-0.5 -top-0.5 flex min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold leading-4 text-white">{{ $this->unread > 99 ? '99+' : $this->unread }}</span>
         @endif
     @endif
 </div>

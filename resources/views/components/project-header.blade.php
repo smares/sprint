@@ -7,7 +7,7 @@
     <flux:callout class="mb-4" icon="archive-box" :heading="__('Archived')" :text="__('This project is archived and read-only.')" />
 @endif
 
-<div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+<div class="mb-6 flex items-start justify-between gap-4">
     <div class="flex items-start gap-3">
         <x-project-icon :project="$project" size="lg" />
         <div class="min-w-0">
@@ -18,11 +18,12 @@
         </div>
     </div>
 
-    <div class="flex flex-wrap items-center gap-2">
-        <x-project-views :project="$project" :active="$active" :presence="$presence" />
+    <div class="flex shrink-0 items-center gap-2">
+        {{-- The views (list, board, …) are switched in the sidebar under the project, below lg also in the row underneath --}}
+        <x-presence :channel="$presence" :one="__(':name is here too')" :many="__(':count people are here too')" class="max-sm:hidden" />
 
         @can('edit', $project)
-            {{-- On phones only the icon, like the views, so views, new task and the settings fit in one row --}}
+            {{-- On phones only the icon, so new task and the settings stay small next to the title --}}
             <flux:button variant="primary" icon="plus" square class="sm:hidden" x-on:click="$flux.modal('create-task').show()" :aria-label="__('New task')" :tooltip="__('New task')" />
             <flux:button variant="primary" icon="plus" class="max-sm:hidden" x-on:click="$flux.modal('create-task').show()">{{ __('New task') }}</flux:button>
         @endcan
@@ -32,6 +33,8 @@
         @endcan
     </div>
 </div>
+
+<x-project-views :project="$project" :active="$active" class="-mt-2 mb-6" />
 
 @can('edit', $project)
     <livewire:task-create :project="$project" />

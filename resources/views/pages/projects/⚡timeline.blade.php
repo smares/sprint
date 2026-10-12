@@ -141,73 +141,75 @@ new class extends Component
     @php($days = collect(range(0, $this::DAYS - 1))->map(fn ($offset) => $this->start->copy()->addDays($offset)))
     @php($todayColumn = now()->between($this->start, $this->end->copy()->endOfDay()) ? (int) $this->start->diffInDays(now()->startOfDay()) + 1 : null)
 
-    <div class="scroll-shadows rounded-xl" data-fills-height>
-        <div class="surface overflow-x-auto" data-scroll-edges>
-            <div class="min-w-max">
-                <div class="sticky top-0 z-20 flex border-b border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
-                    <div class="pinned-shadow sticky start-0 z-10 w-56 shrink-0 border-e border-zinc-200 bg-zinc-50 p-2 text-sm font-medium dark:border-zinc-700 dark:bg-zinc-900">{{ __('Task') }}</div>
-                    <div class="grid" style="grid-template-columns: repeat({{ $days->count() }}, {{ $this::DAY_WIDTH }})">
-                        @foreach ($days as $day)
-                            <div wire:key="head-{{ $day->toDateString() }}" @class([
-                                'py-1 text-center text-xs leading-tight',
-                                'bg-zinc-100 dark:bg-zinc-800' => $day->isWeekend(),
-                                'font-bold text-accent-content' => $day->isToday(),
-                            ])>
-                                @if ($day->day === 1 || $loop->first)
-                                    <div class="whitespace-nowrap font-semibold">{{ $day->isoFormat('MMM') }}</div>
-                                @else
-                                    <div>&nbsp;</div>
-                                @endif
-                                <div>{{ $day->day }}</div>
-                            </div>
-                        @endforeach
+    @if ($this->rows->isEmpty())
+        <x-empty-state icon="calendar-days" :heading="__('There are no tasks with dates in these weeks.')" />
+    @else
+        <div class="scroll-shadows rounded-xl" data-fills-height>
+            <div class="surface overflow-x-auto" data-scroll-edges>
+                <div class="min-w-max">
+                    <div class="sticky top-0 z-20 flex border-b border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
+                        <div class="pinned-shadow sticky start-0 z-10 w-32 shrink-0 sm:w-56 border-e border-zinc-200 bg-zinc-50 p-2 text-sm font-medium dark:border-zinc-700 dark:bg-zinc-900">{{ __('Task') }}</div>
+                        <div class="grid" style="grid-template-columns: repeat({{ $days->count() }}, {{ $this::DAY_WIDTH }})">
+                            @foreach ($days as $day)
+                                <div wire:key="head-{{ $day->toDateString() }}" @class([
+                                    'py-1 text-center text-xs leading-tight',
+                                    'bg-zinc-100 dark:bg-zinc-800' => $day->isWeekend(),
+                                    'font-bold text-accent-content' => $day->isToday(),
+                                ])>
+                                    @if ($day->day === 1 || $loop->first)
+                                        <div class="whitespace-nowrap font-semibold">{{ $day->isoFormat('MMM') }}</div>
+                                    @else
+                                        <div>&nbsp;</div>
+                                    @endif
+                                    <div>{{ $day->day }}</div>
+                                </div>
+                            @endforeach
+                        </div>
                     </div>
-                </div>
 
-                @forelse ($this->rows as $row)
-                    @php($task = $row['task'])
-                    <div wire:key="row-{{ $task->id }}" class="flex border-b border-zinc-100 last:border-b-0 dark:border-zinc-800">
-                        <div class="pinned-shadow sticky start-0 z-10 flex w-56 shrink-0 items-center gap-1 border-e border-zinc-200 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-800">
-                            <a href="{{ route('tasks.show', $task) }}" wire:navigate @class(['truncate text-sm hover:underline', 'line-through text-zinc-400' => $task->isDone()])>{{ $task->title }}</a>
-                            @if ($task->isBlocked())
-                                <flux:icon.lock-closed variant="micro" class="shrink-0 text-amber-500" title="{{ __('Blocked') }}" />
-                            @endif
-                        </div>
-                        <div class="relative grid items-center" data-days="{{ $days->count() }}" style="grid-template-columns: repeat({{ $days->count() }}, {{ $this::DAY_WIDTH }})">
-                            @if ($todayColumn)
-                                <div class="pointer-events-none absolute inset-y-0 w-px bg-accent" style="inset-inline-start: {{ ($todayColumn - 1) * 2 + 1 }}rem"></div>
-                            @endif
-                            @php($clippedStart = $task->spanStart()->startOfDay() < $this->start)
-                            @php($clippedEnd = $task->spanEnd()->startOfDay() > $this->end->copy()->startOfDay())
-                            <a href="{{ route('tasks.show', $task) }}" wire:navigate title="{{ $task->title }}: {{ $task->spanStart()->isoFormat('L') }} – {{ $task->spanEnd()->isoFormat('L') }}"
-                               @if ($this->canEdit)
-                                   draggable="false"
-                                   x-data="timelineBar({{ $task->id }})"
-                                   x-on:pointerdown="begin($event, 'move')"
-                                   x-on:pointermove="move($event)"
-                                   x-on:pointerup="finish()"
-                                   x-on:pointercancel="cancel()"
-                                   x-on:click.capture="suppressClick($event)"
-                               @endif
-                               class="color-chip relative my-1.5 block h-5 truncate rounded px-1 text-xs leading-5 {{ $task->isDone() ? 'opacity-50' : '' }} {{ $this->canEdit ? 'cursor-grab touch-none select-none' : '' }}"
-                               style="grid-column: {{ $row['first'] }} / {{ $row['last'] + 1 }}; grid-row: 1; --badge: {{ $task->status->color }}">{{ $row['last'] - $row['first'] >= 2 ? $task->title : '' }}
-                                @if ($this->canEdit)
-                                    @unless ($clippedStart)
-                                        <span class="absolute inset-y-0 start-0 w-1.5 cursor-ew-resize" aria-hidden="true" x-on:pointerdown.stop="begin($event, 'start')"></span>
-                                    @endunless
-                                    @unless ($clippedEnd)
-                                        <span class="absolute inset-y-0 end-0 w-1.5 cursor-ew-resize" aria-hidden="true" x-on:pointerdown.stop="begin($event, 'end')"></span>
-                                    @endunless
+                    @foreach ($this->rows as $row)
+                        @php($task = $row['task'])
+                        <div wire:key="row-{{ $task->id }}" class="flex border-b border-zinc-100 last:border-b-0 dark:border-zinc-800">
+                            <div class="pinned-shadow sticky start-0 z-10 flex w-32 shrink-0 sm:w-56 items-center gap-1 border-e border-zinc-200 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-800">
+                                <a href="{{ route('tasks.show', $task) }}" wire:navigate @class(['truncate text-sm hover:underline', 'line-through text-zinc-400' => $task->isDone()])>{{ $task->title }}</a>
+                                @if ($task->isBlocked())
+                                    <flux:icon.lock-closed variant="micro" class="shrink-0 text-amber-500" title="{{ __('Blocked') }}" />
                                 @endif
-                            </a>
+                            </div>
+                            <div class="relative grid items-center" data-days="{{ $days->count() }}" style="grid-template-columns: repeat({{ $days->count() }}, {{ $this::DAY_WIDTH }})">
+                                @if ($todayColumn)
+                                    <div class="pointer-events-none absolute inset-y-0 w-px bg-accent" style="inset-inline-start: {{ ($todayColumn - 1) * 2 + 1 }}rem"></div>
+                                @endif
+                                @php($clippedStart = $task->spanStart()->startOfDay() < $this->start)
+                                @php($clippedEnd = $task->spanEnd()->startOfDay() > $this->end->copy()->startOfDay())
+                                <a href="{{ route('tasks.show', $task) }}" wire:navigate title="{{ $task->title }}: {{ $task->spanStart()->isoFormat('L') }} – {{ $task->spanEnd()->isoFormat('L') }}"
+                                   @if ($this->canEdit)
+                                       draggable="false"
+                                       x-data="timelineBar({{ $task->id }})"
+                                       x-on:pointerdown="begin($event, 'move')"
+                                       x-on:pointermove="move($event)"
+                                       x-on:pointerup="finish()"
+                                       x-on:pointercancel="cancel()"
+                                       x-on:click.capture="suppressClick($event)"
+                                   @endif
+                                   class="color-chip relative my-1.5 block h-5 truncate rounded px-1 text-xs leading-5 {{ $task->isDone() ? 'opacity-50' : '' }} {{ $this->canEdit ? 'cursor-grab touch-none select-none' : '' }}"
+                                   style="grid-column: {{ $row['first'] }} / {{ $row['last'] + 1 }}; grid-row: 1; --badge: {{ $task->status->color }}">{{ $row['last'] - $row['first'] >= 2 ? $task->title : '' }}
+                                    @if ($this->canEdit)
+                                        @unless ($clippedStart)
+                                            <span class="absolute inset-y-0 start-0 w-1.5 cursor-ew-resize" aria-hidden="true" x-on:pointerdown.stop="begin($event, 'start')"></span>
+                                        @endunless
+                                        @unless ($clippedEnd)
+                                            <span class="absolute inset-y-0 end-0 w-1.5 cursor-ew-resize" aria-hidden="true" x-on:pointerdown.stop="begin($event, 'end')"></span>
+                                        @endunless
+                                    @endif
+                                </a>
+                            </div>
                         </div>
-                    </div>
-                @empty
-                    <div class="p-6"><flux:text>{{ __('There are no tasks with dates in these weeks.') }}</flux:text></div>
-                @endforelse
+                    @endforeach
+                </div>
             </div>
         </div>
-    </div>
+    @endif
 
     @if ($this->outside['dated'] > 0 || $this->outside['undated'] > 0)
         <flux:text class="mt-4">

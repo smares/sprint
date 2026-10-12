@@ -60,7 +60,8 @@ class ProjectStatisticsTest extends TestCase
 
         $flow = app(ProjectStatisticsService::class)->weeklyFlow($this->project, 3);
 
-        $this->assertSame(['KW 39', 'KW 40', 'KW 41'], array_column($flow, 'week'));
+        // The current week has only begun and says so
+        $this->assertSame(['KW 39', 'KW 40', 'Diese Woche'], array_column($flow, 'week'));
         $this->assertSame([0, 2, 1], array_column($flow, 'created'));
         $this->assertSame([0, 0, 1], array_column($flow, 'completed'));
         $this->assertSame('2026-09-28 – 2026-10-04', $flow[1]['range']);
@@ -164,10 +165,21 @@ class ProjectStatisticsTest extends TestCase
     public function test_a_project_without_activity_shows_empty_weeks_and_no_stuck_tasks(): void
     {
         Livewire::test('pages::projects.statistics', ['project' => $this->project])
-            ->assertSee('Keine offene Aufgabe steht über den ersten Status hinaus.')
+            ->assertSee('Alle offenen Aufgaben stehen noch im ersten Status.')
             ->assertSeeHtml('data-stat="median">–')
             ->assertSeeHtml('data-stat="on-time">–')
             ->assertSee('In den letzten Monaten wurde keine Aufgabe erledigt.')
             ->assertSee('data-stat="open">0', false);
+    }
+
+    public function test_the_value_axes_have_whole_steps_up_to_above_the_highest_value(): void
+    {
+        $page = Livewire::test('pages::projects.statistics', ['project' => $this->project])->instance();
+        $ticks = fn (array $values) => (fn () => $this->ticksFor(array_map(fn ($value) => ['n' => $value], $values), ['n']))->call($page);
+
+        $this->assertSame([0, 1], $ticks([0, 0]));
+        $this->assertSame([0, 10, 20, 30, 40], $ticks([3, 38]));
+        $this->assertSame([0, 5, 10, 15, 20], $ticks([18.6]));
+        $this->assertSame([0, 1, 2, 3], $ticks([2.5]));
     }
 }

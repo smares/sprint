@@ -686,7 +686,7 @@ new class extends Component
         $parentChanged = ($validated['parentId'] ?: null) !== $this->task->parent_id;
 
         $this->task->update([
-            'title' => $validated['title'],
+            'title' => trim((string) preg_replace('/\s*\R\s*/u', ' ', $validated['title'])),
             'description' => $validated['description'] ?: null,
             'status_id' => $validated['statusId'],
             'parent_id' => $validated['parentId'] ?: null,
@@ -1074,7 +1074,9 @@ new class extends Component
 
     <form wire:submit="save" class="space-y-4">
         {{-- The title as a heading and the properties as a quiet list: both look like text until pointed at or focused --}}
-        <flux:input wire:model="title" :aria-label="__('Title')" class="task-title-input" />
+        {{-- Long titles wrap instead of being cut off; Enter saves as in a single line, a pasted line break becomes a space --}}
+        <flux:textarea wire:model="title" :aria-label="__('Title')" rows="1" resize="none" class="task-title-input field-sizing-content"
+            x-on:keydown.enter.prevent="$el.form.requestSubmit()" />
         <x-markdown-editor wire:model="description" :label="__('Description')" :placeholder="__('Describe the task … (Markdown, @ for mentions)')" :rows="3" :mentions="$this->mentionOptions" :images="$this->canEdit ? $this->imageAttachments : null" />
 
         <x-reactions :reactable="$task" target="task" :can-react="$this->canEdit" />

@@ -293,4 +293,19 @@ class ProjectsAndTasksTest extends TestCase
 
         $page->call('sort', 'title')->assertSeeInOrder(['1', 'Apfel', '2', 'Banane', '3', 'Kirsche']);
     }
+
+    public function test_an_empty_list_says_why_and_offers_the_way_on(): void
+    {
+        $project = Project::factory()->create();
+        $list = fn () => Livewire::test('pages::projects.show', ['project' => $project]);
+
+        $list()->assertSee('Noch keine Aufgaben')->assertDontSee('Filter zurücksetzen');
+
+        Task::factory()->for($project)->done()->create();
+        $list()->assertSee('Alles erledigt')->assertSee('Erledigte zeigen')
+            ->call('$set', 'statusFilter', 'all')->assertDontSee('Alles erledigt');
+
+        $list()->set('assigneeFilter', 'me')->assertSee('Mit diesen Filtern gibt es hier nichts zu tun.')
+            ->call('resetFilters')->assertSee('Alles erledigt');
+    }
 }

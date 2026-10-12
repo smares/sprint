@@ -34,7 +34,7 @@ new class extends Component
         $projects = Project::visibleTo(auth()->user())
             ->whereNull('archived_at')
             ->orderBy('name')
-            ->get(['id', 'name']);
+            ->get(['id', 'name', 'color', 'icon']);
 
         if ($query === '') {
             [$favorites, $others] = $projects->partition(fn (Project $project) => isset($favoritePositions[$project->id]));
@@ -122,12 +122,28 @@ new class extends Component
                     </div>
                 @endif
 
+                {{-- Favourites and recently opened projects come first, the pages after them --}}
+                @if ($this->projects->isNotEmpty())
+                    <div class="[&:not(:has([data-flux-command-item]:not([data-hidden])))]:hidden">
+                        <div class="px-2 pb-1 pt-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">{{ __('Projects') }}</div>
+                        @foreach ($this->projects as $project)
+                            <flux:command.item wire:key="project-{{ $project->id }}" x-on:click="Livewire.navigate('{{ route('projects.show', $project) }}')">
+                                <x-slot name="icon"><x-project-icon :project="$project" size="sm" class="me-2" /></x-slot>
+                                <span class="truncate">{{ $project->name }}</span>
+                                @if (in_array($project->id, $this->favoriteIds, true))
+                                    <flux:icon.star variant="micro" class="ms-auto shrink-0 text-amber-500" :aria-label="__('Favorite')" />
+                                @endif
+                            </flux:command.item>
+                        @endforeach
+                    </div>
+                @endif
+
                 <div class="[&:not(:has([data-flux-command-item]:not([data-hidden])))]:hidden">
                     <div class="px-2 pb-1 pt-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">{{ __('Go to') }}</div>
                     <flux:command.item icon="folder" x-on:click="Livewire.navigate('{{ route('projects.index') }}')">{{ __('Projects') }}</flux:command.item>
                     <flux:command.item icon="check-circle" x-on:click="Livewire.navigate('{{ route('tasks.mine') }}')">{{ __('My tasks') }}</flux:command.item>
                     <flux:command.item icon="calendar-date-range" x-on:click="Livewire.navigate('{{ route('workload') }}')">{{ __('Workload') }}</flux:command.item>
-                    <flux:command.item icon="bell" x-on:click="Livewire.navigate('{{ route('inbox') }}')">{{ __('Inbox') }}</flux:command.item>
+                    <flux:command.item icon="inbox" x-on:click="Livewire.navigate('{{ route('inbox') }}')">{{ __('Inbox') }}</flux:command.item>
                     <flux:command.item icon="magnifying-glass" x-on:click="Livewire.navigate('{{ route('search') }}')">{{ __('Search') }}</flux:command.item>
                     <flux:command.item icon="user" x-on:click="Livewire.navigate('{{ route('profile') }}')">{{ __('Profile') }}</flux:command.item>
                     @can('administer')
@@ -135,15 +151,6 @@ new class extends Component
                         <flux:command.item icon="users" x-on:click="Livewire.navigate('{{ route('admin.users') }}')">{{ __('Users') }}</flux:command.item>
                     @endcan
                 </div>
-
-                @if ($this->projects->isNotEmpty())
-                    <div class="[&:not(:has([data-flux-command-item]:not([data-hidden])))]:hidden">
-                        <div class="px-2 pb-1 pt-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">{{ __('Projects') }}</div>
-                        @foreach ($this->projects as $project)
-                            <flux:command.item wire:key="project-{{ $project->id }}" :icon="in_array($project->id, $this->favoriteIds, true) ? 'star' : 'folder-open'" x-on:click="Livewire.navigate('{{ route('projects.show', $project) }}')">{{ $project->name }}</flux:command.item>
-                        @endforeach
-                    </div>
-                @endif
 
                 <div class="[&:not(:has([data-flux-command-item]:not([data-hidden])))]:hidden">
                     <div class="px-2 pb-1 pt-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">{{ __('Appearance') }}</div>

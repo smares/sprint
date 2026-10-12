@@ -108,7 +108,9 @@ class WorkloadTest extends TestCase
         $page->set('scope', 'team:'.$this->team->id)
             ->assertSeeInOrder(['Anna', 'Olaf'])
             ->assertSee('1 Tag weg')
-            ->assertSeeHtml('title="Für Anna"');
+            // The number opens the tasks behind it as links, by click or tap alike
+            ->assertSee('Für Anna')
+            ->assertSeeHtml('aria-label="1 Aufgabe"');
 
         // Other teams and "everyone" are for admins only; an invalid choice shows oneself
         $page->set('scope', 'team:'.$otherTeam->id)->assertDontSee('Zora')->assertSee('Olaf');

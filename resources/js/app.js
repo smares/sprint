@@ -429,6 +429,16 @@ document.addEventListener('submit', async (event) => {
     form.submit()
 })
 
+// The browser's bar (and the installed app's on Android) follows light or dark as chosen in the menu, not only the system
+const syncThemeColor = () => {
+    const color = document.documentElement.classList.contains('dark') ? '#18181b' : '#ffffff'
+
+    document.querySelectorAll('meta[name=theme-color]').forEach((meta) => meta.setAttribute('content', color))
+}
+
+syncThemeColor()
+new MutationObserver(syncThemeColor).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+
 // A browser can still hold the push subscription of someone whose session simply ran out on a shared computer. Once per
 // session (and person) the server is told this browser's subscription and forgets it if it belongs to someone else.
 const forgetOthersPush = async () => {
@@ -459,6 +469,52 @@ const forgetOthersPush = async () => {
 
 forgetOthersPush()
 document.addEventListener('livewire:navigated', forgetOthersPush)
+
+// The sidebar on phones and tablets lies over the page (Flux): the keyboard moves into it when it opens and back to the
+// menu button when it closes, Tab stays inside while it is open and Esc closes it.
+const openMobileSidebar = () => document.querySelector('ui-sidebar[data-flux-sidebar-on-mobile]:not([data-flux-sidebar-collapsed-mobile])')
+const focusablesIn = (element) => [...element.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])')]
+    .filter((candidate) => candidate.offsetParent !== null)
+let sidebarOpener = null
+
+new MutationObserver((records) => {
+    const sidebar = records.find((record) => record.target.matches?.('ui-sidebar[data-flux-sidebar-on-mobile]'))?.target
+
+    if (! sidebar) {
+        return
+    }
+
+    if (sidebar.hasAttribute('data-flux-sidebar-collapsed-mobile')) {
+        sidebarOpener?.focus()
+        sidebarOpener = null
+    } else {
+        sidebarOpener = document.activeElement
+        requestAnimationFrame(() => focusablesIn(sidebar)[0]?.focus())
+    }
+}).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['data-flux-sidebar-collapsed-mobile'] })
+
+window.addEventListener('keydown', (event) => {
+    const sidebar = openMobileSidebar()
+
+    if (! sidebar) {
+        return
+    }
+
+    if (event.key === 'Escape') {
+        event.preventDefault()
+        event.stopImmediatePropagation()
+        document.querySelector('ui-sidebar-toggle[data-flux-sidebar-backdrop]')?.click()
+    } else if (event.key === 'Tab') {
+        const focusables = focusablesIn(sidebar)
+        const edge = event.shiftKey ? focusables[0] : focusables.at(-1)
+
+        if (focusables.length > 0 && (document.activeElement === edge || ! sidebar.contains(document.activeElement))) {
+            event.preventDefault()
+            const next = event.shiftKey ? focusables.at(-1) : focusables[0]
+            next.focus()
+        }
+    }
+}, true)
 
 // The task flyout (components/task-panel.blade.php). Flux does not close it by itself: Esc, a click next to it,
 // the close button and switching to another task go through here and ask first if the task has unsaved input.
@@ -664,9 +720,10 @@ const rememberLocale = () => {
 rememberLocale()
 document.addEventListener('livewire:navigated', rememberLocale)
 
-// Areas that scroll sideways (board, calendar, timeline; Flux does the same for its tables) say whether more lies beyond
-// either edge, for the shadows there (scroll-shadows in app.css). The names follow Flux: data-scrolled-right once the
-// start is scrolled out of sight, data-scrolled-left while more follows at the end.
+// Areas that scroll (board, calendar, timeline and the tables in a scroll-shadows wrapper) say whether more lies beyond
+// their edges, for the shadows there (scroll-shadows in app.css). The names follow Flux, which sets the first two on its
+// table scroll area itself: data-scrolled-right once the start is scrolled out of sight, data-scrolled-left while more
+// follows at the end; data-more-below while more follows below.
 const scrollEdgeObservers = new WeakMap()
 
 const updateScrollEdges = (area) => {
@@ -674,10 +731,11 @@ const updateScrollEdges = (area) => {
 
     area.toggleAttribute('data-scrolled-right', Math.abs(area.scrollLeft) > 12)
     area.toggleAttribute('data-scrolled-left', hiddenAtEnd > 12)
+    area.toggleAttribute('data-more-below', area.scrollHeight - area.clientHeight - area.scrollTop > 12)
 }
 
 const watchScrollEdges = () => {
-    document.querySelectorAll('[data-scroll-edges]').forEach((area) => {
+    document.querySelectorAll('[data-scroll-edges], .scroll-shadows > ui-table-scroll-area').forEach((area) => {
         updateScrollEdges(area)
 
         if (scrollEdgeObservers.has(area)) {

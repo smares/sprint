@@ -125,9 +125,10 @@ new class extends Component
                         @if ($task)
                             <button type="button" wire:click="open('{{ $notification->id }}')" class="line-clamp-2 w-full text-start font-medium hover:underline">{{ $task->title }}</button>
                             <flux:text size="sm" class="flex flex-wrap items-center gap-x-1.5">
-                                <span>{{ \App\Services\InboxTextService::sentence($notification) }} ·</span>
-                                <span class="inline-flex items-center gap-1"><x-project-icon :project="$task->project" size="sm" />{{ $task->project->name }}</span>
-                                <span>· {{ $notification->created_at->diffForHumans() }}</span>
+                                {{-- The dots belong to the part they lead in, so a wrapped line never ends in one --}}
+                                <span>{{ \App\Services\InboxTextService::sentence($notification) }}</span>
+                                <span class="inline-flex items-center gap-1"><span aria-hidden="true">·</span><x-project-icon :project="$task->project" size="sm" />{{ $task->project->name }}</span>
+                                <span class="whitespace-nowrap"><span aria-hidden="true">·</span> {{ $notification->created_at->diffForHumans() }}</span>
                             </flux:text>
                         @else
                             <flux:text class="italic">{{ __('Task no longer available') }}</flux:text>

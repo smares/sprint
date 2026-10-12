@@ -659,7 +659,18 @@ new class extends Component
     </flux:modal>
 
     @if ($this->tasks->isEmpty())
-        <x-empty-state icon="check-circle" :heading="__('No tasks')" :text="__('Nothing to do here with these filters.')" />
+        {{-- Why the list is empty decides what helps: a new project, filters that match nothing, or everything done --}}
+        @if ($this->activeFilters->isEmpty() && $statusFilter === 'open' && ! $project->tasks()->exists())
+            <x-empty-state icon="clipboard-document-list" :heading="__('No tasks yet')" :text="$this->canEdit ? __('Create the first task with “New task” or right below.') : null" />
+        @elseif ($this->activeFilters->isEmpty() && $statusFilter === 'open')
+            <x-empty-state emoji="🎉" :heading="__('All done')" :text="__('Every task in this project is done.')">
+                <flux:button wire:click="$set('statusFilter', 'all')">{{ __('Show done tasks') }}</flux:button>
+            </x-empty-state>
+        @else
+            <x-empty-state icon="funnel" :heading="__('No tasks')" :text="__('Nothing to do here with these filters.')">
+                <flux:button wire:click="resetFilters">{{ __('Reset filters') }}</flux:button>
+            </x-empty-state>
+        @endif
     @else
         {{-- Every column shows on every screen and the table scrolls sideways. The title stays in place (from sm with the done column
              before it; on phones only the title, so it leaves room for the rest); sticky cells need a background to cover what passes underneath. --}}
@@ -667,8 +678,8 @@ new class extends Component
             $pinnedDone = 'sm:sticky sm:start-0 sm:z-10 sm:bg-white sm:dark:bg-zinc-800';
             $pinnedTitle = 'pinned-column sm:start-20';
         @endphp
-        <div class="surface px-3" data-fills-height>
-            <flux:table container:class="scroll-shadows">
+        <div class="surface px-3 [--flux-bleed:0.75rem]" data-fills-height>
+            <flux:table bleed container:class="scroll-shadows rounded-[inherit]">
                 <flux:table.columns sticky class="bg-white dark:bg-zinc-800">
                     {{-- Done button first, then the selection checkbox: two things, so they get one column and some room between them --}}
                     <flux:table.column :class="'w-20 min-w-20 max-sm:w-24 max-sm:min-w-24 '.$pinnedDone">

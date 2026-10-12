@@ -219,49 +219,56 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
     @apply after:pointer-events-none after:absolute after:inset-y-0 after:end-0 after:w-8 after:translate-x-full in-data-scrolled-right:after:inset-shadow-[12px_0px_12px_-12px_rgba(0,0,0,0.15)] dark:in-data-scrolled-right:after:inset-shadow-[12px_0px_12px_-12px_rgba(0,0,0,0.6)];
 }
 
-/* Shadows at the edges of an area that scrolls sideways, where more lies beyond: drawn by the wrapper above the content (so
-   cards and cells with a background of their own do not cover them) and shown by the scroll state of the area inside it
-   (Flux's table scroll area, or data-scroll-edges, see app.js). Where a column stays pinned at the start, its own shadow
-   (pinned-shadow) marks that side instead. */
+/* Shadows at the edges of an area that scrolls, where more lies beyond: at the start and end while it scrolls sideways,
+   and at the bottom while more follows below (a full-height view, see data-fills-height). Drawn by the wrapper above the
+   content (so cards and cells with a background of their own do not cover them) and shown by the scroll state of the area
+   inside it (data-scrolled-right/-left as Flux sets them on its table scroll area, data-more-below; see app.js). Where a
+   column stays pinned at the start, its own shadow (pinned-shadow) marks that side instead. */
 @utility scroll-shadows {
+    --scroll-shadow: rgb(0 0 0 / 0.15);
+
     position: relative;
+
+    @variant dark {
+        --scroll-shadow: rgb(0 0 0 / 0.6);
+    }
 
     &::before,
     &::after {
         content: '';
         position: absolute;
-        inset-block: 0;
         z-index: 30;
-        width: 2rem;
         border-radius: inherit;
         pointer-events: none;
-        opacity: 0;
-        transition: opacity 0.15s ease;
+        transition:
+            opacity 0.15s ease,
+            box-shadow 0.15s ease;
     }
 
     &::before {
+        inset-block: 0;
         inset-inline-start: 0;
-        box-shadow: inset 12px 0 12px -12px rgb(0 0 0 / 0.15);
+        width: 2rem;
+        opacity: 0;
+        box-shadow: inset 12px 0 12px -12px var(--scroll-shadow);
     }
 
+    /* End and bottom on one layer over the whole area, each shadow there only while it applies */
     &::after {
-        inset-inline-end: 0;
-        box-shadow: inset -12px 0 12px -12px rgb(0 0 0 / 0.15);
+        inset: 0;
+        box-shadow: var(--scroll-shadow-end, 0 0 #0000), var(--scroll-shadow-bottom, 0 0 #0000);
     }
 
-    @variant dark {
-        &::before {
-            box-shadow: inset 12px 0 12px -12px rgb(0 0 0 / 0.6);
-        }
-
-        &::after {
-            box-shadow: inset -12px 0 12px -12px rgb(0 0 0 / 0.6);
-        }
-    }
-
-    &:has(> [data-scrolled-right])::before,
-    &:has(> [data-scrolled-left])::after {
+    &:has(> [data-scrolled-right])::before {
         opacity: 1;
+    }
+
+    &:has(> [data-scrolled-left]) {
+        --scroll-shadow-end: inset -12px 0 12px -12px var(--scroll-shadow);
+    }
+
+    &:has(> [data-more-below]) {
+        --scroll-shadow-bottom: inset 0 -12px 12px -12px var(--scroll-shadow);
     }
 
     &:has(.pinned-column, .pinned-shadow)::before {
@@ -374,6 +381,21 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
 
 [data-flux-kanban] > [data-flux-kanban-column]:has(> [data-collapsed]) {
     align-self: stretch;
+}
+
+/* On touch screens the small icon buttons (Flux size xs, 24px, and touch-target) get a hit area of 40px around them without
+   changing how they look, so a finger finds them. */
+@media (pointer: coarse) {
+    [data-flux-button].h-6,
+    .touch-target {
+        position: relative;
+
+        &::after {
+            content: '';
+            position: absolute;
+            inset: -0.5rem;
+        }
+    }
 }
 
 /* Toasts: Flux keeps them 1.5rem off the edges and up to 24rem wide, more than a phone has, so long ones stuck to the left
@@ -497,7 +519,13 @@ tr[data-task-id] {
     box-shadow:
         0 10px 15px -3px rgb(0 0 0 / 0.12),
         0 4px 6px -4px rgb(0 0 0 / 0.12);
-    transition-delay: 0.2s;
+}
+
+/* With a mouse, a click to open a task ends before the tilt; on touch Sortable already waits before picking a card up */
+@media (pointer: fine) {
+    .board-card.sortable-chosen {
+        transition-delay: 0.2s;
+    }
 }
 
 .board-card.sortable-ghost {
@@ -517,7 +545,7 @@ tr[data-task-id] {
 
 /* A task's title and properties (tasks/show, also in the flyout) read like text: a large title and a quiet list of values whose
    fields show their frame only when pointed at, focused or open. Errors keep their red frame. */
-.task-title-input input[data-flux-control] {
+.task-title-input:is(input, textarea)[data-flux-control] {
     font-size: 1.375rem;
     font-weight: 600;
     line-height: 1.75rem;
@@ -525,27 +553,27 @@ tr[data-task-id] {
     padding-block: 0.375rem;
 }
 
-:is(.task-title-input input[data-flux-control], .task-properties :is([data-flux-select-button], [data-flux-date-picker-button], [data-flux-pillbox-trigger], input[data-flux-control])):not([data-invalid], [aria-invalid='true'], .border-red-500) {
+:is(.task-title-input:is(input, textarea)[data-flux-control], .task-properties :is([data-flux-select-button], [data-flux-date-picker-button], [data-flux-pillbox-trigger], input[data-flux-control])):not([data-invalid], [aria-invalid='true'], .border-red-500) {
     border-color: transparent;
     box-shadow: none;
     background-color: transparent;
     transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
-:is(.task-title-input input[data-flux-control], .task-properties :is([data-flux-select-button], [data-flux-date-picker-button], [data-flux-pillbox-trigger], input[data-flux-control])):not([data-invalid], [aria-invalid='true'], .border-red-500):hover {
+:is(.task-title-input:is(input, textarea)[data-flux-control], .task-properties :is([data-flux-select-button], [data-flux-date-picker-button], [data-flux-pillbox-trigger], input[data-flux-control])):not([data-invalid], [aria-invalid='true'], .border-red-500):hover {
     background-color: var(--color-zinc-100);
 }
 
-:is(.task-title-input input[data-flux-control], .task-properties :is([data-flux-select-button], [data-flux-date-picker-button], [data-flux-pillbox-trigger], input[data-flux-control])):not([data-invalid], [aria-invalid='true'], .border-red-500):is(:focus, :focus-within, [aria-expanded='true'], [data-open]) {
+:is(.task-title-input:is(input, textarea)[data-flux-control], .task-properties :is([data-flux-select-button], [data-flux-date-picker-button], [data-flux-pillbox-trigger], input[data-flux-control])):not([data-invalid], [aria-invalid='true'], .border-red-500):is(:focus, :focus-within, [aria-expanded='true'], [data-open]) {
     border-color: var(--color-zinc-200);
     background-color: var(--color-white);
 }
 
-.dark :is(.task-title-input input[data-flux-control], .task-properties :is([data-flux-select-button], [data-flux-date-picker-button], [data-flux-pillbox-trigger], input[data-flux-control])):not([data-invalid], [aria-invalid='true'], .border-red-500):hover {
+.dark :is(.task-title-input:is(input, textarea)[data-flux-control], .task-properties :is([data-flux-select-button], [data-flux-date-picker-button], [data-flux-pillbox-trigger], input[data-flux-control])):not([data-invalid], [aria-invalid='true'], .border-red-500):hover {
     background-color: rgb(255 255 255 / 0.06);
 }
 
-.dark :is(.task-title-input input[data-flux-control], .task-properties :is([data-flux-select-button], [data-flux-date-picker-button], [data-flux-pillbox-trigger], input[data-flux-control])):not([data-invalid], [aria-invalid='true'], .border-red-500):is(:focus, :focus-within, [aria-expanded='true'], [data-open]) {
+.dark :is(.task-title-input:is(input, textarea)[data-flux-control], .task-properties :is([data-flux-select-button], [data-flux-date-picker-button], [data-flux-pillbox-trigger], input[data-flux-control])):not([data-invalid], [aria-invalid='true'], .border-red-500):is(:focus, :focus-within, [aria-expanded='true'], [data-open]) {
     border-color: rgb(255 255 255 / 0.1);
     background-color: rgb(255 255 255 / 0.08);
 }

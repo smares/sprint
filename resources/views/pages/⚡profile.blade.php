@@ -110,6 +110,16 @@ new class extends Component
         Flux::toast(variant: 'success', text: __('Absence saved.'));
     }
 
+    /**
+     * Do not disturb saves on every change, like the switches above it.
+     */
+    public function updated(string $property): void
+    {
+        if (in_array(explode('.', $property)[0], ['quietHours', 'quietFrom', 'quietUntil', 'quietDays'], true)) {
+            $this->saveQuietTimes();
+        }
+    }
+
     public function saveQuietTimes(): void
     {
         $validated = $this->validate([
@@ -487,7 +497,7 @@ new class extends Component
 
             <flux:separator />
 
-            <form wire:submit="saveQuietTimes" class="space-y-4">
+            <div class="space-y-4">
                 <div>
                     <flux:heading>{{ __('Do not disturb') }}</flux:heading>
                     <flux:text class="mt-1">{{ __('No emails or push notifications at these times; your inbox still collects everything. Times are in the time zone :zone.', ['zone' => config('app.timezone')]) }}</flux:text>
@@ -497,19 +507,17 @@ new class extends Component
 
                 @if ($quietHours)
                     <div class="grid gap-4 sm:grid-cols-2">
-                        <flux:time-picker wire:model="quietFrom" :label="__('From')" time-format="24-hour" />
-                        <flux:time-picker wire:model="quietUntil" :label="__('Until')" time-format="24-hour" />
+                        <flux:time-picker wire:model.live="quietFrom" :label="__('From')" time-format="24-hour" />
+                        <flux:time-picker wire:model.live="quietUntil" :label="__('Until')" time-format="24-hour" />
                     </div>
                 @endif
 
-                <flux:checkbox.group wire:model="quietDays" variant="pills" :label="__('All day')" :description="__('No emails or push notifications at all on these days, for example at the weekend.')">
+                <flux:checkbox.group wire:model.live="quietDays" variant="pills" :label="__('All day')" :description="__('No emails or push notifications at all on these days, for example at the weekend.')">
                     @foreach (range(1, 7) as $day)
                         <flux:checkbox value="{{ $day }}" :label="now()->startOfWeek()->addDays($day - 1)->isoFormat('dd')" />
                     @endforeach
                 </flux:checkbox.group>
-
-                <flux:button type="submit" variant="primary">{{ __('Save') }}</flux:button>
-            </form>
+            </div>
 
             <flux:separator />
 

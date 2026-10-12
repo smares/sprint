@@ -59,7 +59,7 @@
         <div class="flex items-center gap-2 text-sm">
             @if ($images !== null)
                 <div class="relative" x-on:click.outside="imageMenu = false" x-show="tab === 'write'">
-                    <button type="button" class="flex items-center gap-1 text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200" x-on:click="imageMenu = ! imageMenu" aria-label="{{ __('Insert image') }}" title="{{ __('Insert image') }}">
+                    <button type="button" class="touch-target flex items-center gap-1 text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200" x-on:click="imageMenu = ! imageMenu" aria-label="{{ __('Insert image') }}" title="{{ __('Insert image') }}">
                         <flux:icon.photo variant="micro" /><span x-show="uploading" x-cloak>{{ __('Uploading …') }}</span>
                     </button>
                     <div x-show="imageMenu" x-cloak class="absolute end-0 z-20 mt-1 max-h-64 w-64 overflow-auto rounded-lg border border-zinc-200 bg-white p-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-800">

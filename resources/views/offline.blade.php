@@ -7,7 +7,8 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>{{ config('app.name') }}</title>
         <link rel="icon" href="/icon-192.png" type="image/png">
-        <meta name="theme-color" content="#18181b">
+        <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+        <meta name="theme-color" content="#18181b" media="(prefers-color-scheme: dark)">
         @vite('resources/css/app.css')
         @fluxAppearance
     </head>

@@ -113,8 +113,8 @@ new class extends Component
     @else
         {{-- Every column shows on every screen and the table scrolls sideways under the title, which stays in place.
              The rows are built from the same pieces as the project list: done button, title with progress and tags, due date. --}}
-        <div class="surface px-3">
-            <flux:table container:class="scroll-shadows">
+        <div class="surface px-3 [--flux-bleed:0.75rem]">
+            <flux:table bleed container:class="scroll-shadows rounded-[inherit]">
                 <flux:table.columns>
                     <flux:table.column class="pinned-column">{{ __('Task') }}</flux:table.column>
                     <flux:table.column>{{ __('Project') }}</flux:table.column>

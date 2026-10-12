@@ -9,7 +9,9 @@
         <link rel="apple-touch-icon" href="/apple-touch-icon.png">
         <link rel="manifest" href="{{ route('pwa.manifest', absolute: false) }}">
         <meta name="apple-mobile-web-app-title" content="{{ config('app.name') }}">
-        <meta name="theme-color" content="#18181b">
+        {{-- The browser's bar (and the installed app's) in the color of the header; app.js follows the appearance chosen in the menu --}}
+        <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+        <meta name="theme-color" content="#18181b" media="(prefers-color-scheme: dark)">
         @auth
             <meta name="sprint-push-check" content="{{ route('push.forget-others', absolute: false) }}" data-user="{{ auth()->id() }}">
         @endauth
@@ -33,7 +35,9 @@
                             <x-app-logo class="size-6" />
                         </x-slot>
                     </flux:sidebar.brand>
-                    <flux:sidebar.collapse class="in-data-flux-sidebar-on-desktop:not-in-data-flux-sidebar-collapsed-desktop:-me-2" />
+                    <flux:sidebar.collapse class="max-lg:hidden in-data-flux-sidebar-on-desktop:not-in-data-flux-sidebar-collapsed-desktop:-me-2" />
+                    {{-- On phones and tablets the sidebar lies over the page and this only closes it --}}
+                    <flux:sidebar.toggle class="lg:hidden" icon="x-mark" variant="ghost" :aria-label="__('Close menu')" :tooltip="__('Close menu')" />
                 </flux:sidebar.header>
 
                 <flux:modal.trigger name="command-palette" shortcut="cmd.k">
@@ -78,7 +82,7 @@
                 <flux:spacer />
 
                 <flux:modal.trigger name="command-palette">
-                    <flux:button variant="ghost" icon="magnifying-glass" aria-label="{{ __('Find') }}" tooltip="{{ __('Find') }}" />
+                    <flux:button variant="ghost" icon="magnifying-glass" aria-label="{{ __('Find') }}" />
                 </flux:modal.trigger>
             </flux:header>
         @endauth

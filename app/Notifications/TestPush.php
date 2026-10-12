@@ -27,6 +27,8 @@ class TestPush extends Notification
             ->icon('/icon-192.png')
             ->lang(app()->getLocale())
             ->tag('test')
-            ->data(['url' => route('profile', absolute: false)]);
+            ->data(['url' => route('profile', absolute: false)])
+            // Like real notifications (InboxPush), so the test shows how they arrive on a sleeping phone
+            ->options(['urgency' => InboxPush::URGENCY]);
     }
 }

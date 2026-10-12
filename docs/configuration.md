@@ -26,6 +26,7 @@ Neue Einträge im Posteingang erscheinen auf Wunsch auch als Benachrichtigung de
 - **HTTPS** (lokal genügt `localhost`) und der **Queue-Worker**: Push wird wie die Mails über die Queue verschickt
 - Der Server sendet nur an die Push-Dienste der Browser (Google, Mozilla, Apple, Microsoft), nie an andere Adressen
 - **iPhone und iPad** erlauben Push nur, wenn Sprint zum Home-Bildschirm hinzugefügt ist (ab iOS 16.4)
+- Nachrichten gehen mit hoher Dringlichkeit (`Urgency: high`) und einem Tag Haltbarkeit raus: Android stellt sie auch zu, wenn das Handy ruht, statt sie bis zum nächsten Aufwecken zurückzuhalten. Kommen sie auf Android trotzdem erst beim Entsperren, sind meist die Benachrichtigungen des Browsers (Chrome) für die Sprint-Seite bzw. die installierte App gedrosselt, oder für den Browser ist der Akku auf „Eingeschränkt“ gestellt (Einstellungen → Apps → Chrome → Akkunutzung → „Uneingeschränkt“ oder „Optimiert“)
 
 ## Live-Updates (Reverb)
 

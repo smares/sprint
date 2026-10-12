@@ -2,7 +2,7 @@
 @php
     $groups = [
         __('Everywhere') => [
-            [['/', '⌘ K', 'Ctrl K'], __('Search or jump to…')],
+            [['/', '⌘ K', __('Ctrl K')], __('Search or jump to…')],
             ['?', __('Show this overview')],
         ],
         __('List and board') => [

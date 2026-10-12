@@ -191,7 +191,7 @@ new class extends Component
         </flux:accordion>
     @endif
 
-    <flux:modal name="create-project" class="md:w-96">
+    <flux:modal name="create-project" class="w-full max-w-md">
         <form wire:submit="create" class="space-y-6">
             <flux:heading size="lg">{{ __('New project') }}</flux:heading>
             <flux:input wire:model="name" :label="__('Name')" autofocus />

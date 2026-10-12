@@ -143,7 +143,7 @@ new class extends Component
     @php($todayColumn = now()->between($this->start, $this->end->copy()->endOfDay()) ? (int) $this->start->diffInDays(now()->startOfDay()) + 1 : null)
 
     @if ($this->rows->isEmpty())
-        <x-empty-state icon="calendar-days" :heading="__('There are no tasks with dates in these weeks.')" />
+        <x-empty-state icon="calendar-days" :heading="__('No dates in these weeks')" :text="__('Tasks show here once they have a due or start date.')" />
     @else
         <div class="scroll-shadows rounded-xl" data-fills-height>
             <div class="surface overflow-x-auto" data-scroll-edges>

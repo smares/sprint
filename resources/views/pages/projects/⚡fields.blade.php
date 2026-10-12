@@ -228,7 +228,7 @@ new class extends Component
     <flux:text class="mb-6">{!! __('Custom fields like <em>Priority</em> or <em>Effort</em> appear on every task in this project. Their order determines how they are displayed.') !!}</flux:text>
 
     @if ($this->fields->isEmpty())
-        <x-empty-state icon="adjustments-horizontal" :heading="__('No fields yet')" />
+        <x-empty-state icon="adjustments-horizontal" :heading="__('No fields yet')" :text="__('Create the first field right below.')" />
     @endif
 
     <ul class="space-y-3" wire:sort="moveField" wire:sort:config="{ delay: 250, delayOnTouchOnly: true, touchStartThreshold: 12 }">
@@ -239,7 +239,7 @@ new class extends Component
                     <flux:input size="sm" wire:model.live.blur="names.{{ $field->id }}" aria-label="{{ __('Name') }}" class="min-w-40 flex-1" />
                     <flux:badge size="sm">{{ $field->type->label() }}</flux:badge>
                     <flux:checkbox wire:model.live="inList.{{ $field->id }}" :label="__('In list')" />
-                    <flux:button size="xs" variant="ghost" icon="trash" wire:click="confirmDelete({{ $field->id }})" aria-label="{{ __('Delete field') }}" />
+                    <flux:button size="xs" variant="ghost" icon="trash" wire:click="confirmDelete({{ $field->id }})" aria-label="{{ __('Delete field') }}" tooltip="{{ __('Delete field') }}" />
                 </div>
 
                 @if ($field->type === \App\Enums\CustomFieldType::Select)
@@ -249,7 +249,7 @@ new class extends Component
                                 <x-color-badge size="sm" :color="$option->color" class="shrink-0">&nbsp;</x-color-badge>
                                 <flux:input size="sm" wire:model.live.blur="optionNames.{{ $option->id }}" aria-label="{{ __('Option') }}" class="min-w-0 flex-1" />
                                 <flux:color-picker type="button" size="sm" class="shrink-0 sm:w-32" with-confirmation :swatches="\App\Color::swatches()" wire:model.live="optionColors.{{ $option->id }}" aria-label="{{ __('Color') }}" />
-                                <flux:button size="xs" variant="ghost" icon="x-mark" wire:click="removeOption({{ $option->id }})" aria-label="{{ __('Remove option') }}" />
+                                <flux:button size="xs" variant="ghost" icon="x-mark" wire:click="removeOption({{ $option->id }})" aria-label="{{ __('Remove option') }}" tooltip="{{ __('Remove option') }}" />
                             </li>
                         @endforeach
                     </ul>

@@ -227,7 +227,7 @@ new class extends Component
                         <flux:select.option value="{{ $role->value }}">{{ $role->label() }}</flux:select.option>
                     @endforeach
                 </flux:select>
-                <flux:button size="xs" variant="ghost" icon="x-mark" wire:click="remove({{ $member->id }})" aria-label="{{ __('Remove') }}" />
+                <flux:button size="xs" variant="ghost" icon="x-mark" wire:click="remove({{ $member->id }})" aria-label="{{ __('Remove') }}" tooltip="{{ __('Remove') }}" />
             </li>
         @endforeach
     </ul>
@@ -262,7 +262,7 @@ new class extends Component
                         <flux:select.option value="{{ $role->value }}">{{ $role->label() }}</flux:select.option>
                     @endforeach
                 </flux:select>
-                <flux:button size="xs" variant="ghost" icon="x-mark" wire:click="removeTeam({{ $team->id }})" aria-label="{{ __('Remove team') }}" />
+                <flux:button size="xs" variant="ghost" icon="x-mark" wire:click="removeTeam({{ $team->id }})" aria-label="{{ __('Remove team') }}" tooltip="{{ __('Remove team') }}" />
             </li>
         @empty
             <flux:text>{{ __('No team has access yet.') }}</flux:text>

@@ -110,7 +110,7 @@ new class extends Component
     </div>
 
     @if ($this->people->isEmpty())
-        <x-empty-state icon="users" :heading="__('Nobody in this team yet.')" />
+        <x-empty-state icon="users" :heading="__('Nobody in this team yet')" :text="__('Admins add people to teams under “Teams”.')" />
     @else
         <div class="surface px-3 [--flux-bleed:0.75rem]">
             <flux:table bleed container:class="scroll-shadows rounded-[inherit]">

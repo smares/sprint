@@ -46,7 +46,7 @@
                 @if ($total > 0)
                     <div class="mb-1 flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
                         <span>{{ __(':done of :total done', ['done' => $done, 'total' => $total]) }}</span>
-                        <span class="tabular-nums">{{ $percent }}%</span>
+                        <span class="whitespace-nowrap tabular-nums">{{ $percent }} %</span>
                     </div>
                     <div class="h-1.5 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-700" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ $percent }}" aria-label="{{ __('Progress') }}">
                         <div class="h-full rounded-full transition-[width] duration-500" style="width: {{ $percent }}%; background: {{ $project->displayColor() }}"></div>

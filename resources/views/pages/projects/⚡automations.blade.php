@@ -563,9 +563,6 @@ new class extends Component
                         @endforeach
                     </flux:select>
                 </div>
-                <flux:error name="conditionStatus" />
-                <flux:error name="conditionAssignee" />
-                <flux:error name="conditionTag" />
             </div>
 
             <div class="space-y-3">

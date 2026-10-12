@@ -38,7 +38,7 @@ new class extends Component
         $this->validate([
             'email' => ['required', 'email'],
             'password' => ['required'],
-        ]);
+        ], attributes: ['email' => __('Email'), 'password' => __('Password')]);
 
         $throttleKey = Str::lower($this->email).'|'.request()->ip();
 

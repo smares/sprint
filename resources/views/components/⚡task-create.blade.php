@@ -82,7 +82,7 @@ new class extends Component
             'assigneeId' => ['nullable', Rule::in($this->users->pluck('id')->map(fn ($id) => (string) $id)->all())],
             'dueDate' => ['nullable', 'date_format:Y-m-d'],
             'startDate' => ['nullable', 'date_format:Y-m-d', 'before_or_equal:dueDate'],
-        ], attributes: ['title' => __('Title'), 'statusId' => __('Status'), 'dueDate' => __('Due on'), 'startDate' => __('Starts on')]);
+        ], attributes: ['title' => __('Title'), 'description' => __('Description'), 'statusId' => __('Status'), 'assigneeId' => __('Assignee'), 'dueDate' => __('Due on'), 'startDate' => __('Starts on')]);
 
         $task = $this->project->createRootTask([
             'title' => trim($validated['title']),

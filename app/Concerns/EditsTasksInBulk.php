@@ -180,7 +180,7 @@ trait EditsTasksInBulk
             'bulkAddTags.*' => ['integer', Rule::exists('tags', 'id')->where('project_id', $this->project->getKey())],
             'bulkRemoveTags' => ['array'],
             'bulkRemoveTags.*' => ['integer', Rule::exists('tags', 'id')->where('project_id', $this->project->getKey())],
-        ], attributes: ['bulkStatus' => __('Status'), 'bulkAssignee' => __('Assignee'), 'bulkDueDate' => __('Due date')]);
+        ], attributes: ['bulkStatus' => __('Status'), 'bulkAssignee' => __('Assignee'), 'bulkDueDate' => __('Due date'), 'bulkAddTags.*' => __('Add tags'), 'bulkRemoveTags.*' => __('Remove tags')]);
 
         $due = $validated['bulkClearDueDate'] ? false : ($validated['bulkDueDate'] ?: null);
 

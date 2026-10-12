@@ -108,7 +108,7 @@ new class extends Component
 
     public function add(): void
     {
-        $validated = $this->validate(['newName' => ['required', 'string', 'max:50']]);
+        $validated = $this->validate(['newName' => ['required', 'string', 'max:50']], attributes: ['newName' => __('Name')]);
 
         $this->project->statuses()->create([
             'name' => trim($validated['newName']),
@@ -248,7 +248,6 @@ new class extends Component
                                             <flux:select.option value="{{ $candidate->id }}">{{ $candidate->name }}</flux:select.option>
                                         @endforeach
                                     </flux:select>
-                                    <flux:error name="replacementId" />
                                 @else
                                     <flux:text size="sm">{{ __('The status will be deleted.') }}</flux:text>
                                 @endif
@@ -262,11 +261,10 @@ new class extends Component
                 @endforeach
             </ul>
 
-            <form wire:submit="add" class="flex items-end gap-2">
+            <form wire:submit="add" class="row-form flex gap-2">
                 <flux:input wire:model="newName" :label="__('New status')" :placeholder="__('e.g. In testing')" class="flex-1" />
                 <flux:button type="submit" icon="plus">{{ __('Create') }}</flux:button>
             </form>
-            <flux:error name="newName" class="-mt-4" />
         </div>
     </flux:modal>
 </div>

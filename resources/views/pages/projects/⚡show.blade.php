@@ -785,7 +785,6 @@ new class extends Component
                         <flux:select.option value="{{ $status->id }}">{{ $status->name }}</flux:select.option>
                     @endforeach
                 </flux:select>
-                <flux:error name="bulkStatus" />
 
                 <flux:select variant="listbox" wire:model="bulkAssignee" :label="__('Assignee')">
                     <flux:select.option value="">{{ __('Leave unchanged') }}</flux:select.option>

@@ -667,9 +667,9 @@ new class extends Component
             $pinnedDone = 'sm:sticky sm:start-0 sm:z-10 sm:bg-white sm:dark:bg-zinc-800';
             $pinnedTitle = 'pinned-column sm:start-20';
         @endphp
-        <div class="surface px-3">
+        <div class="surface px-3" data-fills-height>
             <flux:table>
-                <flux:table.columns>
+                <flux:table.columns sticky class="bg-white dark:bg-zinc-800">
                     {{-- Done button first, then the selection checkbox: two things, so they get one column and some room between them --}}
                     <flux:table.column :class="'w-20 min-w-20 max-sm:w-24 max-sm:min-w-24 '.$pinnedDone">
                         <div class="flex items-center gap-3">
@@ -730,15 +730,23 @@ new class extends Component
                         </flux:table.row>
                     @endforeach
                 </flux:table.rows>
+
+                {{-- Inside the table, so it only comes into sight (and loads more) at the end of the list, also while the list
+                     scrolls within the window's height --}}
+                @if ($this->totalTasks > $this->tasks->count())
+                    <tbody>
+                        <tr>
+                            <td colspan="{{ 5 + $this->listFields->count() }}">
+                                <div wire:intersect="loadMore" class="sticky start-0 flex w-max items-center gap-3 py-4">
+                                    <flux:text size="sm">{{ __(':shown of :total tasks', ['shown' => $this->tasks->count(), 'total' => $this->totalTasks]) }}</flux:text>
+                                    <flux:button size="sm" wire:click="loadMore">{{ __('Load more') }}</flux:button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                @endif
             </flux:table>
         </div>
-
-        @if ($this->totalTasks > $this->tasks->count())
-            <div wire:intersect="loadMore" class="mt-4 flex items-center justify-center gap-3">
-                <flux:text size="sm">{{ __(':shown of :total tasks', ['shown' => $this->tasks->count(), 'total' => $this->totalTasks]) }}</flux:text>
-                <flux:button size="sm" wire:click="loadMore">{{ __('Load more') }}</flux:button>
-            </div>
-        @endif
     @endif
 
     @if ($this->canEdit && ! $selecting)

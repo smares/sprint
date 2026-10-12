@@ -152,10 +152,10 @@ new class extends Component
         @endforelse
     </div>
 
-    <div class="overflow-x-auto rounded-xl shadow-xs max-sm:hidden">
-        <div class="grid min-w-[56rem] grid-cols-7 border-s border-t border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-800">
+    <div class="overflow-x-auto rounded-xl shadow-xs max-sm:hidden" data-fills-height>
+        <div class="grid min-w-[56rem] grid-cols-7 border-s border-t border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-800" data-calendar-month>
             @foreach ($this->weeks[0] as $weekday)
-                <div class="border-e border-b border-zinc-200 bg-zinc-50 p-2 text-sm font-medium dark:border-zinc-700 dark:bg-zinc-900">
+                <div class="sticky top-0 z-10 border-e border-b border-zinc-200 bg-zinc-50 p-2 text-sm font-medium dark:border-zinc-700 dark:bg-zinc-900">
                     {{ $weekday['date']->isoFormat('dd') }}
                 </div>
             @endforeach

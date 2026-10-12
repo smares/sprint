@@ -214,6 +214,73 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
     @apply sticky start-0 z-10 bg-white dark:bg-zinc-800 after:pointer-events-none after:absolute after:inset-y-0 after:end-0 after:w-8 after:translate-x-full in-data-scrolled-right:after:inset-shadow-[8px_0px_8px_-8px_rgba(0,0,0,0.08)] dark:in-data-scrolled-right:after:inset-shadow-[8px_0px_8px_-8px_rgba(0,0,0,0.5)];
 }
 
+/* Project views (list, board, calendar, timeline) fill the window below the page header and scroll within it, so the column
+   headers, statuses and weekdays stay in sight however far one scrolls. The page becomes a column whose view
+   (data-fills-height) takes the remaining height, never less than 20rem. Not on phones and low windows, where the header
+   would keep too much of the little room: there the page scrolls as a whole. */
+@media (width >= 40rem) and (height >= 40rem) {
+    [data-flux-main]:has(> * > [data-fills-height]) {
+        display: flex;
+        flex-direction: column;
+    }
+
+    [data-flux-main] > :has(> [data-fills-height]) {
+        flex: 1 0 auto;
+        display: flex;
+        flex-direction: column;
+
+        & > :not([data-fills-height]) {
+            flex-shrink: 0;
+        }
+    }
+
+    [data-fills-height] {
+        flex: 1 1 0;
+        min-height: 20rem;
+    }
+
+    /* The list: Flux's scroll area around the table takes the height and scrolls, below the column headers (sticky) */
+    [data-fills-height]:has(ui-table-scroll-area) {
+        display: flex;
+        flex-direction: column;
+
+        & > div,
+        & ui-table-scroll-area {
+            flex: 1 1 0;
+            min-height: 0;
+        }
+    }
+
+    /* The board: a column grows up to the board's height, then its cards scroll below the status and above the quick add */
+    [data-flux-kanban][data-fills-height] > [data-flux-kanban-column] {
+        display: flex;
+        flex-direction: column;
+        max-height: 100%;
+
+        & > div {
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 1;
+            min-height: 0;
+        }
+
+        & > div > :not([data-flux-kanban-column-cards]) {
+            flex-shrink: 0;
+        }
+
+        & [data-flux-kanban-column-cards] {
+            overflow-y: auto;
+        }
+    }
+
+    /* The calendar: the weeks share the height (at least as high as a day needs), below the weekdays (sticky) */
+    [data-calendar-month] {
+        min-height: 100%;
+        grid-template-rows: auto;
+        grid-auto-rows: 1fr;
+    }
+}
+
 /* Toasts: Flux keeps them 1.5rem off the edges and up to 24rem wide, more than a phone has, so long ones stuck to the left
    edge and short ones sat on the right. On phones they are centred with the page's gutter on both sides. */
 @media (width < 40rem) {

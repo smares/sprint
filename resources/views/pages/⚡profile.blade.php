@@ -136,7 +136,7 @@ new class extends Component
 
     public function updatedLocale(string $value): void
     {
-        $this->validate(['locale' => ['required', Rule::in(LocaleService::codes())]]);
+        $this->validate(['locale' => ['required', Rule::in(LocaleService::codes())]], attributes: ['locale' => __('Language')]);
 
         auth()->user()->update(['locale' => $value]);
         session()->put('locale', $value);

@@ -264,7 +264,7 @@ new class extends Component
         @endforeach
     </ul>
 
-    <form wire:submit="add" class="mt-6 flex flex-wrap items-end gap-2 [&>:first-child]:min-w-0 [&>:first-child]:flex-1 max-sm:[&>:first-child]:basis-full">
+    <form wire:submit="add" class="mt-6 row-form flex flex-wrap gap-2 [&>:first-child]:min-w-0 [&>:first-child]:flex-1 max-sm:[&>:first-child]:basis-full">
         <flux:input wire:model="newName" :label="__('New field')" placeholder="{{ __('e.g. Effort') }}" class="min-w-0 flex-1" />
         <flux:select variant="listbox" wire:model="newType" :label="__('Type')" class="max-w-36">
             @foreach (\App\Enums\CustomFieldType::cases() as $type)
@@ -273,7 +273,6 @@ new class extends Component
         </flux:select>
         <flux:button type="submit" icon="plus">{{ __('Create') }}</flux:button>
     </form>
-    <flux:error name="newName" class="mt-1" />
 
     <flux:modal name="delete-field" class="min-w-[22rem]">
         <div class="space-y-6">

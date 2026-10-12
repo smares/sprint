@@ -67,7 +67,7 @@ new class extends Component
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['nullable', 'string', 'min:8', 'max:255'],
             'locale' => ['required', Rule::in(LocaleService::codes())],
-        ], attributes: ['name' => __('Name'), 'email' => __('Email'), 'password' => __('Password')]);
+        ], attributes: ['name' => __('Name'), 'email' => __('Email'), 'password' => __('Password'), 'locale' => __('Language')]);
 
         $password = $validated['password'] ?: Str::password(16, symbols: false);
 

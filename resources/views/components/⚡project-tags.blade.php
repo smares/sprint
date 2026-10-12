@@ -98,7 +98,7 @@ new class extends Component
 
     public function add(): void
     {
-        $validated = $this->validate(['newName' => ['required', 'string', 'max:50']]);
+        $validated = $this->validate(['newName' => ['required', 'string', 'max:50']], attributes: ['newName' => __('Name')]);
         $name = trim($validated['newName']);
 
         if ($this->nameTaken($name)) {
@@ -213,7 +213,6 @@ new class extends Component
                                             <flux:select.option value="{{ $candidate->id }}">{{ $candidate->name }}</flux:select.option>
                                         @endforeach
                                     </flux:select>
-                                    <flux:error name="mergeIntoId" />
                                     <div class="flex justify-end gap-2">
                                         <flux:button size="sm" variant="ghost" wire:click="cancelDelete">{{ __('Cancel') }}</flux:button>
                                         <flux:button size="sm" type="submit" variant="danger">{{ __('Delete') }}</flux:button>
@@ -225,11 +224,10 @@ new class extends Component
                 </ul>
             @endif
 
-            <form wire:submit="add" class="flex items-end gap-2">
+            <form wire:submit="add" class="row-form flex gap-2">
                 <flux:input wire:model="newName" :label="__('New tag')" :placeholder="__('e.g. Important')" class="flex-1" />
                 <flux:button type="submit" icon="plus">{{ __('Create') }}</flux:button>
             </form>
-            <flux:error name="newName" class="-mt-4" />
         </div>
     </flux:modal>
 </div>

@@ -585,7 +585,7 @@ new class extends Component
 
         $validated = $this->validate([
             'newTag' => ['required', 'string', 'max:50'],
-        ]);
+        ], attributes: ['newTag' => __('Tag')]);
 
         $tag = $this->task->project->findOrCreateTag($validated['newTag']);
 
@@ -631,6 +631,23 @@ new class extends Component
             'blockerIds.*' => ['integer', Rule::exists('tasks', 'id')->where('project_id', $this->task->project_id)->whereNot('id', $this->task->getKey())],
             'blockingIds' => ['array'],
             'blockingIds.*' => ['integer', Rule::exists('tasks', 'id')->where('project_id', $this->task->project_id)->whereNot('id', $this->task->getKey())],
+        ], attributes: [
+            'title' => __('Title'),
+            'description' => __('Description'),
+            'statusId' => __('Status'),
+            'assigneeId' => __('Assignee'),
+            'dueDate' => __('Due on'),
+            'startDate' => __('Starts on'),
+            'repeatUnit' => __('Repeat'),
+            'repeatInterval' => __('Every'),
+            'repeatMode' => __('Calculated'),
+            'repeatUntil' => __('Until'),
+            ...$this->customFields->mapWithKeys(fn (CustomField $field) => ["fieldValues.{$field->id}" => $field->name])->all(),
+            'tagIds.*' => __('Tags'),
+            'parentId' => __('Parent task'),
+            'collaboratorIds.*' => __('Collaborators'),
+            'blockerIds.*' => __('Blocked by'),
+            'blockingIds.*' => __('Blocking'),
         ]);
 
         if ($validated['repeatUnit'] !== '' && $validated['repeatUnit'] !== null && ($validated['dueDate'] ?? '') === '') {
@@ -796,7 +813,7 @@ new class extends Component
     {
         $this->authorizeEdit();
 
-        $validated = $this->validate(['comment' => ['required', 'string', 'max:5000']]);
+        $validated = $this->validate(['comment' => ['required', 'string', 'max:5000']], attributes: ['comment' => __('Comment')]);
 
         $this->task->comments()->create([
             'user_id' => auth()->id(),

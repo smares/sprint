@@ -232,7 +232,7 @@ new class extends Component
         @endforeach
     </ul>
 
-    <form wire:submit="add" class="mt-6 flex flex-wrap items-end gap-2 [&>:first-child]:min-w-0 [&>:first-child]:flex-1 max-sm:[&>:first-child]:basis-full">
+    <form wire:submit="add" class="mt-6 row-form flex flex-wrap gap-2 [&>:first-child]:min-w-0 [&>:first-child]:flex-1 max-sm:[&>:first-child]:basis-full">
         <flux:select variant="listbox" searchable wire:model="newUserId" :label="__('Add person')" placeholder="{{ __('Choose person …') }}" class="min-w-0 flex-1">
             @foreach ($this->candidates as $candidate)
                 <flux:select.option value="{{ $candidate->id }}">{{ $candidate->name }} ({{ $candidate->email }})</flux:select.option>
@@ -245,7 +245,6 @@ new class extends Component
         </flux:select>
         <flux:button type="submit" icon="plus">{{ __('Add') }}</flux:button>
     </form>
-    <flux:error name="newUserId" class="mt-1" />
 
     <flux:heading size="lg" class="mb-1 mt-10">{{ __('Teams') }}</flux:heading>
     <flux:text class="mb-4">{{ __('Everyone in a team gets the role chosen here. Anyone who is also a direct member keeps the higher role.') }}</flux:text>
@@ -271,7 +270,7 @@ new class extends Component
     </ul>
 
     @if ($this->teamCandidates->isNotEmpty())
-        <form wire:submit="addTeam" class="mt-4 flex flex-wrap items-end gap-2 [&>:first-child]:min-w-0 [&>:first-child]:flex-1 max-sm:[&>:first-child]:basis-full">
+        <form wire:submit="addTeam" class="mt-4 row-form flex flex-wrap gap-2 [&>:first-child]:min-w-0 [&>:first-child]:flex-1 max-sm:[&>:first-child]:basis-full">
             <flux:select variant="listbox" wire:model="newTeamId" :label="__('Add team')" placeholder="{{ __('Choose team …') }}" class="min-w-0 flex-1">
                 @foreach ($this->teamCandidates as $candidate)
                     <flux:select.option value="{{ $candidate->id }}">{{ $candidate->name }}</flux:select.option>
@@ -284,6 +283,5 @@ new class extends Component
             </flux:select>
             <flux:button type="submit" icon="plus">{{ __('Add') }}</flux:button>
         </form>
-        <flux:error name="newTeamId" class="mt-1" />
     @endif
 </div>

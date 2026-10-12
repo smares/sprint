@@ -36,6 +36,21 @@
     @apply rounded-xl border border-zinc-200 bg-white shadow-xs dark:border-zinc-700 dark:bg-zinc-800;
 }
 
+/* A form whose labelled fields stand in a row with its button: all are aligned at the top and the button is moved down by
+   the height of a label (text-sm line and its mb-3), so a field's error opens below it without pulling the button along.
+   The labels are blocks here, as inline ones would sit in a taller line of the surrounding text. */
+@utility row-form {
+    align-items: flex-start;
+
+    & [data-flux-label] {
+        display: flex;
+    }
+
+    & > [data-flux-button] {
+        margin-top: 2rem;
+    }
+}
+
 .markdown {
     line-height: 1.6;
     overflow-wrap: anywhere;

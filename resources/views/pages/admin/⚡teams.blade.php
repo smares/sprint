@@ -176,11 +176,10 @@ new class extends Component
         @endforelse
     </div>
 
-    <form wire:submit="create" class="mt-8 flex items-end gap-2">
+    <form wire:submit="create" class="row-form mt-8 flex gap-2">
         <flux:input wire:model="newName" :label="__('New team')" placeholder="{{ __('e.g. Engineering') }}" class="max-w-xs" />
         <flux:button type="submit" icon="plus">{{ __('Create team') }}</flux:button>
     </form>
-    <flux:error name="newName" class="mt-1" />
 
     <flux:modal name="delete-team" class="min-w-[22rem]">
         <div class="space-y-6">

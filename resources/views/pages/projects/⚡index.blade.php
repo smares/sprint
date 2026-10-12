@@ -106,7 +106,7 @@ new class extends Component
         $validated = $this->validate([
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:5000'],
-        ]);
+        ], attributes: ['name' => __('Name'), 'description' => __('Description')]);
 
         $project = Project::create($validated);
         $project->setRole(auth()->user(), ProjectRole::Admin);

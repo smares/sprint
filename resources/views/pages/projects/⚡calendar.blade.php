@@ -1,5 +1,6 @@
 <?php
 
+use App\Concerns\OpensTaskPanel;
 use App\Concerns\ShowsProject;
 use App\Models\Project;
 use App\Models\Task;
@@ -13,7 +14,7 @@ use Livewire\Component;
 
 new class extends Component
 {
-    use ShowsProject;
+    use OpensTaskPanel, ShowsProject;
 
     /** How many tasks a day shows before "+ n more". */
     public const TASKS_PER_DAY = 3;
@@ -142,7 +143,7 @@ new class extends Component
                 <flux:heading size="sm" @class(['mb-1', 'text-accent-content' => $day['date']->isToday()])>{{ $day['date']->isoFormat('dd, L') }}</flux:heading>
                 <div class="space-y-1">
                     @foreach ($day['tasks'] as $task)
-                        <a wire:key="agenda-{{ $day['date']->toDateString() }}-{{ $task->id }}" href="{{ route('tasks.show', $task) }}" wire:navigate style="--badge: {{ $task->status->color }}"
+                        <a wire:key="agenda-{{ $day['date']->toDateString() }}-{{ $task->id }}" href="{{ route('tasks.show', $task) }}" x-on:click="$openTask($event, {{ $task->id }})" style="--badge: {{ $task->status->color }}"
                            class="color-chip block truncate rounded px-2 py-1 text-sm {{ $task->isDone() ? 'line-through opacity-60' : '' }}">{{ $task->title }}</a>
                     @endforeach
                 </div>
@@ -194,7 +195,7 @@ new class extends Component
                             </div>
 
                             @foreach ($day['tasks']->take($this::TASKS_PER_DAY) as $task)
-                                <a wire:key="chip-{{ $day['date']->toDateString() }}-{{ $task->id }}" href="{{ route('tasks.show', $task) }}" wire:navigate
+                                <a wire:key="chip-{{ $day['date']->toDateString() }}-{{ $task->id }}" href="{{ route('tasks.show', $task) }}" x-on:click="$openTask($event, {{ $task->id }})"
                                    style="--badge: {{ $task->status->color }}"
                                    @if ($this->canEdit)
                                        draggable="true"
@@ -219,4 +220,6 @@ new class extends Component
             <flux:link :href="route('projects.show', [$project, 'dates' => 'none', 'status' => 'all'])" wire:navigate>{{ __('Show them in the list') }}</flux:link>
         </flux:text>
     @endif
+
+    <x-task-panel :task="$this->panelTask" />
 </div>

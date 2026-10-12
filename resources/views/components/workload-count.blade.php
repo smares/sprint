@@ -11,7 +11,7 @@
 
         <flux:menu class="max-w-72">
             @foreach ($group['tasks'] as $task)
-                <flux:menu.item :href="route('tasks.show', $task['id'])" wire:navigate wire:key="workload-task-{{ $task['id'] }}" class="truncate">{{ $task['title'] }}</flux:menu.item>
+                <flux:menu.item :href="route('tasks.show', $task['id'])" x-on:click="$openTask($event, {{ $task['id'] }})" wire:key="workload-task-{{ $task['id'] }}" class="truncate">{{ $task['title'] }}</flux:menu.item>
             @endforeach
             @if ($group['count'] > count($group['tasks']))
                 <flux:menu.separator />

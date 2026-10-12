@@ -204,4 +204,30 @@ class TaskPanelTest extends TestCase
         $this->list()->assertSeeHtml('href="'.route('tasks.show', $this->task).'"');
         $this->board()->assertSeeHtml('href="'.route('tasks.show', $this->task).'"');
     }
+
+    public function test_calendar_timeline_search_and_workload_open_tasks_in_the_flyout_too(): void
+    {
+        $task = Task::factory()->for($this->project)->create(['title' => 'Überall offen', 'due_date' => today()]);
+
+        foreach (['pages::projects.calendar', 'pages::projects.timeline'] as $view) {
+            Livewire::test($view, ['project' => $this->project])
+                ->assertSeeHtml('$openTask($event, '.$task->id.')')
+                ->call('openTask', $task->id)->assertSet('openTaskId', (string) $task->id)
+                ->assertSeeHtml('data-modal="task-panel"');
+        }
+
+        // Search and workload open any task one may see, whatever its project, but no other
+        $me = User::factory()->create();
+        $this->project->setRole($me, ProjectRole::Editor);
+        $task->update(['assignee_id' => $me->id]);
+        $foreign = Task::factory()->create();
+        $this->actingAs($me);
+
+        Livewire::test('pages::search', ['query' => 'Überall'])->assertSeeHtml('$openTask($event, '.$task->id.')')
+            ->call('openTask', $task->id)->assertSet('openTaskId', (string) $task->id)
+            ->call('openTask', $foreign->id)->assertSet('openTaskId', (string) $task->id);
+
+        Livewire::test('pages::workload')->assertSeeHtml('$openTask($event, '.$task->id.')')
+            ->call('openTask', $task->id)->assertSet('openTaskId', (string) $task->id);
+    }
 }

@@ -408,17 +408,18 @@ tr[data-task-id] {
     }
 }
 
-/* Board cards lift a little under the pointer, tilt while they are picked up and leave a faded copy where they would land. */
+/* Board cards cast a shadow under the pointer (only a shadow: moving them by a pixel made the text look as if the card
+   changed size), tilt once they are held and leave a faded copy where they would land. Sortable marks a card as chosen
+   on every press, so the tilt waits a moment: a normal click to open the task ends before it starts. */
 .board-card {
     transition:
-        transform 0.15s ease,
+        rotate 0.15s ease,
         box-shadow 0.15s ease,
         opacity 0.25s ease;
 }
 
 @media (hover: hover) {
     .board-card:hover {
-        transform: translateY(-1px);
         box-shadow:
             0 4px 6px -1px rgb(0 0 0 / 0.08),
             0 2px 4px -2px rgb(0 0 0 / 0.08);
@@ -430,6 +431,7 @@ tr[data-task-id] {
     box-shadow:
         0 10px 15px -3px rgb(0 0 0 / 0.12),
         0 4px 6px -4px rgb(0 0 0 / 0.12);
+    transition-delay: 0.2s;
 }
 
 .board-card.sortable-ghost {

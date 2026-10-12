@@ -57,6 +57,9 @@ new class extends Component
 
     public string $locale = '';
 
+    /** The person's own time zone; empty for the application's. */
+    public string $timezone = '';
+
     /** The one planned absence (Y-m-d), empty when there is none. */
     public string $absentFrom = '';
 
@@ -90,6 +93,7 @@ new class extends Component
         $this->reminders = auth()->user()->reminders_enabled;
         $this->celebrations = auth()->user()->celebrations_enabled;
         $this->locale = auth()->user()->preferredLocale();
+        $this->timezone = (string) auth()->user()->timezone;
         $this->quietHours = auth()->user()->quiet_from !== null;
         $this->quietFrom = auth()->user()->quiet_from ?? $this->quietFrom;
         $this->quietUntil = auth()->user()->quiet_until ?? $this->quietUntil;
@@ -162,6 +166,15 @@ new class extends Component
         LocaleService::apply($value);
 
         $this->redirectRoute('profile', navigate: true);
+    }
+
+    public function updatedTimezone(string $value): void
+    {
+        $this->validate(['timezone' => ['nullable', 'string', Rule::in(timezone_identifiers_list())]], attributes: ['timezone' => __('Time zone')]);
+
+        auth()->user()->update(['timezone' => $value !== '' ? $value : null]);
+
+        Flux::toast(variant: 'success', text: __('Time zone saved.'));
     }
 
     public function updatedDigest(bool $value): void
@@ -461,6 +474,21 @@ new class extends Component
                 @endforeach
             </flux:select>
 
+            {{-- Empty means the application's zone; the browser's own zone is offered when it differs from the one in use --}}
+            <div x-data="{ browserZone: Intl.DateTimeFormat().resolvedOptions().timeZone }">
+                <flux:select variant="listbox" searchable clearable wire:model.live="timezone" :label="__('Time zone')"
+                    :description="__('Your quiet times and absence apply in this time zone.')"
+                    :placeholder="__('Like the application (:zone)', ['zone' => config('app.timezone')])">
+                    @foreach (timezone_identifiers_list() as $zone)
+                        <flux:select.option value="{{ $zone }}">{{ str_replace('_', ' ', $zone) }}</flux:select.option>
+                    @endforeach
+                </flux:select>
+                <div x-show="browserZone && browserZone !== ($wire.timezone || {{ \Illuminate\Support\Js::from(config('app.timezone')) }})" x-cloak class="mt-2 flex flex-wrap items-center gap-2">
+                    <flux:text size="sm">{{ __('Your device is set to') }} <span class="font-medium" x-text="browserZone.replaceAll('_', ' ')"></span>.</flux:text>
+                    <flux:button size="xs" x-on:click="$wire.set('timezone', browserZone)">{{ __('Apply') }}</flux:button>
+                </div>
+            </div>
+
             <flux:separator />
 
             <flux:switch wire:model.live="digest" :label="__('Daily digest by email')" :description="__('On weekday mornings, an email with your overdue and soon-due tasks, only if there is something to report.')" />
@@ -503,7 +531,7 @@ new class extends Component
             <div class="space-y-4">
                 <div>
                     <flux:heading>{{ __('Do not disturb') }}</flux:heading>
-                    <flux:text class="mt-1">{{ __('No emails or push notifications at these times; your inbox still collects everything. Times are in the time zone :zone.', ['zone' => config('app.timezone')]) }}</flux:text>
+                    <flux:text class="mt-1">{{ __('No emails or push notifications at these times; your inbox still collects everything. Times are in the time zone :zone.', ['zone' => str_replace('_', ' ', auth()->user()->preferredTimezone())]) }}</flux:text>
                 </div>
 
                 <flux:switch wire:model.live="quietHours" :label="__('Every day')" :description="__('No emails or push notifications between these times, for example from 18:30 to 08:00.')" />

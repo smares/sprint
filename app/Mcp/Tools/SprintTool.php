@@ -46,7 +46,7 @@ abstract class SprintTool extends Tool
     protected function visibleTask(User $user, int $taskId): Task
     {
         return Task::query()
-            ->where('is_section', false)
+            ->withoutSections()
             ->whereHas('project', fn (Builder $projects) => $projects->visibleTo($user))
             ->find($taskId) ?? throw new ToolFailure("Task {$taskId} not found.");
     }

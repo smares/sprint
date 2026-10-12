@@ -41,7 +41,7 @@ class CreateTask extends WriteTaskTool
         $parent = null;
 
         if (! empty($given['parent_id'])) {
-            $parent = $project->tasks()->where('is_section', false)->find($given['parent_id'])
+            $parent = $project->tasks()->withoutSections()->find($given['parent_id'])
                 ?? throw new ToolFailure("Parent task {$given['parent_id']} is not in this project.");
         }
 

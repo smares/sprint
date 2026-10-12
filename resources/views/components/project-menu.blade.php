@@ -1,6 +1,6 @@
 @props(['project'])
 
-{{-- Setup entries for managers; Status and Tags open as modals (see x-project-header), Felder, Automatisierungen and Mitglieder are pages. --}}
+{{-- Setup entries for managers; Status and Tags open as modals (see x-project-header), Fields, Automations and Members are pages. --}}
 <flux:dropdown align="end">
     <flux:button icon="cog-6-tooth" aria-label="{{ __('Set up project') }}" tooltip="{{ __('Set up project') }}" />
 

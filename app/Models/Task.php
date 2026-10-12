@@ -747,7 +747,7 @@ class Task extends Model
             foreach (array_chunk($frontier, 500) as $parentIds) {
                 $level = $level->concat(self::query()
                     ->whereIn('parent_id', $parentIds)
-                    ->where('is_section', false)
+                    ->withoutSections()
                     ->with('status:id,is_done')
                     ->get(['id', 'parent_id', 'status_id']));
             }
@@ -958,6 +958,16 @@ class Task extends Model
     protected function scopeTopLevel(Builder $query): void
     {
         $query->whereNull('tasks.parent_id');
+    }
+
+    /**
+     * Tasks without the section headings that structure a list.
+     *
+     * @param  Builder<static>  $query
+     */
+    protected function scopeWithoutSections(Builder $query): void
+    {
+        $query->where('tasks.is_section', false);
     }
 
     /**

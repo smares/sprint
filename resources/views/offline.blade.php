@@ -6,15 +6,15 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>{{ config('app.name') }}</title>
-        <link rel="icon" href="/icon-192.png" type="image/png">
-        <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
-        <meta name="theme-color" content="#18181b" media="(prefers-color-scheme: dark)">
+        <link rel="icon" href="{{ \App\Http\Controllers\ProgressiveWebAppController::ICON }}" type="image/png">
+        <meta name="theme-color" content="{{ \App\Http\Controllers\ProgressiveWebAppController::THEME_COLOR }}" media="(prefers-color-scheme: light)">
+        <meta name="theme-color" content="{{ \App\Http\Controllers\ProgressiveWebAppController::THEME_COLOR_DARK }}" media="(prefers-color-scheme: dark)">
         @vite('resources/css/app.css')
         @fluxAppearance
     </head>
     <body class="flex min-h-screen items-center justify-center bg-white p-6 dark:bg-zinc-800">
         <div class="max-w-sm space-y-4 text-center">
-            <img src="/icon-192.png" alt="" class="mx-auto size-12">
+            <img src="{{ \App\Http\Controllers\ProgressiveWebAppController::ICON }}" alt="" class="mx-auto size-12">
 
             @foreach (\App\Services\LocaleService::codes() as $locale)
                 <div data-locale="{{ $locale }}" lang="{{ $locale }}" class="space-y-4" @if ($locale !== app()->getLocale()) hidden @endif>

@@ -41,7 +41,7 @@ new class extends Component
         $toDay = DateService::parseIsoDate($to);
         abort_unless($fromDay !== null && $toDay !== null, 422);
 
-        $task = $this->project->tasks()->topLevel()->where('is_section', false)->findOrFail($taskId);
+        $task = $this->project->tasks()->topLevel()->withoutSections()->findOrFail($taskId);
         $days = (int) $fromDay->diffInDays($toDay, false);
 
         if ($days !== 0 && abs($days) <= Task::MAX_SHIFT_DAYS) {
@@ -82,7 +82,7 @@ new class extends Component
 
         $tasks = $this->project->tasks()
             ->topLevel()
-            ->where('is_section', false)
+            ->withoutSections()
             ->overlapping($from, $to)
             ->with('status')
             ->orderBy('position')
@@ -112,7 +112,7 @@ new class extends Component
     {
         return $this->project->tasks()
             ->topLevel()
-            ->where('is_section', false)
+            ->withoutSections()
             ->whereNull('start_date')
             ->whereNull('due_date')
             ->count();

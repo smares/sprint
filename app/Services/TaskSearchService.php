@@ -120,7 +120,7 @@ class TaskSearchService
 
         $count = 0;
 
-        Task::where('is_section', false)->orderBy('id')->chunkById(200, function ($tasks) use (&$count) {
+        Task::withoutSections()->orderBy('id')->chunkById(200, function ($tasks) use (&$count) {
             foreach ($tasks as $task) {
                 $this->index($task);
                 $count++;
@@ -166,7 +166,7 @@ class TaskSearchService
 
         $tasks = Task::query()
             ->select('tasks.*')
-            ->where('tasks.is_section', false)
+            ->withoutSections()
             ->visibleTo($user);
 
         if ($terms === []) {

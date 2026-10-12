@@ -7,7 +7,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 
 /**
- * What the list, board, calendar and timeline of a project share: only people who may see the project
+ * What the list, board, calendar, timeline and statistics of a project share: only people who may see the project
  * get in (checked on every request), what they may do, who else is here, a fresh render after a new
  * task, and the visit for the recent projects. The component declares `public Project $project`.
  */

@@ -18,11 +18,14 @@ new class extends Component
     /** While typing: at most this many matching projects. */
     public const int MAX_MATCHES = 20;
 
+    /** How many matching tasks are listed below the projects and pages (all of them are on the search page). */
+    public const int TASK_MATCHES = 8;
+
     /**
      * Projects the person can open, kept short so that the palette stays small with many projects. Without a search
-     * text the favourites in their own order, then the RECENT_PROJECTS last opened ones (topped up alphabetically for
+     * text the favorites in their own order, then the RECENT_PROJECTS last opened ones (topped up alphabetically for
      * someone who has not opened enough yet). While typing those whose name contains the text: names that start with
-     * it first, favourites leading within each, the rest alphabetically, at most MAX_MATCHES.
+     * it first, favorites leading within each, the rest alphabetically, at most MAX_MATCHES.
      */
     #[Computed]
     public function projects(): Collection
@@ -38,7 +41,7 @@ new class extends Component
 
         if ($query === '') {
             [$favorites, $others] = $projects->partition(fn (Project $project) => isset($favoritePositions[$project->id]));
-            $recentRanks = array_flip(auth()->user()->visitedProjects()->pluck('projects.id')->all());
+            $recentRanks = array_flip(auth()->user()->recentProjectIds());
             [$recent, $rest] = $others->partition(fn (Project $project) => isset($recentRanks[$project->id]));
             $recent = $recent->sortBy(fn (Project $project) => $recentRanks[$project->id])->take(self::RECENT_PROJECTS);
 
@@ -61,14 +64,14 @@ new class extends Component
     }
 
     /**
-     * Ids of the person's favourite projects in their own order.
+     * Ids of the person's favorite projects in their own order.
      *
      * @return list<int>
      */
     #[Computed]
     public function favoriteIds(): array
     {
-        return auth()->user()->favoriteProjects()->pluck('projects.id')->all();
+        return auth()->user()->favoriteProjectIds();
     }
 
     /**
@@ -96,7 +99,7 @@ new class extends Component
         return app(TaskSearchService::class)
             ->search(auth()->user(), $this->query)
             ->with('project:id,name')
-            ->limit(8)
+            ->limit(self::TASK_MATCHES)
             ->get();
     }
 };
@@ -122,7 +125,7 @@ new class extends Component
                     </div>
                 @endif
 
-                {{-- Favourites and recently opened projects come first, the pages after them --}}
+                {{-- Favorites and recently opened projects come first, the pages after them --}}
                 @if ($this->projects->isNotEmpty())
                     <div class="[&:not(:has([data-flux-command-item]:not([data-hidden])))]:hidden">
                         <div class="px-2 pb-1 pt-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">{{ __('Projects') }}</div>

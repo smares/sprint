@@ -26,7 +26,7 @@ trait OpensTaskPanel
     #[On('open-task')]
     public function openTask(int|string $id): void
     {
-        if ($this->tasksForPanel()->where('is_section', false)->whereKey($id)->exists()) {
+        if ($this->tasksForPanel()->withoutSections()->whereKey($id)->exists()) {
             $this->openTaskId = (string) $id;
         }
     }
@@ -62,7 +62,7 @@ trait OpensTaskPanel
             return null;
         }
 
-        return $this->tasksForPanel()->where('is_section', false)->find((int) $this->openTaskId);
+        return $this->tasksForPanel()->withoutSections()->find((int) $this->openTaskId);
     }
 
     /**

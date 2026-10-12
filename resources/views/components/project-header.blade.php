@@ -1,6 +1,6 @@
 @props(['project', 'active', 'presence' => null])
 
-{{-- Breadcrumbs, title and the same toolbar for list, board, calendar and timeline. --}}
+{{-- Breadcrumbs, title and the same toolbar for list, board, calendar, timeline and statistics. --}}
 <x-project-breadcrumbs :project="$project" />
 
 @if ($project->archived_at)

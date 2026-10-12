@@ -399,7 +399,7 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
 }
 
 /* Toasts: Flux keeps them 1.5rem off the edges and up to 24rem wide, more than a phone has, so long ones stuck to the left
-   edge and short ones sat on the right. On phones they are centred with the page's gutter on both sides. */
+   edge and short ones sat on the right. On phones they are centered with the page's gutter on both sides. */
 @media (width < 40rem) {
     ui-toast {
         margin-inline: auto;
@@ -408,7 +408,7 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
 }
 
 /* The unicorn after a completed task: fades in below left of the middle, flies diagonally up to the right with a slight
-   swing and fades out again before it reaches the edge. Centred on its own middle by the first translate. */
+   swing and fades out again before it reaches the edge. Centered on its own middle by the first translate. */
 @keyframes unicorn-flight {
     0% {
         opacity: 0;
@@ -496,9 +496,10 @@ tr[data-task-id] {
     }
 }
 
-/* Board cards cast a shadow under the pointer (only a shadow: moving them by a pixel made the text look as if the card
-   changed size), tilt once they are held and leave a faded copy where they would land. Sortable marks a card as chosen
-   on every press, so the tilt waits a moment: a normal click to open the task ends before it starts. */
+/* Board cards (and the project cards, which are dragged the same way) cast a shadow under the pointer (only a shadow:
+   moving them by a pixel made the text look as if the card changed size), tilt once they are held and leave a faded copy
+   where they would land. Sortable marks a card as chosen on every press, so the tilt waits a moment: a normal click to
+   open the task ends before it starts. */
 .board-card {
     transition:
         rotate 0.15s ease,
@@ -524,7 +525,10 @@ tr[data-task-id] {
 /* With a mouse, a click to open a task ends before the tilt; on touch Sortable already waits before picking a card up */
 @media (pointer: fine) {
     .board-card.sortable-chosen {
-        transition-delay: 0.2s;
+        transition:
+            rotate 0.15s ease 0.2s,
+            box-shadow 0.15s ease,
+            opacity 0.25s ease;
     }
 }
 
@@ -538,7 +542,6 @@ tr[data-task-id] {
     .board-card:hover,
     .board-card.sortable-chosen {
         transition: none;
-        transform: none;
         rotate: none;
     }
 }

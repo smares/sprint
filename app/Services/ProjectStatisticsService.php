@@ -22,7 +22,7 @@ class ProjectStatisticsService
     public function weeklyFlow(Project $project, int $weeks): array
     {
         $start = now()->startOfWeek()->subWeeks($weeks - 1);
-        $tasks = fn () => $project->tasks()->where('is_section', false);
+        $tasks = fn () => $project->tasks()->withoutSections();
 
         $created = $this->countByWeek($tasks()->where('created_at', '>=', $start)->pluck('created_at'));
         $completed = $this->countByWeek($tasks()->where('completed_at', '>=', $start)->pluck('completed_at'));
@@ -33,8 +33,8 @@ class ProjectStatisticsService
             $key = $week->toDateString();
             $flow[] = [
                 // The current week has only begun: named as such, so its low numbers are not read as a drop
-                'week' => $week->isSameWeek(now()) ? __('This week') : __('Week :number', ['number' => $week->isoWeek()]),
-                'range' => $week->isoFormat('L').' – '.$week->copy()->endOfWeek()->isoFormat('L'),
+                'week' => $week->isSameWeek(now()) ? __('This week') : DateService::weekLabel($week),
+                'range' => DateService::weekRange($week),
                 'created' => $created[$key] ?? 0,
                 'completed' => $completed[$key] ?? 0,
             ];
@@ -84,7 +84,7 @@ class ProjectStatisticsService
     {
         $backlog = $project->defaultStatus()->id;
 
-        $open = Task::query()->whereBelongsTo($project)->open()->where('is_section', false)->where('status_id', '!=', $backlog)
+        $open = Task::query()->whereBelongsTo($project)->open()->withoutSections()->where('status_id', '!=', $backlog)
             ->addSelect(['status_changed_at' => TaskActivity::query()
                 ->selectRaw('max(created_at)')
                 ->whereColumn('task_id', 'tasks.id')
@@ -105,7 +105,7 @@ class ProjectStatisticsService
      */
     private function completedSince(Project $project, Carbon $since): Collection
     {
-        return $project->tasks()->where('is_section', false)->where('completed_at', '>=', $since)
+        return $project->tasks()->withoutSections()->where('completed_at', '>=', $since)
             ->toBase()->get(['created_at', 'completed_at', 'due_date'])
             ->map(fn (object $task) => [
                 'created_at' => Carbon::parse($task->created_at),
@@ -120,7 +120,7 @@ class ProjectStatisticsService
      */
     private function cycleOf(Collection $tasks): array
     {
-        $days = $tasks->map(fn (array $task) => max(0.0, $task['created_at']->diffInMinutes($task['completed_at']) / 1440))->sort()->values();
+        $days = $tasks->map(fn (array $task) => max(0.0, $task['created_at']->diffInDays($task['completed_at'])))->sort()->values();
         $dated = $tasks->filter(fn (array $task) => $task['due_date'] !== null);
         $onTime = $dated->filter(fn (array $task) => $task['completed_at']->toDateString() <= $task['due_date']->toDateString())->count();
 

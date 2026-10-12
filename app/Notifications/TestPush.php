@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Http\Controllers\ProgressiveWebAppController;
 use Illuminate\Notifications\Notification;
 use NotificationChannels\WebPush\WebPushChannel;
 use NotificationChannels\WebPush\WebPushMessage;
@@ -24,7 +25,7 @@ class TestPush extends Notification
         return (new WebPushMessage)
             ->title(config('app.name'))
             ->body(__('Push notifications work on this device.'))
-            ->icon('/icon-192.png')
+            ->icon(ProgressiveWebAppController::ICON)
             ->lang(app()->getLocale())
             ->tag('test')
             ->data(['url' => route('profile', absolute: false)])

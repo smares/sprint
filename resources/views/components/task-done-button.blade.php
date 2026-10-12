@@ -3,10 +3,12 @@
 @php
     // Completing is celebrated before the server is asked: the check fills green with a little pop, the row strikes its
     // title through and fades (data-completing, see app.css), and only then is the task saved, which usually removes the row.
+    // The wait matches that fade: 0.1s delay and 0.4s transition there.
+    $celebrationMs = 450;
     $onClick = $task->isDone()
         ? "\$wire.toggleDone({$task->id})"
         : "if (completing) return; completing = true; \$el.closest('[data-task-id]')?.setAttribute('data-completing', ''); "
-            ."setTimeout(() => \$wire.toggleDone({$task->id}), window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 450)";
+            ."setTimeout(() => \$wire.toggleDone({$task->id}), window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : {$celebrationMs})";
 @endphp
 
 {{-- The round check before a task in the lists: marks it done or opens it again (the component offers toggleDone). --}}

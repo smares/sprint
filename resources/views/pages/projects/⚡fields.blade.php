@@ -231,7 +231,7 @@ new class extends Component
         <x-empty-state icon="adjustments-horizontal" :heading="__('No fields yet')" />
     @endif
 
-    <ul class="space-y-3" wire:sort="moveField" wire:sort:config="{ delay: 250, delayOnTouchOnly: true, touchStartThreshold: 12 }">
+    <ul class="space-y-3" wire:sort="moveField" wire:sort:config="{{ \App\Sortable::CONFIG }}">
         @foreach ($this->fields as $field)
             <li wire:key="field-{{ $field->id }}" wire:sort:item="{{ $field->id }}" class="surface space-y-3 p-3">
                 <div class="flex flex-wrap items-center gap-3">
@@ -243,7 +243,7 @@ new class extends Component
                 </div>
 
                 @if ($field->type === \App\Enums\CustomFieldType::Select)
-                    <ul class="ms-6 space-y-2" wire:sort="moveOption" wire:sort:config="{ delay: 250, delayOnTouchOnly: true, touchStartThreshold: 12 }" wire:sort:group="options" wire:sort:group-id="{{ $field->id }}">
+                    <ul class="ms-6 space-y-2" wire:sort="moveOption" wire:sort:config="{{ \App\Sortable::CONFIG }}" wire:sort:group="options" wire:sort:group-id="{{ $field->id }}">
                         @foreach ($field->options as $option)
                             <li wire:key="option-{{ $option->id }}" wire:sort:item="{{ $option->id }}" class="flex items-center gap-2">
                                 <x-color-badge size="sm" :color="$option->color" class="shrink-0">&nbsp;</x-color-badge>

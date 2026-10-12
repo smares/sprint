@@ -85,7 +85,15 @@ class Project extends Model
      */
     public function displayIcon(): string
     {
-        return $this->icon ?? mb_strtoupper(mb_substr($this->name, 0, 1));
+        return $this->icon ?? self::initialOf($this->name);
+    }
+
+    /**
+     * The first letter of a name, as a tile without an icon shows it.
+     */
+    public static function initialOf(string $name): string
+    {
+        return mb_strtoupper(mb_substr($name, 0, 1));
     }
 
     /**
@@ -412,7 +420,7 @@ class Project extends Model
         $query = mb_substr(trim($query), 0, 50);
 
         return $this->tasks()
-            ->where('is_section', false)
+            ->withoutSections()
             ->when($query !== '', fn ($tasks) => $tasks->whereLike('title', '%'.addcslashes($query, '%_\\').'%'))
             ->orderByDesc('id')
             ->limit($limit)

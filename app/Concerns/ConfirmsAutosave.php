@@ -5,7 +5,7 @@ namespace App\Concerns;
 use Flux\Flux;
 
 /**
- * Fields that save on their own (names on blur, colours, checkboxes, roles) confirm it with a short toast,
+ * Fields that save on their own (names on blur, colors, checkboxes, roles) confirm it with a short toast,
  * since there is no button whose click would show that something happened.
  */
 trait ConfirmsAutosave

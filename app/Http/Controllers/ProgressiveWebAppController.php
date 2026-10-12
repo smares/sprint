@@ -16,7 +16,20 @@ class ProgressiveWebAppController extends Controller
     /** The Vite entries every page loads; their files and the offline page are cached when the service worker installs. */
     private const array ENTRIES = ['resources/css/app.css', 'resources/js/app.js', 'resources/js/realtime.js'];
 
-    private const array ICONS = ['/icon-192.png', '/icon-512.png', '/icon-maskable-512.png'];
+    /** The small app icon, also shown on push notifications and the offline page. */
+    public const string ICON = '/icon-192.png';
+
+    /** The app icons in the manifest; the service worker keeps them too. */
+    private const array ICONS = [
+        ['src' => self::ICON, 'sizes' => '192x192', 'purpose' => 'any'],
+        ['src' => '/icon-512.png', 'sizes' => '512x512', 'purpose' => 'any'],
+        ['src' => '/icon-maskable-512.png', 'sizes' => '512x512', 'purpose' => 'maskable'],
+    ];
+
+    /** The color of the browser's bar in light and dark appearance (the header's; app.js switches with the menu). */
+    public const string THEME_COLOR = '#ffffff';
+
+    public const string THEME_COLOR_DARK = '#18181b';
 
     /** How long browsers may keep the manifest (seconds); it only changes with the app's name. */
     private const int MANIFEST_MAX_AGE = 86400;
@@ -31,12 +44,8 @@ class ProgressiveWebAppController extends Controller
             'scope' => '/',
             'display' => 'standalone',
             'background_color' => '#fafafa',
-            'theme_color' => '#ffffff',
-            'icons' => [
-                ['src' => '/icon-192.png', 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any'],
-                ['src' => '/icon-512.png', 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any'],
-                ['src' => '/icon-maskable-512.png', 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'maskable'],
-            ],
+            'theme_color' => self::THEME_COLOR,
+            'icons' => array_map(fn (array $icon) => [...$icon, 'type' => 'image/png'], self::ICONS),
         ], options: JSON_UNESCAPED_SLASHES)
             ->header('Content-Type', 'application/manifest+json')
             ->header('Cache-Control', 'public, max-age='.self::MANIFEST_MAX_AGE);
@@ -48,7 +57,7 @@ class ProgressiveWebAppController extends Controller
      */
     public function serviceWorker(): Response
     {
-        $precache = [route('offline', absolute: false), ...$this->builtAssets(), ...self::ICONS];
+        $precache = [route('offline', absolute: false), ...$this->builtAssets(), ...array_column(self::ICONS, 'src')];
 
         $script = 'const VERSION = '.json_encode($this->version()).";\n"
             .'const PRECACHE = '.json_encode($precache, JSON_UNESCAPED_SLASHES).";\n"

@@ -85,7 +85,7 @@ trait EditsTasksInBulk
         }
 
         return $this->filteredTasks()
-            ->where('is_section', false)
+            ->withoutSections()
             ->whereIn('id', array_slice(array_map(intval(...), $this->selected), 0, self::MAX_SELECTION))
             ->pluck('id')
             ->map(fn ($id) => (int) $id)
@@ -140,7 +140,7 @@ trait EditsTasksInBulk
             throw ValidationException::withMessages(['selected' => __('Select tasks first.')]);
         }
 
-        return $this->project->tasks()->topLevel()->where('is_section', false)->whereKey($ids)->with(['project.statuses', 'status', 'assignee', 'collaborators', 'notificationMutes'])->get();
+        return $this->project->tasks()->topLevel()->withoutSections()->whereKey($ids)->with(['project.statuses', 'status', 'assignee', 'collaborators', 'notificationMutes'])->get();
     }
 
     private function finishBulk(string $message): void

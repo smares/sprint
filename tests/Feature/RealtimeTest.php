@@ -252,12 +252,12 @@ class RealtimeTest extends TestCase
         $other = Task::factory()->for($this->project)->create();
         $page = Livewire::test('pages::tasks.show', ['task' => $task]);
 
-        $subtask = Task::factory()->for($this->project)->create(['parent_id' => $task->id, 'title' => 'Neue Unteraufgabe']);
+        $subtask = Task::factory()->for($this->project)->create(['parent_id' => $task->id, 'title' => 'Frische Unteraufgabe']);
 
         $page->call('projectChangedElsewhere', ['project_id' => $this->project->id, 'task_id' => $other->id, 'kind' => 'task'])
-            ->assertDontSee('Neue Unteraufgabe')
+            ->assertDontSee('Frische Unteraufgabe')
             ->call('projectChangedElsewhere', ['project_id' => $this->project->id, 'task_id' => $subtask->id, 'kind' => 'task'])
-            ->assertSee('Neue Unteraufgabe')
+            ->assertSee('Frische Unteraufgabe')
             ->assertSet('changedElsewhere', false);
     }
 

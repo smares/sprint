@@ -118,12 +118,12 @@ class TeamsAndUsersTest extends TestCase
         $this->actingAs($this->member);
         $this->get(route('admin.users'))->assertForbidden();
         $this->get(route('admin.teams'))->assertForbidden();
-        $this->get(route('projects.index'))->assertOk()->assertDontSee('Benutzer');
+        $this->get(route('projects.index'))->assertOk()->assertDontSee(route('admin.users'));
 
         $this->actingAs($this->appAdmin);
         $this->get(route('admin.users'))->assertOk();
         $this->get(route('admin.teams'))->assertOk();
-        $this->get(route('projects.index'))->assertOk()->assertSee('Benutzer')->assertSee('Teams');
+        $this->get(route('projects.index'))->assertOk()->assertSee('Personen')->assertSee('Teams');
     }
 
     public function test_admin_pages_need_a_login(): void

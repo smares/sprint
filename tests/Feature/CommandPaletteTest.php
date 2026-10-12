@@ -41,7 +41,7 @@ class CommandPaletteTest extends TestCase
             ->assertSee('data-modal="command-palette"', false)
             ->assertSee('keydown.cmd.k.document', false)
             ->assertSee('keydown.ctrl.k.document', false)
-            ->assertSee('Springen oder Aufgaben suchen');
+            ->assertSee('Suchen oder springen');
 
         auth()->logout();
         $this->get(route('login'))->assertOk()->assertDontSee('command-palette', false);
@@ -56,7 +56,7 @@ class CommandPaletteTest extends TestCase
         $this->get(route('projects.index'))->assertOk()
             ->assertSee('Gehe zu')->assertSee('Posteingang')->assertSee('Meine Aufgaben')
             ->assertSee('Darstellung')
-            ->assertDontSee('Teams')->assertDontSee('Benutzer');
+            ->assertDontSee('Teams')->assertDontSee(route('admin.users'));
 
         Livewire::test('command-palette')
             ->assertSee('Website')->assertDontSee('Geheim')->assertDontSee('Alt');
@@ -165,7 +165,7 @@ class CommandPaletteTest extends TestCase
         $this->user->forceFill(['is_admin' => true])->save();
         $this->project('Fremd', null);
 
-        Livewire::test('command-palette')->assertSee('Teams')->assertSee('Benutzer')->assertSee('Fremd');
+        Livewire::test('command-palette')->assertSee('Teams')->assertSee('Personen')->assertSee('Fremd');
     }
 
     public function test_tasks_show_up_once_two_characters_were_typed_and_open_in_the_side_panel(): void

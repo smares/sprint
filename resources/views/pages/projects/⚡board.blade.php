@@ -195,13 +195,18 @@ new class extends Component
                         <span class="size-2.5 shrink-0 rounded-full bg-(--badge)" aria-hidden="true"></span>
 
                         <x-slot name="actions">
-                            <flux:button size="xs" variant="ghost" square x-on:click.stop="toggle({{ $status->id }})"
-                                x-bind:aria-expanded="! collapsed.includes({{ $status->id }})"
-                                x-bind:aria-label="collapsed.includes({{ $status->id }}) ? {{ \Illuminate\Support\Js::from(__('Expand column')) }} : {{ \Illuminate\Support\Js::from(__('Collapse column')) }}"
-                                x-bind:title="collapsed.includes({{ $status->id }}) ? {{ \Illuminate\Support\Js::from(__('Expand column')) }} : {{ \Illuminate\Support\Js::from(__('Collapse column')) }}">
-                                <flux:icon.chevron-double-left variant="micro" x-show="! collapsed.includes({{ $status->id }})" />
-                                <flux:icon.chevron-double-right variant="micro" x-show="collapsed.includes({{ $status->id }})" x-cloak />
-                            </flux:button>
+                            <flux:tooltip>
+                                <flux:button size="xs" variant="ghost" square x-on:click.stop="toggle({{ $status->id }})"
+                                    x-bind:aria-expanded="! collapsed.includes({{ $status->id }})"
+                                    x-bind:aria-label="collapsed.includes({{ $status->id }}) ? {{ \Illuminate\Support\Js::from(__('Expand column')) }} : {{ \Illuminate\Support\Js::from(__('Collapse column')) }}">
+                                    <flux:icon.chevron-double-left variant="micro" x-show="! collapsed.includes({{ $status->id }})" />
+                                    <flux:icon.chevron-double-right variant="micro" x-show="collapsed.includes({{ $status->id }})" x-cloak />
+                                </flux:button>
+                                <flux:tooltip.content>
+                                    <span x-show="! collapsed.includes({{ $status->id }})">{{ __('Collapse column') }}</span>
+                                    <span x-show="collapsed.includes({{ $status->id }})" x-cloak>{{ __('Expand column') }}</span>
+                                </flux:tooltip.content>
+                            </flux:tooltip>
                         </x-slot>
                     </flux:kanban.column.header>
 

@@ -41,7 +41,7 @@
                 </flux:sidebar.header>
 
                 <flux:modal.trigger name="command-palette" shortcut="cmd.k">
-                    <flux:sidebar.search :placeholder="__('Search')" kbd="⌘K" :tooltip="__('Search or jump to…')" :aria-label="__('Open command palette')" />
+                    <flux:sidebar.search :placeholder="__('Search')" kbd="⌘K" :tooltip="__('Search or jump to…')" :aria-label="__('Search or jump to…')" />
                 </flux:modal.trigger>
 
                 <flux:modal.trigger name="command-palette" shortcut="ctrl.k">
@@ -82,7 +82,7 @@
                 <flux:spacer />
 
                 <flux:modal.trigger name="command-palette">
-                    <flux:button variant="ghost" icon="magnifying-glass" aria-label="{{ __('Find') }}" />
+                    <flux:button variant="ghost" icon="magnifying-glass" aria-label="{{ __('Search or jump to…') }}" tooltip="{{ __('Search or jump to…') }}" />
                 </flux:modal.trigger>
             </flux:header>
         @endauth

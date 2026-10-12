@@ -224,7 +224,7 @@ new class extends Component
                             </flux:text>
                         </div>
                         @if ($this->confirmed)
-                            <flux:button size="sm" variant="ghost" icon="trash" wire:click="deletePasskey({{ $passkey->id }})" wire:confirm="{{ __('Remove passkey “:name”?', ['name' => $passkey->name]) }}" aria-label="{{ __('Remove passkey') }}" />
+                            <flux:button size="sm" variant="ghost" icon="trash" wire:click="deletePasskey({{ $passkey->id }})" wire:confirm="{{ __('Remove passkey “:name”?', ['name' => $passkey->name]) }}" aria-label="{{ __('Remove passkey') }}" tooltip="{{ __('Remove passkey') }}" />
                         @endif
                     </div>
                 @endforeach

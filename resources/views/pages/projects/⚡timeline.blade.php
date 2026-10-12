@@ -1,5 +1,6 @@
 <?php
 
+use App\Concerns\OpensTaskPanel;
 use App\Concerns\ShowsProject;
 use App\Models\Project;
 use App\Models\Task;
@@ -14,7 +15,7 @@ use Livewire\Component;
 
 new class extends Component
 {
-    use ShowsProject;
+    use OpensTaskPanel, ShowsProject;
 
     /** Days shown at once. */
     public const DAYS = 42;
@@ -171,7 +172,7 @@ new class extends Component
                         @php($task = $row['task'])
                         <div wire:key="row-{{ $task->id }}" class="flex border-b border-zinc-100 last:border-b-0 dark:border-zinc-800">
                             <div class="pinned-shadow sticky start-0 z-10 flex w-32 shrink-0 sm:w-56 items-center gap-1 border-e border-zinc-200 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-800">
-                                <a href="{{ route('tasks.show', $task) }}" wire:navigate @class(['truncate text-sm hover:underline', 'line-through text-zinc-400' => $task->isDone()])>{{ $task->title }}</a>
+                                <a href="{{ route('tasks.show', $task) }}" x-on:click="$openTask($event, {{ $task->id }})" @class(['truncate text-sm hover:underline', 'line-through text-zinc-400' => $task->isDone()])>{{ $task->title }}</a>
                                 @if ($task->isBlocked())
                                     <flux:icon.lock-closed variant="micro" class="shrink-0 text-amber-500" title="{{ __('Blocked') }}" />
                                 @endif
@@ -182,7 +183,7 @@ new class extends Component
                                 @endif
                                 @php($clippedStart = $task->spanStart()->startOfDay() < $this->start)
                                 @php($clippedEnd = $task->spanEnd()->startOfDay() > $this->end->copy()->startOfDay())
-                                <a href="{{ route('tasks.show', $task) }}" wire:navigate title="{{ $task->title }}: {{ $task->spanStart()->isoFormat('L') }} – {{ $task->spanEnd()->isoFormat('L') }}"
+                                <a href="{{ route('tasks.show', $task) }}" x-on:click="$openTask($event, {{ $task->id }})" title="{{ $task->title }}: {{ $task->spanStart()->isoFormat('L') }} – {{ $task->spanEnd()->isoFormat('L') }}"
                                    @if ($this->canEdit)
                                        draggable="false"
                                        x-data="timelineBar({{ $task->id }})"
@@ -222,4 +223,6 @@ new class extends Component
             @endif
         </flux:text>
     @endif
+
+    <x-task-panel :task="$this->panelTask" />
 </div>

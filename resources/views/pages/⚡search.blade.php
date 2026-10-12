@@ -1,9 +1,11 @@
 <?php
 
+use App\Concerns\OpensTaskPanel;
 use App\Models\Project;
 use App\Models\Task;
 use App\Services\TaskSearchService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\Gate;
@@ -14,6 +16,8 @@ use Livewire\Component;
 
 new class extends Component
 {
+    use OpensTaskPanel;
+
     private const PAGE_SIZE = 50;
 
     #[Locked]
@@ -89,6 +93,16 @@ new class extends Component
         return app(TaskSearchService::class)->explain($task, $this->terms);
     }
 
+    /**
+     * The flyout opens any task one may see, whatever its project.
+     *
+     * @return Builder<Task>
+     */
+    protected function tasksForPanel(): Builder
+    {
+        return Task::query()->visibleTo(auth()->user());
+    }
+
     public function rendering(View $view): void
     {
         $view->title(__('Search'));
@@ -133,7 +147,7 @@ new class extends Component
                     @php($hit = $this->explain($task))
                     <li wire:key="result-{{ $task->id }}" class="py-3">
                         <div class="flex flex-wrap items-center gap-2">
-                            <a href="{{ route('tasks.show', $task) }}" wire:navigate class="font-medium hover:underline">{{ $task->title }}</a>
+                            <a href="{{ route('tasks.show', $task) }}" x-on:click="$openTask($event, {{ $task->id }})" class="font-medium hover:underline">{{ $task->title }}</a>
                             <x-status-badge :status="$task->status" />
                             <x-task-due :task="$task" />
                         </div>
@@ -156,4 +170,6 @@ new class extends Component
             @endif
         @endif
     </div>
+
+    <x-task-panel :task="$this->panelTask" />
 </div>

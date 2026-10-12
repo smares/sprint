@@ -115,7 +115,7 @@ new class extends Component
         <x-empty-state icon="users" :heading="__('Nobody in this team yet.')" />
     @else
         <div class="surface px-3">
-            <flux:table>
+            <flux:table container:class="scroll-shadows">
                 <flux:table.columns>
                     {{-- On narrow screens the weeks scroll sideways under the names, which stay in place (as in the task lists) --}}
                     <flux:table.column class="pinned-column">{{ __('Person') }}</flux:table.column>

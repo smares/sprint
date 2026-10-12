@@ -10,8 +10,8 @@
         <link rel="manifest" href="{{ route('pwa.manifest', absolute: false) }}">
         <meta name="apple-mobile-web-app-title" content="{{ config('app.name') }}">
         {{-- The browser's bar (and the installed app's) in the color of the header; app.js follows the appearance chosen in the menu --}}
-        <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
-        <meta name="theme-color" content="#18181b" media="(prefers-color-scheme: dark)">
+        <meta name="theme-color" content="{{ \App\Http\Controllers\ProgressiveWebAppController::THEME_COLOR }}" media="(prefers-color-scheme: light)">
+        <meta name="theme-color" content="{{ \App\Http\Controllers\ProgressiveWebAppController::THEME_COLOR_DARK }}" media="(prefers-color-scheme: dark)">
         @auth
             <meta name="sprint-push-check" content="{{ route('push.forget-others', absolute: false) }}" data-user="{{ auth()->id() }}">
         @endauth

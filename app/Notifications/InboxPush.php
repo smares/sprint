@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Http\Controllers\ProgressiveWebAppController;
 use App\Models\Task;
 use App\Models\User;
 use App\Services\InboxTextService;
@@ -43,7 +44,7 @@ class InboxPush extends Notification implements ShouldQueueAfterCommit
     {
         $task = $this->task();
 
-        return $notifiable instanceof User && $notifiable->isActive() && $notifiable->wantsMailNow()
+        return $notifiable instanceof User && $notifiable->isActive() && $notifiable->acceptsNotificationsNow()
             && $task instanceof Task && Gate::forUser($notifiable)->allows('view', $task->project)
             ? [WebPushChannel::class] : [];
     }
@@ -55,7 +56,7 @@ class InboxPush extends Notification implements ShouldQueueAfterCommit
         return (new WebPushMessage)
             ->title($task->title)
             ->body(InboxTextService::sentence($this->entry).' · '.$task->project->name)
-            ->icon('/icon-192.png')
+            ->icon(ProgressiveWebAppController::ICON)
             ->lang(app()->getLocale())
             ->tag('task-'.$task->id)
             ->renotify()

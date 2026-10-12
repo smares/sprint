@@ -30,7 +30,10 @@ new class extends Component
     use OpensTaskPanel;
     use QuickAddsTasks;
 
-    private const PAGE_SIZE = 50;
+    private const int PAGE_SIZE = 50;
+
+    /** The list's columns before the custom fields: check, task, status, assignee, due date. */
+    public const int FIXED_COLUMNS = 5;
 
     public Project $project;
 
@@ -698,7 +701,7 @@ new class extends Component
                         <flux:table.column wire:key="column-{{ $field->id }}" sortable :sorted="$sortBy === 'field:'.$field->id" :direction="$sortDirection" wire:click="sort('field:{{ $field->id }}')">{{ $field->name }}</flux:table.column>
                     @endforeach
                 </flux:table.columns>
-                <flux:table.rows :wire:sort="$sortBy === '' && $this->canEdit && ! $selecting ? 'moveTask' : null" wire:sort:config="{ delay: 250, delayOnTouchOnly: true, touchStartThreshold: 12 }">
+                <flux:table.rows :wire:sort="$sortBy === '' && $this->canEdit && ! $selecting ? 'moveTask' : null" wire:sort:config="{{ \App\Sortable::CONFIG }}">
                     @foreach ($this->tasks as $task)
                         <flux:table.row wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" class="cursor-pointer" :wire:sort:item="$sortBy === '' && $this->canEdit && ! $selecting ? $task->id : null">
                             <flux:table.cell :class="$pinnedDone">
@@ -747,7 +750,7 @@ new class extends Component
                 @if ($this->totalTasks > $this->tasks->count())
                     <tbody>
                         <tr>
-                            <td colspan="{{ 5 + $this->listFields->count() }}">
+                            <td colspan="{{ $this::FIXED_COLUMNS + $this->listFields->count() }}">
                                 <div wire:intersect="loadMore" class="sticky start-0 flex w-max items-center gap-3 py-4">
                                     <flux:text size="sm">{{ __(':shown of :total tasks', ['shown' => $this->tasks->count(), 'total' => $this->totalTasks]) }}</flux:text>
                                     <flux:button size="sm" wire:click="loadMore">{{ __('Load more') }}</flux:button>

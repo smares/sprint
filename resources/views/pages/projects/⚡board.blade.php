@@ -215,7 +215,7 @@ new class extends Component
                         :wire:sort="$this->canEdit ? 'moveTask' : null"
                         :wire:sort:group="$this->canEdit ? 'tasks' : null"
                         wire:sort:group-id="{{ $status->id }}"
-                        wire:sort:config="{ delay: 250, delayOnTouchOnly: true, touchStartThreshold: 12 }"
+                        wire:sort:config="{{ \App\Sortable::CONFIG }}"
                     >
                         @foreach ($this->columns[$status->id] as $task)
                             <flux:kanban.card wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" class="board-card cursor-pointer" :wire:sort:item="$this->canEdit ? $task->id : null">

@@ -1,6 +1,9 @@
 // Passkeys are only needed on the login page and in the profile; the library is loaded on first use.
 window.passkeys = () => import('@laravel/passkeys').then((module) => module.Passkeys)
 
+// The service worker (route pwa.service-worker); it sits at the root so its scope covers the whole app
+const SERVICE_WORKER_URL = '/sw.js'
+
 const registerMentionable = () => {
     // People come with the page; tasks are looked up on the server while typing (options.searchTasks).
     window.Alpine.data('mentionable', (options) => ({
@@ -225,7 +228,7 @@ const registerTimelineBar = () => {
     }))
 }
 
-// Crops a picture to the centre square and shrinks it, as WebP or (where the browser cannot encode it) JPEG on white.
+// Crops a picture to the center square and shrinks it, as WebP or (where the browser cannot encode it) JPEG on white.
 const squareImage = async (file, size) => {
     const bitmap = await createImageBitmap(file)
     const side = Math.min(bitmap.width, bitmap.height)
@@ -319,7 +322,7 @@ const sameBytes = (a, b) => a.length === b.length && a.every((byte, index) => by
 // The worker is registered on every page in production; in development only once push needs it
 const pushRegistration = async () => {
     if (! await navigator.serviceWorker.getRegistration('/')) {
-        await navigator.serviceWorker.register('/sw.js')
+        await navigator.serviceWorker.register(SERVICE_WORKER_URL)
     }
 
     return navigator.serviceWorker.ready
@@ -430,8 +433,12 @@ document.addEventListener('submit', async (event) => {
 })
 
 // The browser's bar (and the installed app's on Android) follows light or dark as chosen in the menu, not only the system
+// (the colors come from the layout's two theme-color tags, read before the first change)
+const themeColors = Object.fromEntries([...document.querySelectorAll('meta[name=theme-color]')]
+    .map((meta) => [meta.media.includes('dark') ? 'dark' : 'light', meta.content]))
+
 const syncThemeColor = () => {
-    const color = document.documentElement.classList.contains('dark') ? '#18181b' : '#ffffff'
+    const color = document.documentElement.classList.contains('dark') ? themeColors.dark : themeColors.light
 
     document.querySelectorAll('meta[name=theme-color]').forEach((meta) => meta.setAttribute('content', color))
 }
@@ -721,7 +728,7 @@ document.addEventListener('keydown', (event) => {
 // Sprint as an app on the home screen: the service worker (ProgressiveWebAppController) keeps the built assets and an offline page.
 // Not with the Vite dev server, whose files are not in the build. The offline page shows the language last used here.
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
-    window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}))
+    window.addEventListener('load', () => navigator.serviceWorker.register(SERVICE_WORKER_URL).catch(() => {}))
 }
 
 // Also after wire:navigate page changes, such as the one after logging in
@@ -738,21 +745,24 @@ document.addEventListener('livewire:navigated', rememberLocale)
 // their edges, for the shadows there (scroll-shadows in app.css). The names follow Flux, which sets the first two on its
 // table scroll area itself: data-scrolled-right once the start is scrolled out of sight, data-scrolled-left while more
 // follows at the end; data-more-below while more follows below.
-const scrollEdgeObservers = new WeakMap()
+const watchedScrollAreas = new WeakSet()
+
+// How far (in pixels) an area must be scrolled from an edge before the shadow there shows
+const SCROLL_EDGE_SLACK = 12
 
 const updateScrollEdges = (area) => {
     const hiddenAtEnd = area.scrollWidth - area.clientWidth - Math.abs(area.scrollLeft)
 
-    area.toggleAttribute('data-scrolled-right', Math.abs(area.scrollLeft) > 12)
-    area.toggleAttribute('data-scrolled-left', hiddenAtEnd > 12)
-    area.toggleAttribute('data-more-below', area.scrollHeight - area.clientHeight - area.scrollTop > 12)
+    area.toggleAttribute('data-scrolled-right', Math.abs(area.scrollLeft) > SCROLL_EDGE_SLACK)
+    area.toggleAttribute('data-scrolled-left', hiddenAtEnd > SCROLL_EDGE_SLACK)
+    area.toggleAttribute('data-more-below', area.scrollHeight - area.clientHeight - area.scrollTop > SCROLL_EDGE_SLACK)
 }
 
 const watchScrollEdges = () => {
     document.querySelectorAll('[data-scroll-edges], .scroll-shadows > ui-table-scroll-area').forEach((area) => {
         updateScrollEdges(area)
 
-        if (scrollEdgeObservers.has(area)) {
+        if (watchedScrollAreas.has(area)) {
             return
         }
 
@@ -763,7 +773,7 @@ const watchScrollEdges = () => {
         const mutations = new MutationObserver(update)
         mutations.observe(area, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-collapsed', 'class'] })
         area.addEventListener('scroll', () => updateScrollEdges(area), { passive: true })
-        scrollEdgeObservers.set(area, [resizes, mutations])
+        watchedScrollAreas.add(area)
     })
 }
 

@@ -58,10 +58,18 @@ class MyTasksTest extends TestCase
         $readOnly->setRole($this->user, ProjectRole::Viewer);
         $watched = $this->mine([], $readOnly);
 
+        $editable = $this->mine();
+
         $page = Livewire::test('pages::tasks.mine')->call('toggleDone', $task->id);
         $this->assertTrue($task->fresh()->isDone());
 
-        $page->assertSeeHtml('disabled')->call('toggleDone', $watched->id)->assertForbidden();
+        // The check is disabled in the row of the read-only task, not in the others
+        $row = fn (Task $of): string => preg_match('/<tr[^>]*data-task-id="'.$of->id.'".*?<\/tr>/s', $page->html(), $match) === 1 ? $match[0] : '';
+        $disabledButton = '/<button\s[^>]*\sdisabled[\s=>]/';
+        $this->assertMatchesRegularExpression($disabledButton, $row($watched));
+        $this->assertDoesNotMatchRegularExpression($disabledButton, $row($editable));
+
+        $page->call('toggleDone', $watched->id)->assertForbidden();
         $this->assertFalse($watched->fresh()->isDone());
 
         $hidden = Task::factory()->for(Project::factory())->create();

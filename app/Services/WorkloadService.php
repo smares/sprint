@@ -16,10 +16,10 @@ use Illuminate\Support\Facades\DB;
 class WorkloadService
 {
     /** How many weeks, the current one included, the overview looks ahead. */
-    public const WEEKS = 4;
+    public const int WEEKS = 4;
 
     /** How many task titles a cell names on hover. */
-    public const TITLES = 5;
+    public const int TITLES = 5;
 
     /**
      * The current week and the following ones: the current one counts from today, earlier days are overdue.
@@ -35,8 +35,8 @@ class WorkloadService
             $weeks[] = [
                 'start' => $i === 0 ? today() : $monday,
                 'end' => $monday->copy()->endOfWeek()->startOfDay(),
-                'label' => __('Week :number', ['number' => $monday->isoWeek()]),
-                'range' => $monday->isoFormat('L').' – '.$monday->copy()->endOfWeek()->isoFormat('L'),
+                'label' => DateService::weekLabel($monday),
+                'range' => DateService::weekRange($monday),
             ];
         }
 
@@ -57,7 +57,7 @@ class WorkloadService
         $tasks = Task::query()
             ->visibleTo($viewer)
             ->open()
-            ->where('is_section', false)
+            ->withoutSections()
             ->whereIn('assignee_id', $people->modelKeys())
             ->whereIn('project_id', Project::query()->whereNull('archived_at')->select('id'));
 

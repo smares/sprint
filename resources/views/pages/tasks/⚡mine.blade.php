@@ -80,7 +80,7 @@ new class extends Component
 
     public function toggleDone(int $taskId): void
     {
-        $task = Task::query()->visibleTo(auth()->user())->where('is_section', false)->findOrFail($taskId);
+        $task = Task::query()->visibleTo(auth()->user())->withoutSections()->findOrFail($taskId);
         Gate::authorize('edit', $task->project);
 
         $task->toggleDone();

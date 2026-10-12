@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Notifications\EmailChanged;
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Notifications\ResetPassword;
 use App\Notifications\VerifyNewEmail;
 use App\Services\LocaleService;
@@ -192,7 +191,7 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
      * Whether an email or a push notification may go out to this person right now: not during an absence or a quiet
      * time. The inbox gets everything regardless.
      */
-    public function wantsMailNow(): bool
+    public function acceptsNotificationsNow(): bool
     {
         return ! $this->isAbsent() && ! $this->isQuietAt(now());
     }
@@ -318,7 +317,28 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
     }
 
     /**
-     * Projects in the order the person last opened them (list, board, calendar, timeline), the most recent first.
+     * Ids of the favorite projects in the person's own order (projects page, sidebar, command palette).
+     *
+     * @return list<int>
+     */
+    public function favoriteProjectIds(): array
+    {
+        return $this->favoriteProjects()->pluck('projects.id')->all();
+    }
+
+    /**
+     * Ids of the projects the person opened, the most recent first.
+     *
+     * @return list<int>
+     */
+    public function recentProjectIds(): array
+    {
+        return $this->visitedProjects()->pluck('projects.id')->all();
+    }
+
+    /**
+     * Projects in the order the person last opened them (list, board, calendar, timeline, statistics), the most recent
+     * first.
      *
      * @return BelongsToMany<Project, $this>
      */

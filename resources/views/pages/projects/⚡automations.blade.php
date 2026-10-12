@@ -514,26 +514,7 @@ new class extends Component
                     {{-- The value, entered like on the task; left empty, any value counts. Until a field is chosen the column stays empty. --}}
                     @if ($trigger === 'field_set')
                         <div wire:key="trigger-field-{{ $this->triggerField()?->id }}">
-                            @switch($this->triggerField()?->type)
-                                @case(null)
-                                    <flux:input disabled :placeholder="__('Any value')" aria-label="{{ __('Value') }}" />
-                                    @break
-                                @case(\App\Enums\CustomFieldType::Select)
-                                    <flux:select variant="listbox" wire:model="triggerFieldValue" :placeholder="__('Any value')" clearable aria-label="{{ __('Value') }}">
-                                        @foreach ($this->triggerField()->options as $option)
-                                            <flux:select.option value="{{ $option->id }}">{{ $option->name }}</flux:select.option>
-                                        @endforeach
-                                    </flux:select>
-                                    @break
-                                @case(\App\Enums\CustomFieldType::Number)
-                                    <flux:input wire:model="triggerFieldValue" type="number" step="any" :placeholder="__('Any value')" aria-label="{{ __('Value') }}" />
-                                    @break
-                                @case(\App\Enums\CustomFieldType::Date)
-                                    <flux:date-picker wire:model="triggerFieldValue" locale="{{ app()->getLocale() }}" :placeholder="__('Any value')" clearable aria-label="{{ __('Value') }}" />
-                                    @break
-                                @default
-                                    <flux:input wire:model="triggerFieldValue" :placeholder="__('Any value')" aria-label="{{ __('Value') }}" />
-                            @endswitch
+                            <x-custom-field-input :field="$this->triggerField()" model="triggerFieldValue" :placeholder="__('Any value')" :label="__('Value')" />
                         </div>
                     @endif
                 </div>
@@ -616,26 +597,7 @@ new class extends Component
                                                 @endforeach
                                             </flux:select>
                                             <div wire:key="action-{{ $index }}-field-{{ $actionField?->id }}">
-                                                @switch($actionField?->type)
-                                                    @case(null)
-                                                        <flux:input disabled :placeholder="__('Empty (clears the field)')" aria-label="{{ __('Value') }}" />
-                                                        @break
-                                                    @case(\App\Enums\CustomFieldType::Select)
-                                                        <flux:select variant="listbox" wire:model="actions.{{ $index }}.value" :placeholder="__('Empty (clears the field)')" clearable aria-label="{{ __('Value') }}">
-                                                            @foreach ($actionField->options as $option)
-                                                                <flux:select.option value="{{ $option->id }}">{{ $option->name }}</flux:select.option>
-                                                            @endforeach
-                                                        </flux:select>
-                                                        @break
-                                                    @case(\App\Enums\CustomFieldType::Number)
-                                                        <flux:input wire:model="actions.{{ $index }}.value" type="number" step="any" :placeholder="__('Empty (clears the field)')" aria-label="{{ __('Value') }}" />
-                                                        @break
-                                                    @case(\App\Enums\CustomFieldType::Date)
-                                                        <flux:date-picker wire:model="actions.{{ $index }}.value" locale="{{ app()->getLocale() }}" :placeholder="__('Empty (clears the field)')" clearable aria-label="{{ __('Value') }}" />
-                                                        @break
-                                                    @default
-                                                        <flux:input wire:model="actions.{{ $index }}.value" :placeholder="__('Empty (clears the field)')" aria-label="{{ __('Value') }}" />
-                                                @endswitch
+                                                <x-custom-field-input :field="$actionField" model="actions.{{ $index }}.value" :placeholder="__('Empty (clears the field)')" :label="__('Value')" />
                                             </div>
                                         </div>
                                         @break

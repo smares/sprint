@@ -15,6 +15,6 @@ trait PausesMail
      */
     public function via(object $notifiable): array
     {
-        return $notifiable instanceof User && ! $notifiable->wantsMailNow() ? ['database'] : ['mail', 'database'];
+        return $notifiable instanceof User && ! $notifiable->acceptsNotificationsNow() ? ['database'] : ['mail', 'database'];
     }
 }

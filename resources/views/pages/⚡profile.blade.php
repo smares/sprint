@@ -34,6 +34,9 @@ new class extends Component
     /** Devices turned on for push per minute. */
     private const int PUSH_SUBSCRIBE_ATTEMPTS = 10;
 
+    /** Wrong passwords allowed per minute when changing the password or the email address. */
+    private const int PASSWORD_ATTEMPTS = 5;
+
     public string $name = '';
 
     public string $email = '';
@@ -366,13 +369,13 @@ new class extends Component
     }
 
     /**
-     * Compares a password with the stored one and allows five wrong attempts per minute.
+     * Compares a password with the stored one and allows PASSWORD_ATTEMPTS wrong attempts per minute.
      */
     private function checkPasswordThrottled(string $purpose, string $password, string $field, string $wrongMessage): void
     {
         $throttleKey = $purpose.'|'.auth()->id().'|'.request()->ip();
 
-        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+        if (RateLimiter::tooManyAttempts($throttleKey, self::PASSWORD_ATTEMPTS)) {
             throw ValidationException::withMessages([$field => __('Too many attempts. Please try again in :seconds seconds.', ['seconds' => RateLimiter::availableIn($throttleKey)])]);
         }
 

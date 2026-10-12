@@ -21,13 +21,12 @@ new class extends Component
             ->visibleTo(auth()->user())
             ->whereNull('archived_at')
             ->withCount([
-                'tasks as open_tasks_count' => fn ($query) => $query->open(),
-                // Like the list, which these numbers open: top-level tasks only
+                // All numbers on the card count like the list they open: top-level tasks, without section headings
+                'tasks as open_tasks_count' => fn ($query) => $query->topLevel()->withoutSections()->open(),
                 'tasks as overdue_tasks_count' => fn ($query) => $query->topLevel()->overdue(),
                 'tasks as due_soon_tasks_count' => fn ($query) => $query->topLevel()->dueSoon(),
-                // The progress bar: top-level tasks (sections aside) and how many of them are done
-                'tasks as progress_total_count' => fn ($query) => $query->topLevel()->where('tasks.is_section', false),
-                'tasks as progress_done_count' => fn ($query) => $query->topLevel()->where('tasks.is_section', false)->done(),
+                'tasks as progress_total_count' => fn ($query) => $query->topLevel()->withoutSections(),
+                'tasks as progress_done_count' => fn ($query) => $query->topLevel()->withoutSections()->done(),
             ])
             ->withMin(['tasks as next_due_date' => fn ($query) => $query->open()->where('tasks.due_date', '>=', today()->toDateString())], 'due_date')
             ->with('members')
@@ -43,9 +42,9 @@ new class extends Component
     #[Computed]
     public function favorites(): Collection
     {
-        $order = auth()->user()->favoriteProjects()->pluck('projects.id')->flip();
+        $order = array_flip(auth()->user()->favoriteProjectIds());
 
-        return $this->projects->filter(fn (Project $project) => $order->has($project->id))
+        return $this->projects->filter(fn (Project $project) => isset($order[$project->id]))
             ->sortBy(fn (Project $project) => $order[$project->id])
             ->values();
     }
@@ -153,7 +152,7 @@ new class extends Component
             @if ($this->favorites->isNotEmpty())
                 <flux:heading size="lg" class="mb-3">{{ __('Favorites') }}</flux:heading>
                 {{-- Each person sorts their own favorites by dragging --}}
-                <div class="mb-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" wire:sort="moveFavorite" wire:sort:config="{ delay: 250, delayOnTouchOnly: true, touchStartThreshold: 12 }">
+                <div class="mb-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" wire:sort="moveFavorite" wire:sort:config="{{ \App\Sortable::CONFIG }}">
                     @foreach ($this->favorites as $project)
                         <x-project-card :project="$project" wire:key="favorite-{{ $project->id }}" wire:sort:item="{{ $project->id }}" />
                     @endforeach

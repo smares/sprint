@@ -226,10 +226,10 @@ new class extends Component
                 <flux:text class="mt-1">{{ __('The order determines the columns on the board. New tasks start in the first status that does not count as done.') }}</flux:text>
             </div>
 
-            <ul class="max-h-96 space-y-2 overflow-y-auto" wire:sort="move" wire:sort:config="{ delay: 250, delayOnTouchOnly: true, touchStartThreshold: 12 }">
+            <ul class="max-h-96 space-y-2 overflow-y-auto" wire:sort="move" wire:sort:config="{{ \App\Sortable::CONFIG }}">
                 @foreach ($this->statuses as $status)
                     <li wire:key="status-{{ $status->id }}" wire:sort:item="{{ $status->id }}" class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
-                        {{-- On phones colour, "done" and delete move to a second line instead of squeezing the name --}}
+                        {{-- On phones color, "done" and delete move to a second line instead of squeezing the name --}}
                         <div class="flex flex-wrap items-center gap-3">
                             <flux:icon.bars-2 variant="micro" class="shrink-0 text-zinc-400" />
                             <x-color-badge size="sm" :color="$status->color" class="shrink-0" title="{{ __('Tasks with this status') }}">{{ $status->tasks_count }}</x-color-badge>

@@ -240,6 +240,23 @@ new class extends Component
     }
 
     /**
+     * The tags the task ends up with. Only what the form changed counts: tags it removed go, tags it added come, and the
+     * rest stays as it is now, so a tag an automation added during the save is kept.
+     *
+     * @param  list<int>  $before  the tags when saving began
+     * @param  list<int>  $fromForm  the tags in the form
+     * @param  list<int>  $now  the tags the task has now
+     * @return list<int>
+     */
+    private function tagsToKeep(array $before, array $fromForm, array $now): array
+    {
+        $removed = array_diff($before, $fromForm);
+        $added = array_diff($fromForm, $before);
+
+        return array_values(array_unique([...array_diff($now, $removed), ...$added]));
+    }
+
+    /**
      * Writes the fields the form changed; the others stay as they are (an automation may have set them meanwhile).
      *
      * @param  array<int|string, string|null>  $input
@@ -377,7 +394,7 @@ new class extends Component
     {
         $tasks = fn () => $this->task->project->tasks()
             ->whereNotIn('id', $excludedIds)
-            ->when($withoutHeadings, fn ($query) => $query->where('is_section', false));
+            ->when($withoutHeadings, fn ($query) => $query->withoutSections());
         $search = trim($search);
 
         $chosen = $selectedIds === [] ? new Collection : $tasks()->whereKey($selectedIds)->get(['id', 'title']);
@@ -704,11 +721,11 @@ new class extends Component
 
         $this->saveFieldValues($validated['fieldValues'] ?? [], $fieldsBefore);
 
-        $tagIds = array_map(intval(...), $validated['tagIds']);
-        $tagChanges = $this->task->tags()->sync(array_values(array_unique([
-            ...array_diff($this->task->tags()->pluck('tags.id')->all(), array_diff($tagsBefore, $tagIds)),
-            ...array_diff($tagIds, $tagsBefore),
-        ])));
+        $tagChanges = $this->task->tags()->sync($this->tagsToKeep(
+            $tagsBefore,
+            array_map(intval(...), $validated['tagIds']),
+            $this->task->tags()->pluck('tags.id')->all(),
+        ));
         $collaboratorChanges = $this->task->collaborators()->sync(
             array_values(array_diff($validated['collaboratorIds'], [(string) $validated['assigneeId']]))
         );
@@ -1131,23 +1148,7 @@ new class extends Component
 
             @foreach ($this->customFields as $field)
                 <x-task-field :label="$field->name" icon="adjustments-horizontal" wire:key="field-{{ $field->id }}">
-                    @switch($field->type)
-                        @case(\App\Enums\CustomFieldType::Select)
-                            <flux:select size="sm" variant="listbox" wire:model="fieldValues.{{ $field->id }}" :aria-label="$field->name" placeholder="–" clearable>
-                                @foreach ($field->options as $option)
-                                    <flux:select.option value="{{ $option->id }}">{{ $option->name }}</flux:select.option>
-                                @endforeach
-                            </flux:select>
-                            @break
-                        @case(\App\Enums\CustomFieldType::Number)
-                            <flux:input size="sm" wire:model="fieldValues.{{ $field->id }}" type="number" step="any" :aria-label="$field->name" placeholder="–" />
-                            @break
-                        @case(\App\Enums\CustomFieldType::Date)
-                            <flux:date-picker size="sm" wire:model="fieldValues.{{ $field->id }}" :aria-label="$field->name" locale="{{ app()->getLocale() }}" :placeholder="__('Select a date')" clearable />
-                            @break
-                        @default
-                            <flux:input size="sm" wire:model="fieldValues.{{ $field->id }}" :aria-label="$field->name" placeholder="–" />
-                    @endswitch
+                    <x-custom-field-input :field="$field" model="fieldValues.{{ $field->id }}" size="sm" />
                 </x-task-field>
             @endforeach
 

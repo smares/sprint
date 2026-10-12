@@ -17,16 +17,19 @@ new class extends Component
     use ShowsProject;
 
     /** How many weeks the chart of created and completed tasks covers. */
-    public const WEEKS = 12;
+    public const int WEEKS = 12;
 
     /** How many of the longest-standing tasks are listed. */
-    public const STUCK_TASKS = 10;
+    public const int STUCK_TASKS = 10;
 
     /** How many months the charts of cycle time and punctuality cover. */
-    public const MONTHS = 6;
+    public const int MONTHS = 6;
 
     /** The period the headline figures of cycle time and punctuality look back on. */
-    public const RECENT_DAYS = 90;
+    public const int RECENT_DAYS = 90;
+
+    /** From how many days in the same status a stuck task's time is highlighted. */
+    public const int LONG_IN_STATUS_DAYS = 14;
 
     /** About how many steps the value axes have. */
     private const int Y_TICKS = 4;
@@ -93,7 +96,7 @@ new class extends Component
     #[Computed]
     public function openCount(): int
     {
-        return $this->project->tasks()->open()->where('is_section', false)->count();
+        return $this->project->tasks()->open()->withoutSections()->count();
     }
 
     /**
@@ -333,7 +336,7 @@ new class extends Component
                                     </flux:table.cell>
                                     <flux:table.cell>
                                         @php($days = (int) $task->in_status_since->diffInDays(now()))
-                                        <span title="{{ __('since :date', ['date' => $task->in_status_since->isoFormat('L')]) }}" @class(['font-medium text-amber-600 dark:text-amber-500' => $days >= 14])>{{ trans_choice(':count day|:count days', $days) }}</span>
+                                        <span title="{{ __('since :date', ['date' => $task->in_status_since->isoFormat('L')]) }}" @class(['font-medium text-amber-600 dark:text-amber-500' => $days >= $this::LONG_IN_STATUS_DAYS])>{{ trans_choice(':count day|:count days', $days) }}</span>
                                     </flux:table.cell>
                                     <flux:table.cell>
                                         @if ($task->assignee)

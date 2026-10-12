@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Sortable;
 use Illuminate\Support\Facades\File;
 use Tests\TestCase;
 
@@ -11,7 +12,7 @@ use Tests\TestCase;
  */
 class SortOnTouchTest extends TestCase
 {
-    private const string TOUCH_CONFIG = 'wire:sort:config="{ delay: 250, delayOnTouchOnly: true, touchStartThreshold: 12 }"';
+    private const string TOUCH_CONFIG = 'wire:sort:config="{{ \\App\\Sortable::CONFIG }}"';
 
     public function test_every_sortable_list_waits_for_a_long_press_on_touch_screens(): void
     {
@@ -27,5 +28,6 @@ class SortOnTouchTest extends TestCase
         }
 
         $this->assertSame([], $missing, 'Lists with wire:sort but without the touch delay start dragging on every tap');
+        $this->assertSame('{ delay: 250, delayOnTouchOnly: true, touchStartThreshold: 12 }', Sortable::CONFIG);
     }
 }

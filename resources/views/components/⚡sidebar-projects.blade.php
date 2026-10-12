@@ -12,7 +12,7 @@ use Livewire\Component;
 
 new class extends Component
 {
-    /** How many recently opened projects follow the favourites. */
+    /** How many recently opened projects follow the favorites. */
     public const int RECENT_PROJECTS = 5;
 
     /** The project the page belongs to (a project view or one of its tasks), whose views are listed under it. */
@@ -38,7 +38,7 @@ new class extends Component
     }
 
     /**
-     * The favourites in the person's own order, then the projects opened last, and the current project in any case
+     * The favorites in the person's own order, then the projects opened last, and the current project in any case
      * (at the end when it is neither), all open to the person. Archived ones only show while open, so their views stay
      * reachable on large screens, where the sidebar is the only way to switch them.
      *
@@ -49,7 +49,7 @@ new class extends Component
     {
         $user = auth()->user();
         $favoriteIds = $this->favoriteIds;
-        $recentIds = $user->visitedProjects()->pluck('projects.id')->diff($favoriteIds)->take(self::RECENT_PROJECTS)->all();
+        $recentIds = array_slice(array_values(array_diff($user->recentProjectIds(), $favoriteIds)), 0, self::RECENT_PROJECTS);
         $ids = array_values(array_unique([...$favoriteIds, ...$recentIds, ...array_filter([$this->currentProjectId])]));
 
         $projects = Project::query()
@@ -68,11 +68,11 @@ new class extends Component
     #[Computed]
     public function favoriteIds(): array
     {
-        return auth()->user()->favoriteProjects()->pluck('projects.id')->all();
+        return auth()->user()->favoriteProjectIds();
     }
 
     /**
-     * Built again when favourites or projects change elsewhere. A visit needs nothing: the sidebar is drawn anew with
+     * Built again when favorites or projects change elsewhere. A visit needs nothing: the sidebar is drawn anew with
      * every page, after the page has noted the visit.
      */
     #[On('favorites-changed')]
@@ -84,9 +84,9 @@ new class extends Component
 };
 ?>
 
-{{-- The projects in the sidebar: the favourites, then the recently opened ones (and the current project in any case), each
+{{-- The projects in the sidebar: the favorites, then the recently opened ones (and the current project in any case), each
      with its tile, which is all that shows when the sidebar is collapsed. Under the current project its views, to switch
-     between list, board and the others (the only place to switch them, on phones as on large screens). --}}
+     between list, board and the others (on large screens the only place; below lg the header has them too). --}}
 @php
     [$favorites, $others] = $this->projects->partition(fn ($project) => in_array($project->id, $this->favoriteIds, true));
     $groups = array_filter([__('Favorites') => $favorites, __('Recently opened') => $others], fn ($projects) => $projects->isNotEmpty());

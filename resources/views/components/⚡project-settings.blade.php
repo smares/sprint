@@ -1,5 +1,6 @@
 <?php
 
+use App\Color;
 use App\Models\Project;
 use Flux\Flux;
 use Illuminate\Support\Facades\Gate;
@@ -35,15 +36,8 @@ new class extends Component
         $this->icon = (string) $this->project->icon;
     }
 
-    /**
-     * Emojis offered with one click for the project's icon; any other single emoji or character can be typed.
-     *
-     * @return list<string>
-     */
-    public function suggestedIcons(): array
-    {
-        return ['🚀', '💡', '🎯', '📈', '🛠️', '🎨', '📱', '🌐', '📣', '🧪', '📦', '🏠', '💼', '🤝', '📚', '⭐'];
-    }
+    /** Emojis offered with one click for the project's icon; any other single emoji or character can be typed. */
+    public const array SUGGESTED_ICONS = ['🚀', '💡', '🎯', '📈', '🛠️', '🎨', '📱', '🌐', '📣', '🧪', '📦', '🏠', '💼', '🤝', '📚', '⭐'];
 
     public function save(): void
     {
@@ -54,7 +48,11 @@ new class extends Component
         $validated = $this->validate([
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:5000'],
-            'color' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'color' => ['nullable', 'string', function (string $attribute, string $value, \Closure $fail) {
+                if (! Color::isHex($value)) {
+                    $fail(__('validation.regex', ['attribute' => __('Color')]));
+                }
+            }],
             // One emoji or character (an emoji may consist of several code points, so it is counted as the eye sees it)
             'icon' => ['nullable', 'string', 'max:32', function (string $attribute, string $value, \Closure $fail) {
                 if (grapheme_strlen($value) !== 1) {
@@ -135,10 +133,10 @@ new class extends Component
                         <flux:label>{{ __('Icon') }}</flux:label>
                         <div class="flex items-center gap-2">
                             <div class="w-14 shrink-0">
-                                <flux:input wire:model.live.debounce.300ms="icon" maxlength="32" class="[&_input]:text-center" :aria-label="__('Icon')" :placeholder="mb_strtoupper(mb_substr($name, 0, 1))" />
+                                <flux:input wire:model.live.debounce.300ms="icon" maxlength="32" class="[&_input]:text-center" :aria-label="__('Icon')" :placeholder="\App\Models\Project::initialOf($name)" />
                             </div>
                             <div class="flex flex-wrap gap-0.5" role="group" aria-label="{{ __('Suggested icons') }}">
-                                @foreach ($this->suggestedIcons() as $emoji)
+                                @foreach ($this::SUGGESTED_ICONS as $emoji)
                                     <button type="button" wire:key="icon-{{ $loop->index }}" wire:click="$set('icon', '{{ $emoji }}')" @class(['flex size-7 items-center justify-center rounded-md text-base hover:bg-zinc-100 dark:hover:bg-zinc-700', 'bg-zinc-100 ring-1 ring-zinc-300 dark:bg-zinc-700 dark:ring-zinc-500' => $icon === $emoji]) aria-label="{{ $emoji }}">{{ $emoji }}</button>
                                 @endforeach
                             </div>

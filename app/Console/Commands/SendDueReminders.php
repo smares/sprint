@@ -29,7 +29,7 @@ class SendDueReminders extends Command
         $sent = 0;
 
         Task::query()
-            ->where('is_section', false)
+            ->withoutSections()
             ->open()
             // A range instead of whereDate(), which wraps the column in a function and cannot use its index
             ->where('due_date', '>=', $tomorrow->toDateString())

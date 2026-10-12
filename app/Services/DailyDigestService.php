@@ -23,7 +23,7 @@ class DailyDigestService
         $until = $today->copy()->addDays(config('sprint.digest_days_ahead'))->endOfDay();
 
         $tasks = Task::query()
-            ->where('is_section', false)
+            ->withoutSections()
             ->whereNotNull('due_date')
             ->where('due_date', '<=', $until)
             ->open()

@@ -71,7 +71,7 @@ class TaskCsvService
             'created_at', 'updated_at', 'url',
         ];
 
-        $tree = $project->tasks()->where('is_section', false)->orderBy('position')->orderBy('id')->get(['id', 'parent_id']);
+        $tree = $project->tasks()->withoutSections()->orderBy('position')->orderBy('id')->get(['id', 'parent_id']);
         $orderedIds = collect(iterator_to_array($this->inTreeOrder($tree->groupBy(fn (Task $task) => $task->parent_id ?? 0), 0), false))->pluck('id')->all();
 
         foreach ($this->inTreeOrderChunks($project, $orderedIds) as $task) {

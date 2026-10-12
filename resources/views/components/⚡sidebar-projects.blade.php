@@ -3,6 +3,7 @@
 use App\Enums\ProjectView;
 use App\Models\Project;
 use App\Models\Task;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
@@ -38,7 +39,8 @@ new class extends Component
 
     /**
      * The favourites in the person's own order, then the projects opened last, and the current project in any case
-     * (at the end when it is neither), all open to the person and not archived.
+     * (at the end when it is neither), all open to the person. Archived ones only show while open, so their views stay
+     * reachable on large screens, where the sidebar is the only way to switch them.
      *
      * @return Collection<int, Project>
      */
@@ -50,7 +52,11 @@ new class extends Component
         $recentIds = $user->visitedProjects()->pluck('projects.id')->diff($favoriteIds)->take(self::RECENT_PROJECTS)->all();
         $ids = array_values(array_unique([...$favoriteIds, ...$recentIds, ...array_filter([$this->currentProjectId])]));
 
-        $projects = Project::query()->visibleTo($user)->whereNull('archived_at')->whereKey($ids)->get(['id', 'name', 'color', 'icon']);
+        $projects = Project::query()
+            ->visibleTo($user)
+            ->whereKey($ids)
+            ->where(fn (Builder $query) => $query->whereNull('archived_at')->orWhereKey($this->currentProjectId))
+            ->get(['id', 'name', 'color', 'icon', 'archived_at']);
         $order = array_flip($ids);
 
         return $projects->sortBy(fn (Project $project) => $order[$project->id])->values();
@@ -96,7 +102,7 @@ new class extends Component
 
         @foreach ($projects as $project)
             @php($isCurrent = $project->id === $currentProjectId)
-            <flux:sidebar.item wire:key="sidebar-project-{{ $project->id }}" :href="route('projects.show', $project)" wire:navigate :current="$isCurrent && $currentView === null" data-sidebar-project="{{ $project->id }}">
+            <flux:sidebar.item wire:key="sidebar-project-{{ $project->id }}" :href="route('projects.show', $project)" wire:navigate :current="$isCurrent && $currentView === null" data-sidebar-project="{{ $project->id }}" :badge="$project->archived_at ? __('Archived') : null">
                 <x-slot name="icon">
                     <x-project-icon :project="$project" size="sm" />
                 </x-slot>

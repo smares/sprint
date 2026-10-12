@@ -205,11 +205,16 @@ new class extends Component
     @else
         <form wire:submit="login" class="space-y-6">
             <flux:input wire:model="email" :label="__('Email')" type="email" autofocus autocomplete="email webauthn" />
-            <flux:input wire:model="password" :label="__('Password')" type="password" autocomplete="current-password" />
-            <div class="flex items-center justify-between gap-4">
-                <flux:checkbox wire:model="remember" :label="__('Stay signed in')" />
-                <flux:link :href="route('password.request')" wire:navigate class="text-sm">{{ __('Forgot password?') }}</flux:link>
-            </div>
+            {{-- The way to a new password sits in the label, where one looks when the password does not come to mind --}}
+            <flux:field>
+                <flux:label>
+                    {{ __('Password') }}
+                    <span class="ms-1 font-normal text-zinc-500 dark:text-zinc-400">(<flux:link :href="route('password.request')" wire:navigate>{{ __('Forgot?') }}</flux:link>)</span>
+                </flux:label>
+                <flux:input wire:model="password" type="password" autocomplete="current-password" />
+                <flux:error name="password" />
+            </flux:field>
+            <flux:checkbox wire:model="remember" :label="__('Stay signed in')" />
             <flux:button type="submit" variant="primary" class="w-full">{{ __('Sign in') }}</flux:button>
         </form>
 

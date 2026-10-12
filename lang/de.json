@@ -313,7 +313,7 @@
     "Find": "Suchen",
     "Finish": "Fertig",
     "Forgot password": "Passwort vergessen",
-    "Forgot password?": "Passwort vergessen?",
+    "Forgot?": "Vergessen?",
     "From": "Von",
     "Generate a new password for :name? The old one will no longer work, and all sessions and API tokens are signed out.": "Neues Passwort für :name erzeugen? Das alte gilt dann nicht mehr, und alle Sitzungen und API-Tokens werden abgemeldet.",
     "Generate new codes": "Neue Codes erzeugen",

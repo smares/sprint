@@ -10,6 +10,9 @@
         <link rel="manifest" href="{{ route('pwa.manifest', absolute: false) }}">
         <meta name="apple-mobile-web-app-title" content="{{ config('app.name') }}">
         <meta name="theme-color" content="#18181b">
+        @auth
+            <meta name="sprint-push-check" content="{{ route('push.forget-others', absolute: false) }}" data-user="{{ auth()->id() }}">
+        @endauth
         @if ($realtime = app(\App\Services\RealtimeService::class)->clientConfig())
             <script>window.sprintRealtime = @js($realtime)</script>
             @vite(['resources/css/app.css', 'resources/js/realtime.js', 'resources/js/app.js'])

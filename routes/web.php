@@ -12,6 +12,7 @@ use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -19,6 +20,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Laravel\Passkeys\Http\Controllers\PasskeyLoginController;
 use Laravel\Passkeys\Http\Controllers\PasskeyRegistrationController;
+use NotificationChannels\WebPush\PushSubscription;
 
 Route::post('/locale', function (Request $request): RedirectResponse {
     $locale = $request->validate(['locale' => ['required', Rule::in(LocaleService::codes())]])['locale'];
@@ -56,6 +58,20 @@ Route::middleware(['auth', 'password.confirm', 'throttle:6,1'])->group(function 
 });
 
 Route::get('/email/confirm/{user}/{hash}', ConfirmEmailController::class)->middleware(['signed', 'throttle:6,1'])->name('email.confirm');
+
+// A browser that still holds someone else's push subscription (their session ran out on a shared computer, app.js):
+// the server forgets it, so their notifications stop showing on this device; this person can turn push on themselves.
+Route::post('/push/forget-others', function (Request $request): Response {
+    $endpoint = $request->validate(['endpoint' => ['required', 'string', 'max:'.PushSubscription::ENDPOINT_MAX_LENGTH]])['endpoint'];
+
+    $subscription = PushSubscription::findByEndpoint($endpoint);
+
+    if ($subscription instanceof PushSubscription && ! $request->user()->ownsPushSubscription($subscription)) {
+        $subscription->delete();
+    }
+
+    return response()->noContent();
+})->middleware(['auth', 'throttle:10,1'])->name('push.forget-others');
 
 Route::post('/logout', function (Request $request) {
     // This browser's push subscription, if any (app.js): no notifications for the next person on a shared device

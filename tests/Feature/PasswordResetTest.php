@@ -28,7 +28,8 @@ class PasswordResetTest extends TestCase
 
     public function test_the_login_page_links_to_the_form(): void
     {
-        $this->get(route('login'))->assertOk()->assertSee(route('password.request'));
+        // In the password's label, not in a row of its own beside "stay signed in"
+        $this->get(route('login'))->assertOk()->assertSee(route('password.request'))->assertSeeInOrder(['Passwort', '(', 'Vergessen?', ')', 'Angemeldet bleiben']);
         $this->get(route('password.request'))->assertOk()->assertSee('Passwort vergessen');
     }
 

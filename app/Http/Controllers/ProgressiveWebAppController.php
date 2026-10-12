@@ -82,9 +82,12 @@ class ProgressiveWebAppController extends Controller
             ->all();
     }
 
+    /**
+     * Only a hash: /sw.js is public, and the exact version is for signed-in people (it would help to pick known flaws).
+     */
     private function version(): string
     {
-        return config('sprint.version').'-'.substr(md5(json_encode($this->viteManifest()) ?: ''), 0, 12);
+        return substr(md5(config('sprint.version').(json_encode($this->viteManifest()) ?: '')), 0, 12);
     }
 
     /**

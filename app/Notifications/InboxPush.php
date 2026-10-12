@@ -9,6 +9,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Facades\Gate;
 use NotificationChannels\WebPush\WebPushChannel;
 use NotificationChannels\WebPush\WebPushMessage;
 
@@ -33,11 +34,18 @@ class InboxPush extends Notification implements ShouldQueueAfterCommit
     public function __construct(public DatabaseNotification $entry) {}
 
     /**
+     * Checked again when the queue sends it: someone who lost access to the project or was deactivated meanwhile
+     * gets nothing on the lock screen.
+     *
      * @return list<string>
      */
     public function via(object $notifiable): array
     {
-        return $notifiable instanceof User && $notifiable->wantsMailNow() && $this->task() instanceof Task ? [WebPushChannel::class] : [];
+        $task = $this->task();
+
+        return $notifiable instanceof User && $notifiable->isActive() && $notifiable->wantsMailNow()
+            && $task instanceof Task && Gate::forUser($notifiable)->allows('view', $task->project)
+            ? [WebPushChannel::class] : [];
     }
 
     public function toWebPush(object $notifiable): WebPushMessage

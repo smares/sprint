@@ -429,6 +429,37 @@ document.addEventListener('submit', async (event) => {
     form.submit()
 })
 
+// A browser can still hold the push subscription of someone whose session simply ran out on a shared computer. Once per
+// session (and person) the server is told this browser's subscription and forgets it if it belongs to someone else.
+const forgetOthersPush = async () => {
+    const check = document.querySelector('meta[name=sprint-push-check]')
+
+    if (! check || ! ('serviceWorker' in navigator)) {
+        return
+    }
+
+    try {
+        if (sessionStorage.getItem('sprint.push-checked') === check.dataset.user) {
+            return
+        }
+
+        const subscription = await (await navigator.serviceWorker.getRegistration('/'))?.pushManager.getSubscription()
+
+        if (subscription) {
+            await fetch(check.content, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('script[data-csrf]')?.dataset.csrf ?? '' },
+                body: JSON.stringify({ endpoint: subscription.endpoint }),
+            })
+        }
+
+        sessionStorage.setItem('sprint.push-checked', check.dataset.user)
+    } catch {}
+}
+
+forgetOthersPush()
+document.addEventListener('livewire:navigated', forgetOthersPush)
+
 // The task flyout (components/task-panel.blade.php). Flux does not close it by itself: Esc, a click next to it,
 // the close button and switching to another task go through here and ask first if the task has unsaved input.
 const registerTaskFlyout = () => {

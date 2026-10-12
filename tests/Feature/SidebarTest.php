@@ -56,6 +56,19 @@ class SidebarTest extends TestCase
         Livewire::test('sidebar-projects')->assertDontSee('Archiviert')->assertDontSee('Fremd')->assertSee('Alle Projekte');
     }
 
+    public function test_an_open_archived_project_shows_with_its_views(): void
+    {
+        $archived = $this->project('Altprojekt', ['archived_at' => now()]);
+        $this->me->favoriteProjects()->attach($archived->id, ['position' => 0]);
+
+        // On large screens the sidebar is the only way to switch views, so the open project stays in it even when archived
+        $html = $this->get(route('projects.board', $archived))->assertOk()->getContent();
+        $this->assertMatchesRegularExpression('/data-sidebar-project="'.$archived->id.'"((?!<\/a>).)*Archiviert/s', $html);
+        $this->assertStringContainsString('data-sidebar-views', $html);
+
+        $this->get(route('tasks.mine'))->assertOk()->assertDontSee('data-sidebar-project="'.$archived->id.'"', false);
+    }
+
     public function test_the_current_project_shows_its_views_with_the_open_one_marked(): void
     {
         $project = $this->project('Website');

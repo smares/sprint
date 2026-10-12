@@ -20,8 +20,6 @@ x-sprint: &sprint
   image: ${SPRINT_IMAGE:-sprint:latest}
   build:
     context: .
-    args:
-      PHP_VERSION: ${PHP_VERSION:-8.4}
     secrets:
       - composer_auth
   env_file:

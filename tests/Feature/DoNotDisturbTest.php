@@ -73,6 +73,17 @@ class DoNotDisturbTest extends TestCase
         $this->assertSame([null, null, null], [$user->quiet_from, $user->quiet_until, $user->quiet_days]);
     }
 
+    public function test_each_change_is_saved_at_once(): void
+    {
+        $this->actingAs($user = User::factory()->create());
+
+        Livewire::test('pages::profile')->set('quietDays', ['6'])->assertDispatched('toast-show');
+        $this->assertSame([6], $user->fresh()->quiet_days);
+
+        Livewire::test('pages::profile')->set('quietHours', true)->set('quietFrom', '19:00');
+        $this->assertSame(['19:00', '08:00'], [$user->fresh()->quiet_from, $user->fresh()->quiet_until]);
+    }
+
     public function test_invalid_quiet_times_are_refused(): void
     {
         $this->actingAs($user = User::factory()->create());
@@ -81,7 +92,8 @@ class DoNotDisturbTest extends TestCase
         Livewire::test('pages::profile')->set('quietHours', true)->set('quietFrom', '25:00')->call('saveQuietTimes')->assertHasErrors('quietFrom');
         Livewire::test('pages::profile')->set('quietDays', ['8'])->call('saveQuietTimes')->assertHasErrors('quietDays.0');
 
-        $this->assertNull($user->fresh()->quiet_from);
+        // Each change saves on its own, so only the valid steps on the way were stored
+        $this->assertSame(['09:00', '08:00', null], [$user->fresh()->quiet_from, $user->fresh()->quiet_until, $user->fresh()->quiet_days]);
     }
 
     public function test_during_a_quiet_time_notifications_reach_only_the_inbox(): void

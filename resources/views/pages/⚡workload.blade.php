@@ -67,22 +67,6 @@ new class extends Component
         return app(WorkloadService::class)->forPeople($this->people, auth()->user());
     }
 
-    /**
-     * The titles behind a number, for hovering: the first few and how many more.
-     *
-     * @param  array{count: int, tasks: list<array{id: int, title: string}>}  $group
-     */
-    protected function titlesOf(array $group): ?string
-    {
-        if ($group['count'] === 0) {
-            return null;
-        }
-
-        $more = $group['count'] - count($group['tasks']);
-
-        return implode("\n", array_column($group['tasks'], 'title')).($more > 0 ? "\n".trans_choice('and :count more|and :count more', $more) : '');
-    }
-
     public function rendering(View $view): void
     {
         $view->title(__('Workload'));
@@ -113,8 +97,8 @@ new class extends Component
     @if ($this->people->isEmpty())
         <x-empty-state icon="users" :heading="__('Nobody in this team yet.')" />
     @else
-        <div class="surface px-3">
-            <flux:table container:class="scroll-shadows">
+        <div class="surface px-3 [--flux-bleed:0.75rem]">
+            <flux:table bleed container:class="scroll-shadows rounded-[inherit]">
                 <flux:table.columns>
                     {{-- On narrow screens the weeks scroll sideways under the names, which stay in place (as in the task lists) --}}
                     <flux:table.column class="pinned-column">{{ __('Person') }}</flux:table.column>
@@ -136,12 +120,12 @@ new class extends Component
                                 </div>
                             </flux:table.cell>
                             <flux:table.cell align="end">
-                                <span title="{{ $this->titlesOf($row['overdue']) }}" @class(['font-medium text-red-600 dark:text-red-400' => $row['overdue']['count'] > 0, 'text-zinc-300 dark:text-zinc-600' => $row['overdue']['count'] === 0])>{{ $row['overdue']['count'] ?: '–' }}</span>
+                                <x-workload-count :group="$row['overdue']" overdue />
                             </flux:table.cell>
                             @foreach ($row['weeks'] as $cell)
                                 <flux:table.cell align="end" wire:key="cell-{{ $person->id }}-{{ $loop->index }}">
                                     <div class="flex flex-col items-end gap-0.5">
-                                        <span title="{{ $this->titlesOf($cell) }}" @class(['font-medium text-zinc-800 dark:text-white' => $cell['count'] > 0, 'text-zinc-300 dark:text-zinc-600' => $cell['count'] === 0])>{{ $cell['count'] ?: '–' }}</span>
+                                        <x-workload-count :group="$cell" />
                                         @if ($cell['absent_days'] > 0)
                                             <flux:badge size="sm" :color="$cell['count'] > 0 ? 'amber' : 'zinc'" icon="sun">{{ trans_choice(':count day away|:count days away', $cell['absent_days']) }}</flux:badge>
                                         @endif
@@ -157,6 +141,6 @@ new class extends Component
             </flux:table>
         </div>
 
-        <flux:text size="sm" class="mt-4 text-zinc-500">{{ __('Hover over a number to see the tasks. Days away count Monday to Friday; amber means there is work due while the person is away.') }}</flux:text>
+        <flux:text size="sm" class="mt-4 text-zinc-500">{{ __('A number opens its tasks. Days away count Monday to Friday; amber means there is work due while the person is away.') }}</flux:text>
     @endif
 </div>

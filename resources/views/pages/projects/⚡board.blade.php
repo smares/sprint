@@ -260,14 +260,14 @@ new class extends Component
                         @endif
                     </flux:kanban.column.cards>
 
-                    @if ($this->canEdit)
-                        <x-quick-add :status-id="$status->id" class="mt-1 px-2 pb-2" />
-                    @endif
-
                     @if ($this->columnTotals[$status->id] > $this->columns[$status->id]->count())
-                        <flux:button size="sm" variant="ghost" class="mt-2 w-full" wire:click="loadMoreInColumn({{ $status->id }})">
+                        <flux:button size="sm" variant="ghost" class="w-full" wire:click="loadMoreInColumn({{ $status->id }})">
                             {{ __('Load more (:shown of :total)', ['shown' => $this->columns[$status->id]->count(), 'total' => $this->columnTotals[$status->id]]) }}
                         </flux:button>
+                    @endif
+
+                    @if ($this->canEdit)
+                        <x-quick-add :status-id="$status->id" class="mt-1 px-2 pb-2" />
                     @endif
                 </flux:kanban.column>
             @endforeach

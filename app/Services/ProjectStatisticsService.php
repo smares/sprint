@@ -32,7 +32,8 @@ class ProjectStatisticsService
         for ($week = $start->copy(); $week->lessThanOrEqualTo(now()); $week->addWeek()) {
             $key = $week->toDateString();
             $flow[] = [
-                'week' => __('Week :number', ['number' => $week->isoWeek()]),
+                // The current week has only begun: named as such, so its low numbers are not read as a drop
+                'week' => $week->isSameWeek(now()) ? __('This week') : __('Week :number', ['number' => $week->isoWeek()]),
                 'range' => $week->isoFormat('L').' – '.$week->copy()->endOfWeek()->isoFormat('L'),
                 'created' => $created[$key] ?? 0,
                 'completed' => $completed[$key] ?? 0,

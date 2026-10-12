@@ -126,7 +126,7 @@ class PlannedAbsenceTest extends TestCase
         $label = 'Anna Abwesend (abwesend bis 2026-10-16)';
 
         $this->get(route('projects.show', $project))->assertSee($label);
-        $this->get(route('projects.board', $project))->assertSee($label)->assertSee('opacity-50', false);
+        $this->get(route('projects.board', $project))->assertSee($label)->assertSee('data-absent', false);
         $this->get(route('tasks.show', $task))->assertSee($label);
         $this->get(route('projects.members', $project))->assertSee('Abwesend bis 2026-10-16');
         $this->get(route('admin.users'))->assertSee('Abwesend bis 2026-10-16');

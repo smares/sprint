@@ -28,6 +28,12 @@ new class extends Component
     /** The period the headline figures of cycle time and punctuality look back on. */
     public const RECENT_DAYS = 90;
 
+    /** About how many steps the value axes have. */
+    private const int Y_TICKS = 4;
+
+    /** The full weeks summed up above the weekly chart (the current one has only begun). */
+    private const int SUMMED_WEEKS = 4;
+
     public Project $project;
 
     /**
@@ -90,6 +96,31 @@ new class extends Component
         return $this->project->tasks()->open()->where('is_section', false)->count();
     }
 
+    /**
+     * Whole-number ticks from 0 to just above the highest value, in about Y_TICKS steps of 1, 2, 5, 10, …, so no line
+     * runs past the top of the axis and no tick shows half a task or day.
+     *
+     * @param  list<array<string, mixed>>  $rows
+     * @param  list<string>  $fields
+     * @return list<int>
+     */
+    protected function ticksFor(array $rows, array $fields): array
+    {
+        $highest = 1.0;
+
+        foreach ($rows as $row) {
+            foreach ($fields as $field) {
+                $highest = max($highest, (float) ($row[$field] ?? 0));
+            }
+        }
+
+        $rough = max(1, (int) ceil($highest / self::Y_TICKS));
+        $magnitude = 10 ** (int) floor(log10($rough));
+        $step = (int) (collect([1, 2, 5, 10])->first(fn (int $factor) => $factor * $magnitude >= $rough) * $magnitude);
+
+        return range(0, (int) (ceil($highest / $step) * $step), $step);
+    }
+
     public function rendering(View $view): void
     {
         $view->title(__('Statistics – :project', ['project' => $this->project->name]));
@@ -103,7 +134,7 @@ new class extends Component
     <div class="space-y-10">
         <section class="space-y-4">
             @php
-                $lastFour = array_slice($this->flow, -4);
+                $lastFour = array_slice($this->flow, -self::SUMMED_WEEKS - 1, self::SUMMED_WEEKS);
                 $created = array_sum(array_column($lastFour, 'created'));
                 $completed = array_sum(array_column($lastFour, 'completed'));
             @endphp
@@ -114,7 +145,7 @@ new class extends Component
 
             <div class="flex flex-wrap gap-x-8 gap-y-2">
                 <flux:text>{{ __('Open now') }}: <strong class="font-medium text-zinc-800 dark:text-white" data-stat="open">{{ $this->openCount }}</strong></flux:text>
-                <flux:text>{{ __('Last 4 weeks') }}: <strong class="font-medium text-zinc-800 dark:text-white" data-stat="created">{{ trans_choice(':count created|:count created', $created) }}</strong>, <strong class="font-medium text-zinc-800 dark:text-white" data-stat="completed">{{ trans_choice(':count completed|:count completed', $completed) }}</strong></flux:text>
+                <flux:text>{{ __('Last :count full weeks', ['count' => self::SUMMED_WEEKS]) }}: <strong class="font-medium text-zinc-800 dark:text-white" data-stat="created">{{ trans_choice(':count created|:count created', $created) }}</strong>, <strong class="font-medium text-zinc-800 dark:text-white" data-stat="completed">{{ trans_choice(':count completed|:count completed', $completed) }}</strong></flux:text>
             </div>
 
             <flux:card class="p-4 sm:p-6">
@@ -132,7 +163,7 @@ new class extends Component
                         <flux:text size="sm" class="tabular-nums"><flux:chart.summary.value field="range" /></flux:text>
                     </flux:chart.summary>
 
-                    <flux:chart.viewport class="aspect-[2/1] sm:aspect-[4/1]">
+                    <flux:chart.viewport class="aspect-[3/2] sm:aspect-[3/1] xl:aspect-[4/1]">
                         <flux:chart.svg>
                             <flux:chart.line field="created" class="text-zinc-400 dark:text-zinc-500" curve="none" stroke-dasharray="4 4" />
                             <flux:chart.point field="created" class="text-zinc-400 dark:text-zinc-500" r="3" />
@@ -145,7 +176,7 @@ new class extends Component
                                 <flux:chart.axis.line />
                             </flux:chart.axis>
 
-                            <flux:chart.axis axis="y" tick-count="4">
+                            <flux:chart.axis axis="y" :tick-values="$this->ticksFor($this->flow, ['created', 'completed'])" :format="['maximumFractionDigits' => 0]">
                                 <flux:chart.axis.grid />
                                 <flux:chart.axis.tick />
                             </flux:chart.axis>
@@ -185,7 +216,7 @@ new class extends Component
                         <flux:text>{{ __('No task was completed in the last months.') }}</flux:text>
                     @else
                     <flux:chart :value="$cycleMonths" wire:key="cycle-{{ md5(json_encode($cycleMonths)) }}">
-                        <flux:chart.viewport class="aspect-[2/1]">
+                        <flux:chart.viewport class="aspect-[3/2] sm:aspect-[5/2] lg:aspect-[2/1]">
                             <flux:chart.svg>
                                 <flux:chart.line field="p85" class="text-amber-500" curve="none" />
                                 <flux:chart.point field="p85" class="text-amber-500" r="3" />
@@ -197,7 +228,7 @@ new class extends Component
                                     <flux:chart.axis.line />
                                 </flux:chart.axis>
 
-                                <flux:chart.axis axis="y" tick-count="4">
+                                <flux:chart.axis axis="y" :tick-values="$this->ticksFor($cycleMonths, ['median', 'p85'])" :format="['maximumFractionDigits' => 0]">
                                     <flux:chart.axis.grid />
                                     <flux:chart.axis.tick />
                                 </flux:chart.axis>
@@ -243,7 +274,7 @@ new class extends Component
                         <flux:text>{{ __('No task with a due date was completed in the last months.') }}</flux:text>
                     @else
                     <flux:chart :value="$punctualMonths" wire:key="on-time-{{ md5(json_encode($punctualMonths)) }}">
-                        <flux:chart.viewport class="aspect-[2/1]">
+                        <flux:chart.viewport class="aspect-[3/2] sm:aspect-[5/2] lg:aspect-[2/1]">
                             <flux:chart.svg>
                                 <flux:chart.line field="on_time" class="text-green-500" curve="none" />
                                 <flux:chart.area field="on_time" class="text-green-500/10" curve="none" />
@@ -283,8 +314,8 @@ new class extends Component
             @if ($this->stuck->isEmpty())
                 <x-empty-state icon="check-badge" :heading="__('No open task is beyond the first status.')" />
             @else
-                <div class="surface px-3">
-                    <flux:table container:class="scroll-shadows">
+                <div class="surface px-3 [--flux-bleed:0.75rem]">
+                    <flux:table bleed container:class="scroll-shadows rounded-[inherit]">
                         <flux:table.columns>
                             <flux:table.column>{{ __('Task') }}</flux:table.column>
                             <flux:table.column class="max-sm:hidden">{{ __('Status') }}</flux:table.column>

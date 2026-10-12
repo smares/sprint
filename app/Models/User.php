@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Contracts\PasskeyUser;
@@ -28,7 +29,7 @@ use Laravel\Sanctum\HasApiTokens;
 use NotificationChannels\WebPush\HasPushSubscriptions;
 use SensitiveParameter;
 
-#[Fillable(['name', 'email', 'password', 'is_admin', 'locale', 'deactivated_at', 'digest_enabled', 'reminders_enabled', 'celebrations_enabled', 'absent_from', 'absent_until', 'quiet_from', 'quiet_until', 'quiet_days'])]
+#[Fillable(['name', 'email', 'password', 'is_admin', 'locale', 'timezone', 'deactivated_at', 'digest_enabled', 'reminders_enabled', 'celebrations_enabled', 'absent_from', 'absent_until', 'quiet_from', 'quiet_until', 'quiet_days'])]
 #[Hidden(['password', 'remember_token', 'two_factor_secret', 'two_factor_recovery_codes'])]
 class User extends Authenticatable implements HasLocalePreference, PasskeyUser
 {
@@ -142,7 +143,7 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
      */
     public function isAbsent(): bool
     {
-        $today = today()->toDateString();
+        $today = $this->today()->toDateString();
 
         return $this->absent_from !== null && $this->absent_until !== null
             && $this->absent_from->toDateString() <= $today && $today <= $this->absent_until->toDateString();
@@ -153,7 +154,23 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
      */
     public function hasPlannedAbsence(): bool
     {
-        return $this->absent_until !== null && $this->absent_until->toDateString() >= today()->toDateString();
+        return $this->absent_until !== null && $this->absent_until->toDateString() >= $this->today()->toDateString();
+    }
+
+    /**
+     * The person's time zone: their own from the profile, or else the application's.
+     */
+    public function preferredTimezone(): string
+    {
+        return $this->timezone ?? config('app.timezone');
+    }
+
+    /**
+     * Today where the person is; an absence starts and ends by their calendar.
+     */
+    public function today(): Carbon
+    {
+        return today($this->preferredTimezone());
     }
 
     /**
@@ -166,11 +183,11 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
 
     /**
      * Do not disturb (profile): no emails between quiet_from and quiet_until ("18:30" to "08:00" spans midnight) and
-     * all day on quiet_days (ISO weekdays, 1 = Monday). Times are in the app's time zone.
+     * all day on quiet_days (ISO weekdays, 1 = Monday). Times are in the person's time zone.
      */
     public function isQuietAt(CarbonInterface $moment): bool
     {
-        $moment = $moment->copy()->setTimezone(config('app.timezone'));
+        $moment = $moment->copy()->setTimezone($this->preferredTimezone());
 
         if (in_array($moment->dayOfWeekIso, $this->quiet_days ?? [], true)) {
             return true;

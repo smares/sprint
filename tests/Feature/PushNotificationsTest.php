@@ -9,6 +9,7 @@ use App\Notifications\TaskDueTomorrow;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
+use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 use Minishlink\WebPush\VAPID;
 use NotificationChannels\WebPush\PushSubscription;
@@ -84,7 +85,8 @@ class PushNotificationsTest extends TestCase
     {
         [$publicKey, $authToken] = $this->browserKeys();
 
-        foreach (['https://127.0.0.1/hook', 'http://fcm.googleapis.com/fcm/send/x', 'https://fcm.googleapis.com.evil.test/x', 'https://intranet.local/x'] as $endpoint) {
+        // Other services of the same companies are no push services either (an Apps Script web app answers whoever runs it)
+        foreach (['https://127.0.0.1/hook', 'http://fcm.googleapis.com/fcm/send/x', 'https://fcm.googleapis.com.evil.test/x', 'https://intranet.local/x', 'https://script.google.com/macros/s/x/exec', 'https://storage.googleapis.com/x'] as $endpoint) {
             Livewire::test('pages::profile')
                 ->call('savePushSubscription', $endpoint, $publicKey, $authToken, 'aes128gcm')
                 ->assertHasErrors('endpoint');
@@ -205,5 +207,71 @@ class PushNotificationsTest extends TestCase
         $this->assertStringContainsString("addEventListener('push'", $script);
         $this->assertStringContainsString('showNotification(', $script);
         $this->assertStringContainsString("addEventListener('notificationclick'", $script);
+    }
+
+    public function test_the_keys_must_be_those_of_a_browser(): void
+    {
+        [$publicKey, $authToken] = $this->browserKeys();
+
+        foreach ([['x', $authToken], [$publicKey, 'x'], [str_repeat('A', 87), $authToken], [$publicKey, str_repeat('A', 200)]] as [$key, $token]) {
+            Livewire::test('pages::profile')
+                ->call('savePushSubscription', self::ENDPOINT, $key, $token, 'aes128gcm')
+                ->assertHasErrors('publicKey');
+        }
+
+        $this->assertSame(0, $this->user->pushSubscriptions()->count());
+    }
+
+    public function test_only_the_devices_set_up_last_are_kept(): void
+    {
+        foreach (range(1, 12) as $device) {
+            $this->travel(1)->minutes();
+            [$publicKey, $authToken] = $this->browserKeys();
+            Livewire::test('pages::profile')->call('savePushSubscription', self::ENDPOINT.$device, $publicKey, $authToken, 'aes128gcm')->assertHasNoErrors();
+        }
+
+        $endpoints = $this->user->pushSubscriptions()->pluck('endpoint');
+        $this->assertCount(10, $endpoints);
+        $this->assertNotContains(self::ENDPOINT.'1', $endpoints);
+        $this->assertContains(self::ENDPOINT.'12', $endpoints);
+    }
+
+    public function test_a_shared_browser_forgets_the_subscription_of_the_person_before(): void
+    {
+        $before = $this->subscribe(User::factory()->create());
+        $own = $this->subscribe($this->user, self::ENDPOINT.'-own');
+
+        $this->postJson(route('push.forget-others'), ['endpoint' => $own->endpoint])->assertNoContent();
+        $this->assertModelExists($own);
+
+        $this->postJson(route('push.forget-others'), ['endpoint' => $before->endpoint])->assertNoContent();
+        $this->assertModelMissing($before);
+
+        $this->get(route('tasks.mine'))->assertSee('name="sprint-push-check"', false);
+    }
+
+    public function test_someone_who_lost_access_meanwhile_gets_no_push(): void
+    {
+        $outsider = User::factory()->create();
+        $this->subscribe($outsider);
+        $task = Task::factory()->create(['due_date' => today()->addDay()]);
+
+        $outsider->notify(new TaskDueTomorrow($task));
+
+        Http::assertNothingSent();
+    }
+
+    public function test_the_limits_of_the_task_page_cannot_be_raised_from_the_browser(): void
+    {
+        $task = Task::factory()->create();
+
+        foreach (['commentLimit', 'feedLimit'] as $limit) {
+            try {
+                Livewire::test('pages::tasks.show', ['task' => $task])->set($limit, 1000000);
+                $this->fail("{$limit} could be changed");
+            } catch (CannotUpdateLockedPropertyException) {
+                $this->addToAssertionCount(1);
+            }
+        }
     }
 }

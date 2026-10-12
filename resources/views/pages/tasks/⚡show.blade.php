@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -116,9 +117,11 @@ new class extends Component
     public bool $changedElsewhere = false;
 
     /** How many of the latest activity entries are shown. */
+    #[Locked]
     public int $feedLimit = self::FEED_PAGE;
 
     /** How many of the latest comments are shown. */
+    #[Locked]
     public int $commentLimit = self::FEED_PAGE;
 
     public function hydrate(): void

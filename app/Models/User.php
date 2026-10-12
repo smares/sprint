@@ -7,6 +7,7 @@ use App\Notifications\EmailChanged;
 use App\Notifications\ResetPassword;
 use App\Notifications\VerifyNewEmail;
 use App\Services\LocaleService;
+use App\Services\PushService;
 use Carbon\CarbonInterface;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Translation\HasLocalePreference;
@@ -223,6 +224,16 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
     {
         $this->forceFill(['deactivated_at' => now()])->save();
         $this->signOutEverywhere();
+    }
+
+    /**
+     * Keeps push notifications to the devices set up last (PushService::MAX_DEVICES), so the list cannot grow without end.
+     */
+    public function dropOldestPushSubscriptions(): void
+    {
+        $kept = $this->pushSubscriptions()->latest('updated_at')->latest('id')->limit(PushService::MAX_DEVICES)->pluck('id');
+
+        $this->pushSubscriptions()->whereNotIn('id', $kept)->delete();
     }
 
     /**

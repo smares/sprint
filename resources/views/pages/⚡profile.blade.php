@@ -28,6 +28,12 @@ new class extends Component
 
     private const int CONFIRMATION_DECAY_SECONDS = 600;
 
+    /** Test notifications per minute. */
+    private const int TEST_PUSH_ATTEMPTS = 3;
+
+    /** Devices turned on for push per minute. */
+    private const int PUSH_SUBSCRIBE_ATTEMPTS = 10;
+
     public string $name = '';
 
     public string $email = '';
@@ -205,14 +211,26 @@ new class extends Component
     {
         abort_unless(PushService::configured(), 404);
 
+        $key = 'push-subscribe:'.auth()->id();
+
+        if (RateLimiter::tooManyAttempts($key, self::PUSH_SUBSCRIBE_ATTEMPTS)) {
+            Flux::toast(variant: 'warning', text: __('Too many attempts. Please try again in :seconds seconds.', ['seconds' => RateLimiter::availableIn($key)]));
+
+            return false;
+        }
+
+        RateLimiter::hit($key);
+
         Validator::make(compact('endpoint', 'publicKey', 'authToken', 'contentEncoding'), [
             'endpoint' => ['required', 'max:'.PushSubscription::ENDPOINT_MAX_LENGTH, fn (string $attribute, string $value, Closure $fail) => PushService::isPushServiceEndpoint($value) || $fail(__('This browser\'s push service is not supported.'))],
-            'publicKey' => ['required', 'string', 'max:255'],
+            'publicKey' => ['required', 'string', fn (string $attribute, string $value, Closure $fail) => PushService::hasValidKeys($value, $authToken) || $fail(__('This browser\'s push service is not supported.'))],
             'authToken' => ['required', 'string', 'max:255'],
             'contentEncoding' => ['required', Rule::in(['aesgcm', 'aes128gcm'])],
         ])->validate();
 
-        auth()->user()->updatePushSubscription($endpoint, $publicKey, $authToken, $contentEncoding);
+        $user = auth()->user();
+        $user->updatePushSubscription($endpoint, $publicKey, $authToken, $contentEncoding);
+        $user->dropOldestPushSubscriptions();
 
         Flux::toast(variant: 'success', text: __('Push notifications turned on for this device.'));
 
@@ -233,9 +251,11 @@ new class extends Component
     #[Renderless]
     public function sendTestPush(): void
     {
+        abort_unless(PushService::configured(), 404);
+
         $key = 'test-push:'.auth()->id();
 
-        if (RateLimiter::tooManyAttempts($key, 3)) {
+        if (RateLimiter::tooManyAttempts($key, self::TEST_PUSH_ATTEMPTS)) {
             Flux::toast(variant: 'warning', text: __('Please wait a moment before sending another test.'));
 
             return;

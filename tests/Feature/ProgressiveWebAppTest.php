@@ -39,7 +39,9 @@ class ProgressiveWebAppTest extends TestCase
         $response = $this->get('/sw.js')->assertOk()->assertHeader('Content-Type', 'text/javascript; charset=utf-8');
 
         $script = $response->getContent();
-        $this->assertStringContainsString('const VERSION = "'.config('sprint.version').'-', $script);
+        // Only a hash of version and build: the exact version is not given away without a login
+        $this->assertMatchesRegularExpression('/const VERSION = "[0-9a-f]{12}";/', $script);
+        $this->assertStringNotContainsString((string) config('sprint.version'), $script);
         $this->assertStringContainsString('"/offline"', $script);
         $this->assertStringContainsString('"/icon-192.png"', $script);
         $this->assertStringContainsString("addEventListener('fetch'", $script);

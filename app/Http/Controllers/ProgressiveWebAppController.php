@@ -18,6 +18,9 @@ class ProgressiveWebAppController extends Controller
 
     private const array ICONS = ['/icon-192.png', '/icon-512.png', '/icon-maskable-512.png'];
 
+    /** How long browsers may keep the manifest (seconds); it only changes with the app's name. */
+    private const int MANIFEST_MAX_AGE = 86400;
+
     public function manifest(): JsonResponse
     {
         return response()->json([
@@ -34,7 +37,9 @@ class ProgressiveWebAppController extends Controller
                 ['src' => '/icon-512.png', 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any'],
                 ['src' => '/icon-maskable-512.png', 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'maskable'],
             ],
-        ], options: JSON_UNESCAPED_SLASHES)->header('Content-Type', 'application/manifest+json');
+        ], options: JSON_UNESCAPED_SLASHES)
+            ->header('Content-Type', 'application/manifest+json')
+            ->header('Cache-Control', 'public, max-age='.self::MANIFEST_MAX_AGE);
     }
 
     /**

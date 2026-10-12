@@ -48,7 +48,7 @@ new class extends Component
     public function projects(): Collection
     {
         $user = auth()->user();
-        $favoriteIds = $user->favoriteProjects()->pluck('projects.id')->all();
+        $favoriteIds = $this->favoriteIds;
         $recentIds = $user->visitedProjects()->pluck('projects.id')->diff($favoriteIds)->take(self::RECENT_PROJECTS)->all();
         $ids = array_values(array_unique([...$favoriteIds, ...$recentIds, ...array_filter([$this->currentProjectId])]));
 
@@ -72,11 +72,11 @@ new class extends Component
     }
 
     /**
-     * Built again when favourites, projects or the recently opened ones change elsewhere.
+     * Built again when favourites or projects change elsewhere. A visit needs nothing: the sidebar is drawn anew with
+     * every page, after the page has noted the visit.
      */
     #[On('favorites-changed')]
     #[On('project-updated')]
-    #[On('project-visited')]
     public function refreshProjects(): void
     {
         unset($this->projects, $this->favoriteIds);

@@ -21,6 +21,10 @@ new class extends Component
     #[Locked]
     public bool $onInbox = false;
 
+    /** The count last shown, so a poll can tell whether the dot needs to hear of it. */
+    #[Locked]
+    public int $shownUnread = 0;
+
     public function mount(): void
     {
         $this->onInbox = request()->routeIs('inbox');
@@ -31,9 +35,29 @@ new class extends Component
      */
     protected function getListeners(): array
     {
-        return app(RealtimeService::class)->enabled()
-            ? ['echo-private:user.'.auth()->id().',.InboxUpdated' => 'inboxUpdated']
-            : [];
+        return [
+            ...app(RealtimeService::class)->enabled() ? ['echo-private:user.'.auth()->id().',.InboxUpdated' => 'inboxUpdated'] : [],
+            // Without live updates only the sidebar entry polls; the dot hears from it when the count changed
+            ...$this->variant === 'dot' ? ['unread-changed' => 'inboxChanged'] : [],
+        ];
+    }
+
+    /**
+     * The sidebar entry's poll (without live updates): one request a minute for both, and one more for the dot only
+     * when there is something new to show.
+     */
+    public function checkUnread(): void
+    {
+        unset($this->unread);
+
+        if ($this->unread !== $this->shownUnread) {
+            $this->dispatch('unread-changed');
+        }
+    }
+
+    public function rendering(): void
+    {
+        $this->shownUnread = $this->unread;
     }
 
     /**
@@ -62,8 +86,8 @@ new class extends Component
 };
 ?>
 
-{{-- With live updates the count arrives over the socket; without them it is fetched every minute. --}}
-<div @unless (app(RealtimeService::class)->enabled()) wire:poll.60s @endunless @class(['relative' => $variant === 'sidebar', 'pointer-events-none absolute end-1 top-1' => $variant === 'dot'])>
+{{-- With live updates the count arrives over the socket; without them the sidebar entry fetches it every minute. --}}
+<div @if ($variant === 'sidebar' && ! app(RealtimeService::class)->enabled()) wire:poll.60s="checkUnread" @endif @class(['relative' => $variant === 'sidebar', 'pointer-events-none absolute end-1 top-1' => $variant === 'dot'])>
     @if ($variant === 'dot')
         @if ($this->unread > 0)
             <span class="block size-2.5 rounded-full bg-red-500 ring-2 ring-white dark:ring-zinc-900" data-unread-dot></span>

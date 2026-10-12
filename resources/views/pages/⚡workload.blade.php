@@ -59,7 +59,7 @@ new class extends Component
     }
 
     /**
-     * @return array<int, array{overdue: list<string>, weeks: list<array{titles: list<string>, absent_days: int}>, undated: int}>
+     * @return array<int, array{overdue: array{count: int, tasks: list<array{id: int, title: string}>}, weeks: list<array{count: int, tasks: list<array{id: int, title: string}>, absent_days: int}>, undated: int}>
      */
     #[Computed]
     public function load(): array
@@ -70,18 +70,17 @@ new class extends Component
     /**
      * The titles behind a number, for hovering: the first few and how many more.
      *
-     * @param  list<string>  $titles
+     * @param  array{count: int, tasks: list<array{id: int, title: string}>}  $group
      */
-    protected function titlesOf(array $titles): ?string
+    protected function titlesOf(array $group): ?string
     {
-        if ($titles === []) {
+        if ($group['count'] === 0) {
             return null;
         }
 
-        $shown = array_slice($titles, 0, WorkloadService::TITLES);
-        $more = count($titles) - count($shown);
+        $more = $group['count'] - count($group['tasks']);
 
-        return implode("\n", $shown).($more > 0 ? "\n".trans_choice('and :count more|and :count more', $more) : '');
+        return implode("\n", array_column($group['tasks'], 'title')).($more > 0 ? "\n".trans_choice('and :count more|and :count more', $more) : '');
     }
 
     public function rendering(View $view): void
@@ -137,14 +136,14 @@ new class extends Component
                                 </div>
                             </flux:table.cell>
                             <flux:table.cell align="end">
-                                <span title="{{ $this->titlesOf($row['overdue']) }}" @class(['font-medium text-red-600 dark:text-red-400' => $row['overdue'] !== [], 'text-zinc-300 dark:text-zinc-600' => $row['overdue'] === []])>{{ count($row['overdue']) ?: '–' }}</span>
+                                <span title="{{ $this->titlesOf($row['overdue']) }}" @class(['font-medium text-red-600 dark:text-red-400' => $row['overdue']['count'] > 0, 'text-zinc-300 dark:text-zinc-600' => $row['overdue']['count'] === 0])>{{ $row['overdue']['count'] ?: '–' }}</span>
                             </flux:table.cell>
                             @foreach ($row['weeks'] as $cell)
                                 <flux:table.cell align="end" wire:key="cell-{{ $person->id }}-{{ $loop->index }}">
                                     <div class="flex flex-col items-end gap-0.5">
-                                        <span title="{{ $this->titlesOf($cell['titles']) }}" @class(['font-medium text-zinc-800 dark:text-white' => $cell['titles'] !== [], 'text-zinc-300 dark:text-zinc-600' => $cell['titles'] === []])>{{ count($cell['titles']) ?: '–' }}</span>
+                                        <span title="{{ $this->titlesOf($cell) }}" @class(['font-medium text-zinc-800 dark:text-white' => $cell['count'] > 0, 'text-zinc-300 dark:text-zinc-600' => $cell['count'] === 0])>{{ $cell['count'] ?: '–' }}</span>
                                         @if ($cell['absent_days'] > 0)
-                                            <flux:badge size="sm" :color="$cell['titles'] !== [] ? 'amber' : 'zinc'" icon="sun">{{ trans_choice(':count day away|:count days away', $cell['absent_days']) }}</flux:badge>
+                                            <flux:badge size="sm" :color="$cell['count'] > 0 ? 'amber' : 'zinc'" icon="sun">{{ trans_choice(':count day away|:count days away', $cell['absent_days']) }}</flux:badge>
                                         @endif
                                     </div>
                                 </flux:table.cell>

@@ -7,12 +7,17 @@ use App\Http\Controllers\HealthController;
 use App\Http\Controllers\ProgressiveWebAppController;
 use App\Http\Controllers\ProjectExportController;
 use App\Services\LocaleService;
+use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
+use Illuminate\Cookie\Middleware\EncryptCookies;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\Rule;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Laravel\Passkeys\Http\Controllers\PasskeyLoginController;
 use Laravel\Passkeys\Http\Controllers\PasskeyRegistrationController;
 use NotificationChannels\WebPush\PushSubscription;
@@ -29,8 +34,12 @@ Route::post('/locale', function (Request $request): RedirectResponse {
 Route::get('/health', HealthController::class)->middleware('throttle:60,1')->name('health');
 
 Route::controller(ProgressiveWebAppController::class)->group(function () {
-    Route::get('/manifest.webmanifest', 'manifest')->name('pwa.manifest');
-    Route::get('/sw.js', 'serviceWorker')->name('pwa.service-worker');
+    // Fetched by the browser on its own (the manifest even without cookies): no session, which would otherwise be
+    // started anew and stored for every such request
+    Route::withoutMiddleware([StartSession::class, ShareErrorsFromSession::class, PreventRequestForgery::class, AddQueuedCookiesToResponse::class, EncryptCookies::class])->group(function () {
+        Route::get('/manifest.webmanifest', 'manifest')->name('pwa.manifest');
+        Route::get('/sw.js', 'serviceWorker')->name('pwa.service-worker');
+    });
     Route::get('/offline', 'offline')->name('offline');
 });
 

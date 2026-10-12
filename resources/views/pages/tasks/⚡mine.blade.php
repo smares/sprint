@@ -37,7 +37,7 @@ new class extends Component
     public function tasks(): Collection
     {
         return $this->mine()
-            ->with(['project', 'parent', 'status', 'tags'])
+            ->with(['project', 'parent', 'status', 'tags', 'blockers.status'])
             ->orderByRaw('due_date is null')
             ->orderBy('due_date')
             ->orderBy('id')
@@ -52,20 +52,14 @@ new class extends Component
     }
 
     /**
-     * Subtask progress of the listed tasks, worked out per project like in the project list.
+     * Subtask progress of the listed tasks, for all their projects at once.
      *
      * @return array<int, array{done: int, total: int}>
      */
     #[Computed]
     public function progress(): array
     {
-        $progress = [];
-
-        foreach ($this->tasks->groupBy('project_id') as $tasks) {
-            $progress += $tasks->first()->project->subtaskProgress($tasks->modelKeys());
-        }
-
-        return $progress;
+        return Task::subtaskProgress($this->tasks->modelKeys());
     }
 
     /**
@@ -76,7 +70,10 @@ new class extends Component
     #[Computed]
     public function editableProjectIds(): array
     {
-        return $this->tasks->pluck('project')->unique('id')
+        $projects = new Collection($this->tasks->pluck('project')->unique('id')->values()->all());
+        Project::rememberRolesFor(auth()->user(), $projects);
+
+        return $projects
             ->filter(fn (Project $project) => Gate::allows('edit', $project))
             ->pluck('id')->values()->all();
     }

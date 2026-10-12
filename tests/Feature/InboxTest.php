@@ -7,6 +7,7 @@ use App\Models\Comment;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
+use App\Notifications\TaskDueTomorrow;
 use App\Services\InboxTextService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\DatabaseNotification;
@@ -198,5 +199,18 @@ class InboxTest extends TestCase
         Comment::factory()->create(['task_id' => $this->task->id, 'user_id' => $this->other->id]);
 
         $this->assertSame(0, $this->me->notifications()->count());
+    }
+
+    public function test_only_the_sidebar_entry_polls_and_tells_the_dot_when_the_count_changed(): void
+    {
+        $this->actingAs($this->me);
+        $bell = Livewire::test('notification-bell')->assertSeeHtml('wire:poll.60s="checkUnread"');
+        Livewire::test('notification-bell', ['variant' => 'dot', 'announces' => false])->assertDontSeeHtml('wire:poll');
+
+        $bell->call('checkUnread')->assertNotDispatched('unread-changed');
+
+        $this->me->notify(new TaskDueTomorrow(Task::factory()->for($this->project)->create(['due_date' => today()->addDay()])));
+
+        $bell->call('checkUnread')->assertDispatched('unread-changed');
     }
 }

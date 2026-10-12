@@ -76,7 +76,8 @@ class ColorTest extends TestCase
         $admin = User::factory()->admin()->create();
         $project = Project::factory()->create();
         $project->statuses()->where('name', 'Offen')->update(['color' => '#fde047']);
-        Task::factory()->for($project)->create(['title' => 'Termin', 'due_date' => now()->startOfMonth()->addDays(9)]);
+        // Today lies in the month the calendar shows and in the weeks the timeline shows, whatever the date
+        Task::factory()->for($project)->create(['title' => 'Termin', 'due_date' => today()]);
 
         $this->actingAs($admin)->get(route('projects.calendar', $project))->assertOk()->assertSee('--badge: #fde047', false);
         $this->get(route('projects.timeline', $project))->assertOk()->assertSee('--badge: #fde047', false)->assertSee('color-chip', false);

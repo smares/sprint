@@ -131,7 +131,9 @@ class PushNotificationsTest extends TestCase
         Http::assertSent(fn (Request $request) => $request->url() === self::ENDPOINT
             && $request->hasHeader('Authorization')
             && $request->header('Content-Encoding')[0] === 'aes128gcm'
-            && $request->header('TTL')[0] === '86400');
+            && $request->header('TTL')[0] === '86400'
+            // High, so Android delivers it at once instead of holding it back until the phone wakes up
+            && $request->header('Urgency')[0] === 'high');
     }
 
     public function test_nothing_is_pushed_without_a_subscription_or_while_away(): void
@@ -171,6 +173,7 @@ class PushNotificationsTest extends TestCase
         }
 
         Http::assertSentCount(3);
+        Http::assertSent(fn (Request $request) => $request->header('Urgency')[0] === 'high');
     }
 
     public function test_a_subscription_the_push_service_no_longer_knows_is_dropped(): void

@@ -24,6 +24,12 @@ class InboxPush extends Notification implements ShouldQueueAfterCommit
     /** Push services keep an undelivered message this long (seconds) for a device that is off. */
     private const int TIME_TO_LIVE = 86400;
 
+    /**
+     * Without it push services treat the message as normal priority, which Android holds back while the phone sleeps
+     * (Doze) until it wakes up, e.g. when the person opens an app. High wakes the device at once, like a chat message.
+     */
+    public const string URGENCY = 'high';
+
     public function __construct(public DatabaseNotification $entry) {}
 
     /**
@@ -46,7 +52,7 @@ class InboxPush extends Notification implements ShouldQueueAfterCommit
             ->tag('task-'.$task->id)
             ->renotify()
             ->data(['url' => route('tasks.show', $task, absolute: false)])
-            ->options(['TTL' => self::TIME_TO_LIVE]);
+            ->options(['TTL' => self::TIME_TO_LIVE, 'urgency' => self::URGENCY]);
     }
 
     private function task(): ?Task

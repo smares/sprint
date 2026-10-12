@@ -181,7 +181,7 @@ new class extends Component
 <div>
     <x-project-header :project="$project" active="board" :presence="$this->presenceChannel()" />
 
-    <flux:kanban class="items-start overflow-x-auto pb-4">
+    <flux:kanban class="items-start overflow-x-auto pb-4" data-fills-height>
         @foreach ($this->statuses as $status)
             {{-- The status color as a line along the top of the column and a dot before its name --}}
             <flux:kanban.column wire:key="column-{{ $status->id }}" class="shrink-0 border-t-3 border-(--badge)" style="--badge: {{ \App\Color::normalize($status->color) }}">

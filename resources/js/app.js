@@ -632,3 +632,37 @@ const rememberLocale = () => {
 
 rememberLocale()
 document.addEventListener('livewire:navigated', rememberLocale)
+
+// Areas that scroll sideways (board, calendar, timeline; Flux does the same for its tables) say whether more lies beyond
+// either edge, for the shadows there (scroll-shadows in app.css). The names follow Flux: data-scrolled-right once the
+// start is scrolled out of sight, data-scrolled-left while more follows at the end.
+const scrollEdgeObservers = new WeakMap()
+
+const updateScrollEdges = (area) => {
+    const hiddenAtEnd = area.scrollWidth - area.clientWidth - Math.abs(area.scrollLeft)
+
+    area.toggleAttribute('data-scrolled-right', Math.abs(area.scrollLeft) > 12)
+    area.toggleAttribute('data-scrolled-left', hiddenAtEnd > 12)
+}
+
+const watchScrollEdges = () => {
+    document.querySelectorAll('[data-scroll-edges]').forEach((area) => {
+        updateScrollEdges(area)
+
+        if (scrollEdgeObservers.has(area)) {
+            return
+        }
+
+        // Size changes of the area and changes inside it (cards loaded, a column collapsed) move the end
+        const update = () => requestAnimationFrame(() => updateScrollEdges(area))
+        const resizes = new ResizeObserver(update)
+        resizes.observe(area)
+        const mutations = new MutationObserver(update)
+        mutations.observe(area, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-collapsed', 'class'] })
+        area.addEventListener('scroll', () => updateScrollEdges(area), { passive: true })
+        scrollEdgeObservers.set(area, [resizes, mutations])
+    })
+}
+
+watchScrollEdges()
+document.addEventListener('livewire:navigated', watchScrollEdges)

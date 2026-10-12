@@ -211,7 +211,62 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
    underneath with the page background, and once Flux marks the table as scrolled (data-scrolled-right) a light shadow
    shows that more lies beneath. */
 @utility pinned-column {
-    @apply sticky start-0 z-10 bg-white dark:bg-zinc-800 after:pointer-events-none after:absolute after:inset-y-0 after:end-0 after:w-8 after:translate-x-full in-data-scrolled-right:after:inset-shadow-[8px_0px_8px_-8px_rgba(0,0,0,0.08)] dark:in-data-scrolled-right:after:inset-shadow-[8px_0px_8px_-8px_rgba(0,0,0,0.5)];
+    @apply pinned-shadow sticky start-0 z-10 bg-white dark:bg-zinc-800;
+}
+
+/* The shadow alone, for sticky start cells with a background of their own (timeline). */
+@utility pinned-shadow {
+    @apply after:pointer-events-none after:absolute after:inset-y-0 after:end-0 after:w-8 after:translate-x-full in-data-scrolled-right:after:inset-shadow-[12px_0px_12px_-12px_rgba(0,0,0,0.15)] dark:in-data-scrolled-right:after:inset-shadow-[12px_0px_12px_-12px_rgba(0,0,0,0.6)];
+}
+
+/* Shadows at the edges of an area that scrolls sideways, where more lies beyond: drawn by the wrapper above the content (so
+   cards and cells with a background of their own do not cover them) and shown by the scroll state of the area inside it
+   (Flux's table scroll area, or data-scroll-edges, see app.js). Where a column stays pinned at the start, its own shadow
+   (pinned-shadow) marks that side instead. */
+@utility scroll-shadows {
+    position: relative;
+
+    &::before,
+    &::after {
+        content: '';
+        position: absolute;
+        inset-block: 0;
+        z-index: 30;
+        width: 2rem;
+        border-radius: inherit;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.15s ease;
+    }
+
+    &::before {
+        inset-inline-start: 0;
+        box-shadow: inset 12px 0 12px -12px rgb(0 0 0 / 0.15);
+    }
+
+    &::after {
+        inset-inline-end: 0;
+        box-shadow: inset -12px 0 12px -12px rgb(0 0 0 / 0.15);
+    }
+
+    @variant dark {
+        &::before {
+            box-shadow: inset 12px 0 12px -12px rgb(0 0 0 / 0.6);
+        }
+
+        &::after {
+            box-shadow: inset -12px 0 12px -12px rgb(0 0 0 / 0.6);
+        }
+    }
+
+    &:has(> [data-scrolled-right])::before,
+    &:has(> [data-scrolled-left])::after {
+        opacity: 1;
+    }
+
+    &:has(.pinned-column, .pinned-shadow)::before {
+        display: none;
+    }
 }
 
 /* Project views (list, board, calendar, timeline) fill the window below the page header and scroll within it, so the column
@@ -239,6 +294,17 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
         min-height: 20rem;
     }
 
+    /* A view wrapped for its scroll shadows: the area inside takes the height */
+    [data-fills-height].scroll-shadows {
+        display: flex;
+        flex-direction: column;
+
+        & > * {
+            flex: 1 1 0;
+            min-height: 0;
+        }
+    }
+
     /* The list: Flux's scroll area around the table takes the height and scrolls, below the column headers (sticky) */
     [data-fills-height]:has(ui-table-scroll-area) {
         display: flex;
@@ -252,7 +318,7 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
     }
 
     /* The board: a column grows up to the board's height, then its cards scroll below the status and above the quick add */
-    [data-flux-kanban][data-fills-height] > [data-flux-kanban-column] {
+    [data-fills-height] > [data-flux-kanban] > [data-flux-kanban-column] {
         display: flex;
         flex-direction: column;
         max-height: 100%;

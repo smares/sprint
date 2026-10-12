@@ -284,7 +284,7 @@ new class extends Component
                 <x-empty-state icon="check-badge" :heading="__('No open task is beyond the first status.')" />
             @else
                 <div class="surface px-3">
-                    <flux:table>
+                    <flux:table container:class="scroll-shadows">
                         <flux:table.columns>
                             <flux:table.column>{{ __('Task') }}</flux:table.column>
                             <flux:table.column class="max-sm:hidden">{{ __('Status') }}</flux:table.column>

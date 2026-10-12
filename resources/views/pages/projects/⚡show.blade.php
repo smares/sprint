@@ -668,7 +668,7 @@ new class extends Component
             $pinnedTitle = 'pinned-column sm:start-20';
         @endphp
         <div class="surface px-3" data-fills-height>
-            <flux:table>
+            <flux:table container:class="scroll-shadows">
                 <flux:table.columns sticky class="bg-white dark:bg-zinc-800">
                     {{-- Done button first, then the selection checkbox: two things, so they get one column and some room between them --}}
                     <flux:table.column :class="'w-20 min-w-20 max-sm:w-24 max-sm:min-w-24 '.$pinnedDone">

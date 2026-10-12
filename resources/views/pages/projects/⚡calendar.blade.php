@@ -152,62 +152,64 @@ new class extends Component
         @endforelse
     </div>
 
-    <div class="overflow-x-auto rounded-xl shadow-xs max-sm:hidden" data-fills-height>
-        <div class="grid min-w-[56rem] grid-cols-7 border-s border-t border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-800" data-calendar-month>
-            @foreach ($this->weeks[0] as $weekday)
-                <div class="sticky top-0 z-10 border-e border-b border-zinc-200 bg-zinc-50 p-2 text-sm font-medium dark:border-zinc-700 dark:bg-zinc-900">
-                    {{ $weekday['date']->isoFormat('dd') }}
-                </div>
-            @endforeach
-
-            @foreach ($this->weeks as $week)
-                @foreach ($week as $day)
-                    <div wire:key="day-{{ $day['date']->toDateString() }}"
-                        @if ($this->canEdit)
-                            x-data="{ over: false }"
-                            x-on:dragover.prevent="over = true"
-                            x-on:dragleave="over = false"
-                            x-on:drop.prevent="over = false; const task = JSON.parse($event.dataTransfer.getData('text/plain') || '{}'); if (task.id) { $wire.moveToDay(task.id, task.from, '{{ $day['date']->toDateString() }}') }"
-                            x-bind:class="over && 'ring-2 ring-inset ring-accent'"
-                            {{-- A click on the day itself (not on a task) opens the dialog with that day as the due date --}}
-                            x-on:click="if (! $event.target.closest('a, button')) { $wire.$dispatch('new-task', { dueDate: '{{ $day['date']->toDateString() }}' }) }"
-                        @endif
-                        @class([
-                        'group min-h-28 space-y-1 border-e border-b border-zinc-200 p-1.5 dark:border-zinc-700',
-                        'bg-zinc-50/60 text-zinc-400 dark:bg-zinc-900/40' => ! $day['inMonth'],
-                        'cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-700/40' => $this->canEdit,
-                    ])>
-                        <div class="flex items-start justify-between">
-                            <div @class([
-                                'text-sm',
-                                'inline-flex size-6 items-center justify-center rounded-full bg-accent font-semibold text-accent-foreground' => $day['date']->isToday(),
-                            ])>{{ $day['date']->day }}</div>
-
-                            @if ($this->canEdit)
-                                <button type="button" x-on:click.stop="$wire.$dispatch('new-task', { dueDate: '{{ $day['date']->toDateString() }}' })"
-                                    class="rounded p-0.5 text-zinc-400 opacity-0 hover:bg-zinc-200 hover:text-zinc-700 focus:opacity-100 group-hover:opacity-100 dark:hover:bg-zinc-700 dark:hover:text-zinc-200"
-                                    aria-label="{{ __('New task on :date', ['date' => $day['date']->isoFormat('L')]) }}" title="{{ __('New task on :date', ['date' => $day['date']->isoFormat('L')]) }}">
-                                    <flux:icon.plus variant="micro" />
-                                </button>
-                            @endif
-                        </div>
-
-                        @foreach ($day['tasks']->take($this::TASKS_PER_DAY) as $task)
-                            <a wire:key="chip-{{ $day['date']->toDateString() }}-{{ $task->id }}" href="{{ route('tasks.show', $task) }}" wire:navigate
-                               style="--badge: {{ $task->status->color }}"
-                               @if ($this->canEdit)
-                                   draggable="true"
-                                   x-on:dragstart="$event.dataTransfer.setData('text/plain', JSON.stringify({ id: {{ $task->id }}, from: '{{ $day['date']->toDateString() }}' })); $event.dataTransfer.effectAllowed = 'move'"
-                               @endif
-                               class="color-chip block truncate rounded px-1.5 py-0.5 text-xs hover:underline {{ $task->isDone() ? 'line-through opacity-60' : '' }}">{{ $task->title }}</a>
-                        @endforeach
-
-                        @if ($day['tasks']->count() > $this::TASKS_PER_DAY)
-                            <flux:text size="sm" class="px-1">{{ __('+ :count more', ['count' => $day['tasks']->count() - $this::TASKS_PER_DAY]) }}</flux:text>
-                        @endif
+    <div class="scroll-shadows rounded-xl shadow-xs max-sm:hidden" data-fills-height>
+        <div class="overflow-x-auto rounded-xl" data-scroll-edges>
+            <div class="grid min-w-[56rem] grid-cols-7 border-s border-t border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-800" data-calendar-month>
+                @foreach ($this->weeks[0] as $weekday)
+                    <div class="sticky top-0 z-10 border-e border-b border-zinc-200 bg-zinc-50 p-2 text-sm font-medium dark:border-zinc-700 dark:bg-zinc-900">
+                        {{ $weekday['date']->isoFormat('dd') }}
                     </div>
                 @endforeach
-            @endforeach
+
+                @foreach ($this->weeks as $week)
+                    @foreach ($week as $day)
+                        <div wire:key="day-{{ $day['date']->toDateString() }}"
+                            @if ($this->canEdit)
+                                x-data="{ over: false }"
+                                x-on:dragover.prevent="over = true"
+                                x-on:dragleave="over = false"
+                                x-on:drop.prevent="over = false; const task = JSON.parse($event.dataTransfer.getData('text/plain') || '{}'); if (task.id) { $wire.moveToDay(task.id, task.from, '{{ $day['date']->toDateString() }}') }"
+                                x-bind:class="over && 'ring-2 ring-inset ring-accent'"
+                                {{-- A click on the day itself (not on a task) opens the dialog with that day as the due date --}}
+                                x-on:click="if (! $event.target.closest('a, button')) { $wire.$dispatch('new-task', { dueDate: '{{ $day['date']->toDateString() }}' }) }"
+                            @endif
+                            @class([
+                            'group min-h-28 space-y-1 border-e border-b border-zinc-200 p-1.5 dark:border-zinc-700',
+                            'bg-zinc-50/60 text-zinc-400 dark:bg-zinc-900/40' => ! $day['inMonth'],
+                            'cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-700/40' => $this->canEdit,
+                        ])>
+                            <div class="flex items-start justify-between">
+                                <div @class([
+                                    'text-sm',
+                                    'inline-flex size-6 items-center justify-center rounded-full bg-accent font-semibold text-accent-foreground' => $day['date']->isToday(),
+                                ])>{{ $day['date']->day }}</div>
+
+                                @if ($this->canEdit)
+                                    <button type="button" x-on:click.stop="$wire.$dispatch('new-task', { dueDate: '{{ $day['date']->toDateString() }}' })"
+                                        class="rounded p-0.5 text-zinc-400 opacity-0 hover:bg-zinc-200 hover:text-zinc-700 focus:opacity-100 group-hover:opacity-100 dark:hover:bg-zinc-700 dark:hover:text-zinc-200"
+                                        aria-label="{{ __('New task on :date', ['date' => $day['date']->isoFormat('L')]) }}" title="{{ __('New task on :date', ['date' => $day['date']->isoFormat('L')]) }}">
+                                        <flux:icon.plus variant="micro" />
+                                    </button>
+                                @endif
+                            </div>
+
+                            @foreach ($day['tasks']->take($this::TASKS_PER_DAY) as $task)
+                                <a wire:key="chip-{{ $day['date']->toDateString() }}-{{ $task->id }}" href="{{ route('tasks.show', $task) }}" wire:navigate
+                                   style="--badge: {{ $task->status->color }}"
+                                   @if ($this->canEdit)
+                                       draggable="true"
+                                       x-on:dragstart="$event.dataTransfer.setData('text/plain', JSON.stringify({ id: {{ $task->id }}, from: '{{ $day['date']->toDateString() }}' })); $event.dataTransfer.effectAllowed = 'move'"
+                                   @endif
+                                   class="color-chip block truncate rounded px-1.5 py-0.5 text-xs hover:underline {{ $task->isDone() ? 'line-through opacity-60' : '' }}">{{ $task->title }}</a>
+                            @endforeach
+
+                            @if ($day['tasks']->count() > $this::TASKS_PER_DAY)
+                                <flux:text size="sm" class="px-1">{{ __('+ :count more', ['count' => $day['tasks']->count() - $this::TASKS_PER_DAY]) }}</flux:text>
+                            @endif
+                        </div>
+                    @endforeach
+                @endforeach
+            </div>
         </div>
     </div>
 

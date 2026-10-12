@@ -44,4 +44,17 @@ class FullHeightViewsTest extends TestCase
         // In the table, so it only shows (and loads) at the end of the list while the list scrolls within the window
         $this->assertMatchesRegularExpression('/<table[^>]*data-flux-table.*wire:intersect="loadMore".*<\/table>/s', $html);
     }
+
+    public function test_areas_that_scroll_sideways_show_shadows_where_more_lies_beyond(): void
+    {
+        foreach (['projects.board', 'projects.calendar', 'projects.timeline'] as $route) {
+            $this->get(route($route, $this->project))->assertOk()
+                ->assertSee('class="scroll-shadows', false)
+                ->assertSee('data-scroll-edges', false);
+        }
+
+        // Flux tables report their scroll state themselves; the list's pinned columns keep their own shadow at the start
+        $this->get(route('projects.show', $this->project))->assertSee('scroll-shadows', false)->assertSee('pinned-column', false);
+        $this->get(route('projects.timeline', $this->project))->assertSee('pinned-shadow', false);
+    }
 }

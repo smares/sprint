@@ -33,9 +33,10 @@ return [
     'database_connection' => env('WEBPUSH_DB_CONNECTION'),
 
     /**
-     * The HTTP client options used to deliver push notifications.
+     * The HTTP client options used to deliver push notifications. A push service answers within moments; a short timeout
+     * keeps a hanging one from holding a queue worker (or the profile's test button) for the default 30 seconds.
      */
-    'client_options' => [],
+    'client_options' => ['timeout' => 5],
 
     /**
      * The automatic padding in bytes used by Minishlink\WebPush.

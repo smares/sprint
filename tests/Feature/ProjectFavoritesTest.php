@@ -22,7 +22,12 @@ class ProjectFavoritesTest extends TestCase
             ->assertSee('Markiere ein Projekt mit dem Stern')
             ->call('toggleFavorite', $gamma->id)
             ->call('toggleFavorite', $alpha->id)
-            ->assertSee('Favoriten')->assertSee('Alle Projekte')->assertDontSee('Markiere ein Projekt mit dem Stern');
+            ->assertDispatched('favorites-changed');
+
+        // The favorites are an island the star draws again on its own; a fresh page shows them as well
+        Livewire::test('pages::projects.index')
+            ->assertSeeInOrder(['Favoriten', 'Gamma', 'Alpha', 'Alle Projekte'])
+            ->assertDontSee('Markiere ein Projekt mit dem Stern');
 
         $this->assertSame(['Gamma', 'Alpha'], $page->instance()->favorites->pluck('name')->all());
         $this->assertSame([$gamma->id, $alpha->id], $user->favoriteProjects()->pluck('projects.id')->all());

@@ -125,7 +125,15 @@ new class extends Component
 };
 ?>
 
-<div>
+{{-- Starring changes only the favorites: the stars follow at once in the browser, and only the favorites (an island) are
+     drawn again, not every card; the sidebar and the command palette update through favorites-changed. --}}
+<div x-data="{
+    favorites: @js($this->favorites->pluck('id')->all()),
+    toggleFavorite(id) {
+        this.favorites = this.favorites.includes(id) ? this.favorites.filter((other) => other !== id) : [...this.favorites, id]
+        this.$wire.$island('favorites').toggleFavorite(id)
+    },
+}">
     <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
         <flux:heading size="xl">{{ __('Projects') }}</flux:heading>
 
@@ -141,25 +149,25 @@ new class extends Component
             </flux:modal.trigger>
         </x-empty-state>
     @else
-        @php($favoriteIds = $this->favorites->pluck('id')->all())
+        @island(name: 'favorites')
+            @if ($this->favorites->isNotEmpty())
+                <flux:heading size="lg" class="mb-3">{{ __('Favorites') }}</flux:heading>
+                {{-- Each person sorts their own favorites by dragging --}}
+                <div class="mb-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" wire:sort="moveFavorite" wire:sort:config="{ delay: 250, delayOnTouchOnly: true, touchStartThreshold: 12 }">
+                    @foreach ($this->favorites as $project)
+                        <x-project-card :project="$project" wire:key="favorite-{{ $project->id }}" wire:sort:item="{{ $project->id }}" />
+                    @endforeach
+                </div>
 
-        @if ($favoriteIds !== [])
-            <flux:heading size="lg" class="mb-3">{{ __('Favorites') }}</flux:heading>
-            {{-- Each person sorts their own favorites by dragging --}}
-            <div class="mb-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" wire:sort="moveFavorite" wire:sort:config="{ delay: 250, delayOnTouchOnly: true, touchStartThreshold: 12 }">
-                @foreach ($this->favorites as $project)
-                    <x-project-card :project="$project" favorite wire:key="favorite-{{ $project->id }}" wire:sort:item="{{ $project->id }}" />
-                @endforeach
-            </div>
-
-            <flux:heading size="lg" class="mb-3">{{ __('All projects') }}</flux:heading>
-        @else
-            <flux:text class="mb-4">{{ __('Star a project to keep it at the top as a favorite.') }}</flux:text>
-        @endif
+                <flux:heading size="lg" class="mb-3">{{ __('All projects') }}</flux:heading>
+            @else
+                <flux:text class="mb-4">{{ __('Star a project to keep it at the top as a favorite.') }}</flux:text>
+            @endif
+        @endisland
 
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             @foreach ($this->projects as $project)
-                <x-project-card :project="$project" :favorite="in_array($project->id, $favoriteIds, true)" wire:key="project-{{ $project->id }}" />
+                <x-project-card :project="$project" wire:key="project-{{ $project->id }}" />
             @endforeach
         </div>
     @endif

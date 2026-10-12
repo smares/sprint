@@ -8,6 +8,7 @@ use App\Models\Tag;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -80,5 +81,34 @@ class MyTasksTest extends TestCase
             ->call('openTask', $hidden->id)->assertSet('openTaskId', '');
 
         Livewire::withQueryParams(['task' => $hidden->id])->test('pages::tasks.mine')->assertDontSeeHtml('data-modal="task-panel"');
+    }
+
+    public function test_more_tasks_and_projects_cost_no_more_queries(): void
+    {
+        $queries = function (): int {
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            Livewire::test('pages::tasks.mine');
+
+            return count(DB::getQueryLog());
+        };
+
+        // In every project a task with a subtask that is blocked by another one
+        $addProject = function (): void {
+            $project = Project::factory()->create();
+            $project->setRole($this->user, ProjectRole::Editor);
+            $blocked = $this->mine([], $project);
+            $blocked->blockers()->attach($this->mine([], $project));
+            Task::factory()->for($project)->create(['parent_id' => $blocked->id]);
+        };
+
+        $addProject();
+        $few = $queries();
+
+        foreach (range(1, 6) as $number) {
+            $addProject();
+        }
+
+        $this->assertSame($few, $queries());
     }
 }

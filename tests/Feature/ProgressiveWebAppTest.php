@@ -53,4 +53,15 @@ class ProgressiveWebAppTest extends TestCase
             ->assertSee('Keine Verbindung')->assertSee('No connection')
             ->assertSee(config('app.name').' braucht eine Internetverbindung.');
     }
+
+    public function test_the_manifest_and_the_service_worker_start_no_session(): void
+    {
+        foreach (['/manifest.webmanifest', '/sw.js'] as $path) {
+            $response = $this->get($path)->assertOk();
+
+            $this->assertSame([], $response->headers->getCookies(), $path);
+        }
+
+        $this->get('/manifest.webmanifest')->assertHeader('Cache-Control', 'max-age=86400, public');
+    }
 }

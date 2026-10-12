@@ -1,4 +1,4 @@
-@props(['project', 'favorite' => false])
+@props(['project'])
 
 @php
     $total = (int) $project->progress_total_count;
@@ -9,7 +9,8 @@
 
 {{-- A project on the projects page: a band in its color, its tile and name, how far it has come, who works on it and what
      is due next. The title is the real link (new tab, keyboard); a click anywhere else on the card opens the project too.
-     The card itself is no link, so it can be dragged when it is a favorite. --}}
+     The card itself is no link, so it can be dragged when it is a favorite. The star reads and changes the favorites of
+     the projects page around it (favorites, toggleFavorite in its x-data). --}}
 <div {{ $attributes->class('relative h-full') }}>
     <flux:card
         class="board-card flex h-full cursor-pointer flex-col overflow-hidden p-0! hover:bg-zinc-50 dark:hover:bg-zinc-700/50"
@@ -65,15 +66,22 @@
         </div>
     </flux:card>
 
-    <flux:button
-        size="sm"
-        variant="ghost"
-        icon="star"
-        :icon:variant="$favorite ? 'solid' : 'outline'"
-        :class="'absolute! end-3 top-4 '.($favorite ? 'text-amber-500! hover:text-amber-600!' : 'text-zinc-400! hover:text-zinc-600! dark:hover:text-zinc-200!')"
-        wire:click="toggleFavorite({{ $project->id }})"
-        :aria-pressed="$favorite ? 'true' : 'false'"
-        :aria-label="$favorite ? __('Remove from favorites') : __('Add to favorites')"
-        :tooltip="$favorite ? __('Remove from favorites') : __('Add to favorites')"
-    />
+    <flux:tooltip class="absolute! end-3 top-4" x-data="{ get starred() { return favorites.includes({{ $project->id }}) } }">
+        <flux:button
+            size="sm"
+            variant="ghost"
+            square
+            x-bind:class="starred ? 'text-amber-500! hover:text-amber-600!' : 'text-zinc-400! hover:text-zinc-600! dark:hover:text-zinc-200!'"
+            x-on:click="toggleFavorite({{ $project->id }})"
+            x-bind:aria-pressed="starred ? 'true' : 'false'"
+            x-bind:aria-label="starred ? {{ \Illuminate\Support\Js::from(__('Remove from favorites')) }} : {{ \Illuminate\Support\Js::from(__('Add to favorites')) }}"
+        >
+            <flux:icon.star variant="solid" class="size-4" x-show="starred" />
+            <flux:icon.star variant="outline" class="size-4" x-show="! starred" />
+        </flux:button>
+        <flux:tooltip.content>
+            <span x-show="starred">{{ __('Remove from favorites') }}</span>
+            <span x-show="! starred">{{ __('Add to favorites') }}</span>
+        </flux:tooltip.content>
+    </flux:tooltip>
 </div>

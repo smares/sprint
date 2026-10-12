@@ -730,6 +730,59 @@ class Task extends Model
     }
 
     /**
+     * Done and total counts of all descendants for those of the given tasks that have subtasks.
+     * Reads only their subtrees, one query per level (subtasks are in the parent's project, whatever project the tasks are in).
+     *
+     * @param  list<int>  $taskIds
+     * @return array<int, array{done: int, total: int}>
+     */
+    public static function subtaskProgress(array $taskIds): array
+    {
+        $childrenByParent = collect();
+        $frontier = $taskIds;
+
+        while ($frontier !== []) {
+            $level = collect();
+
+            foreach (array_chunk($frontier, 500) as $parentIds) {
+                $level = $level->concat(self::query()
+                    ->whereIn('parent_id', $parentIds)
+                    ->where('is_section', false)
+                    ->with('status:id,is_done')
+                    ->get(['id', 'parent_id', 'status_id']));
+            }
+
+            $childrenByParent = $childrenByParent->union($level->groupBy('parent_id'));
+            $frontier = $level->pluck('id')->all();
+        }
+
+        $progress = [];
+
+        $count = function (int $id) use (&$count, $childrenByParent): array {
+            $done = 0;
+            $total = 0;
+
+            foreach ($childrenByParent->get($id, []) as $child) {
+                [$childDone, $childTotal] = $count($child->id);
+                $total += 1 + $childTotal;
+                $done += ($child->isDone() ? 1 : 0) + $childDone;
+            }
+
+            return [$done, $total];
+        };
+
+        foreach ($taskIds as $id) {
+            [$done, $total] = $count($id);
+
+            if ($total > 0) {
+                $progress[$id] = ['done' => $done, 'total' => $total];
+            }
+        }
+
+        return $progress;
+    }
+
+    /**
      * Record what the last save changed on the task itself.
      */
     private function logChanges(?TaskStatus $oldStatus): void

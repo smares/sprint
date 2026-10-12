@@ -74,7 +74,8 @@ class ProjectStatisticsService
 
     /**
      * Open tasks that have stood longest in the status they are in, without the first open status (the backlog,
-     * where waiting is normal): since their last status change, or since they were created if it never changed.
+     * where waiting is normal): since their last status change, or since they were created if it never changed. The
+     * database sorts and limits them, so only these few are loaded however many tasks are open.
      *
      * @return Collection<int, Task>
      */
@@ -82,18 +83,20 @@ class ProjectStatisticsService
     {
         $backlog = $project->defaultStatus()->id;
 
-        return $project->tasks()->open()->where('is_section', false)->where('status_id', '!=', $backlog)
+        $open = Task::query()->whereBelongsTo($project)->open()->where('is_section', false)->where('status_id', '!=', $backlog)
             ->addSelect(['status_changed_at' => TaskActivity::query()
                 ->selectRaw('max(created_at)')
                 ->whereColumn('task_id', 'tasks.id')
                 ->where('type', ActivityType::StatusChanged),
-            ])
-            ->with(['status', 'assignee'])
+            ]);
+
+        return Task::query()->fromSub($open, 'tasks')
+            ->orderByRaw('coalesce(status_changed_at, created_at)')
+            ->orderBy('id')
+            ->limit($limit)
+            ->with(['status', 'assignee', 'blockers.status'])
             ->get()
-            ->each(fn (Task $task) => $task->setAttribute('in_status_since', Carbon::parse($task->getAttribute('status_changed_at') ?? $task->created_at)))
-            ->sortBy(fn (Task $task) => $task->getAttribute('in_status_since'))
-            ->take($limit)
-            ->values();
+            ->each(fn (Task $task) => $task->setAttribute('in_status_since', Carbon::parse($task->getAttribute('status_changed_at') ?? $task->created_at)));
     }
 
     /**

@@ -60,8 +60,10 @@ class WorkloadTest extends TestCase
 
         $load = app(WorkloadService::class)->forPeople(new Collection([$this->anna]), $this->me)[$this->anna->id];
 
-        $this->assertSame(['Verpasst'], $load['overdue']);
-        $this->assertSame([['Heute', 'Sonntag'], ['Nächste Woche'], [], ['Letzter Tag']], array_column($load['weeks'], 'titles'));
+        $titles = fn (array $group) => array_column($group['tasks'], 'title');
+        $this->assertSame(['Verpasst'], $titles($load['overdue']));
+        $this->assertSame([['Heute', 'Sonntag'], ['Nächste Woche'], [], ['Letzter Tag']], array_map($titles, $load['weeks']));
+        $this->assertSame([2, 1, 0, 1], array_column($load['weeks'], 'count'));
         $this->assertSame(1, $load['undated']);
     }
 
@@ -78,7 +80,7 @@ class WorkloadTest extends TestCase
 
         $load = app(WorkloadService::class)->forPeople(new Collection([$this->anna]), $this->me)[$this->anna->id];
 
-        $this->assertSame(['Sichtbar'], $load['weeks'][0]['titles']);
+        $this->assertSame(['Sichtbar'], array_column($load['weeks'][0]['tasks'], 'title'));
     }
 
     public function test_absences_count_the_weekdays_away_in_each_week(): void
@@ -120,5 +122,17 @@ class WorkloadTest extends TestCase
     {
         $this->get(route('projects.index'))->assertSee(route('workload'), false);
         Livewire::test('command-palette')->assertSee('Auslastung');
+    }
+
+    public function test_the_database_counts_and_only_the_first_tasks_of_a_group_are_loaded(): void
+    {
+        foreach (range(1, 8) as $number) {
+            $this->due($this->anna, '2026-10-0'.min($number, 7), ['title' => "Alt {$number}"]);
+        }
+
+        $load = app(WorkloadService::class)->forPeople(new Collection([$this->anna]), $this->me)[$this->anna->id];
+
+        $this->assertSame(8, $load['overdue']['count']);
+        $this->assertSame(['Alt 1', 'Alt 2', 'Alt 3', 'Alt 4', 'Alt 5'], array_column($load['overdue']['tasks'], 'title'));
     }
 }

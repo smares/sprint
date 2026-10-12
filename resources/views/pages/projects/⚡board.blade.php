@@ -181,12 +181,27 @@ new class extends Component
 <div>
     <x-project-header :project="$project" active="board" :presence="$this->presenceChannel()" />
 
-    <flux:kanban class="items-start overflow-x-auto pb-4" data-fills-height>
+    {{-- Columns can be collapsed to a narrow strip with the status upright (data-collapsed, see app.css), remembered per
+         project in the browser; a click on the strip opens the column again. --}}
+    <flux:kanban class="items-start overflow-x-auto pb-4" data-fills-height
+        x-data="{ collapsed: $persist([]).as('board-collapsed-{{ $project->id }}'), toggle(id) { this.collapsed = this.collapsed.includes(id) ? this.collapsed.filter((other) => other !== id) : [...this.collapsed, id] } }">
         @foreach ($this->statuses as $status)
             {{-- The status color as a line along the top of the column and a dot before its name --}}
-            <flux:kanban.column wire:key="column-{{ $status->id }}" class="shrink-0 border-t-3 border-(--badge)" style="--badge: {{ \App\Color::normalize($status->color) }}">
+            <flux:kanban.column wire:key="column-{{ $status->id }}" class="shrink-0 border-t-3 border-(--badge)" style="--badge: {{ \App\Color::normalize($status->color) }}"
+                x-bind:data-collapsed="collapsed.includes({{ $status->id }})"
+                x-on:click="collapsed.includes({{ $status->id }}) && toggle({{ $status->id }})">
                 <flux:kanban.column.header :heading="$status->name" :count="$this->columnTotals[$status->id]">
                     <span class="size-2.5 shrink-0 rounded-full bg-(--badge)" aria-hidden="true"></span>
+
+                    <x-slot name="actions">
+                        <flux:button size="xs" variant="ghost" square x-on:click.stop="toggle({{ $status->id }})"
+                            x-bind:aria-expanded="! collapsed.includes({{ $status->id }})"
+                            x-bind:aria-label="collapsed.includes({{ $status->id }}) ? {{ \Illuminate\Support\Js::from(__('Expand column')) }} : {{ \Illuminate\Support\Js::from(__('Collapse column')) }}"
+                            x-bind:title="collapsed.includes({{ $status->id }}) ? {{ \Illuminate\Support\Js::from(__('Expand column')) }} : {{ \Illuminate\Support\Js::from(__('Collapse column')) }}">
+                            <flux:icon.chevron-double-left variant="micro" x-show="! collapsed.includes({{ $status->id }})" />
+                            <flux:icon.chevron-double-right variant="micro" x-show="collapsed.includes({{ $status->id }})" x-cloak />
+                        </flux:button>
+                    </x-slot>
                 </flux:kanban.column.header>
 
                 <flux:kanban.column.cards

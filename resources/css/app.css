@@ -281,6 +281,35 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
     }
 }
 
+/* A collapsed board column: a narrow strip as high as the board with the expand button on top and the dot, status and count
+   running upright below it, like a book spine; the cards, quick add and "load more" are hidden until it opens again. */
+[data-flux-kanban-column] > [data-collapsed] {
+    width: 3rem;
+    max-width: 3rem;
+    height: 100%;
+    cursor: pointer;
+
+    & > :not([data-flux-kanban-column-header]) {
+        display: none;
+    }
+
+    & [data-flux-kanban-column-header] > div:first-child {
+        flex-direction: column-reverse;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    & [data-flux-kanban-column-header] > div:first-child > div:first-child {
+        writing-mode: vertical-rl;
+        padding-inline: 0;
+        white-space: nowrap;
+    }
+}
+
+[data-flux-kanban] > [data-flux-kanban-column]:has(> [data-collapsed]) {
+    align-self: stretch;
+}
+
 /* Toasts: Flux keeps them 1.5rem off the edges and up to 24rem wide, more than a phone has, so long ones stuck to the left
    edge and short ones sat on the right. On phones they are centred with the page's gutter on both sides. */
 @media (width < 40rem) {

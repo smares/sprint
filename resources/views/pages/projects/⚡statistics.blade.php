@@ -151,7 +151,7 @@ new class extends Component
                 <flux:text>{{ __('Last :count full weeks', ['count' => self::SUMMED_WEEKS]) }}: <strong class="font-medium text-zinc-800 dark:text-white" data-stat="created">{{ trans_choice(':count created|:count created', $created) }}</strong>, <strong class="font-medium text-zinc-800 dark:text-white" data-stat="completed">{{ trans_choice(':count completed|:count completed', $completed) }}</strong></flux:text>
             </div>
 
-            <flux:card class="p-4 sm:p-6">
+            <div class="surface p-4 sm:p-6">
                 <flux:chart :value="$this->flow" wire:key="flow-{{ md5(json_encode($this->flow)) }}" class="grid gap-4">
                     {{-- The week under the pointer, otherwise the current one --}}
                     <flux:chart.summary class="flex flex-wrap items-end gap-x-8 gap-y-2">
@@ -197,7 +197,7 @@ new class extends Component
                         </flux:chart.legend>
                     </div>
                 </flux:chart>
-            </flux:card>
+            </div>
         </section>
 
         <div class="grid gap-10 lg:grid-cols-2">
@@ -214,7 +214,7 @@ new class extends Component
                 </div>
 
                 @php($cycleMonths = $this->monthsWith('median'))
-                <flux:card class="p-4 sm:p-6">
+                <div class="surface p-4 sm:p-6">
                     @if ($cycleMonths === [])
                         <flux:text>{{ __('No task was completed in the last months.') }}</flux:text>
                     @else
@@ -257,7 +257,7 @@ new class extends Component
                         </div>
                     </flux:chart>
                     @endif
-                </flux:card>
+                </div>
             </section>
 
             <section class="space-y-4">
@@ -272,7 +272,7 @@ new class extends Component
                 </div>
 
                 @php($punctualMonths = $this->monthsWith('on_time'))
-                <flux:card class="p-4 sm:p-6">
+                <div class="surface p-4 sm:p-6">
                     @if ($punctualMonths === [])
                         <flux:text>{{ __('No task with a due date was completed in the last months.') }}</flux:text>
                     @else
@@ -304,7 +304,7 @@ new class extends Component
                         </flux:chart.tooltip>
                     </flux:chart>
                     @endif
-                </flux:card>
+                </div>
             </section>
         </div>
 
@@ -315,30 +315,30 @@ new class extends Component
             </div>
 
             @if ($this->stuck->isEmpty())
-                <x-empty-state icon="check-badge" :heading="__('No open task is beyond the first status.')" />
+                <x-empty-state icon="check-badge" :heading="__('Nothing is stuck')" :text="__('Every open task is still in the first status.')" />
             @else
                 <div class="surface px-3 [--flux-bleed:0.75rem]">
                     <flux:table bleed container:class="scroll-shadows rounded-[inherit]">
                         <flux:table.columns>
-                            <flux:table.column>{{ __('Task') }}</flux:table.column>
-                            <flux:table.column class="max-sm:hidden">{{ __('Status') }}</flux:table.column>
+                            <flux:table.column class="pinned-column">{{ __('Task') }}</flux:table.column>
+                            <flux:table.column>{{ __('Status') }}</flux:table.column>
                             <flux:table.column>{{ __('In this status') }}</flux:table.column>
-                            <flux:table.column class="max-sm:hidden">{{ __('Assignee') }}</flux:table.column>
+                            <flux:table.column>{{ __('Assignee') }}</flux:table.column>
                         </flux:table.columns>
                         <flux:table.rows>
                             @foreach ($this->stuck as $task)
                                 <flux:table.row wire:key="stuck-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" class="cursor-pointer">
-                                    <flux:table.cell class="min-w-48 whitespace-normal">
+                                    <flux:table.cell class="pinned-column min-w-48 whitespace-normal max-sm:min-w-[45vw]">
                                         <x-task-title-link :task="$task" :open="(string) $task->id === $openTaskId" />
                                     </flux:table.cell>
-                                    <flux:table.cell class="max-sm:hidden">
+                                    <flux:table.cell>
                                         <x-status-badge :status="$task->status" />
                                     </flux:table.cell>
                                     <flux:table.cell>
                                         @php($days = (int) $task->in_status_since->diffInDays(now()))
                                         <span title="{{ __('since :date', ['date' => $task->in_status_since->isoFormat('L')]) }}" @class(['font-medium text-amber-600 dark:text-amber-500' => $days >= $this::LONG_IN_STATUS_DAYS])>{{ trans_choice(':count day|:count days', $days) }}</span>
                                     </flux:table.cell>
-                                    <flux:table.cell class="max-sm:hidden">
+                                    <flux:table.cell>
                                         @if ($task->assignee)
                                             <x-user-avatar size="xs" :user="$task->assignee" :tooltip="$task->assignee->labelledName()" />
                                         @endif

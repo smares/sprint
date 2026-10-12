@@ -109,7 +109,7 @@ new class extends Component
                             · {{ $token->expires_at ? ($token->expires_at->isPast() ? __('expired') : __('valid until :date', ['date' => $token->expires_at->isoFormat('L')])) : __('valid indefinitely') }}
                         </flux:text>
                     </div>
-                    <flux:button size="sm" variant="ghost" icon="trash" wire:click="revoke({{ $token->id }})" wire:confirm="{{ __('Revoke token “:name”? Agents using it lose access immediately.', ['name' => $token->name]) }}" aria-label="{{ __('Revoke token') }}" />
+                    <flux:button size="sm" variant="ghost" icon="trash" wire:click="revoke({{ $token->id }})" wire:confirm="{{ __('Revoke token “:name”? Agents using it lose access immediately.', ['name' => $token->name]) }}" aria-label="{{ __('Revoke token') }}" tooltip="{{ __('Revoke token') }}" />
                 </div>
             @endforeach
         </div>

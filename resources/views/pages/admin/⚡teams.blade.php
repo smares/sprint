@@ -142,11 +142,11 @@ new class extends Component
 
     <div class="space-y-4">
         @forelse ($this->teams as $team)
-            <flux:card wire:key="team-{{ $team->id }}" class="space-y-3">
+            <div wire:key="team-{{ $team->id }}" class="surface space-y-3 p-4 sm:p-6">
                 <div class="flex items-center gap-3">
                     <flux:input size="sm" wire:model.live.blur="names.{{ $team->id }}" aria-label="{{ __('Team name') }}" class="min-w-0 flex-1 font-semibold sm:max-w-xs" />
                     <flux:text size="sm" class="whitespace-nowrap sm:flex-1">{{ trans_choice('{0} :count projects|{1} :count project|[2,*] :count projects', $team->projects_count) }}</flux:text>
-                    <flux:button size="xs" variant="ghost" icon="trash" wire:click="confirmDelete({{ $team->id }})" aria-label="{{ __('Delete team') }}" />
+                    <flux:button size="xs" variant="ghost" icon="trash" wire:click="confirmDelete({{ $team->id }})" aria-label="{{ __('Delete team') }}" tooltip="{{ __('Delete team') }}" />
                 </div>
 
                 <div class="flex flex-wrap gap-2">
@@ -170,9 +170,9 @@ new class extends Component
                     <flux:button size="sm" type="submit" icon="plus">{{ __('Add') }}</flux:button>
                 </form>
                 <flux:error :name="'newMembers.'.$team->id" />
-            </flux:card>
+            </div>
         @empty
-            <x-empty-state icon="user-group" :heading="__('There are no teams yet.')" />
+            <x-empty-state icon="user-group" :heading="__('No teams yet')" :text="__('Create the first team right below.')" />
         @endforelse
     </div>
 

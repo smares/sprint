@@ -587,7 +587,7 @@ new class extends Component
                         <flux:badge size="sm">{{ __('Shared') }}</flux:badge>
                     @endif
                     @can('delete', $saved)
-                        <flux:button size="xs" variant="ghost" icon="trash" wire:click="deleteFilter({{ $saved->id }})" wire:confirm="{{ __('Delete view “:name”?', ['name' => $saved->name]) }}" aria-label="{{ __('Delete view') }}" />
+                        <flux:button size="xs" variant="ghost" icon="trash" wire:click="deleteFilter({{ $saved->id }})" wire:confirm="{{ __('Delete view “:name”?', ['name' => $saved->name]) }}" aria-label="{{ __('Delete view') }}" tooltip="{{ __('Delete view') }}" />
                     @endcan
                 </div>
             @empty

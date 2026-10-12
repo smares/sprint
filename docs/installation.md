@@ -43,7 +43,7 @@ Die neue Person bekommt eine Mail, dass sie angelegt wurde (ohne Passwort; dafü
 php artisan user:admin anna@example.com
 ```
 
-Wer das Team verlässt, wird **deaktiviert** statt gelöscht (unter *Benutzer* oder per Kommando; mit `--reactivate` geht es zurück): kein Login mehr, laufende Sitzungen enden sofort, keine neuen Zuweisungen, Erwähnungen, Mails oder Posteingangs-Einträge; Aufgaben, Kommentare und Verlauf bleiben erhalten, bestehende Zuweisungen werden mit „(deaktiviert)“ gekennzeichnet. Sich selbst und den letzten aktiven Administrator kann man nicht deaktivieren.
+Wer das Team verlässt, wird **deaktiviert** statt gelöscht (unter *Personen* oder per Kommando; mit `--reactivate` geht es zurück): kein Login mehr, laufende Sitzungen enden sofort, keine neuen Zuweisungen, Erwähnungen, Mails oder Posteingangs-Einträge; Aufgaben, Kommentare und Verlauf bleiben erhalten, bestehende Zuweisungen werden mit „(deaktiviert)“ gekennzeichnet. Sich selbst und den letzten aktiven Administrator kann man nicht deaktivieren.
 
 ```bash
 php artisan user:deactivate anna@example.com

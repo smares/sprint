@@ -10,7 +10,7 @@ Wichtige Einstellungen und Eigenheiten im laufenden Betrieb. Alle Werte stehen i
 
 ## E-Mail und Tageszusammenfassung
 
-Ohne funktionierenden Mailversand (`MAIL_*`) kommen weder Benachrichtigungen noch die Mail an neue Benutzer noch der Link für „Passwort vergessen“ an; dann setzt ein Administrator das Passwort unter *Benutzer* zurück.
+Ohne funktionierenden Mailversand (`MAIL_*`) kommen weder Benachrichtigungen noch die Mail an neue Personen noch der Link für „Passwort vergessen“ an; dann setzt ein Administrator das Passwort unter *Personen* zurück.
 
 - Der Posteingang liegt in der Tabelle `notifications` und wird über dieselbe Queue befüllt wie die Mails (Worker nötig)
 - E-Mails brauchen einen Mailer: `MAIL_MAILER` und die übrigen `MAIL_*`-Variablen in `.env` (lokal reicht `log`, dann landen die Mails in `storage/logs`); `MAIL_FROM_ADDRESS` und `MAIL_FROM_NAME` bestimmen den Absender. Versendet wird über die Queue, ohne laufenden Worker kommt nichts an
@@ -71,7 +71,7 @@ Wenn der Reverb-Server nicht erreichbar ist, laufen die Seiten normal weiter, si
 
 - **Sicherheits-Header** setzt die App selbst (`App\Http\Middleware\SecurityHeaders`): Einbetten nur von der eigenen Seite, Bilder nur vom eigenen Server (Bilder fremder Adressen in Markdown werden nicht geladen, damit Dritte nicht sehen, wer eine Aufgabe liest), HSTS sobald die Seite über HTTPS läuft. Hochgeladene Dateien werden in einer Sandbox ausgeliefert
 - Der **MCP-Server** läuft unter `https://<host>/mcp` (Tools: `list-projects`, `list-tasks`, `get-task`, `create-task`, `update-task`, `add-comment`) und braucht kein weiteres Setup außer `php artisan migrate`. Anbinden z. B. mit `claude mcp add --transport http sprint https://<host>/mcp --header "Authorization: Bearer <token>"`; lokal testen mit `php artisan mcp:inspector mcp`. Es gelten nur API-Tokens (keine Browser-Sitzung), 120 Anfragen pro Minute und Token; beim Deaktivieren einer Person und bei jedem Passwortwechsel werden ihre Tokens gelöscht. Im Betrieb nur über HTTPS erreichbar machen, da der Token im Header übertragen wird
-- **Passkeys** brauchen HTTPS (lokal reicht `localhost`) und eine korrekte `APP_URL` in `.env`: Host und Schema der Adresse, unter der die App im Browser aufgerufen wird, bestimmen, wo ein Passkey gilt. Wer die Adresse später ändert, kann bestehende Passkeys nicht mehr nutzen (Passwort und 2FA funktionieren weiter). Wer sich aussperrt, wird von einem Administrator zurückgesetzt (*Benutzer*); API-Tokens für den MCP-Server sind davon unabhängig
+- **Passkeys** brauchen HTTPS (lokal reicht `localhost`) und eine korrekte `APP_URL` in `.env`: Host und Schema der Adresse, unter der die App im Browser aufgerufen wird, bestimmen, wo ein Passkey gilt. Wer die Adresse später ändert, kann bestehende Passkeys nicht mehr nutzen (Passwort und 2FA funktionieren weiter). Wer sich aussperrt, wird von einem Administrator zurückgesetzt (*Personen*); API-Tokens für den MCP-Server sind davon unabhängig
 
 ## Suche
 

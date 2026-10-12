@@ -72,7 +72,7 @@ class AppearanceTest extends TestCase
         $this->get(route('projects.index'))
             ->assertOk()
             ->assertSee('1 von 4 erledigt')
-            ->assertSee('25%')
+            ->assertSee('25 %')
             ->assertSee('aria-valuenow="25"', false)
             ->assertSee('Bea Mitglied')
             ->assertSee('2026-10-15')

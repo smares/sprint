@@ -149,13 +149,14 @@ new class extends Component
                 </div>
             </div>
         @empty
-            <x-empty-state icon="calendar-days" :heading="__('No tasks with dates this month.')" />
+            <x-empty-state icon="calendar-days" :heading="__('No dates this month')" :text="__('Tasks show here once they have a due or start date.')" />
         @endforelse
     </div>
 
-    <div class="scroll-shadows rounded-xl shadow-xs max-sm:hidden" data-fills-height>
-        <div class="overflow-x-auto rounded-xl" data-scroll-edges>
-            <div class="grid min-w-[56rem] grid-cols-7 border-s border-t border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-800" data-calendar-month>
+    <div class="scroll-shadows rounded-xl max-sm:hidden" data-fills-height>
+        <div class="surface overflow-x-auto" data-scroll-edges>
+            {{-- The surface draws the outer border, so the last column and the last week leave out their own --}}
+            <div class="grid min-w-[56rem] grid-cols-7 [&>*:nth-child(7n)]:border-e-0 [&>*:nth-last-child(-n+7)]:border-b-0" data-calendar-month>
                 @foreach ($this->weeks[0] as $weekday)
                     <div class="sticky top-0 z-10 border-e border-b border-zinc-200 bg-zinc-50 p-2 text-sm font-medium dark:border-zinc-700 dark:bg-zinc-900">
                         {{ $weekday['date']->isoFormat('dd') }}

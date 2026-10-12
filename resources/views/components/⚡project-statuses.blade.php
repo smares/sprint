@@ -236,7 +236,7 @@ new class extends Component
                             <flux:input size="sm" wire:model.live.blur="names.{{ $status->id }}" aria-label="{{ __('Name') }}" class="min-w-36 flex-1" />
                             <flux:color-picker type="button" size="sm" class="w-32 shrink-0" with-confirmation :swatches="\App\Color::swatches()" wire:model.live="colors.{{ $status->id }}" aria-label="{{ __('Color') }}" />
                             <flux:checkbox wire:model.live="done.{{ $status->id }}" :label="__('Done')" />
-                            <flux:button size="xs" variant="ghost" icon="trash" wire:click="confirmDelete({{ $status->id }})" aria-label="{{ __('Delete status') }}" />
+                            <flux:button size="xs" variant="ghost" icon="trash" wire:click="confirmDelete({{ $status->id }})" aria-label="{{ __('Delete status') }}" tooltip="{{ __('Delete status') }}" />
                         </div>
 
                         @if ($deletingId === (string) $status->id)

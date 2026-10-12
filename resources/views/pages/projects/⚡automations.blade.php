@@ -459,7 +459,7 @@ new class extends Component
     </div>
 
     @if ($this->automations->isEmpty())
-        <x-empty-state icon="bolt" :heading="__('No automations yet.')" />
+        <x-empty-state icon="bolt" :heading="__('No automations yet')" :text="__('Create the first rule with “New automation”.')" />
     @else
         <ul class="space-y-3">
             @foreach ($this->automations as $rule)
@@ -610,7 +610,7 @@ new class extends Component
                             </div>
 
                             @if (count($actions) > 1)
-                                <flux:button size="sm" variant="ghost" icon="x-mark" wire:click="removeAction({{ $index }})" aria-label="{{ __('Remove action') }}" />
+                                <flux:button size="sm" variant="ghost" icon="x-mark" wire:click="removeAction({{ $index }})" aria-label="{{ __('Remove action') }}" tooltip="{{ __('Remove action') }}" />
                             @endif
                         </div>
                         <flux:error :name="'actions.'.$index.'.type'" />

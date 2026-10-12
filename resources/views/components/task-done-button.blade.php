@@ -1,4 +1,4 @@
-@props(['task', 'editable' => true])
+@props(['task', 'editable' => true, 'action' => 'toggleDone'])
 
 @php
     // Completing is celebrated before the server is asked: the check fills green with a little pop, the row strikes its
@@ -6,12 +6,13 @@
     // The wait matches that fade: 0.1s delay and 0.4s transition there.
     $celebrationMs = 450;
     $onClick = $task->isDone()
-        ? "\$wire.toggleDone({$task->id})"
+        ? "\$wire.{$action}({$task->id})"
         : "if (completing) return; completing = true; \$el.closest('[data-task-id]')?.setAttribute('data-completing', ''); "
-            ."setTimeout(() => \$wire.toggleDone({$task->id}), window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : {$celebrationMs})";
+            ."setTimeout(() => \$wire.{$action}({$task->id}), window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : {$celebrationMs})";
 @endphp
 
-{{-- The round check before a task in the lists: marks it done or opens it again (the component offers toggleDone). --}}
+{{-- The round check before a task in the lists and subtasks: marks it done or opens it again (the component offers the
+     action, toggleDone by default). --}}
 <flux:button
     size="xs"
     variant="ghost"

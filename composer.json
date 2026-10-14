@@ -25,6 +25,7 @@
         "livewire/livewire": "^4.4"
     },
     "require-dev": {
+        "brianium/paratest": "^7.20",
         "driftingly/rector-laravel": "^2.6",
         "fakerphp/faker": "^1.23",
         "larastan/larastan": "^3.13",
@@ -64,7 +65,7 @@
         ],
         "test": [
             "@php artisan config:clear --ansi @no_additional_args",
-            "@php artisan test"
+            "@php artisan test --parallel"
         ],
         "analyse": "phpstan analyse --memory-limit=1G",
         "refactor": "rector process",

@@ -97,6 +97,7 @@ Der Probelauf stellt alle Anfragen an Asana, schreibt aber nichts. Er zeigt, wie
 
 - **Wiederholungen**, Reaktionen („Gefällt mir“), Genehmigungsaufgaben, Teilnahme an Portfolios, Ziele, Formulare, Automatisierungsregeln und Sichtweisen (Boards, Zeitleisten): Sprint hat eigene.
 - **Die Aktivitätsliste** einer Aufgabe (Zuweisungen, Datumsänderungen). Der Verlauf in Sprint beginnt mit dem Import.
+- **Unteraufgaben, die schon übernommen wurden:** Ein zweiter Lauf ändert keine vorhandene Aufgabe, also auch nicht ihren Status. Hat der Import offene Unteraufgaben noch in den ersten Status gesetzt, holt `php artisan asana:align-subtasks` (im Docker-Setup `docker compose exec sprint php artisan asana:align-subtasks`) sie in den Status ihrer Aufgabe. Er rührt nur übernommene, offene Unteraufgaben an, die noch im ersten Status stehen und deren Aufgabe in einem Status liegt, der nicht erledigt ist; niemand wird benachrichtigt, und keine Automatisierung läuft. Mit `--dry-run` zeigt er vorher die Anzahl pro Projekt.
 - **Änderungen nach dem Import:** Ein zweiter Lauf übernimmt neue Aufgaben, Unteraufgaben, Kommentare und Anhänge, ändert aber keine bereits übernommene Aufgabe (Titel, Status, Datum …). Ein Link in einem früher übernommenen Text auf eine Aufgabe, die erst jetzt dazukommt, bleibt ein Asana-Link.
 - **Aufgaben aus anderen Projekten** (siehe oben), solange sie nicht im ersten angegebenen Projekt liegen.
 

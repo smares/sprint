@@ -1064,16 +1064,28 @@ class AsanaImportService
     private function storeAttachment(Task $task, array $attachment): void
     {
         $details = $this->asana->get('attachments/'.$attachment['gid'], ['opt_fields' => 'download_url']);
-        $content = isset($details['download_url']) ? $this->asana->download((string) $details['download_url']) : null;
+        $temporary = (string) tempnam(sys_get_temp_dir(), 'asana');
 
-        throw_if($content === null, AsanaException::class, 'Asana gives no download for it');
+        try {
+            $downloaded = isset($details['download_url']) && $this->asana->download((string) $details['download_url'], $temporary);
 
-        throw_if(strlen($content) > Attachment::MAX_KILOBYTES * 1024, AsanaException::class, 'it is larger than '.(Attachment::MAX_KILOBYTES / 1024).' MB');
+            throw_unless($downloaded, AsanaException::class, 'Asana gives no download for it');
 
-        $name = mb_substr(preg_replace('/[\x00-\x1F\x7F\/\\\\]+/', '_', (string) $attachment['name']) ?? 'file', 0, 255);
-        $extension = strtolower(substr((string) preg_replace('/[^A-Za-z0-9]/', '', pathinfo($name, PATHINFO_EXTENSION)), 0, 8));
-        $path = "attachments/{$task->project_id}/{$task->id}/".Str::random(40).($extension !== '' ? ".{$extension}" : '');
-        Storage::disk()->put($path, $content);
+            $size = (int) filesize($temporary);
+
+            throw_if($size > Attachment::MAX_KILOBYTES * 1024, AsanaException::class, 'it is larger than '.(Attachment::MAX_KILOBYTES / 1024).' MB');
+
+            $name = mb_substr(preg_replace('/[\x00-\x1F\x7F\/\\\\]+/', '_', (string) $attachment['name']) ?? 'file', 0, 255);
+            $extension = strtolower(substr((string) preg_replace('/[^A-Za-z0-9]/', '', pathinfo($name, PATHINFO_EXTENSION)), 0, 8));
+            $path = "attachments/{$task->project_id}/{$task->id}/".Str::random(40).($extension !== '' ? ".{$extension}" : '');
+            $mimeType = (new finfo(FILEINFO_MIME_TYPE))->file($temporary) ?: 'application/octet-stream';
+
+            $stream = fopen($temporary, 'rb');
+            Storage::disk()->writeStream($path, $stream);
+            fclose($stream);
+        } finally {
+            @unlink($temporary);
+        }
 
         try {
             $record = new Attachment([
@@ -1081,8 +1093,8 @@ class AsanaImportService
                 'user_id' => $this->importer->id,
                 'name' => $name,
                 'path' => $path,
-                'mime_type' => (new finfo(FILEINFO_MIME_TYPE))->buffer($content) ?: 'application/octet-stream',
-                'size' => strlen($content),
+                'mime_type' => $mimeType,
+                'size' => $size,
             ]);
             $record->forceFill(['created_at' => $attachment['created_at'] ?? now(), 'updated_at' => $attachment['created_at'] ?? now()])->save();
         } catch (Throwable $exception) {

@@ -12,8 +12,10 @@ use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Number;
 
+use function Laravel\Prompts\multiselect;
+
 #[Signature('asana:import
-    {projects?* : Asana project ids to import, in this order (a task in several of them goes to the first); GID=ID imports into the Sprint project with that id instead of creating one}
+    {projects?* : Asana project ids to import, in this order (a task in several of them goes to the first); GID=ID imports into the Sprint project with that id instead of creating one. Without any, you choose from a list}
     {--list : Show the workspaces and projects the token can reach and stop}
     {--token= : Asana personal access token (better: ASANA_TOKEN in .env, or leave it out to be asked)}
     {--as= : Email of the person recorded as the one who imported (default: the first administrator)}
@@ -62,12 +64,12 @@ class ImportFromAsana extends Command
 
     private function import(AsanaImportService $service): int
     {
-        $targets = $this->targets();
+        $targets = $this->targets($service);
         $importer = $this->importer();
         $sections = (string) $this->option('sections');
 
         if ($targets === [] || ! $importer instanceof User || ! in_array($sections, ['status', 'headings'], true)) {
-            $this->components->error($targets === [] ? 'Name at least one Asana project (see --list).' : ($importer instanceof User ? '--sections is status or headings.' : 'No such person for --as (and no administrator to fall back on).'));
+            $this->components->error($targets === [] ? 'Name at least one Asana project (see --list) or run the command interactively to choose.' : ($importer instanceof User ? '--sections is status or headings.' : 'No such person for --as (and no administrator to fall back on).'));
 
             return self::FAILURE;
         }
@@ -128,11 +130,16 @@ class ImportFromAsana extends Command
     /**
      * @return list<array{gid: string, project_id: ?int}>
      */
-    private function targets(): array
+    private function targets(AsanaImportService $service): array
     {
         $targets = [];
+        $arguments = (array) $this->argument('projects');
 
-        foreach ((array) $this->argument('projects') as $argument) {
+        if ($arguments === [] && $this->input->isInteractive()) {
+            $arguments = $this->chooseProjects($service);
+        }
+
+        foreach ($arguments as $argument) {
             [$gid, $id] = array_pad(explode('=', (string) $argument, 2), 2, null);
 
             if (! ctype_digit((string) $gid) || ($id !== null && (! ctype_digit($id) || ! Project::query()->whereKey($id)->exists()))) {
@@ -145,6 +152,37 @@ class ImportFromAsana extends Command
         }
 
         return $targets;
+    }
+
+    /**
+     * Lets the person pick the projects from the ones the token reaches. They are imported in the order they were
+     * ticked, which counts for a task that lies in several of them.
+     *
+     * @return list<string>
+     */
+    private function chooseProjects(AsanaImportService $service): array
+    {
+        $workspaces = $service->projects();
+        $options = [];
+
+        foreach ($workspaces as $workspace) {
+            foreach ($workspace['projects'] as $project) {
+                $options[$project['gid']] = count($workspaces) > 1 ? "{$workspace['workspace']} › {$project['name']}" : $project['name'];
+            }
+        }
+
+        if ($options === []) {
+            $this->components->error('The token reaches no projects.');
+
+            return [];
+        }
+
+        return array_map(strval(...), multiselect(
+            label: 'Which projects are to be imported?',
+            options: $options,
+            required: true,
+            hint: 'Space ticks a project, Enter confirms. The order of ticking counts: a task in several projects goes to the first.',
+        ));
     }
 
     private function importer(): ?User

@@ -21,7 +21,12 @@ php artisan asana:import 1200000000000001 1200000000000002 --dry-run
 
 # 2. Der eigentliche Import
 php artisan asana:import 1200000000000001 1200000000000002
+
+# Oder ohne IDs: der Befehl listet die Projekte, und du hakst die gewünschten an
+php artisan asana:import
 ```
+
+Ohne Projekt-IDs fragt der Befehl (im Terminal, nicht mit `--no-interaction`) nach den Projekten: Mit den Pfeiltasten wählen, mit der Leertaste anhaken, mit Enter bestätigen. **Die Reihenfolge des Ankreuzens zählt** wie die der IDs (siehe unten). Die Form `GID=ID` (in ein vorhandenes Sprint-Projekt importieren) gibt es nur über die Angabe der IDs.
 
 ### Im Docker-Setup
 
@@ -31,7 +36,10 @@ Der Befehl läuft im Container `sprint`, auf dem Server im Ordner mit der Compos
 # Projekte finden (fragt nach dem Token, die Eingabe bleibt unsichtbar)
 docker compose exec sprint php artisan asana:import --list
 
-# Probelauf und Import, das Token wird abgefragt
+# Ohne IDs wählst du die Projekte aus einer Liste an (das Token wird abgefragt)
+docker compose exec sprint php artisan asana:import --dry-run
+
+# Probelauf und Import mit IDs
 docker compose exec sprint php artisan asana:import 1200000000000001 1200000000000002 --dry-run
 docker compose exec sprint php artisan asana:import 1200000000000001 1200000000000002 --create-users
 ```

@@ -426,6 +426,17 @@ class AsanaImportTest extends TestCase
             ->assertSuccessful();
     }
 
+    public function test_without_project_ids_the_projects_can_be_chosen_from_a_list(): void
+    {
+        $this->asana(['--token' => 'secret-token', '--dry-run' => true, '--ignore-missing-users' => true])
+            ->expectsChoice('Which projects are to be imported?', ['200'], ['100' => 'Website', '200' => 'Marketing'])
+            ->expectsOutputToContain('Dry run: nothing was changed')
+            ->assertSuccessful();
+
+        Http::assertSent(fn (Request $request) => str_contains($request->url(), 'projects/200'));
+        Http::assertNotSent(fn (Request $request) => str_contains($request->url(), 'projects/100'));
+    }
+
     public function test_the_token_can_come_from_the_environment_of_the_process(): void
     {
         putenv('ASANA_TOKEN=token-from-the-environment');

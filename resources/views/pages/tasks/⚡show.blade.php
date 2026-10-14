@@ -15,12 +15,14 @@ use App\Models\Project;
 use App\Models\Tag;
 use App\Models\Task;
 use App\Models\User;
+use App\Services\MarkdownService;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\HtmlString;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
@@ -627,6 +629,15 @@ new class extends Component
         return User::whereIn('id', $ids)->orderBy('name')->get(['id', 'name', 'deactivated_at', 'absent_from', 'absent_until']);
     }
 
+    /**
+     * The description as the page opens it: rendered, or null while there is none (then the field is open right away).
+     */
+    #[Computed]
+    public function descriptionPreview(): ?HtmlString
+    {
+        return trim((string) $this->description) === '' ? null : MarkdownService::render($this->description);
+    }
+
     public function save(): void
     {
         $this->authorizeEdit();
@@ -742,6 +753,7 @@ new class extends Component
         $this->announceChange();
 
         Flux::toast(variant: 'success', text: __('Saved.'));
+        $this->dispatch('task-saved');
     }
 
     /**
@@ -1095,7 +1107,8 @@ new class extends Component
         {{-- Long titles wrap instead of being cut off; Enter saves as in a single line, a pasted line break becomes a space --}}
         <flux:textarea wire:model="title" :aria-label="__('Title')" rows="1" resize="none" class="task-title-input field-sizing-content"
             x-on:keydown.enter.prevent="$el.form.requestSubmit()" />
-        <x-markdown-editor wire:model="description" :label="__('Description')" grow :max="Task::MAX_DESCRIPTION_LENGTH" :placeholder="__('Describe the task … (Markdown, @ for mentions)')" :rows="3" :mentions="$this->mentionOptions" :images="$this->canEdit ? $this->imageAttachments : null" />
+        {{-- A task with a description opens on the rendered text; "Edit" opens the field --}}
+        <x-markdown-editor wire:model="description" :label="__('Description')" grow :max="Task::MAX_DESCRIPTION_LENGTH" :preview="$this->descriptionPreview !== null" :preview-html="$this->descriptionPreview" :placeholder="__('Describe the task … (Markdown, @ for mentions)')" :rows="3" :mentions="$this->mentionOptions" :images="$this->canEdit ? $this->imageAttachments : null" />
 
         <x-reactions :reactable="$task" target="task" :can-react="$this->canEdit" />
 

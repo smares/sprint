@@ -1,19 +1,36 @@
-@props(['label' => null, 'rows' => 4, 'placeholder' => null, 'mentions' => ['users' => [], 'searchTasks' => false], 'images' => null, 'grow' => false, 'max' => null])
+@props(['label' => null, 'rows' => 4, 'placeholder' => null, 'mentions' => ['users' => [], 'searchTasks' => false], 'images' => null, 'grow' => false, 'max' => null, 'preview' => false, 'previewHtml' => null])
 
 {{--
     max: the longest text, shown as a counter while writing. It counts Unicode code points ([...text].length), which is how
     Laravel's max rule counts (mb_strlen): not UTF-16 units (an emoji would be two) and not bytes. An emoji made of several
     parts (family, flag, skin tone) and a letter with a combining accent count for each part, on the page as in the check.
+    preview: the text starts rendered (previewHtml comes with the page) and a click on "Edit" opens the field.
 --}}
 
 <div
     x-data="{
-        tab: 'write', html: '', loading: false, imageMenu: false, uploading: false,
+        tab: @js($preview ? 'preview' : 'write'), html: @js((string) $previewHtml), loading: false, imageMenu: false, uploading: false,
         max: @js($max), count: 0,
         size() {
             const field = this.$root.querySelector('textarea')
 
             return field ? [...field.value].length : 0
+        },
+        showPreview() {
+            this.tab = 'preview'
+            this.loading = true
+            $wire.previewMarkdown(this.$root.querySelector('textarea').value).then((result) => { this.html = result; this.loading = false })
+        },
+        edit() {
+            this.tab = 'write'
+            this.count = this.size()
+            // The caret goes to the start and the page stays where it is: a long text would otherwise scroll to its end
+            this.$nextTick(() => {
+                const field = this.$root.querySelector('textarea')
+
+                field.setSelectionRange(0, 0)
+                field.focus({ preventScroll: true })
+            })
         },
         insertImage(id, name) {
             const field = this.$root.querySelector('textarea')
@@ -65,6 +82,10 @@
         x-init="count = size(); $wire.$watch(@js($attributes->wire('model')->value()), () => { count = size() })"
         x-on:input="count = size()"
     @endif
+    @if ($preview)
+        {{-- Saved: back to the rendered text --}}
+        x-on:task-saved.window="showPreview()"
+    @endif
     class="space-y-2"
 >
     <div class="flex items-center justify-between">
@@ -89,14 +110,10 @@
                     </div>
                 </div>
             @endif
-            <div class="flex gap-1">
-            <button type="button" x-on:click="tab = 'write'" x-bind:class="tab === 'write' ? 'font-semibold underline' : 'text-zinc-500'">{{ __('Write') }}</button>
+            <div @class(['flex gap-1', 'flex-row-reverse' => $preview])>
+            <button type="button" x-on:click="edit()" x-bind:class="tab === 'write' ? 'font-semibold underline' : 'text-zinc-500'">{{ $preview ? __('Edit') : __('Write') }}</button>
             <span class="text-zinc-300">|</span>
-            <button
-                type="button"
-                x-on:click="tab = 'preview'; loading = true; $wire.previewMarkdown($root.querySelector('textarea').value).then(result => { html = result; loading = false })"
-                x-bind:class="tab === 'preview' ? 'font-semibold underline' : 'text-zinc-500'"
-            >{{ __('Preview') }}</button>
+            <button type="button" x-on:click="showPreview()" x-bind:class="tab === 'preview' ? 'font-semibold underline' : 'text-zinc-500'">{{ __('Preview') }}</button>
             </div>
         </div>
     </div>

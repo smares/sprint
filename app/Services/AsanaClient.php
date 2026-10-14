@@ -63,18 +63,17 @@ class AsanaClient
     }
 
     /**
-     * The content of a file from a temporary download address. The address is signed, so the token is not sent along
-     * (it must not reach another host); null when the file cannot be fetched.
+     * Saves a file from a temporary download address under the given path, streamed so that it never sits in memory.
+     * The address is signed, so the token is not sent along (it must not reach another host); false when the file
+     * cannot be fetched.
      */
-    public function download(string $url): ?string
+    public function download(string $url, string $path): bool
     {
         if (! str_starts_with($url, 'https://')) {
-            return null;
+            return false;
         }
 
-        $response = $this->send($url, [], authorized: false);
-
-        return $response->successful() ? $response->body() : null;
+        return $this->send($url, [], authorized: false, sink: $path)->successful();
     }
 
     /**
@@ -95,12 +94,14 @@ class AsanaClient
     /**
      * @param  array<string, scalar>  $query
      */
-    private function send(string $url, array $query, bool $authorized): Response
+    private function send(string $url, array $query, bool $authorized, ?string $sink = null): Response
     {
         for ($attempt = 1; ; $attempt++) {
             try {
                 // Without parameters the address is called as it is: an empty query would replace the signature in it
-                $response = $query === [] ? $this->request($authorized)->get($url) : $this->request($authorized)->get($url, $query);
+                $request = $this->request($authorized);
+                $request = $sink === null ? $request : $request->sink($sink);
+                $response = $query === [] ? $request->get($url) : $request->get($url, $query);
             } catch (ConnectionException $exception) {
                 if ($attempt >= self::ATTEMPTS) {
                     throw new AsanaException('Asana cannot be reached: '.$exception->getMessage());

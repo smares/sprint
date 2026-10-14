@@ -451,7 +451,7 @@ class AsanaImportTest extends TestCase
     {
         Http::fake();
 
-        $this->assertNull((new AsanaClient('t'))->download('http://download.example.com/a'));
+        $this->assertFalse((new AsanaClient('t'))->download('http://download.example.com/a', sys_get_temp_dir().'/asana-never'));
         Http::assertNothingSent();
     }
 }

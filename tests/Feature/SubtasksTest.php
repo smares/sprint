@@ -57,6 +57,20 @@ class SubtasksTest extends TestCase
         $this->assertSame(6, $task->fresh()->project->subtaskProgress([$task->id])[$task->id]['total']);
     }
 
+    public function test_subtasks_are_added_on_the_page_of_their_task_not_inside_the_list_of_subtasks(): void
+    {
+        $task = $this->task();
+        $subtask = $this->task(['parent_id' => $task->id]);
+
+        // The page of the task only offers to add to the task itself
+        Livewire::test('pages::tasks.show', ['task' => $task])
+            ->assertSeeHtml("newSubtaskTitles.{$task->id}")
+            ->assertDontSeeHtml("newSubtaskTitles.{$subtask->id}");
+
+        // A sub-subtask is added after opening the subtask
+        Livewire::test('pages::tasks.show', ['task' => $subtask])->assertSeeHtml("newSubtaskTitles.{$subtask->id}");
+    }
+
     public function test_subtask_title_is_required(): void
     {
         $task = $this->task();

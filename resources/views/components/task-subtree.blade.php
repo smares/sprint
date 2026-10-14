@@ -41,13 +41,6 @@
                 @if ($children->isNotEmpty())
                     <x-task-subtree :tasks="$children" :children-map="$childrenMap" :parent-id="$subtask->id" :depth="$depth + 1" :can-edit="$canEdit" :panel="$panel" />
                 @endif
-
-                @if ($canEdit)
-                    <form wire:submit="addSubtask({{ $subtask->id }})" class="ms-8 mt-1 flex items-center gap-2">
-                        <flux:input size="sm" wire:model="newSubtaskTitles.{{ $subtask->id }}" placeholder="{{ __('Subtask for “:title” …', ['title' => \Illuminate\Support\Str::limit($subtask->title, 30)]) }}" class="max-w-xs" />
-                        <flux:button type="button" size="xs" variant="ghost" icon="bars-3-bottom-left" wire:click="addSection({{ $subtask->id }})" aria-label="{{ __('Add heading') }}" tooltip="{{ __('Add heading') }}" />
-                    </form>
-                @endif
             </li>
         @endif
     @endforeach

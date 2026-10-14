@@ -161,6 +161,20 @@ class TaskStatusesTest extends TestCase
         $this->assertSame($open->id, $task->fresh()->status_id);
     }
 
+    public function test_the_status_count_matches_board_and_list_and_names_subtasks_separately(): void
+    {
+        $open = $this->project->statuses[0];
+        $parent = Task::factory()->for($this->project)->inProgress()->create();
+        Task::factory()->for($this->project)->count(2)->create(['parent_id' => $parent->id, 'status_id' => $open->id]);
+
+        $statuses = Livewire::test('project-statuses', ['project' => $this->project])->assertSee('Dazu 2 Unteraufgaben')->instance()->statuses;
+
+        // Board and list only show the top level: "Offen" has no tasks there, only the two subtasks
+        $this->assertSame(0, $statuses->firstWhere('id', $open->id)->tasks_count - $statuses->firstWhere('id', $open->id)->subtasks_count);
+        $this->assertSame(2, $statuses->firstWhere('id', $open->id)->subtasks_count);
+        $this->assertSame(1, $statuses->firstWhere('id', $parent->status_id)->tasks_count);
+    }
+
     public function test_status_without_tasks_can_be_deleted_without_replacement(): void
     {
         $inProgress = $this->project->statuses[1];

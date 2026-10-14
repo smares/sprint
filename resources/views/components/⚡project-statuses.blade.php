@@ -49,7 +49,9 @@ new class extends Component
     #[Computed]
     public function statuses(): Collection
     {
-        return $this->project->statuses()->withCount('tasks')->get();
+        return $this->project->statuses()
+            ->withCount(['tasks', 'tasks as subtasks_count' => fn ($query) => $query->whereNotNull('parent_id')])
+            ->get();
     }
 
     private function fillForm(): void
@@ -232,12 +234,17 @@ new class extends Component
                         {{-- On phones color, "done" and delete move to a second line instead of squeezing the name --}}
                         <div class="flex flex-wrap items-center gap-3">
                             <flux:icon.bars-2 variant="micro" class="shrink-0 text-zinc-400" />
-                            <x-color-badge size="sm" :color="$status->color" class="shrink-0" title="{{ __('Tasks with this status') }}">{{ $status->tasks_count }}</x-color-badge>
+                            <x-color-badge size="sm" :color="$status->color" class="shrink-0" title="{{ __('Tasks with this status') }}">{{ $status->tasks_count - $status->subtasks_count }}</x-color-badge>
                             <flux:input size="sm" wire:model.live.blur="names.{{ $status->id }}" aria-label="{{ __('Name') }}" class="min-w-36 flex-1" />
                             <flux:color-picker type="button" size="sm" class="w-32 shrink-0" with-confirmation :swatches="\App\Color::swatches()" wire:model.live="colors.{{ $status->id }}" aria-label="{{ __('Color') }}" />
                             <flux:checkbox wire:model.live="done.{{ $status->id }}" :label="__('Done')" />
                             <flux:button size="xs" variant="ghost" icon="trash" wire:click="confirmDelete({{ $status->id }})" aria-label="{{ __('Delete status') }}" tooltip="{{ __('Delete status') }}" />
                         </div>
+
+                        {{-- Board and list show the top level; subtasks stand with their task, so they are counted on their own --}}
+                        @if ($status->subtasks_count > 0)
+                            <flux:text size="sm" class="mt-2">{{ __('Plus :count subtasks, shown with their task.', ['count' => $status->subtasks_count]) }}</flux:text>
+                        @endif
 
                         @if ($deletingId === (string) $status->id)
                             <form wire:submit="delete" class="mt-3 space-y-3 border-t border-zinc-200 pt-3 dark:border-zinc-700">

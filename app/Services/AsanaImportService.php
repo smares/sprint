@@ -117,6 +117,9 @@ class AsanaImportService
 
     private int $doneStatusId = 0;
 
+    /** @var array<int, bool> The ids of all done statuses of the project (it may have several). */
+    private array $doneStatusIds = [];
+
     /** @var array<int, CustomField> Field here by Asana field id. */
     private array $fields = [];
 
@@ -647,6 +650,7 @@ class AsanaImportService
 
         $this->defaultStatusId = $this->project->defaultStatus()->id;
         $this->doneStatusId = $this->project->doneStatus()->id;
+        $this->doneStatusIds = $this->project->statuses()->where('is_done', true)->pluck('id')->mapWithKeys(fn (mixed $id) => [(int) $id => true])->all();
     }
 
     private function isDefaultSection(string $name): bool
@@ -884,7 +888,7 @@ class AsanaImportService
                 'parent_id' => $parent?->id,
                 'title' => mb_substr($node['name'], 0, 255) ?: __('Untitled task'),
                 'description' => $description,
-                'status_id' => $this->statusFor($node, ! $parent instanceof Task),
+                'status_id' => $this->statusFor($node, $parent),
                 'assignee_id' => $assignee?->id,
                 'creator_id' => ($creator ?? $this->importer)->id,
                 'start_date' => $node['start'],
@@ -937,15 +941,22 @@ class AsanaImportService
     }
 
     /**
+     * Asana has no status for a subtask (it is only open or completed), so an open one follows its task, unless that
+     * is done: then it stays at the start rather than being counted as finished.
+     *
      * @param  Node  $node
      */
-    private function statusFor(array $node, bool $topLevel): int
+    private function statusFor(array $node, ?Task $parent): int
     {
         if ($node['completed']) {
             return $this->doneStatusId;
         }
 
-        return $topLevel && $node['section'] !== null ? ($this->statusBySection[$node['section']] ?? $this->defaultStatusId) : $this->defaultStatusId;
+        if ($parent instanceof Task) {
+            return isset($this->doneStatusIds[$parent->status_id]) ? $this->defaultStatusId : $parent->status_id;
+        }
+
+        return $node['section'] !== null ? ($this->statusBySection[$node['section']] ?? $this->defaultStatusId) : $this->defaultStatusId;
     }
 
     /**

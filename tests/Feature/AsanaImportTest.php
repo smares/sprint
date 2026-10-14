@@ -12,6 +12,7 @@ use App\Services\AsanaClient;
 use App\Services\AsanaException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
@@ -276,7 +277,8 @@ class AsanaImportTest extends TestCase
         $this->assertCount(2, $comments);
         $this->assertSame($this->anna->id, $comments[0]->user_id);
         $this->assertSame("Sieht **gut** aus, siehe @[Umsetzung](task:{$implementation->id})", $comments[0]->body);
-        $this->assertSame('2026-09-05 10:00', $comments[0]->created_at->format('Y-m-d H:i'));
+        // 10:00 UTC, shown in the application's time zone
+        $this->assertSame(Carbon::parse('2026-09-05T10:00:00Z')->setTimezone(config('app.timezone'))->format('Y-m-d H:i'), $comments[0]->created_at->format('Y-m-d H:i'));
         $this->assertSame($this->admin->id, $comments[1]->user_id);
         $this->assertStringContainsString('**'.__('From :name in Asana', ['name' => 'Cara']).'**', $comments[1]->body);
         $this->assertStringContainsString('Ich bin dabei', $comments[1]->body);

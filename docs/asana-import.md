@@ -10,7 +10,7 @@ Er liest nur aus Asana und verändert dort nichts. Er läuft auf dem Server von 
 
 1. **Zugang in Asana:** unter *Profil → Einstellungen → Apps → Entwicklerkonsole* ein **persönliches Zugriffstoken** erzeugen. Es sieht, was die Person in Asana sieht. Am besten nimmt man ein Konto, das alle zu übernehmenden Projekte sehen darf.
 2. **Token hinterlegen**, ohne dass es in der Shell-Historie landet: als `ASANA_TOKEN` in der `.env` (danach wieder entfernen) oder den Befehl interaktiv starten, dann fragt er danach. `--token=…` geht auch, ist aber die unsicherste Variante. Das Token gehört wie ein Passwort behandelt; es wird weder ausgegeben noch gespeichert.
-3. **Personen in Sprint anlegen**, mit denselben E-Mail-Adressen wie in Asana (`php artisan user:create "Anna Beispiel" anna@firma.de`, siehe [Installation](installation.md)). Gibt es keine passende Adresse, wird als Zweites nach dem Namen gesucht, sofern er eindeutig ist. Wer fehlt, steht im Bericht; mit `--create-users` legt der Import die Konten selbst an, und zwar **deaktiviert** und ohne E-Mail. Zuweisungen, Mitgliedschaften und Erwähnungen stimmen dann schon, die Personen werden mit „(deaktiviert)“ gekennzeichnet und bekommen keine Mails. Wer sich anmelden soll, wird von einer Administratorin unter *Personen* wieder aktiviert (oder per `php artisan user:deactivate name@firma.de --reactivate`) und fordert über „Passwort vergessen“ ein Passwort an.
+3. **Personen in Sprint anlegen**, mit denselben E-Mail-Adressen wie in Asana (`php artisan user:create "Anna Beispiel" anna@firma.de`, siehe [Installation](installation.md)). Gibt es keine passende Adresse, wird als Zweites nach dem Namen gesucht, sofern er eindeutig ist. Wer fehlt, steht im Bericht; mit `--create-users` legt der Import die Konten selbst an, und zwar **deaktiviert** und **ohne Willkommens-Mail**. Die E-Mail-Adresse aus Asana bekommen sie trotzdem (ohne Adresse, oder wenn sie hier schon vergeben ist, entsteht kein Konto und der Bericht nennt die Person), das Passwort ist zufällig und unbekannt. Zuweisungen, Mitgliedschaften und Erwähnungen stimmen dann schon, die Personen werden mit „(deaktiviert)“ gekennzeichnet und bekommen keine Mails. Wer sich anmelden soll, wird von einer Administratorin unter *Personen* wieder aktiviert (oder per `php artisan user:deactivate name@firma.de --reactivate`) und fordert über „Passwort vergessen“ ein Passwort an, die Mail geht an die Adresse aus Asana. Die Willkommens-Mail kommt beim Aktivieren nicht von allein.
 4. **Projekte finden:** `php artisan asana:import --list` zeigt Workspaces und Projekte samt Asana-ID (die Zahl in der Adresse des Projekts).
 
 ## Ablauf
@@ -60,7 +60,7 @@ Der Probelauf stellt alle Anfragen an Asana, schreibt aber nichts. Er zeigt, wie
 | `--list` | Workspaces und Projekte des Tokens anzeigen |
 | `--sections=status` (Standard) | Asana-Abschnitte werden **Status** des Projekts (Board-Spalten) |
 | `--sections=headings` | Abschnitte werden **Überschriften** in der Liste, die Status bleiben Standard |
-| `--create-users` | Personen ohne Konto deaktiviert und ohne Mail anlegen; später aktivierbar |
+| `--create-users` | Personen ohne Konto deaktiviert und ohne Willkommens-Mail anlegen (mit ihrer Adresse aus Asana); später aktivierbar |
 | `--ignore-missing-users` | trotz fehlender Konten weitermachen, deren Zuständigkeiten entfallen |
 | `--skip-followers` | Follower nicht als Beteiligte übernehmen |
 | `--as=anna@firma.de` | wer als importierende Person eingetragen wird (Standard: der erste Administrator) |

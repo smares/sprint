@@ -77,7 +77,7 @@ class CommentEditingTest extends TestCase
 
         $page = $this->page()->call('startEditComment', $comment->id);
         $page->set('editingBody', '')->call('saveComment')->assertHasErrors('editingBody');
-        $page->set('editingBody', str_repeat('x', 5001))->call('saveComment')->assertHasErrors('editingBody');
+        $page->set('editingBody', str_repeat('x', Comment::MAX_BODY_LENGTH + 1))->call('saveComment')->assertHasErrors('editingBody');
 
         $this->assertSame('Erster Entwurf', $comment->fresh()->body);
     }

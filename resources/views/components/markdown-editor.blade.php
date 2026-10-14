@@ -1,8 +1,20 @@
-@props(['label' => null, 'rows' => 4, 'placeholder' => null, 'mentions' => ['users' => [], 'searchTasks' => false], 'images' => null, 'grow' => false])
+@props(['label' => null, 'rows' => 4, 'placeholder' => null, 'mentions' => ['users' => [], 'searchTasks' => false], 'images' => null, 'grow' => false, 'max' => null])
+
+{{--
+    max: the longest text, shown as a counter while writing. It counts Unicode code points ([...text].length), which is how
+    Laravel's max rule counts (mb_strlen): not UTF-16 units (an emoji would be two) and not bytes. An emoji made of several
+    parts (family, flag, skin tone) and a letter with a combining accent count for each part, on the page as in the check.
+--}}
 
 <div
     x-data="{
         tab: 'write', html: '', loading: false, imageMenu: false, uploading: false,
+        max: @js($max), count: 0,
+        size() {
+            const field = this.$root.querySelector('textarea')
+
+            return field ? [...field.value].length : 0
+        },
         insertImage(id, name) {
             const field = this.$root.querySelector('textarea')
             const token = '![' + String(name).replace(/[\[\]\n]/g, '') + '](attachment:' + id + ')'
@@ -49,6 +61,10 @@
     }"
     {{-- The "New task" dialog stays on the page: after creating, the next task starts on Write, not on the old preview --}}
     x-on:task-created.window="tab = 'write'; html = ''"
+    @if ($max !== null)
+        x-init="count = size(); $wire.$watch(@js($attributes->wire('model')->value()), () => { count = size() })"
+        x-on:input="count = size()"
+    @endif
     class="space-y-2"
 >
     <div class="flex items-center justify-between">
@@ -88,6 +104,14 @@
     <div x-show="tab === 'write'" class="relative" x-data="mentionable(@js($mentions))" x-on:input="onInput($event)" x-on:keydown="onKeydown($event)" x-on:click.outside="open = false"@if ($images !== null) x-on:paste="onPaste($event)" x-on:drop="onDrop($event)" x-on:dragover.prevent @endif>
         {{-- grow: the field is as tall as its text (at least $rows lines), so a long description is never hidden behind a scrollbar --}}
         <flux:textarea :rows="$rows" :placeholder="$placeholder" :resize="$grow ? 'none' : 'vertical'" :class="$grow ? 'field-sizing-content min-h-24' : ''" {{ $attributes->whereStartsWith('wire:model') }} />
+
+        @if ($max !== null)
+            <div
+                class="mt-1 text-end text-xs tabular-nums"
+                x-bind:class="count > max ? 'font-medium text-red-600 dark:text-red-400' : (count > max * 0.9 ? 'text-amber-600 dark:text-amber-400' : 'text-zinc-400')"
+                title="{{ __('Counted are Unicode characters: an emoji made of several parts (a family, a flag) counts for each part.') }}"
+            ><span x-text="count.toLocaleString(document.documentElement.lang || undefined)"></span> / <span x-text="max.toLocaleString(document.documentElement.lang || undefined)"></span></div>
+        @endif
 
         <ul x-show="open && matches.length" x-cloak class="absolute z-20 mt-1 max-h-64 w-72 overflow-auto rounded-lg border border-zinc-200 bg-white p-1 text-sm shadow-lg dark:border-zinc-700 dark:bg-zinc-800" role="listbox">
             <template x-for="(item, index) in matches" x-bind:key="item.type + item.id">

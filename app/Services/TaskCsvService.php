@@ -282,7 +282,7 @@ class TaskCsvService
                 'line' => $line,
                 'file_id' => $fileId,
                 'title' => $title,
-                'description' => $description === '' ? null : mb_substr($description, 0, 10000),
+                'description' => $description === '' ? null : mb_substr($description, 0, Task::MAX_DESCRIPTION_LENGTH),
                 'status_id' => $this->planStatus($row, $statuses, $warn),
                 ...$this->planPeople($row, $users, $warn),
                 ...$this->planDates($row, $warn),

@@ -40,7 +40,7 @@ abstract class WriteTaskTool extends SprintTool
     protected function taskRules(): array
     {
         return [
-            'description' => ['nullable', 'string', 'max:10000'],
+            'description' => ['nullable', 'string', 'max:'.Task::MAX_DESCRIPTION_LENGTH],
             'status' => ['nullable', 'string', 'max:255'],
             'assignee' => ['nullable', 'string', 'max:255'],
             'due_date' => ['nullable', 'date_format:Y-m-d'],

@@ -46,6 +46,13 @@ class Task extends Model
     /** How far a task can be moved or stretched in one go (calendar and timeline), about ten years. */
     public const MAX_SHIFT_DAYS = 3650;
 
+    /**
+     * The longest description, counted in characters as Laravel counts them (Unicode code points, so an emoji made of
+     * several parts, like a family or a flag, counts for each part; the length in bytes does not matter). Long texts
+     * from other tools, e.g. an import from Asana, fit in.
+     */
+    public const int MAX_DESCRIPTION_LENGTH = 65000;
+
     /** "Due this week": today and the six days after it (projects page, list filter). */
     public const int DUE_SOON_DAYS = 7;
 

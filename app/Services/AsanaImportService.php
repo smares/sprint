@@ -64,6 +64,12 @@ class AsanaImportService
 
     private ?Closure $log = null;
 
+    /** @var ?Closure(string, int, ?int): void Told how far the reading (total unknown) and the writing are. */
+    private ?Closure $progress = null;
+
+    /** How many tasks have been written (or skipped as already imported) so far. */
+    private int $written = 0;
+
     private readonly AsanaTextService $text;
 
     /** @var array<string, array<string, int>> What has been taken over: kind => Asana id => id here. */
@@ -167,10 +173,12 @@ class AsanaImportService
      * @param  array<string, bool|string>  $options
      * @return array{counts: array<string, int>, warnings: list<string>, missing: list<array{gid: string, name: string, email: ?string, needed: int}>}
      */
-    public function run(array $targets, User $importer, array $options = [], ?Closure $log = null): array
+    public function run(array $targets, User $importer, array $options = [], ?Closure $log = null, ?Closure $progress = null): array
     {
         $this->options = $options + ['sections' => 'status', 'create_users' => false, 'ignore_missing_users' => false, 'followers' => true, 'dry_run' => false];
         $this->log = $log;
+        $this->progress = $progress;
+        $this->written = 0;
         $this->importer = $importer;
         $this->loadMap();
 
@@ -309,6 +317,7 @@ class AsanaImportService
 
             $node['comments'] = $this->planComments($gid, $node['name']);
             $node['attachments'] = $this->planAttachments($gid);
+            $this->tick('read', $this->counts['tasks']);
             $node['subtasks'] = ((int) ($raw['num_subtasks'] ?? 0)) > 0 ? $this->planTasks("tasks/{$gid}/subtasks", $projectGid, $projectId, $gid) : [];
             $nodes[] = $node;
         }
@@ -803,12 +812,17 @@ class AsanaImportService
 
             $task = $node['id'] !== null ? Task::find($node['id']) : $this->createTask($node, $parent);
 
+            if ($task instanceof Task) {
+                $this->importComments($task, $node);
+                $this->importAttachments($task, $node);
+            }
+
+            $this->tick('write', ++$this->written, $this->counts['tasks']);
+
             if ($task === null) {
                 continue;
             }
 
-            $this->importComments($task, $node);
-            $this->importAttachments($task, $node);
             $this->importTasks($plan, $node['subtasks'], $task);
         }
     }
@@ -1254,6 +1268,13 @@ class AsanaImportService
     private function day(?string $date, ?string $moment): ?string
     {
         return $date !== null && $date !== '' ? $date : $this->moment($moment)?->toDateString();
+    }
+
+    private function tick(string $phase, int $done, ?int $total = null): void
+    {
+        if ($this->progress instanceof Closure) {
+            ($this->progress)($phase, $done, $total);
+        }
     }
 
     private function say(string $message): void

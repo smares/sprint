@@ -462,8 +462,23 @@ class AsanaImportTest extends TestCase
         Sleep::fake();
         Http::fake(['app.asana.com/*' => Http::sequence()->push(['errors' => [['message' => 'Too many']]], 429, ['Retry-After' => '7'])->push(['data' => ['gid' => '1']])]);
 
-        $this->assertSame(['gid' => '1'], (new AsanaClient('t'))->get('projects/1'));
+        $pauses = [];
+        $client = new AsanaClient('t');
+        $client->whenPausing(function (int $seconds) use (&$pauses): void {
+            $pauses[] = $seconds;
+        });
+
+        $this->assertSame(['gid' => '1'], $client->get('projects/1'));
         Sleep::assertSequence([Sleep::for(7)->seconds()]);
+        $this->assertSame([7], $pauses);
+    }
+
+    public function test_the_progress_is_shown_while_reading_and_while_writing(): void
+    {
+        $this->import(['--ansi' => true])
+            ->expectsOutputToContain('tasks read')
+            ->expectsOutputToContain('100%')
+            ->assertSuccessful();
     }
 
     public function test_the_client_follows_the_pages_of_a_list(): void

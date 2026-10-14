@@ -50,6 +50,8 @@ docker compose exec sprint php artisan asana:import 1200000000000001 12000000000
 
 Die Reihenfolge der Projekte zählt: **Eine Aufgabe, die in mehreren Asana-Projekten liegt, wird nur im ersten angegeben Projekt angelegt** (Sprint-Aufgaben gehören zu genau einem Projekt). In den anderen Projekten fehlt sie, der Bericht nennt, wie viele es waren.
 
+**Fortschritt:** Der Import arbeitet in zwei Phasen. Zuerst **liest** er alles aus Asana (ein Zähler zeigt, wie viele Aufgaben gelesen sind; wie viele es werden, steht erst danach fest) und schreibt dabei nichts nach Sprint. Danach **legt er an** und zeigt einen Balken mit Aufgaben, Dauer und geschätzter Gesamtzeit. Muss er auf Asana warten (Anfragegrenze oder ein vorübergehender Fehler), steht das mit der Wartezeit dabei, er hängt also nicht. Ohne Terminal (Logs, Pipes) meldet er stattdessen alle 25 Aufgaben eine Zeile. Das Anlegen läuft pro Aufgabe in einer eigenen Transaktion; bricht ein Lauf ab, macht ein neuer Start dort weiter.
+
 Der Probelauf stellt alle Anfragen an Asana, schreibt aber nichts. Er zeigt, wie viele Aufgaben, Kommentare, Anhänge (mit Größe) und Abhängigkeiten kommen, und welche Personen in Sprint fehlen. Ohne Probelauf bricht der Import in dem Fall ab, solange du nicht entscheidest: Konten anlegen (`--create-users`), sie vorher selbst anlegen oder die Zuordnungen dieser Personen weglassen (`--ignore-missing-users`).
 
 ### Optionen

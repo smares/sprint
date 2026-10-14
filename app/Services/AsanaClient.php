@@ -99,7 +99,8 @@ class AsanaClient
     {
         for ($attempt = 1; ; $attempt++) {
             try {
-                $response = $this->request($authorized)->get($url, $query);
+                // Without parameters the address is called as it is: an empty query would replace the signature in it
+                $response = $query === [] ? $this->request($authorized)->get($url) : $this->request($authorized)->get($url, $query);
             } catch (ConnectionException $exception) {
                 if ($attempt >= self::ATTEMPTS) {
                     throw new AsanaException('Asana cannot be reached: '.$exception->getMessage());

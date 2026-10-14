@@ -115,7 +115,7 @@ class AsanaImportTest extends TestCase
                 ['gid' => '7001', 'name' => 'plan.pdf', 'host' => 'asana', 'size' => 9, 'created_at' => '2026-09-03T10:00:00.000Z', 'permanent_url' => 'https://app.asana.com/app/asana/-/get_asset?asset_id=7001'],
                 ['gid' => '7002', 'name' => 'Entwurf in Dropbox', 'host' => 'dropbox', 'permanent_url' => 'https://dropbox.test/entwurf'],
             ],
-            'attachments/7001' => ['gid' => '7001', 'download_url' => 'https://download.example.com/plan.pdf'],
+            'attachments/7001' => ['gid' => '7001', 'download_url' => 'https://download.example.com/plan.pdf?e=1791992839&t=signature'],
             'download.example.com/plan.pdf' => '%PDF-fake',
 
             'projects/200' => ['gid' => '200', 'name' => 'Marketing', 'notes' => '', 'color' => null, 'archived' => false, 'owner' => ['gid' => '12'], 'workspace' => ['gid' => '900'], 'members' => [$this->person('12', 'Ben', 'ben@example.com')]],
@@ -305,7 +305,8 @@ class AsanaImportTest extends TestCase
         $this->assertSame('%PDF-fake', Storage::disk()->get($attachment->path));
         $this->assertStringContainsString('[Entwurf in Dropbox](https://dropbox.test/entwurf)', (string) $concept->description);
 
-        Http::assertSent(fn (Request $request) => str_contains($request->url(), 'download.example.com') && ! $request->hasHeader('Authorization'));
+        // The signature in the address is kept, the token is not sent along
+        Http::assertSent(fn (Request $request) => str_contains($request->url(), 'download.example.com/plan.pdf?e=1791992839&t=signature') && ! $request->hasHeader('Authorization'));
     }
 
     public function test_a_second_run_only_adds_what_is_new(): void

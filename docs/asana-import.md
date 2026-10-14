@@ -36,7 +36,7 @@ docker compose exec sprint php artisan asana:import 1200000000000001 12000000000
 docker compose exec sprint php artisan asana:import 1200000000000001 1200000000000002 --create-users
 ```
 
-- **Token:** Am einfachsten lässt man den Befehl danach fragen. Wer es mitgeben will, ohne dass es in der Shell-Historie steht: `read -rs ASANA_TOKEN && export ASANA_TOKEN`, dann `docker compose exec -e ASANA_TOKEN sprint php artisan asana:import …` (ohne `=Wert`, der Wert kommt aus der Umgebung der Shell).
+- **Token:** Am einfachsten lässt man den Befehl danach fragen. Wer es mitgeben will, ohne dass es in der Shell-Historie steht: `read -rs ASANA_TOKEN && export ASANA_TOKEN`, dann `docker compose exec -e ASANA_TOKEN sprint php artisan asana:import …` (ohne `=Wert`, der Wert kommt aus der Umgebung der Shell). Ein Eintrag in der `.env` wirkt erst nach einem Neustart des Containers, weil der die Konfiguration beim Start zwischenspeichert.
 - **Daten:** Aufgaben landen in der Datenbank im Volume `storage`, Anhänge unter `storage/app/private`; beides bleibt über Updates erhalten. Die Tabelle für die Zuordnung (`asana_imports`) legt die Migration an, die der Container beim Start ausführt.
 - **Lange Läufe:** Ein Projekt mit Hunderten Aufgaben braucht eine Weile (Asana begrenzt die Anfragen). Bei einer SSH-Verbindung also in `tmux` oder `screen` starten. Bricht ein Lauf ab, einfach neu starten: Was fertig ist, wird übersprungen.
 

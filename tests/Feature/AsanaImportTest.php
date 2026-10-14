@@ -426,6 +426,20 @@ class AsanaImportTest extends TestCase
             ->assertSuccessful();
     }
 
+    public function test_the_token_can_come_from_the_environment_of_the_process(): void
+    {
+        putenv('ASANA_TOKEN=token-from-the-environment');
+
+        try {
+            $this->serveAsana();
+            $this->artisan('asana:import', ['--list' => true, '--no-interaction' => true])->assertSuccessful();
+        } finally {
+            putenv('ASANA_TOKEN');
+        }
+
+        Http::assertSent(fn (Request $request) => $request->hasHeader('Authorization', 'Bearer token-from-the-environment'));
+    }
+
     public function test_a_missing_token_or_a_wrong_project_id_is_reported(): void
     {
         $this->artisan('asana:import', ['projects' => ['100'], '--no-interaction' => true])->expectsOutputToContain('No token')->assertFailed();

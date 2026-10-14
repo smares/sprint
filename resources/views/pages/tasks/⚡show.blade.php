@@ -9,6 +9,7 @@ use App\Enums\RepeatMode;
 use App\Enums\RepeatUnit;
 use App\Emoji;
 use App\Models\Attachment;
+use App\Models\Comment;
 use App\Models\CustomField;
 use App\Models\Project;
 use App\Models\Tag;
@@ -632,7 +633,7 @@ new class extends Component
 
         $validated = $this->validate([
             'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string', 'max:10000'],
+            'description' => ['nullable', 'string', 'max:'.Task::MAX_DESCRIPTION_LENGTH],
             'statusId' => ['required', Rule::in($this->task->project->statuses->pluck('id')->map(fn ($id) => (string) $id)->all())],
             'assigneeId' => ['nullable', Rule::in($this->users->pluck('id')->map(fn ($id) => (string) $id)->all())],
             'dueDate' => ['nullable', 'date'],
@@ -833,7 +834,7 @@ new class extends Component
     {
         $this->authorizeEdit();
 
-        $validated = $this->validate(['comment' => ['required', 'string', 'max:5000']], attributes: ['comment' => __('Comment')]);
+        $validated = $this->validate(['comment' => ['required', 'string', 'max:'.Comment::MAX_BODY_LENGTH]], attributes: ['comment' => __('Comment')]);
 
         $this->task->comments()->create([
             'user_id' => auth()->id(),
@@ -875,7 +876,7 @@ new class extends Component
 
         Gate::authorize('update', $comment);
 
-        $validated = $this->validate(['editingBody' => ['required', 'string', 'max:5000']], attributes: ['editingBody' => __('Comment')]);
+        $validated = $this->validate(['editingBody' => ['required', 'string', 'max:'.Comment::MAX_BODY_LENGTH]], attributes: ['editingBody' => __('Comment')]);
 
         $comment->update(['body' => $validated['editingBody']]);
 
@@ -1094,7 +1095,7 @@ new class extends Component
         {{-- Long titles wrap instead of being cut off; Enter saves as in a single line, a pasted line break becomes a space --}}
         <flux:textarea wire:model="title" :aria-label="__('Title')" rows="1" resize="none" class="task-title-input field-sizing-content"
             x-on:keydown.enter.prevent="$el.form.requestSubmit()" />
-        <x-markdown-editor wire:model="description" :label="__('Description')" grow :placeholder="__('Describe the task … (Markdown, @ for mentions)')" :rows="3" :mentions="$this->mentionOptions" :images="$this->canEdit ? $this->imageAttachments : null" />
+        <x-markdown-editor wire:model="description" :label="__('Description')" grow :max="Task::MAX_DESCRIPTION_LENGTH" :placeholder="__('Describe the task … (Markdown, @ for mentions)')" :rows="3" :mentions="$this->mentionOptions" :images="$this->canEdit ? $this->imageAttachments : null" />
 
         <x-reactions :reactable="$task" target="task" :can-react="$this->canEdit" />
 
@@ -1343,7 +1344,7 @@ new class extends Component
 
                     @if ($editingCommentId === $comment->id)
                         <form wire:submit="saveComment" class="space-y-2">
-                            <x-markdown-editor wire:model="editingBody" :rows="3" :mentions="$this->mentionOptions" :images="$this->canEdit ? $this->imageAttachments : null" />
+                            <x-markdown-editor wire:model="editingBody" :max="Comment::MAX_BODY_LENGTH" :rows="3" :mentions="$this->mentionOptions" :images="$this->canEdit ? $this->imageAttachments : null" />
                             <flux:error name="editingBody" />
                             <div class="flex gap-2">
                                 <flux:button size="sm" type="submit" variant="primary">{{ __('Save') }}</flux:button>
@@ -1364,7 +1365,7 @@ new class extends Component
 
     @if ($this->canEdit)
         <form wire:submit="addComment" class="mt-6 space-y-3">
-            <x-markdown-editor wire:model="comment" :placeholder="__('Write a comment … (Markdown, @ for mentions)')" :rows="3" :mentions="$this->mentionOptions" :images="$this->canEdit ? $this->imageAttachments : null" />
+            <x-markdown-editor wire:model="comment" :max="Comment::MAX_BODY_LENGTH" :placeholder="__('Write a comment … (Markdown, @ for mentions)')" :rows="3" :mentions="$this->mentionOptions" :images="$this->canEdit ? $this->imageAttachments : null" />
             <flux:button type="submit">{{ __('Post comment') }}</flux:button>
         </form>
     @endif

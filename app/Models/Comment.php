@@ -23,6 +23,9 @@ class Comment extends Model
 
     use HasReactions;
 
+    /** The longest comment, counted like {@see Task::MAX_DESCRIPTION_LENGTH}. */
+    public const int MAX_BODY_LENGTH = 65000;
+
     protected static function booted(): void
     {
         static::saved(fn (self $comment) => app(TaskSearchService::class)->index($comment->task_id));

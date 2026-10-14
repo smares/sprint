@@ -193,6 +193,7 @@
     "Copied": "Kopiert",
     "Copy to clipboard": "In die Zwischenablage kopieren",
     "Copy token": "Token kopieren",
+    "Counted are Unicode characters: an emoji made of several parts (a family, a flag) counts for each part.": "Gezählt werden Unicode-Zeichen: Ein Emoji aus mehreren Teilen (etwa eine Familie oder eine Flagge) zählt für jeden Teil.",
     "Create": "Anlegen",
     "Create a task": "Aufgabe anlegen",
     "Create people here and decide who the administrators are. Who has access to which projects is set in the project under <em>Members</em>.": "Hier legst du Personen an und bestimmst die Administratoren. Wer Zugriff auf welche Projekte hat, stellst du im jeweiligen Projekt unter <em>Mitglieder</em> ein.",

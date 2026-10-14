@@ -2,6 +2,7 @@
 
 namespace App\Mcp\Tools;
 
+use App\Models\Comment;
 use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
@@ -17,7 +18,7 @@ class AddComment extends SprintTool
     {
         return [
             'task_id' => $schema->integer()->description('Id of the task.')->required(),
-            'body' => $schema->string()->description('Markdown text, up to 5000 characters.')->required(),
+            'body' => $schema->string()->description('Markdown text, up to '.Comment::MAX_BODY_LENGTH.' characters.')->required(),
         ];
     }
 
@@ -25,7 +26,7 @@ class AddComment extends SprintTool
     {
         $validated = $request->validate([
             'task_id' => ['required', 'integer'],
-            'body' => ['required', 'string', 'max:5000'],
+            'body' => ['required', 'string', 'max:'.Comment::MAX_BODY_LENGTH],
         ]);
 
         $task = $this->visibleTask($user, $validated['task_id']);

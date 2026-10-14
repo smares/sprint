@@ -2,6 +2,7 @@
 
 use App\Concerns\EditsMarkdown;
 use App\Models\Project;
+use App\Models\Task;
 use App\Services\MarkdownService;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection;
@@ -77,7 +78,7 @@ new class extends Component
     {
         $validated = $this->validate([
             'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string', 'max:10000'],
+            'description' => ['nullable', 'string', 'max:'.Task::MAX_DESCRIPTION_LENGTH],
             'statusId' => ['required', Rule::in($this->statuses->pluck('id')->map(fn ($id) => (string) $id)->all())],
             'assigneeId' => ['nullable', Rule::in($this->users->pluck('id')->map(fn ($id) => (string) $id)->all())],
             'dueDate' => ['nullable', 'date_format:Y-m-d'],
@@ -108,7 +109,7 @@ new class extends Component
         <form wire:submit="create" class="space-y-6">
             <flux:heading size="lg">{{ __('New task') }}</flux:heading>
             <flux:input wire:model="title" :label="__('Title')" autofocus />
-            <x-markdown-editor wire:model="description" :label="__('Description')" grow :placeholder="__('Describe the task … (Markdown, @ for mentions)')" :rows="3" :mentions="$this->mentionOptions" />
+            <x-markdown-editor wire:model="description" :label="__('Description')" grow :max="Task::MAX_DESCRIPTION_LENGTH" :placeholder="__('Describe the task … (Markdown, @ for mentions)')" :rows="3" :mentions="$this->mentionOptions" />
             <div class="grid grid-cols-2 gap-4">
                 <flux:select variant="listbox" wire:model="statusId" :label="__('Status')">
                     @foreach ($this->statuses as $status)

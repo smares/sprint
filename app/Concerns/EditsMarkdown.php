@@ -3,6 +3,7 @@
 namespace App\Concerns;
 
 use App\Models\Project;
+use App\Models\Task;
 use App\Models\User;
 use App\Services\MarkdownService;
 use Illuminate\Support\Collection;
@@ -50,6 +51,6 @@ trait EditsMarkdown
     #[Renderless]
     public function previewMarkdown(string $text): string
     {
-        return (string) MarkdownService::render(mb_substr($text, 0, 10000));
+        return (string) MarkdownService::render(mb_substr($text, 0, Task::MAX_DESCRIPTION_LENGTH));
     }
 }

@@ -467,7 +467,8 @@ class AsanaImportService
             return $this->users[$gid];
         }
 
-        $this->sprintUsers ??= User::query()->active()->get();
+        // Deactivated accounts count too: people created by an earlier run stay matched
+        $this->sprintUsers ??= User::query()->get();
         $person = $this->people[$gid] ?? ['name' => null, 'email' => null];
         $email = mb_strtolower(trim((string) $person['email']));
         $name = mb_strtolower(trim((string) $person['name']));
@@ -520,8 +521,9 @@ class AsanaImportService
                 'email' => $person['email'],
                 'password' => Str::password(24, symbols: false),
                 'locale' => config('app.locale'),
+                'deactivated_at' => now(),
             ]);
-            $this->say("Created the account of {$person['name']} ({$person['email']}); they set a password with “Forgot password”.");
+            $this->say("Created the account of {$person['name']} ({$person['email']}) as deactivated; an administrator activates it when the person is to sign in.");
         }
 
         $this->sprintUsers = null;
@@ -900,6 +902,13 @@ class AsanaImportService
 
         if ($links !== []) {
             $description .= "\n\n---\n\n**".__('Attachments not copied')."**\n\n".implode("\n", $links);
+        }
+
+        // Without an account the person cannot be assigned, so the description says who it was
+        $assignee = $node['assignee'] !== null && ! $this->user($node['assignee']) instanceof User ? ($this->people[$node['assignee']]['name'] ?? null) : null;
+
+        if ($assignee !== null) {
+            $description .= "\n\n---\n\n**".__('Assignee in Asana').':** '.$assignee;
         }
 
         return trim($description) === '' ? null : trim($description);

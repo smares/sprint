@@ -93,6 +93,7 @@ class AsanaImportTest extends TestCase
                 ]),
                 $this->task('1004', 'Fertig', [
                     'completed' => true, 'completed_at' => '2026-10-03T12:00:00.000Z',
+                    'assignee' => $this->person('13', 'Cara', 'cara@example.com'),
                     'memberships' => [['project' => ['gid' => '100'], 'section' => ['gid' => '111']]],
                 ]),
                 $this->task('1003', 'Umsetzung', [
@@ -338,14 +339,37 @@ class AsanaImportTest extends TestCase
         $this->assertSame(__('Open'), Task::where('title', 'Konzept')->firstOrFail()->status->name);
     }
 
-    public function test_people_can_be_created_on_the_way_without_sending_anything(): void
+    public function test_an_assignment_without_an_account_is_noted_in_the_description(): void
+    {
+        $this->import()->assertSuccessful();
+
+        $finished = Task::where('title', 'Fertig')->firstOrFail();
+
+        $this->assertNull($finished->assignee_id);
+        $this->assertStringContainsString('**'.__('Assignee in Asana').':** Cara', (string) $finished->description);
+        $this->assertStringNotContainsString(__('Assignee in Asana'), (string) Task::where('title', 'Konzept')->firstOrFail()->description);
+    }
+
+    public function test_people_can_be_created_deactivated_and_without_sending_anything(): void
     {
         $this->asana(['projects' => ['100'], '--token' => 'secret-token', '--create-users' => true])->assertSuccessful();
 
         $cara = User::where('email', 'cara@example.com')->firstOrFail();
         $this->assertSame('Cara', $cara->name);
+        $this->assertFalse($cara->isActive());
         $this->assertTrue(Project::where('name', 'Website')->firstOrFail()->members()->whereKey($cara->id)->exists());
+
+        // The assignment stays, and an administrator can activate the person later
+        $finished = Task::where('title', 'Fertig')->firstOrFail();
+        $this->assertSame($cara->id, $finished->assignee_id);
+        $this->assertStringNotContainsString(__('Assignee in Asana'), (string) $finished->description);
+        $cara->reactivate();
+        $this->assertTrue($cara->fresh()->isActive());
         Notification::assertNothingSent();
+
+        // A second run finds the deactivated account again instead of creating it twice
+        $this->asana(['projects' => ['100'], '--token' => 'secret-token', '--create-users' => true])->assertSuccessful();
+        $this->assertSame(1, User::where('email', 'cara@example.com')->count());
     }
 
     public function test_a_project_can_be_imported_into_an_existing_one(): void

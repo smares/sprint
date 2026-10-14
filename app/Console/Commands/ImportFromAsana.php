@@ -18,7 +18,7 @@ use Illuminate\Support\Number;
     {--token= : Asana personal access token (better: ASANA_TOKEN in .env, or leave it out to be asked)}
     {--as= : Email of the person recorded as the one who imported (default: the first administrator)}
     {--sections=status : What Asana sections become: status (statuses of the project) or headings (headings in the list)}
-    {--create-users : Create accounts for people from Asana who have none here (no email is sent)}
+    {--create-users : Create accounts for people from Asana who have none here, deactivated and without an email; an administrator activates them later}
     {--ignore-missing-users : Go on although people from Asana have no account here; their assignments are left out}
     {--skip-followers : Do not take over followers as collaborators}
     {--dry-run : Only read from Asana and report what would be imported}')]

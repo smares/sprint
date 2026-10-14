@@ -61,6 +61,7 @@ Der Probelauf stellt alle Anfragen an Asana, schreibt aber nichts. Er zeigt, wie
 | Abhängigkeiten („blockiert von“) | Abhängigkeiten zwischen den übernommenen Aufgaben, auch über Projekte hinweg; auf nicht übernommene Aufgaben verweisende entfallen mit einem Hinweis |
 | Links auf andere Aufgaben in Texten | Erwähnungen der übernommenen Aufgaben (`@[Titel](task:…)`); @-Erwähnungen von Personen werden Erwähnungen, ohne Konto bleibt der Name |
 | Kommentare | Kommentare mit Verfasser:in und Zeitpunkt. Stammt ein Kommentar von jemandem ohne Konto, steht „Von Name in Asana“ am Anfang und die importierende Person ist die Verfasser:in |
+| Kommentare ohne Text | werden nicht übernommen (etwa ein Kommentar, der in Asana nur aus einem Anhang oder Emoji besteht). Der Befehl nennt sie mit Aufgabe und Asana-ID in den Hinweisen, auch im Probelauf, und zählt sie in der Übersicht |
 | Anhänge | Dateien bis 20 MB werden heruntergeladen und angehängt; Dateien anderer Dienste (Dropbox, Google Drive …) und zu große Dateien werden als Links an die Beschreibung angehängt |
 | Zeitpunkt der Anlage und Änderung | bleibt bei Aufgaben, Kommentaren und Anhängen erhalten |
 

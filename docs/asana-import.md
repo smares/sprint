@@ -77,6 +77,7 @@ Der Probelauf stellt alle Anfragen an Asana, schreibt aber nichts. Er zeigt, wie
 | Abschnitt | Status (oder Überschrift, siehe oben). „Untitled section“ bleibt der erste Standard-Status. Abschnitte, die so heißen wie ein vorhandener Status, nutzen diesen. Neue Status stehen vor den erledigten |
 | Aufgabe | Aufgabe in der Reihenfolge von Asana, auch Unteraufgaben in beliebiger Tiefe |
 | Erledigt | der erledigte Status samt Erledigt-Datum (die Spalte, in der die Aufgabe stand, geht dabei verloren) |
+| Status einer Unteraufgabe | Asana kennt für Unteraufgaben nur offen oder erledigt, Spalten haben sie nicht (sie stehen nur bei ihrer Aufgabe). Eine offene Unteraufgabe bekommt in Sprint den Status ihrer Aufgabe, außer der ist ein erledigter Status: Dann bleibt sie im ersten Status, damit offene Arbeit nicht als fertig zählt. Eine erledigte kommt in den erledigten Status |
 | Beschreibung, Kommentare | Markdown: Fett, Kursiv, Durchgestrichen, Code, Listen, Überschriften, Zitate und Links bleiben erhalten; Bilder in der Beschreibung nicht (sie kommen, soweit Asana sie als Anhang führt, als Anhang) |
 | Zuständige, Ersteller | Zuständige und Ersteller, per E-Mail zugeordnet; ohne Konto bleibt die Aufgabe ohne Zuständige, in der Beschreibung steht dann „Zuständig in Asana: Name“, und als Ersteller steht die importierende Person |
 | Follower | Beteiligte, aber nur, wenn die Person Mitglied des Projekts ist (sonst gäbe es keine Rechte dafür) |

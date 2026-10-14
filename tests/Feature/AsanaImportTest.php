@@ -188,6 +188,27 @@ class AsanaImportTest extends TestCase
         Http::assertSent(fn (Request $request) => $request->hasHeader('Authorization', 'Bearer secret-token'));
     }
 
+    public function test_an_open_subtask_follows_the_status_of_its_task_unless_that_is_done(): void
+    {
+        foreach ($this->routes['projects/100/tasks'] as &$raw) {
+            $raw['num_subtasks'] = $raw['gid'] === '1004' ? 1 : $raw['num_subtasks'];
+        }
+
+        unset($raw);
+        $this->routes['tasks/1001/subtasks'][] = $this->task('1006', 'Detail');
+        $this->routes['tasks/1004/subtasks'] = [$this->task('1007', 'Rest')];
+
+        $this->import(['projects' => ['100']])->assertSuccessful();
+
+        $backlog = Task::where('title', 'Konzept')->firstOrFail()->status;
+        $this->assertSame($backlog->id, Task::where('title', 'Detail')->firstOrFail()->status_id);
+        $this->assertTrue(Task::where('title', 'Skizzen')->firstOrFail()->status->is_done);
+
+        // "Fertig" is done, so its open subtask is not counted as done with it
+        $this->assertTrue(Task::where('title', 'Fertig')->firstOrFail()->status->is_done);
+        $this->assertFalse(Task::where('title', 'Rest')->firstOrFail()->status->is_done);
+    }
+
     public function test_a_comment_without_text_is_reported_and_not_taken_over(): void
     {
         $this->routes['tasks/1001/stories'][] = ['gid' => '9005', 'resource_subtype' => 'comment_added', 'created_at' => '2026-10-09T10:00:00.000Z', 'created_by' => ['gid' => '11', 'name' => 'Anna'], 'text' => '', 'html_text' => '<body></body>'];

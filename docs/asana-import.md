@@ -4,7 +4,7 @@ Der Befehl `php artisan asana:import` holt Projekte über die Asana-API ab und l
 
 Er liest nur aus Asana und verändert dort nichts. Er läuft auf dem Server von Sprint (oder lokal gegen dieselbe Datenbank) und ist wiederholbar: Was schon übernommen wurde, wird übersprungen, Neues kommt dazu. So lässt sich erst proben und kurz vor dem Umstieg noch einmal nachziehen.
 
-> Der Import wurde gegen die dokumentierte Asana-API und mit nachgestellten Antworten getestet, nicht gegen ein echtes Asana-Konto. Fang deshalb mit `--dry-run` und einem kleinen Projekt an, bevor du alles übernimmst.
+> Der Import wurde mit nachgestellten Antworten getestet und gegen ein echtes Asana-Konto (kostenloser Tarif, ein Projekt mit rund 840 Aufgaben übernommen, alle Projekte als Probelauf gelesen). Fang trotzdem mit `--dry-run` und einem kleinen Projekt an, bevor du alles übernimmst.
 
 ## Vorbereitung
 
@@ -28,7 +28,25 @@ php artisan asana:import
 
 Ohne Projekt-IDs fragt der Befehl (im Terminal, nicht mit `--no-interaction`) nach den Projekten: Mit den Pfeiltasten wählen, mit der Leertaste anhaken, mit Enter bestätigen. **Die Reihenfolge des Ankreuzens zählt** wie die der IDs (siehe unten). Die Form `GID=ID` (in ein vorhandenes Sprint-Projekt importieren) gibt es nur über die Angabe der IDs.
 
-Im Docker-Setup läuft der Befehl im Container: `docker compose exec -e ASANA_TOKEN=… sprint php artisan asana:import …`.
+### Im Docker-Setup
+
+Der Befehl läuft im Container `sprint`, auf dem Server im Ordner mit der Compose-Datei (bei `compose.image.yaml` jeweils `-f compose.image.yaml` vor `exec`):
+
+```bash
+# Projekte finden (fragt nach dem Token, die Eingabe bleibt unsichtbar)
+docker compose exec sprint php artisan asana:import --list
+
+# Ohne IDs wählst du die Projekte aus einer Liste an (das Token wird abgefragt)
+docker compose exec sprint php artisan asana:import --dry-run
+
+# Probelauf und Import mit IDs
+docker compose exec sprint php artisan asana:import 1200000000000001 1200000000000002 --dry-run
+docker compose exec sprint php artisan asana:import 1200000000000001 1200000000000002 --create-users
+```
+
+- **Token:** Am einfachsten lässt man den Befehl danach fragen. Wer es mitgeben will, ohne dass es in der Shell-Historie steht: `read -rs ASANA_TOKEN && export ASANA_TOKEN`, dann `docker compose exec -e ASANA_TOKEN sprint php artisan asana:import …` (ohne `=Wert`, der Wert kommt aus der Umgebung der Shell). Ein Eintrag in der `.env` wirkt erst nach einem Neustart des Containers, weil der die Konfiguration beim Start zwischenspeichert.
+- **Daten:** Aufgaben landen in der Datenbank im Volume `storage`, Anhänge unter `storage/app/private`; beides bleibt über Updates erhalten. Die Tabelle für die Zuordnung (`asana_imports`) legt die Migration an, die der Container beim Start ausführt.
+- **Lange Läufe:** Ein Projekt mit Hunderten Aufgaben braucht eine Weile (Asana begrenzt die Anfragen). Bei einer SSH-Verbindung also in `tmux` oder `screen` starten. Bricht ein Lauf ab, einfach neu starten: Was fertig ist, wird übersprungen.
 
 Die Reihenfolge der Projekte zählt: **Eine Aufgabe, die in mehreren Asana-Projekten liegt, wird nur im ersten angegeben Projekt angelegt** (Sprint-Aufgaben gehören zu genau einem Projekt). In den anderen Projekten fehlt sie, der Bericht nennt, wie viele es waren.
 

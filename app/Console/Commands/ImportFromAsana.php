@@ -32,10 +32,11 @@ class ImportFromAsana extends Command
 
     public function handle(): int
     {
-        $token = $this->option('token') ?: config('services.asana.token') ?: ($this->input->isInteractive() ? $this->secret('Asana personal access token') : null);
+        // The configuration may be cached (as in the Docker image), then it does not know a token passed to a running container
+        $token = $this->option('token') ?: config('services.asana.token') ?: getenv('ASANA_TOKEN') ?: ($this->input->isInteractive() ? $this->secret('Asana personal access token') : null);
 
         if (! $token) {
-            $this->components->error('No token: set ASANA_TOKEN in .env, pass --token or run the command interactively.');
+            $this->components->error('No token: set ASANA_TOKEN (in .env or the environment), pass --token or run the command interactively.');
 
             return self::FAILURE;
         }

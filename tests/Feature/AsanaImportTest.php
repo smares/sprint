@@ -188,6 +188,20 @@ class AsanaImportTest extends TestCase
         Http::assertSent(fn (Request $request) => $request->hasHeader('Authorization', 'Bearer secret-token'));
     }
 
+    public function test_a_comment_without_text_is_reported_and_not_taken_over(): void
+    {
+        $this->routes['tasks/1001/stories'][] = ['gid' => '9005', 'resource_subtype' => 'comment_added', 'created_at' => '2026-10-09T10:00:00.000Z', 'created_by' => ['gid' => '11', 'name' => 'Anna'], 'text' => '', 'html_text' => '<body></body>'];
+        $this->import(['--dry-run' => true])
+            ->expectsOutputToContain('the comment 9005 has no text')
+            ->expectsOutputToContain('Comments without text (not taken over)')
+            ->assertSuccessful();
+
+        $this->import()->expectsOutputToContain('the comment 9005 has no text')->assertSuccessful();
+
+        $this->assertNull(DB::table('asana_imports')->where('kind', 'comment')->where('gid', '9005')->first());
+        $this->assertSame(2, DB::table('comments')->count());
+    }
+
     public function test_people_without_an_account_stop_the_import_unless_told_otherwise(): void
     {
         $this->asana(['projects' => ['100'], '--token' => 'secret-token'])

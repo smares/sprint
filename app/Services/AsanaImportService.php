@@ -96,7 +96,7 @@ class AsanaImportService
     /** @var array<string, int> */
     private array $counts = [
         'projects' => 0, 'tasks' => 0, 'tasks_new' => 0, 'subtasks' => 0, 'comments_new' => 0, 'attachments_new' => 0,
-        'attachment_bytes' => 0, 'dependencies' => 0, 'tasks_elsewhere' => 0, 'comments_unknown_author' => 0,
+        'attachment_bytes' => 0, 'dependencies' => 0, 'tasks_elsewhere' => 0, 'comments_unknown_author' => 0, 'comments_empty' => 0,
     ];
 
     // State of the project being imported
@@ -307,7 +307,7 @@ class AsanaImportService
             $this->counts['tasks_new'] += $knownId === null ? 1 : 0;
             $this->counts['subtasks'] += $parentGid === null ? 0 : 1;
 
-            $node['comments'] = $this->planComments($gid);
+            $node['comments'] = $this->planComments($gid, $node['name']);
             $node['attachments'] = $this->planAttachments($gid);
             $node['subtasks'] = ((int) ($raw['num_subtasks'] ?? 0)) > 0 ? $this->planTasks("tasks/{$gid}/subtasks", $projectGid, $projectId, $gid) : [];
             $nodes[] = $node;
@@ -380,12 +380,20 @@ class AsanaImportService
     /**
      * @return list<array<string, mixed>>
      */
-    private function planComments(string $taskGid): array
+    private function planComments(string $taskGid, string $taskName): array
     {
         $comments = [];
 
         foreach ($this->asana->paginate("tasks/{$taskGid}/stories", ['opt_fields' => 'resource_subtype,created_at,created_by.gid,created_by.name,text,html_text']) as $story) {
             if (($story['resource_subtype'] ?? '') !== 'comment_added' || isset($this->map['comment'][(string) $story['gid']])) {
+                continue;
+            }
+
+            // Only the text is of interest here (a mention counts as text), so a comment that is empty is told about instead of silently dropped
+            if ($this->text->toMarkdown($story['html_text'] ?? null, (string) ($story['text'] ?? ''), fn () => '@') === '') {
+                $this->counts['comments_empty']++;
+                $this->warn('“'.($taskName !== '' ? $taskName : __('Untitled task'))."”: the comment {$story['gid']} has no text (an attachment or emoji only?) and is not taken over.");
+
                 continue;
             }
 

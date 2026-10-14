@@ -104,6 +104,7 @@ class ImportFromAsana extends Command
             'Dependencies' => $counts['dependencies'],
             'Left out, as they lie in another project' => $counts['tasks_elsewhere'],
             'Comments by people without an account (name in the text)' => $counts['comments_unknown_author'],
+            'Comments without text (not taken over)' => $counts['comments_empty'],
         ] as $label => $value) {
             $this->components->twoColumnDetail($label, (string) $value);
         }

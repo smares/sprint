@@ -44,6 +44,9 @@ class AsanaImportService
 
     private const string PERSON_FIELDS = 'name,email';
 
+    /** Statuses with which Asana says that a feature belongs to a plan the account does not have. */
+    private const array NOT_IN_PLAN = [402, 403];
+
     /** The name of the section Asana puts tasks in that were never given one. */
     private const string DEFAULT_SECTION = 'untitled section';
 
@@ -243,17 +246,24 @@ class AsanaImportService
         $fields = [];
         $query = ['opt_fields' => 'custom_field.name,custom_field.resource_subtype,custom_field.enum_options.name,custom_field.enum_options.enabled'];
 
-        foreach ($this->asana->paginate("projects/{$projectGid}/custom_field_settings", $query) as $setting) {
-            $field = $setting['custom_field'] ?? [];
-            $fields[] = [
-                'gid' => (string) ($field['gid'] ?? ''),
-                'name' => trim((string) ($field['name'] ?? '')),
-                'type' => (string) ($field['resource_subtype'] ?? ''),
-                'options' => array_values(array_map(
-                    fn (array $option) => (string) $option['name'],
-                    array_filter($field['enum_options'] ?? [], fn (array $option) => $option['enabled'] ?? true),
-                )),
-            ];
+        try {
+            foreach ($this->asana->paginate("projects/{$projectGid}/custom_field_settings", $query) as $setting) {
+                $field = $setting['custom_field'] ?? [];
+                $fields[] = [
+                    'gid' => (string) ($field['gid'] ?? ''),
+                    'name' => trim((string) ($field['name'] ?? '')),
+                    'type' => (string) ($field['resource_subtype'] ?? ''),
+                    'options' => array_values(array_map(
+                        fn (array $option) => (string) $option['name'],
+                        array_filter($field['enum_options'] ?? [], fn (array $option) => $option['enabled'] ?? true),
+                    )),
+                ];
+            }
+        } catch (AsanaException $exception) {
+            // Custom fields are a paid feature: without them the project simply has none
+            throw_unless(in_array($exception->status, self::NOT_IN_PLAN, true), $exception);
+
+            $this->warn("Custom fields are not available with this Asana plan ({$exception->getMessage()}); the project is imported without them.");
         }
 
         return $fields;

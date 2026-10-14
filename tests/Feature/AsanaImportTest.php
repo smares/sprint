@@ -147,6 +147,10 @@ class AsanaImportTest extends TestCase
 
             $answer = $this->routes[$key];
 
+            if (is_array($answer) && isset($answer['__error'])) {
+                return Http::response(['errors' => [['message' => $answer['__error']['message']]]], $answer['__error']['status']);
+            }
+
             return is_string($answer) ? Http::response($answer) : Http::response(['data' => $answer, 'next_page' => null]);
         });
     }
@@ -352,6 +356,27 @@ class AsanaImportTest extends TestCase
 
         $this->assertSame(1, Project::count());
         $this->assertSame(['Umsetzung', 'Newsletter'], $existing->tasks()->orderBy('id')->pluck('title')->all());
+    }
+
+    public function test_a_plan_without_custom_fields_imports_the_project_without_them(): void
+    {
+        $this->routes['projects/100/custom_field_settings'] = ['__error' => ['status' => 402, 'message' => 'Custom Field Settings are not available for free users.']];
+
+        $this->import(['projects' => ['100']])->expectsOutputToContain('not available with this Asana plan')->assertSuccessful();
+
+        $website = Project::where('name', 'Website')->firstOrFail();
+        $this->assertFalse($website->customFields()->where('name', 'Aufwand')->exists());
+        $this->assertSame(['Konzept', 'Skizzen', 'Fertig', 'Umsetzung'], $website->tasks()->orderBy('id')->pluck('title')->all());
+    }
+
+    public function test_other_errors_while_reading_stop_the_import(): void
+    {
+        $this->routes['projects/100/custom_field_settings'] = ['__error' => ['status' => 500, 'message' => 'Server Error']];
+        Sleep::fake();
+
+        $this->import(['projects' => ['100']])->expectsOutputToContain('Server Error')->assertFailed();
+
+        $this->assertSame(0, Project::count());
     }
 
     public function test_the_projects_of_the_token_can_be_listed(): void

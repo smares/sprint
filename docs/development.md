@@ -2,7 +2,7 @@
 
 ```bash
 composer dev      # Server, Queue, Logs und Vite
-composer test     # Testsuite (PHPUnit)
+composer test     # Testsuite (PHPUnit, parallel auf allen Kernen; einzeln und der Reihe nach: php artisan test --filter=…)
 vendor/bin/pint   # Code-Stil
 composer analyse  # Statische Analyse (Larastan)
 composer refactor:check  # Rector prüfen (ohne Änderungen); composer refactor wendet sie an

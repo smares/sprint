@@ -74,4 +74,4 @@ jobs:
         run: vendor/bin/rector process --dry-run --no-progress-bar
 
       - name: Execute tests
-        run: php artisan test
+        run: php artisan test --parallel

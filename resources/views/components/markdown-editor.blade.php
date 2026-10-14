@@ -1,4 +1,4 @@
-@props(['label' => null, 'rows' => 4, 'placeholder' => null, 'mentions' => ['users' => [], 'searchTasks' => false], 'images' => null])
+@props(['label' => null, 'rows' => 4, 'placeholder' => null, 'mentions' => ['users' => [], 'searchTasks' => false], 'images' => null, 'grow' => false])
 
 <div
     x-data="{
@@ -86,7 +86,8 @@
     </div>
 
     <div x-show="tab === 'write'" class="relative" x-data="mentionable(@js($mentions))" x-on:input="onInput($event)" x-on:keydown="onKeydown($event)" x-on:click.outside="open = false"@if ($images !== null) x-on:paste="onPaste($event)" x-on:drop="onDrop($event)" x-on:dragover.prevent @endif>
-        <flux:textarea :rows="$rows" :placeholder="$placeholder" {{ $attributes->whereStartsWith('wire:model') }} />
+        {{-- grow: the field is as tall as its text (at least $rows lines), so a long description is never hidden behind a scrollbar --}}
+        <flux:textarea :rows="$rows" :placeholder="$placeholder" :resize="$grow ? 'none' : 'vertical'" :class="$grow ? 'field-sizing-content min-h-24' : ''" {{ $attributes->whereStartsWith('wire:model') }} />
 
         <ul x-show="open && matches.length" x-cloak class="absolute z-20 mt-1 max-h-64 w-72 overflow-auto rounded-lg border border-zinc-200 bg-white p-1 text-sm shadow-lg dark:border-zinc-700 dark:bg-zinc-800" role="listbox">
             <template x-for="(item, index) in matches" x-bind:key="item.type + item.id">

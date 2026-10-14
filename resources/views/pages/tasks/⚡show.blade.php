@@ -1094,7 +1094,7 @@ new class extends Component
         {{-- Long titles wrap instead of being cut off; Enter saves as in a single line, a pasted line break becomes a space --}}
         <flux:textarea wire:model="title" :aria-label="__('Title')" rows="1" resize="none" class="task-title-input field-sizing-content"
             x-on:keydown.enter.prevent="$el.form.requestSubmit()" />
-        <x-markdown-editor wire:model="description" :label="__('Description')" :placeholder="__('Describe the task … (Markdown, @ for mentions)')" :rows="3" :mentions="$this->mentionOptions" :images="$this->canEdit ? $this->imageAttachments : null" />
+        <x-markdown-editor wire:model="description" :label="__('Description')" grow :placeholder="__('Describe the task … (Markdown, @ for mentions)')" :rows="3" :mentions="$this->mentionOptions" :images="$this->canEdit ? $this->imageAttachments : null" />
 
         <x-reactions :reactable="$task" target="task" :can-react="$this->canEdit" />
 

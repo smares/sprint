@@ -108,7 +108,7 @@ new class extends Component
         <form wire:submit="create" class="space-y-6">
             <flux:heading size="lg">{{ __('New task') }}</flux:heading>
             <flux:input wire:model="title" :label="__('Title')" autofocus />
-            <x-markdown-editor wire:model="description" :label="__('Description')" :placeholder="__('Describe the task … (Markdown, @ for mentions)')" :rows="3" :mentions="$this->mentionOptions" />
+            <x-markdown-editor wire:model="description" :label="__('Description')" grow :placeholder="__('Describe the task … (Markdown, @ for mentions)')" :rows="3" :mentions="$this->mentionOptions" />
             <div class="grid grid-cols-2 gap-4">
                 <flux:select variant="listbox" wire:model="statusId" :label="__('Status')">
                     @foreach ($this->statuses as $status)

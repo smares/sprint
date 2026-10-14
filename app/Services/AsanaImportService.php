@@ -895,7 +895,7 @@ class AsanaImportService
         }
 
         // Without an account the person cannot be assigned, so the description says who it was
-        $assignee = $node['assignee'] !== null && $this->user($node['assignee']) === null ? ($this->people[$node['assignee']]['name'] ?? null) : null;
+        $assignee = $node['assignee'] !== null && ! $this->user($node['assignee']) instanceof User ? ($this->people[$node['assignee']]['name'] ?? null) : null;
 
         if ($assignee !== null) {
             $description .= "\n\n---\n\n**".__('Assignee in Asana').':** '.$assignee;

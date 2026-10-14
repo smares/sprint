@@ -11,6 +11,7 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Number;
+use Symfony\Component\Console\Helper\ProgressBar;
 
 use function Laravel\Prompts\multiselect;
 
@@ -30,6 +31,15 @@ class ImportFromAsana extends Command
     /** How many warnings are printed in full. */
     private const int WARNINGS_SHOWN = 40;
 
+    /** Without a terminal (logs, pipes) every this many tasks a line says how far the import is. */
+    private const int LINE_EVERY = 25;
+
+    private ?ProgressBar $bar = null;
+
+    private ?string $barPhase = null;
+
+    private int $reportedLine = 0;
+
     public function handle(): int
     {
         // The configuration may be cached (as in the Docker image), then it does not know a token passed to a running container
@@ -41,7 +51,9 @@ class ImportFromAsana extends Command
             return self::FAILURE;
         }
 
-        $service = new AsanaImportService(new AsanaClient((string) $token));
+        $client = new AsanaClient((string) $token);
+        $client->whenPausing(fn (int $seconds) => $this->pausing($seconds));
+        $service = new AsanaImportService($client);
 
         try {
             return $this->option('list') ? $this->listProjects($service) : $this->import($service);
@@ -75,17 +87,90 @@ class ImportFromAsana extends Command
         }
 
         $dryRun = (bool) $this->option('dry-run');
-        $report = $service->run($targets, $importer, [
-            'sections' => $sections,
-            'create_users' => (bool) $this->option('create-users'),
-            'ignore_missing_users' => (bool) $this->option('ignore-missing-users'),
-            'followers' => ! $this->option('skip-followers'),
-            'dry_run' => $dryRun,
-        ], fn (string $message) => $this->components->info($message));
+
+        try {
+            $report = $service->run($targets, $importer, [
+                'sections' => $sections,
+                'create_users' => (bool) $this->option('create-users'),
+                'ignore_missing_users' => (bool) $this->option('ignore-missing-users'),
+                'followers' => ! $this->option('skip-followers'),
+                'dry_run' => $dryRun,
+            ], $this->message(...), $this->progress(...));
+        } finally {
+            $this->finishProgress();
+        }
 
         $this->report($report, $dryRun);
 
         return self::SUCCESS;
+    }
+
+    /**
+     * A line of the import (which project is read or written now), printed without breaking a bar that is running.
+     */
+    private function message(string $message): void
+    {
+        $this->bar?->clear();
+        $this->components->info($message);
+        $this->bar?->display();
+    }
+
+    /**
+     * Reading from Asana has no known end (how many tasks a project has is only seen by reading them), so it counts;
+     * writing knows the number and shows a bar. Without a terminal a line every few tasks does instead.
+     */
+    private function progress(string $phase, int $done, ?int $total): void
+    {
+        if ($this->barPhase !== $phase) {
+            $this->finishProgress();
+            $this->barPhase = $phase;
+            $this->reportedLine = 0;
+
+            if ($this->output->isDecorated()) {
+                $this->bar = $this->output->createProgressBar($total ?? 0);
+                $this->bar->setFormat($phase === 'read'
+                    ? ' %current% tasks read, %elapsed:6s%  %message%'
+                    : ' %current%/%max% [%bar%] %percent:3s%%  %elapsed:6s% (about %estimated:-6s% in all)  %message%');
+                $this->bar->setMessage('');
+                $this->bar->start();
+            }
+        }
+
+        if ($this->bar instanceof ProgressBar) {
+            $this->bar->setMessage('');
+            $this->bar->setProgress($done);
+        } elseif ($done - $this->reportedLine >= self::LINE_EVERY) {
+            $this->reportedLine = $done;
+            $this->line($phase === 'read' ? "{$done} tasks read …" : "{$done} of {$total} tasks imported …");
+        }
+    }
+
+    /**
+     * Asana asked to wait (or could not be reached): say it, or the import looks as if it hangs.
+     */
+    private function pausing(int $seconds): void
+    {
+        $note = "waiting {$seconds} s for Asana (rate limit or a temporary error)";
+
+        if ($this->bar instanceof ProgressBar) {
+            $this->bar->setMessage($note);
+            $this->bar->display();
+        } else {
+            $this->line("… {$note}");
+        }
+    }
+
+    private function finishProgress(): void
+    {
+        if ($this->bar instanceof ProgressBar) {
+            $this->bar->finish();
+            $this->newLine();
+        } elseif ($this->barPhase !== null && $this->reportedLine > 0) {
+            $this->line($this->barPhase === 'read' ? 'All tasks read.' : 'All tasks imported.');
+        }
+
+        $this->bar = null;
+        $this->barPhase = null;
     }
 
     /**

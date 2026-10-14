@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Closure;
 use Generator;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
@@ -26,7 +27,18 @@ class AsanaClient
     /** The longest pause (seconds) between two tries, whatever Asana asks for. */
     private const int MAX_PAUSE = 120;
 
+    /** @var ?Closure(int): void Told the seconds before the client waits, so a long pause can be shown. */
+    private ?Closure $onPause = null;
+
     public function __construct(private readonly string $token) {}
+
+    /**
+     * @param  Closure(int): void  $callback
+     */
+    public function whenPausing(Closure $callback): void
+    {
+        $this->onPause = $callback;
+    }
 
     /**
      * One object (the `data` of the response), e.g. a project or a task.
@@ -107,19 +119,28 @@ class AsanaClient
                     throw new AsanaException('Asana cannot be reached: '.$exception->getMessage());
                 }
 
-                Sleep::for(min(2 ** $attempt, self::MAX_PAUSE))->seconds();
+                $this->pause(min(2 ** $attempt, self::MAX_PAUSE));
 
                 continue;
             }
 
             if ($attempt < self::ATTEMPTS && ($response->status() === 429 || $response->serverError())) {
-                Sleep::for(max(1, min((int) $response->header('Retry-After') ?: 2 ** $attempt, self::MAX_PAUSE)))->seconds();
+                $this->pause(max(1, min((int) $response->header('Retry-After') ?: 2 ** $attempt, self::MAX_PAUSE)));
 
                 continue;
             }
 
             return $response;
         }
+    }
+
+    private function pause(int $seconds): void
+    {
+        if ($this->onPause instanceof Closure) {
+            ($this->onPause)($seconds);
+        }
+
+        Sleep::for($seconds)->seconds();
     }
 
     private function request(bool $authorized): PendingRequest

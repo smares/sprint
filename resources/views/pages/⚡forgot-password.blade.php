@@ -4,11 +4,17 @@ use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Timebox;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 
 new class extends Component
 {
+    /**
+     * Looking up and sending takes at least this long either way, so the response time does not tell whether an address has an account.
+     */
+    private const MINIMUM_SEND_MICROSECONDS = 400_000;
+
     public string $email = '';
 
     public bool $sent = false;
@@ -29,11 +35,13 @@ new class extends Component
 
         RateLimiter::hit($throttleKey);
 
-        $user = User::query()->active()->whereRaw('lower(email) = ?', [mb_strtolower(trim($this->email))])->first();
+        (new Timebox)->call(function (): void {
+            $user = User::query()->active()->whereRaw('lower(email) = ?', [mb_strtolower(trim($this->email))])->first();
 
-        if ($user !== null) {
-            Password::broker()->sendResetLink(['email' => $user->email]);
-        }
+            if ($user !== null) {
+                Password::broker()->sendResetLink(['email' => $user->email]);
+            }
+        }, microseconds: self::MINIMUM_SEND_MICROSECONDS);
 
         $this->sent = true;
     }

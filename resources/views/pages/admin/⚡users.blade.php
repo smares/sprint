@@ -110,7 +110,7 @@ new class extends Component
         $password = Str::password(16, symbols: false);
 
         $user->update(['password' => $password]);
-        $user->signOutEverywhere($user->is(auth()->user()) ? session()->getId() : null);
+        $user->signOutEverywhere($user->is(auth()->user()) ? session()->getId() : null, withPasskeys: true);
 
         $this->shownPassword = $password;
         $this->shownFor = $user->email;

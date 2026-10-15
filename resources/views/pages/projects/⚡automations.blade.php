@@ -390,7 +390,7 @@ new class extends Component
                 ? __('When “:field” gets a value', ['field' => $this->fields->get((int) $rule->trigger_value)->name ?? '–'])
                 : __('When “:field” is set to “:value”', [
                     'field' => $this->fields->get((int) $rule->trigger_value)->name ?? '–',
-                    'value' => $this->fields->get((int) $rule->trigger_value)?->text($rule->trigger_field_value) ?? '–',
+                    'value' => $this->fields->get((int) $rule->trigger_value)?->displayText($rule->trigger_field_value) ?? '–',
                 ]),
             AutomationTrigger::AssigneeChanged => $rule->trigger_value === null
                 ? __('When the assignee changes')
@@ -437,7 +437,7 @@ new class extends Component
 
         return ($step['value'] ?? null) === null
             ? __('Clear “:field”', ['field' => $field->name ?? '–'])
-            : __('Set “:field” to “:value”', ['field' => $field->name ?? '–', 'value' => $field?->text((string) $step['value']) ?? '–']);
+            : __('Set “:field” to “:value”', ['field' => $field->name ?? '–', 'value' => $field?->displayText((string) $step['value']) ?? '–']);
     }
 
     public function rendering(View $view): void

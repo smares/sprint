@@ -5,6 +5,7 @@ namespace App\Mcp\Tools;
 use App\Mcp\TaskData;
 use App\Models\Task;
 use App\Models\User;
+use App\Services\DateService;
 use App\Services\TaskSearchService;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
@@ -75,7 +76,7 @@ class ListTasks extends SprintTool
         }
 
         if (! empty($validated['overdue'])) {
-            $tasks->whereDate('tasks.due_date', '<', today())->open();
+            $tasks->overdue(DateService::today($user));
         }
 
         $page = $tasks->with(['project', 'status', 'assignee', 'tags'])

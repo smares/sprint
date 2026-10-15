@@ -107,7 +107,10 @@ class TaskActivity extends Model
             }
         }
 
-        foreach ($this->dateKeys() as $key) {
+        // A date field's change keeps its values as YYYY-MM-DD; "is_date" tells them from text that only looks like one
+        $dateKeys = $this->type === ActivityType::FieldChanged && ($data['is_date'] ?? false) ? ['from', 'to'] : $this->dateKeys();
+
+        foreach ($dateKeys as $key) {
             if (is_string($data[$key] ?? null)) {
                 $data[$key] = DateService::parseIsoDate($data[$key])?->isoFormat('L') ?? $data[$key];
             }

@@ -104,6 +104,17 @@ class TaskFlyoutWeightTest extends TestCase
         $this->assertCount(1, $page->instance()->blockingOptions);
     }
 
+    public function test_ids_from_the_browser_do_not_show_people_the_page_would_not_offer(): void
+    {
+        $outsider = User::factory()->create(['name' => 'Geheime Fremde Person']);
+
+        $page = $this->page()->set('assigneeId', (string) $outsider->id)->set('collaboratorIds', [(string) $outsider->id]);
+
+        $page->assertDontSee('Geheime Fremde Person');
+        $this->assertCount(0, $page->instance()->assigneeOptions);
+        $this->assertCount(0, $page->instance()->collaboratorOptions);
+    }
+
     public function test_a_picker_sends_its_list_after_its_trigger_and_only_its_own(): void
     {
         $page = $this->page()->call('loadPicker', 'people');

@@ -610,8 +610,24 @@ const registerTaskFlyout = () => {
 
         close() {
             if (this.mayLeave()) {
-                window.Flux.modal('task-panel').close()
+                this.slideOut()
             }
+        },
+
+        // Livewire removes the flyout as soon as the server has answered the close, which would cut off Flux's short fade
+        // out: it slides out first (data-closing, see app.css), then it closes. Not with reduced motion.
+        slideOut() {
+            const dialog = this.$el.querySelector('dialog')
+            const finish = () => window.Flux.modal('task-panel').close()
+
+            if (! dialog || ! dialog.open || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                finish()
+
+                return
+            }
+
+            dialog.setAttribute('data-closing', '')
+            window.setTimeout(finish, 220)
         },
 
         // Listens on the window before everything else (capture), also when the focus left the flyout: an open menu, list or
@@ -650,6 +666,14 @@ const registerTaskFlyout = () => {
         guard(event) {
             if (! this.mayLeave()) {
                 event.stopImmediatePropagation()
+
+                return
+            }
+
+            // The close button: slide out first, the close of the flyout then tells the page (wire:close)
+            if (event.type === 'close-task') {
+                event.stopImmediatePropagation()
+                this.slideOut()
             }
         },
     }))

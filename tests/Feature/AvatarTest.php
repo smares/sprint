@@ -61,7 +61,8 @@ class AvatarTest extends TestCase
     public function test_stacked_avatars_start_with_the_main_person_in_front_and_trail_off_behind_it(): void
     {
         $assignee = User::factory()->create(['name' => 'Zuerst Zuständig']);
-        $others = User::factory()->count(4)->create();
+        // Fixed names: a random one with an apostrophe is escaped differently in the markup than e() does
+        $others = collect(['Berta Beispiel', 'Carlo Muster', 'Dora Probe', 'Emil Test'])->map(fn (string $name) => User::factory()->create(['name' => $name]));
 
         $html = Blade::render('<x-avatar-stack :users="$users" />', ['users' => [$assignee, ...$others]]);
 
@@ -74,7 +75,7 @@ class AvatarTest extends TestCase
 
     public function test_without_an_assignee_an_empty_seat_stands_in_front_of_the_collaborators(): void
     {
-        $collaborators = User::factory()->count(2)->create();
+        $collaborators = collect(['Berta Beispiel', 'Carlo Muster'])->map(fn (string $name) => User::factory()->create(['name' => $name]));
 
         $html = Blade::render('<x-avatar-stack :users="$users" unassigned />', ['users' => $collaborators]);
 

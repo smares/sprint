@@ -542,6 +542,7 @@ const registerAssigneeMenu = () => {
             }
 
             this.anchor = detail.anchor
+            this.anchor?.setAttribute('aria-expanded', 'true')
             this.taskId = detail.task
             this.assigneeId = detail.assignee
             this.isOpen = true
@@ -554,6 +555,7 @@ const registerAssigneeMenu = () => {
             }
 
             this.isOpen = false
+            this.anchor?.setAttribute('aria-expanded', 'false')
 
             if (restoreFocus) {
                 this.anchor?.focus()
@@ -735,7 +737,7 @@ document.addEventListener('click', (event) => {
 
 // Keyboard shortcuts, listed in the overview behind "?" (components/keyboard-shortcuts.blade.php).
 // They never fire while typing, with a modifier key held or while a dialog is open (the task flyout allows j, k, e, a and m).
-const typingIn = (target) => target.closest?.('input, textarea, select, [contenteditable], [role=combobox], [role=listbox], ui-select, ui-date-picker, ui-editor')
+const typingIn = (target) => target.closest?.('input, textarea, select, [contenteditable], [role=combobox], [role=listbox], [role=menu], ui-select, ui-date-picker, ui-editor')
 
 const openTaskId = () => new URLSearchParams(window.location.search).get('task')
 

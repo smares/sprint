@@ -229,7 +229,8 @@ class RealtimeTest extends TestCase
             ->assertSee('Von jemand anderem geändert')
             ->call('reloadFromServer')
             ->assertSet('changedElsewhere', false)
-            ->assertSet('title', 'Von anderen');
+            ->assertSet('title', 'Von anderen')
+            ->assertDispatched('task-saved');
     }
 
     public function test_a_new_comment_by_somebody_else_updates_the_page_without_a_warning(): void

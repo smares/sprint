@@ -849,6 +849,7 @@
     "Years": "Jahre",
     "You": "Du",
     "You cannot be assigned to tasks of this project.": "Du kannst Aufgaben dieses Projekts nicht übernehmen.",
+    "This person can no longer be assigned to tasks of this project.": "Diese Person kann Aufgaben dieses Projekts nicht mehr übernehmen.",
     "You cannot deactivate yourself.": "Du kannst dich nicht selbst deaktivieren.",
     "You cannot remove your own administrator rights.": "Du kannst dir die Administrator-Rechte nicht selbst entziehen.",
     "You have no open tasks assigned or none you are involved in.": "Dir sind keine offenen Aufgaben zugewiesen oder du bist an keiner beteiligt.",

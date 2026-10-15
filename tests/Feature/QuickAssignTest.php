@@ -79,7 +79,7 @@ class QuickAssignTest extends TestCase
         $this->project->setRole($deactivated, ProjectRole::Editor);
 
         foreach ([$stranger, $deactivated] as $user) {
-            Livewire::test($view, ['project' => $this->project])->call('assign', $task->id, $user->id)->assertStatus(422);
+            Livewire::test($view, ['project' => $this->project])->call('assign', $task->id, $user->id)->assertDispatched('toast-show');
         }
 
         $this->assertNull($task->fresh()->assignee_id);

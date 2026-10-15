@@ -89,9 +89,23 @@ class UserTimezoneTest extends TestCase
         $this->assertSame('Asia/Kolkata', User::canonicalTimezone('Asia/Calcutta'));
         $this->assertSame('Europe/Berlin', User::canonicalTimezone('Europe/Berlin'));
 
-        foreach (User::LEGACY_TIMEZONES as $current) {
+        foreach (User::LEGACY_TIMEZONES as $legacy => $current) {
             $this->assertContains($current, timezone_identifiers_list());
+            $this->assertNotContains($legacy, timezone_identifiers_list(), "{$legacy} is a name PHP knows, it needs no entry");
         }
+    }
+
+    public function test_a_zone_that_is_refused_leaves_the_select_on_the_saved_zone(): void
+    {
+        $user = User::factory()->create(['timezone' => 'Europe/Berlin']);
+        $this->actingAs($user);
+
+        Livewire::test('pages::profile')
+            ->set('timezone', 'Mars/Olympus_Mons')
+            ->assertHasErrors('timezone')
+            ->assertSet('timezone', 'Europe/Berlin');
+
+        $this->assertSame('Europe/Berlin', $user->fresh()->timezone);
     }
 
     public function test_an_absence_may_end_today_by_the_persons_own_calendar(): void

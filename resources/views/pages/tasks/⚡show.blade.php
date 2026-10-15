@@ -1069,6 +1069,9 @@ new class extends Component
         $this->mount();
         $this->changedElsewhere = false;
         $this->resetErrorBag();
+
+        // The editors show the text of the server again
+        $this->dispatch('task-saved');
     }
 
     public function presenceChannel(): string

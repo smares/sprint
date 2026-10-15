@@ -174,7 +174,14 @@ new class extends Component
         // A browser may still report an old name (Asia/Calcutta); the list has the current one
         $this->timezone = $value = User::canonicalTimezone($value);
 
-        $this->validate(['timezone' => ['nullable', 'string', Rule::in(timezone_identifiers_list())]], attributes: ['timezone' => __('Time zone')]);
+        try {
+            $this->validate(['timezone' => ['nullable', 'string', Rule::in(timezone_identifiers_list())]], attributes: ['timezone' => __('Time zone')]);
+        } catch (ValidationException $exception) {
+            // The select must keep showing the zone that is saved
+            $this->timezone = (string) auth()->user()->timezone;
+
+            throw $exception;
+        }
 
         auth()->user()->update(['timezone' => $value !== '' ? $value : null]);
 
@@ -480,9 +487,9 @@ new class extends Component
 
             {{-- Empty means the application's zone; the browser's own zone is offered when it differs from the one in use --}}
             <div x-data="{ browserZone: ({{ \Illuminate\Support\Js::from(User::LEGACY_TIMEZONES) }})[Intl.DateTimeFormat().resolvedOptions().timeZone] ?? Intl.DateTimeFormat().resolvedOptions().timeZone }">
-                <flux:select variant="listbox" searchable clearable wire:model.live="timezone" :label="__('Time zone')"
-                    :description="__('Your quiet times and absence apply in this time zone.')"
-                    :placeholder="__('Like the application (:zone)', ['zone' => config('app.timezone')])">
+                {{-- A native select: the searchable list box would add some 550 KB of HTML to every response of this page --}}
+                <flux:select wire:model.live="timezone" :label="__('Time zone')" :description="__('Your quiet times and absence apply in this time zone.')">
+                    <flux:select.option value="">{{ __('Like the application (:zone)', ['zone' => config('app.timezone')]) }}</flux:select.option>
                     @foreach (timezone_identifiers_list() as $zone)
                         <flux:select.option value="{{ $zone }}">{{ str_replace('_', ' ', $zone) }}</flux:select.option>
                     @endforeach

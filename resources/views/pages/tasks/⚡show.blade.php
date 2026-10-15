@@ -1307,8 +1307,9 @@ new class extends Component
         @endif
     @endunless
 
-    {{-- data-task-form: the flyout asks before it closes while this form holds changes that are not saved (see taskFlyout in app.js) --}}
-    <form wire:submit="save" data-task-form class="space-y-4">
+    {{-- data-task-form: the flyout asks before it closes while this form holds changes that are not saved (see taskFlyout in app.js).
+         data-dirty-properties: the properties that "Save" stores, the ones that count (not searches, not what saves itself). --}}
+    <form wire:submit="save" data-task-form data-dirty-properties="{{ json_encode(['title', 'description', 'statusId', 'assigneeId', 'startDate', 'dueDate', 'repeatUnit', 'repeatInterval', 'repeatMode', 'repeatUntil', 'fieldValues', 'tagIds', 'parentId', 'collaboratorIds', 'blockerIds', 'blockingIds']) }}" class="space-y-4">
         {{-- The title as a heading and the properties as a quiet list: both look like text until pointed at or focused --}}
         {{-- Long titles wrap instead of being cut off; Enter saves as in a single line, a pasted line break becomes a space --}}
         <flux:textarea wire:model="title" :aria-label="__('Title')" rows="1" resize="none" class="task-title-input field-sizing-content"

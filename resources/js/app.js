@@ -684,22 +684,37 @@ const registerCardMenu = () => {
 // The task flyout (components/task-panel.blade.php). Flux does not close it by itself: Esc, a click next to it,
 // the close button and switching to another task go through here and ask first if the task has unsaved input.
 const registerTaskFlyout = () => {
-    // The forms of the flyout in which somebody typed or picked something (see track). Kept here and not in the
-    // markup, which the server renders again after almost every request (a list that was loaded, a live update).
+    // The task forms (components) that sent a request while they held changes. A request takes along what was typed, and
+    // from then on the server's state counts as the saved one for Livewire ($dirty() is false again), so the flyout
+    // remembers it until the form is saved or reloaded. Kept here and not in the markup, which is rendered again all the time.
+    const sentChanges = new WeakSet()
+
+    // The forms for a comment, a subtask or a comment being edited in which somebody typed (see track)
     const edited = new WeakSet()
 
-    // The property a field is bound to (wire:model), looking from the field up to its form
-    const boundField = (field, form) => {
-        for (let element = field; element && element !== form; element = element.parentElement) {
-            const name = element.getAttributeNames().find((attribute) => attribute.startsWith('wire:model'))
+    const componentOf = (form) => {
+        const id = form.closest('[wire\\:id]')?.getAttribute('wire:id')
 
-            if (name) {
-                return { name, property: element.getAttribute(name) }
-            }
-        }
-
-        return null
+        return id ? window.Livewire.find(id)?.__instance : null
     }
+
+    // Whether the form differs from the state the server last sent, in the properties it names (data-dirty-properties). Not
+    // what the fields say: the lists and date pickers of Flux send input and change events of their own when they start,
+    // and a search in a list or a native change event after saving say nothing about the values.
+    const differs = (form) => {
+        const component = componentOf(form)
+        const properties = JSON.parse(form.dataset.dirtyProperties ?? '[]')
+
+        return Boolean(component) && properties.some((property) => JSON.stringify(component.canonical[property]) !== JSON.stringify(component.reactive[property]))
+    }
+
+    window.Livewire.interceptMessage(({ message }) => {
+        const form = message.component.el.querySelector('form[data-task-form]')
+
+        if (form && differs(form)) {
+            sentChanges.add(message.component)
+        }
+    })
 
     window.Alpine.data('taskFlyout', (question, label) => ({
         init() {
@@ -710,35 +725,30 @@ const registerTaskFlyout = () => {
             })
         },
 
-        // Input and change events of the fields (also of the lists and date pickers of Flux, which send their own; heard
-        // while they go down, as some fields stop them on the way up) mark their form as changed. Livewire's $dirty()
-        // cannot tell: every request, even one that only loads a list, takes along what was typed, and from then on the
-        // server's state counts as the saved one.
-        // Fields that save themselves or search are bound live (wire:model.live): they are no unsaved input. The repeat
-        // unit is live only to show its other fields.
+        // Input and change events of the forms of a comment, a subtask or a comment being edited. Not those of the task
+        // form, whose lists and date pickers send events without anybody having changed anything.
         track(event) {
             const form = event.target.closest?.('form')
-            const field = form && boundField(event.target, form)
 
-            if (field && (! field.name.includes('.live') || field.property === 'repeatUnit')) {
+            if (form && ! form.hasAttribute('data-task-form')) {
                 edited.add(form)
             }
         },
 
-        // The task form is saved with its "Save" button (and by nothing else), so it stays changed until then. The
-        // others (a new comment, a new subtask, a comment being edited) hold only what is typed, which is gone once it is sent.
+        // The task form is saved with its "Save" button (and by nothing else), so it stays changed until then; the others
+        // hold only what is typed, which is gone once it is sent.
         forgetEdits() {
-            this.$el.querySelectorAll('form[data-task-form]').forEach((form) => edited.delete(form))
+            this.$el.querySelectorAll('form[data-task-form]').forEach((form) => sentChanges.delete(componentOf(form)))
         },
 
         // Title, description, fields or a comment typed but not saved yet
         hasUnsavedInput() {
             return [...this.$el.querySelectorAll('dialog form')].some((form) => {
-                if (! edited.has(form)) {
-                    return false
+                if (form.hasAttribute('data-task-form')) {
+                    return sentChanges.has(componentOf(form)) || differs(form)
                 }
 
-                return form.hasAttribute('data-task-form') || [...form.querySelectorAll('textarea, input:not([type=file], [type=hidden])')].some((field) => field.value.trim() !== '')
+                return edited.has(form) && [...form.querySelectorAll('textarea, input:not([type=file], [type=hidden])')].some((field) => field.value.trim() !== '')
             })
         },
 

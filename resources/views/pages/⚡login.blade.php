@@ -180,7 +180,7 @@ new class extends Component
     </div>
 
     <flux:card>
-    <flux:heading size="xl" class="mb-6">{{ __('Sign in') }}</flux:heading>
+    <flux:heading level="1" size="xl" class="mb-6">{{ __('Sign in') }}</flux:heading>
 
     @if (session('status'))
         <flux:callout variant="success" icon="check-circle" class="mb-6" :heading="session('status')" />

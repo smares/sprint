@@ -9,7 +9,8 @@
         <flux:input :size="$size" disabled :placeholder="$placeholder" :aria-label="$label" />
         @break
     @case(\App\Enums\CustomFieldType::Select)
-        <flux:select :size="$size" variant="listbox" wire:model="{{ $model }}" :placeholder="$placeholder" clearable :aria-label="$label">
+        <flux:select :size="$size" variant="listbox" wire:model="{{ $model }}" :placeholder="$placeholder" clearable>
+            <x-slot name="trigger"><flux:select.button :size="$size" clearable :aria-label="$label" :invalid="$errors->has($model)" /></x-slot>
             @foreach ($field->options as $option)
                 <flux:select.option value="{{ $option->id }}">{{ $option->name }}</flux:select.option>
             @endforeach

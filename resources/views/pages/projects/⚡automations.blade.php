@@ -452,7 +452,7 @@ new class extends Component
 
     <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start">
         <div class="min-w-0 flex-1">
-            <flux:heading size="xl" class="mb-1">{{ __('Automations') }}</flux:heading>
+            <flux:heading level="1" size="xl" class="mb-1">{{ __('Automations') }}</flux:heading>
             <flux:text>{{ __('A rule does something on a task as soon as it changes, for example set the assignee when the status becomes “Done”. Changes made by a rule are shown in the history under the rule’s name; rules do not trigger each other.') }}</flux:text>
         </div>
         <flux:button variant="primary" icon="plus" wire:click="openForm">{{ __('New automation') }}</flux:button>

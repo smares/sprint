@@ -11,7 +11,7 @@
      names the rest. With `unassigned` (a task that has people but no assignee) the main seat in front is an empty
      dashed circle, so nobody is mistaken for the assignee. --}}
 @if ($people->isNotEmpty())
-    <flux:avatar.group {{ $attributes }}>
+    <flux:avatar.group class="*:not-first:-ml-1! **:data-[slot=avatar]:data-[size=xs]:ring-1!" {{ $attributes }}>
         @if ($unassigned)
             <x-unassigned-avatar class="relative ring-2 ring-white dark:ring-zinc-900" :style="'z-index: '.($shown->count() + 2)" />
         @endif
@@ -19,7 +19,10 @@
             <x-user-avatar size="xs" :user="$person" :tooltip="$person->labelledName()" class="relative" :style="'z-index: '.($shown->count() + 1 - $loop->index)" />
         @endforeach
         @if ($people->count() > $max)
-            <flux:avatar size="xs" circle :tooltip="$people->skip($max)->map->labelledName()->join(', ')" class="relative" style="z-index: 0">+{{ $people->count() - $max }}</flux:avatar>
+            {{-- The padding of the wrapper keeps the faces in front from covering the "+n" --}}
+            <span class="relative flex ps-1" style="z-index: 0">
+                <flux:avatar size="xs" circle :tooltip="$people->skip($max)->map->labelledName()->join(', ')">+{{ $people->count() - $max }}</flux:avatar>
+            </span>
         @endif
     </flux:avatar.group>
 @endif

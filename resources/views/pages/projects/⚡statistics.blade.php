@@ -142,7 +142,7 @@ new class extends Component
                 $completed = array_sum(array_column($lastFour, 'completed'));
             @endphp
             <div>
-                <flux:heading size="lg">{{ __('Created and completed per week') }}</flux:heading>
+                <flux:heading level="2" size="lg">{{ __('Created and completed per week') }}</flux:heading>
                 <flux:text class="mt-1">{{ __('Are more tasks finished than added? If the gray line stays above the green one for weeks, the backlog grows.') }}</flux:text>
             </div>
 
@@ -203,7 +203,7 @@ new class extends Component
         <div class="grid gap-10 lg:grid-cols-2">
             <section class="space-y-4">
                 <div>
-                    <flux:heading size="lg">{{ __('Cycle time') }}</flux:heading>
+                    <flux:heading level="2" size="lg">{{ __('Cycle time') }}</flux:heading>
                     <flux:text class="mt-1">{{ __('How long a task takes from being created to done. Half of them are done within the median, 85 % within the second figure: a realistic answer to “when will it be ready?”.') }}</flux:text>
                 </div>
 
@@ -262,7 +262,7 @@ new class extends Component
 
             <section class="space-y-4">
                 <div>
-                    <flux:heading size="lg">{{ __('Done on time') }}</flux:heading>
+                    <flux:heading level="2" size="lg">{{ __('Done on time') }}</flux:heading>
                     <flux:text class="mt-1">{{ __('Of the completed tasks with a due date, how many were done by it. If the share drops, the dates are too tight or there is too much at once.') }}</flux:text>
                 </div>
 
@@ -310,7 +310,7 @@ new class extends Component
 
         <section class="space-y-4">
             <div>
-                <flux:heading size="lg">{{ __('Stuck tasks') }}</flux:heading>
+                <flux:heading level="2" size="lg">{{ __('Stuck tasks') }}</flux:heading>
                 <flux:text class="mt-1">{{ __('Open tasks that have stood longest in their status, without the first status (“:status”), where waiting is normal. A good place to ask what is blocking them.', ['status' => $project->defaultStatus()->name]) }}</flux:text>
             </div>
 

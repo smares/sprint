@@ -24,6 +24,9 @@
         @fluxAppearance
     </head>
     <body class="min-h-screen bg-zinc-50 dark:bg-zinc-900">
+        {{-- The first thing the keyboard reaches: jumps over the sidebar to the content; visible only while focused --}}
+        <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:start-3 focus:top-3 focus:z-50 focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-zinc-900 focus:shadow-lg focus:outline-2 focus:outline-offset-2 dark:focus:bg-zinc-800 dark:focus:text-white">{{ __('Skip to content') }}</a>
+
         @auth
             {{-- The sidebar is the navigation on every screen: the main pages, the projects with the views of the current one
                  and the person's menu. On large screens it can be collapsed to icons (remembered in the browser); on phones it
@@ -44,7 +47,11 @@
                 </flux:sidebar.header>
 
                 <flux:modal.trigger name="command-palette" shortcut="cmd.k">
-                    <flux:sidebar.search :placeholder="__('Search')" kbd="⌘K" :tooltip="__('Search or jump to…')" :aria-label="__('Search or jump to…')" />
+                    @php
+                        // The shortcut as the platform's: ⌘K on Apple devices, Ctrl K elsewhere (the server's text stands until Alpine runs); not on phones
+                        $searchShortcut = new \Illuminate\Support\HtmlString('<span class="max-lg:hidden" x-data x-text="/Mac|iPhone|iPad/.test(navigator.platform) ? \'⌘K\' : '.e(json_encode(__('Ctrl K'))).'">'.e(__('Ctrl K')).'</span>');
+                    @endphp
+                    <flux:sidebar.search :placeholder="__('Search')" :kbd="$searchShortcut" tooltip:kbd="" :tooltip="__('Search or jump to…')" :aria-label="__('Search or jump to…')" />
                 </flux:modal.trigger>
 
                 <flux:modal.trigger name="command-palette" shortcut="ctrl.k">
@@ -53,7 +60,7 @@
 
                 <flux:sidebar.nav>
                     <flux:sidebar.item icon="folder" :href="route('projects.index')" :current="request()->routeIs('projects.index')" wire:navigate>{{ __('Projects') }}</flux:sidebar.item>
-                    <flux:sidebar.item icon="check-circle" :href="route('tasks.mine')" :current="request()->routeIs('tasks.mine')" wire:navigate>{{ __('My tasks') }}</flux:sidebar.item>
+                    <flux:sidebar.item icon="check-circle" :href="route('tasks.mine')" :current="request()->routeIs('tasks.mine', 'tasks.mine.board')" wire:navigate>{{ __('My tasks') }}</flux:sidebar.item>
                     <livewire:notification-bell />
                     <flux:sidebar.item icon="calendar-date-range" :href="route('workload')" :current="request()->routeIs('workload')" wire:navigate>{{ __('Workload') }}</flux:sidebar.item>
                     @can('administer')
@@ -75,8 +82,9 @@
             {{-- On phones only what is needed at once: the menu (the sidebar, the same as on large screens), the name and the search.
                  A dot on the menu button tells that the inbox has something unread. --}}
             <flux:header class="border-b border-zinc-200 bg-white lg:hidden dark:border-zinc-700 dark:bg-zinc-900">
-                <div class="relative">
-                    <flux:sidebar.toggle icon="bars-2" inset="left" aria-label="{{ __('Menu') }}" />
+                {{-- aria-expanded follows the sidebar, which Flux opens and closes with attributes on itself --}}
+                <div class="relative" x-data="{ open: false }" x-init="const sidebar = document.querySelector('ui-sidebar'); const sync = () => open = sidebar.hasAttribute('data-flux-sidebar-on-mobile') && ! sidebar.hasAttribute('data-flux-sidebar-collapsed-mobile'); sync(); new MutationObserver(sync).observe(sidebar, { attributes: true })">
+                    <flux:sidebar.toggle icon="bars-2" inset="left" aria-label="{{ __('Menu') }}" x-bind:aria-expanded="open" />
                     <livewire:notification-bell variant="dot" :announces="false" />
                 </div>
 
@@ -85,7 +93,8 @@
                 <flux:spacer />
 
                 <flux:modal.trigger name="command-palette">
-                    <flux:button variant="ghost" icon="magnifying-glass" aria-label="{{ __('Search or jump to…') }}" tooltip="{{ __('Search or jump to…') }}" />
+                    {{-- No tooltip: after a tap it would stay over the palette --}}
+                    <flux:button variant="ghost" icon="magnifying-glass" aria-label="{{ __('Search or jump to…') }}" />
                 </flux:modal.trigger>
             </flux:header>
         @endauth
@@ -97,7 +106,7 @@
             @endpersist
         @endauth
 
-        <flux:main container>
+        <flux:main container id="main-content" role="main" tabindex="-1" class="focus:outline-none">
             {{ $slot }}
         </flux:main>
 

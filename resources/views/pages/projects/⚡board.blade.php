@@ -257,19 +257,19 @@ new class extends Component
 
         {{-- The direction is one click on its own: the arrow shows the order in force and turns it --}}
         @if ($this->sortActive)
-            <flux:button size="sm" variant="subtle" :icon="$sortDirection === 'desc' ? 'arrow-down' : 'arrow-up'" wire:click="reverseSort" aria-label="{{ __('Reverse order') }}" tooltip="{{ $sortDirection === 'desc' ? __('Descending') : __('Ascending') }}: {{ __('Reverse order') }}" />
-            <flux:button size="sm" variant="subtle" icon="x-mark" wire:click="resetSort" aria-label="{{ __('Reset') }}" tooltip="{{ __('Reset') }}" />
+            <flux:button size="sm" variant="subtle" :icon="$sortDirection === 'desc' ? 'arrow-down' : 'arrow-up'" wire:click="reverseSort" class="max-sm:size-10!" aria-label="{{ $sortDirection === 'desc' ? __('Descending') : __('Ascending') }}, {{ __('Reverse order') }}" tooltip="{{ $sortDirection === 'desc' ? __('Descending') : __('Ascending') }}: {{ __('Reverse order') }}" />
+            <flux:button size="sm" variant="subtle" icon="x-mark" wire:click="resetSort" class="max-sm:size-10!" aria-label="{{ __('Reset') }}" tooltip="{{ __('Reset') }}" />
         @endif
     </div>
 
     {{-- Columns can be collapsed to a narrow strip with the status upright (data-collapsed, see app.css), remembered per
          project in the browser; a click on the strip opens the column again. --}}
     <div class="scroll-shadows" data-fills-height>
-        <flux:kanban class="items-start overflow-x-auto pb-4" data-scroll-edges
+        <flux:kanban class="items-start overflow-x-auto pb-4 max-sm:snap-x max-sm:snap-mandatory" data-scroll-edges
             x-data="{ collapsed: $persist([]).as('board-collapsed-{{ $project->id }}'), toggle(id) { this.collapsed = this.collapsed.includes(id) ? this.collapsed.filter((other) => other !== id) : [...this.collapsed, id] } }">
             @foreach ($this->statuses as $status)
                 {{-- The status color as a line along the top of the column and a dot before its name --}}
-                <flux:kanban.column wire:key="column-{{ $status->id }}" class="shrink-0 border-t-3 border-(--badge)" style="--badge: {{ \App\Color::normalize($status->color) }}"
+                <flux:kanban.column wire:key="column-{{ $status->id }}" class="shrink-0 border-t-3 border-(--badge) max-sm:w-[min(20rem,calc(100vw-6rem))]" style="--badge: {{ \App\Color::normalize($status->color) }}"
                     x-bind:data-collapsed="collapsed.includes({{ $status->id }})"
                     x-on:click="collapsed.includes({{ $status->id }}) && toggle({{ $status->id }})">
                     <flux:kanban.column.header :heading="$status->name" :count="$this->columnTotals[$status->id]">
@@ -277,7 +277,7 @@ new class extends Component
 
                         <x-slot name="actions">
                             <flux:tooltip>
-                                <flux:button size="xs" variant="ghost" square x-on:click.stop="toggle({{ $status->id }})"
+                                <flux:button size="xs" variant="ghost" square class="max-sm:size-10!" x-on:click.stop="toggle({{ $status->id }})"
                                     x-bind:aria-expanded="! collapsed.includes({{ $status->id }})"
                                     x-bind:aria-label="collapsed.includes({{ $status->id }}) ? {{ \Illuminate\Support\Js::from(__('Expand column')) }} : {{ \Illuminate\Support\Js::from(__('Collapse column')) }}">
                                     <flux:icon.chevron-double-left variant="micro" x-show="! collapsed.includes({{ $status->id }})" />

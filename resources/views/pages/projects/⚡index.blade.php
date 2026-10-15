@@ -134,7 +134,7 @@ new class extends Component
     },
 }">
     <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <flux:heading size="xl">{{ __('Projects') }}</flux:heading>
+        <flux:heading level="1" size="xl">{{ __('Projects') }}</flux:heading>
 
         <flux:modal.trigger name="create-project">
             <flux:button variant="primary" icon="plus">{{ __('New project') }}</flux:button>
@@ -150,7 +150,7 @@ new class extends Component
     @else
         @island(name: 'favorites')
             @if ($this->favorites->isNotEmpty())
-                <flux:heading size="lg" class="mb-3">{{ __('Favorites') }}</flux:heading>
+                <flux:heading level="2" size="lg" class="mb-3">{{ __('Favorites') }}</flux:heading>
                 {{-- Each person sorts their own favorites by dragging --}}
                 <div class="mb-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" wire:sort="moveFavorite" wire:sort:config="{{ \App\Sortable::CONFIG }}">
                     @foreach ($this->favorites as $project)
@@ -158,7 +158,7 @@ new class extends Component
                     @endforeach
                 </div>
 
-                <flux:heading size="lg" class="mb-3">{{ __('All projects') }}</flux:heading>
+                <flux:heading level="2" size="lg" class="mb-3">{{ __('All projects') }}</flux:heading>
             @else
                 <flux:text class="mb-4">{{ __('Star a project to keep it at the top as a favorite.') }}</flux:text>
             @endif

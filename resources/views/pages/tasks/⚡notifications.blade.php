@@ -38,7 +38,7 @@ new class extends Component
 ?>
 
 <div class="mx-auto max-w-md space-y-4 pt-12">
-    <flux:heading size="xl">{{ __('Notifications') }}</flux:heading>
+    <flux:heading level="1" size="xl">{{ __('Notifications') }}</flux:heading>
 
     @if ($muted)
         <flux:callout variant="success" icon="bell-slash" :heading="__('Unsubscribed')" :text="__('You will no longer receive emails about “:task”.', ['task' => $task->title])" />

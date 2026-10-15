@@ -64,7 +64,7 @@ new class extends Component
 
 <div class="space-y-4">
     <div>
-        <flux:heading size="lg">{{ __('API access for AI agents') }}</flux:heading>
+        <flux:heading level="2" size="lg">{{ __('API access for AI agents') }}</flux:heading>
         <flux:text class="mt-1">{{ __('With a token, agents such as Claude Code can read, create and change tasks via MCP – with exactly your permissions and under your name. Deleting is not possible.') }}</flux:text>
     </div>
 

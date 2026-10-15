@@ -635,3 +635,27 @@ tr[data-task-id] {
         transition: none;
     }
 }
+
+/* Below md the task flyout fills the screen: the browser's `dialog:modal` leaves 1em plus a border on both sides
+   (max-width: calc(100% - 2em - 6px)), which showed a strip of the page next to it. From md on the width comes from its class. */
+@media (width < 48rem) {
+    [data-task-flyout] > dialog[data-flux-flyout] {
+        max-width: none;
+    }
+}
+
+/* A closed sidebar on phones and tablets only slides out of sight; this also takes it out of the keyboard's and the screen
+   reader's reach (about twenty invisible tab stops otherwise). The visibility changes at the end of the slide. */
+@media (width < 64rem) {
+    ui-sidebar[data-flux-sidebar-on-mobile][data-flux-sidebar-collapsed-mobile] {
+        visibility: hidden;
+        transition-property: transform, visibility;
+    }
+}
+
+/* Boards on phones: the columns snap to the left edge, so one column is read at a time and the next one is in sight. */
+@media (width < 40rem) {
+    [data-flux-kanban] > [data-flux-kanban-column] {
+        scroll-snap-align: start;
+    }
+}

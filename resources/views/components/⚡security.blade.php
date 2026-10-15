@@ -125,7 +125,7 @@ new class extends Component
 
 <div class="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-700">
     <div class="space-y-1 p-5">
-        <flux:heading size="lg">{{ __('Additional protection') }}</flux:heading>
+        <flux:heading level="2" size="lg">{{ __('Additional protection') }}</flux:heading>
         <flux:text>{{ __('Two-factor authentication and passkeys protect your account beyond the password. You change them together after confirming your password.') }}</flux:text>
     </div>
 

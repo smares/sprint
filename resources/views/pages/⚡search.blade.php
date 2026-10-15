@@ -111,7 +111,7 @@ new class extends Component
 ?>
 
 <div class="max-w-4xl">
-    <flux:heading size="xl" class="mb-6">{{ __('Search') }}</flux:heading>
+    <flux:heading level="1" size="xl" class="mb-6">{{ __('Search') }}</flux:heading>
 
     <div class="space-y-4">
         <flux:input wire:model.live.debounce.300ms="query" icon="magnifying-glass" :placeholder="__('Title, description, comments, attachments …')" autofocus clearable />

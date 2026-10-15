@@ -5,7 +5,8 @@ window.passkeys = () => import('@laravel/passkeys').then((module) => module.Pass
 const SERVICE_WORKER_URL = '/sw.js'
 
 const registerMentionable = () => {
-    // People come with the page; tasks are looked up on the server while typing (options.searchTasks).
+    // People come with the page, or (options.users is null) are fetched from the component when the editor is focused
+    // or the first @ is typed; tasks are looked up on the server while typing (options.searchTasks).
     window.Alpine.data('mentionable', (options) => ({
         open: false,
         query: '',
@@ -13,9 +14,19 @@ const registerMentionable = () => {
         matches: [],
         start: -1,
         searchTimer: null,
+        known: options.users,
+        loading: null,
+
+        loadPeople() {
+            this.loading ??= this.$wire.mentionPeople()
+                .then((users) => { this.known = users })
+                .catch(() => { this.loading = null })
+
+            return this.loading
+        },
 
         people(query) {
-            return options.users
+            return this.known
                 .filter((user) => user.name.toLowerCase().includes(query))
                 .slice(0, 8)
                 .map((user) => ({ type: 'user', id: user.id, label: user.name, note: user.note, initials: user.initials, avatar: user.avatar, color: user.color }))
@@ -46,6 +57,12 @@ const registerMentionable = () => {
             if (!match) {
                 this.open = false
                 this.start = -1
+
+                return
+            }
+
+            if (this.known === null) {
+                this.loadPeople().then(() => this.known !== null && this.onInput(event))
 
                 return
             }
@@ -281,6 +298,15 @@ const registerEmojiField = () => {
     window.Alpine.data('emojiField', (target, id) => ({
         emoji: '',
 
+        // The markup of the menu, sent once with the page (components/reactions.blade.php)
+        menuHtml() {
+            return this.$el.closest('[wire\\:id]').querySelector('template[data-reaction-menu]').innerHTML
+        },
+
+        react(emoji) {
+            this.$wire.react(target, id, emoji)
+        },
+
         keepEmoji(event) {
             if (event.isComposing) {
                 return
@@ -303,7 +329,7 @@ const registerEmojiField = () => {
                 return
             }
 
-            this.$wire.react(target, id, this.emoji)
+            this.react(this.emoji)
             this.emoji = ''
         },
     }))
@@ -692,12 +718,96 @@ const registerOpenTask = () => {
     })
 }
 
+// A picker of the task flyout (tasks/⚡show.blade.php) holds only its chosen values until somebody points at it or
+// uses it; then the component sends its list of choices (loadPicker). Pointing is given a short moment so that passing
+// over a field on the way to another does not load anything. Keys that open or move through the list while it is on
+// its way are held back and played when it has arrived, so a fast keyboard user gets the same result as with a list
+// that was there all along.
+const registerLazyPicker = () => {
+    // The requests for choices, by the element of the component: fields that share their choices (assignee and
+    // collaborators) ask once
+    const requests = new WeakMap()
+    const listKeys = ['ArrowDown', 'ArrowUp', 'Enter', ' ']
+
+    window.Alpine.data('lazyPicker', (name) => ({
+        timer: null,
+        loading: false,
+        replaying: false,
+        held: [],
+
+        load() {
+            clearTimeout(this.timer)
+
+            const component = this.$el.closest('[wire\\:id]')
+            const asked = requests.get(component) ?? new Map()
+
+            if (! asked.has(name)) {
+                const request = { done: false }
+
+                request.promise = this.$wire.loadPicker(name).catch(() => asked.delete(name)).finally(() => { request.done = true })
+                asked.set(name, request)
+                requests.set(component, asked)
+            }
+
+            const request = asked.get(name)
+
+            if (! this.loading && ! request.done) {
+                this.loading = true
+                request.promise.finally(() => this.$nextTick(() => this.release()))
+            }
+        },
+
+        // The key presses on the button of the list while it loads (not the typing in a search field)
+        hold(event) {
+            if (! this.loading || this.replaying || ! listKeys.includes(event.key) || event.target.matches('input, textarea')) {
+                return
+            }
+
+            event.preventDefault()
+            event.stopPropagation()
+            this.held.push(event)
+        },
+
+        // One key at a time, as they were pressed: the list handles each of them before the next one comes
+        release() {
+            this.loading = false
+
+            const play = () => {
+                const event = this.held.shift()
+
+                if (! event) {
+                    return
+                }
+
+                this.replaying = true
+                event.target.dispatchEvent(new KeyboardEvent('keydown', {
+                    key: event.key, code: event.code, shiftKey: event.shiftKey, bubbles: true, cancelable: true, composed: true,
+                }))
+                this.replaying = false
+
+                window.setTimeout(play, 20)
+            }
+
+            play()
+        },
+
+        point() {
+            this.timer = setTimeout(() => this.load(), 150)
+        },
+
+        leave() {
+            clearTimeout(this.timer)
+        },
+    }))
+}
+
 const registerAll = () => {
     // Which task the flyout shows (task-flyout sets it): its title links light up
     window.Alpine.store('taskFlyout', { id: '' })
     registerOpenTask()
     registerTaskFlyout()
     registerMentionable()
+    registerLazyPicker()
     registerTimelineBar()
     registerPresence()
     registerAvatarPicker()

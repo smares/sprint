@@ -32,6 +32,14 @@ class TaskPickersTest extends TestCase
     }
 
     /**
+     * The page after the pickers were used: their choices load when somebody points at them (loadPicker).
+     */
+    private function pageWithPickers()
+    {
+        return $this->page()->call('loadPicker', 'parent')->call('loadPicker', 'blockers')->call('loadPicker', 'blocking');
+    }
+
+    /**
      * @return list<string>
      */
     private function titles($options): array
@@ -45,7 +53,7 @@ class TaskPickersTest extends TestCase
             Task::factory()->for($this->project)->create(['title' => sprintf('Aufgabe %02d', $number)]);
         }
 
-        $page = $this->page();
+        $page = $this->pageWithPickers();
 
         $this->assertCount(50, $page->instance()->blockerOptions);
         $this->assertCount(50, $page->instance()->blockingOptions);
@@ -59,7 +67,7 @@ class TaskPickersTest extends TestCase
             Task::factory()->for($this->project)->create(['title' => sprintf('Aufgabe %02d', $number)]);
         }
 
-        $page = $this->page()->set('blockerSearch', 'Aufgabe 68');
+        $page = $this->pageWithPickers()->set('blockerSearch', 'Aufgabe 68');
 
         $this->assertSame(['Aufgabe 68'], $this->titles($page->instance()->blockerOptions));
     }
@@ -72,7 +80,7 @@ class TaskPickersTest extends TestCase
         }
         $this->task->blockers()->attach($blocker);
 
-        $page = $this->page();
+        $page = $this->pageWithPickers();
 
         $this->assertContains('Zuletzt im Alphabet', $this->titles($page->instance()->blockerOptions));
 
@@ -88,14 +96,14 @@ class TaskPickersTest extends TestCase
         Task::factory()->for($this->project)->create(['title' => 'Überschrift', 'is_section' => true]);
         Task::factory()->for($this->project)->create(['title' => 'Daneben']);
 
-        $this->assertSame(['Daneben'], $this->titles($this->page()->instance()->parentOptions));
+        $this->assertSame(['Daneben'], $this->titles($this->pageWithPickers()->instance()->parentOptions));
     }
 
     public function test_tasks_of_other_projects_are_never_offered(): void
     {
         Task::factory()->for(Project::factory()->create())->create(['title' => 'Fremd']);
 
-        $page = $this->page()->set('parentSearch', 'Fremd')->set('blockerSearch', 'Fremd');
+        $page = $this->pageWithPickers()->set('parentSearch', 'Fremd')->set('blockerSearch', 'Fremd');
 
         $this->assertSame([], $this->titles($page->instance()->parentOptions));
         $this->assertSame([], $this->titles($page->instance()->blockerOptions));

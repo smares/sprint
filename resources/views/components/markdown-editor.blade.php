@@ -1,9 +1,11 @@
-@props(['label' => null, 'rows' => 4, 'placeholder' => null, 'mentions' => ['users' => [], 'searchTasks' => false], 'images' => null, 'grow' => false, 'max' => null, 'preview' => false, 'previewHtml' => null])
+@props(['label' => null, 'rows' => 4, 'placeholder' => null, 'mentions' => ['users' => [], 'searchTasks' => false], 'mentionsOnDemand' => false, 'images' => null, 'grow' => false, 'max' => null, 'preview' => false, 'previewHtml' => null])
 
 {{--
     max: the longest text, shown as a counter while writing. It counts Unicode code points ([...text].length), which is how
     Laravel's max rule counts (mb_strlen): not UTF-16 units (an emoji would be two) and not bytes. An emoji made of several
     parts (family, flag, skin tone) and a letter with a combining accent count for each part, on the page as in the check.
+    mentionsOnDemand: the people after @ are not part of the page: the editor asks its component for them (mentionPeople, see
+        EditsMarkdown) when it is focused or the first @ is typed. Tasks are looked up on the server while typing in any case.
     preview: the text starts rendered (previewHtml comes with the page) and a click on "Edit" opens the field.
 --}}
 
@@ -131,7 +133,7 @@
         </div>
     </div>
 
-    <div x-show="tab === 'write'" @if ($preview) x-cloak @endif class="relative" x-data="mentionable(@js($mentions))" x-on:input="onInput($event)" x-on:keydown="onKeydown($event)" x-on:click.outside="open = false"@if ($images !== null) x-on:paste="onPaste($event)" x-on:drop="onDrop($event)" x-on:dragover.prevent @endif>
+    <div x-show="tab === 'write'" @if ($preview) x-cloak @endif class="relative" x-data="mentionable(@js($mentionsOnDemand ? ['users' => null, 'searchTasks' => true] : $mentions))" x-on:input="onInput($event)" x-on:keydown="onKeydown($event)" @if ($mentionsOnDemand) x-on:focusin.once="loadPeople()" @endif x-on:click.outside="open = false"@if ($images !== null) x-on:paste="onPaste($event)" x-on:drop="onDrop($event)" x-on:dragover.prevent @endif>
         {{-- grow: the field is as tall as its text (at least $rows lines), so a long description is never hidden behind a scrollbar --}}
         <flux:textarea :rows="$rows" :placeholder="$placeholder" :resize="$grow ? 'none' : 'vertical'" :class="$grow ? 'field-sizing-content min-h-24 not-supports-[field-sizing:content]:resize-y!' : ''" {{ $attributes->whereStartsWith('wire:model') }} />
 

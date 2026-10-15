@@ -33,7 +33,7 @@ BACKUP_TIME=02:30
 BACKUP_KEEP_DAYS=14
 ```
 
-Liegen die Backups auf dem Server selbst (`BACKUP_DISK=backups`), schützen sie vor versehentlichem Löschen und kaputten Updates, aber nicht vor dem Verlust des Servers; dann sollte ein externer Job den Ordner `storage/app/backups` regelmäßig woanders hin kopieren. Für einen Bucket legst du in `config/filesystems.php` eine eigene Disk an (oder nutzt `s3` mit einem eigenen `AWS_BUCKET`) und trägst ihren Namen in `BACKUP_DISK` ein.
+Liegen die Backups auf dem Server selbst (`BACKUP_DISK=backups`), schützen sie vor versehentlichem Löschen und kaputten Updates, aber nicht vor dem Verlust des Servers; dann sollte ein externer Job den Ordner `storage/app/backups` regelmäßig woanders hin kopieren. Bei Docker Compose beschreibt [Letztes Backup auf den Host holen und per rsync sichern](deployment-docker.md#letztes-backup-auf-den-host-holen-und-per-rsync-sichern) ein fertiges Skript dafür. Für einen Bucket legst du in `config/filesystems.php` eine eigene Disk an (oder nutzt `s3` mit einem eigenen `AWS_BUCKET`) und trägst ihren Namen in `BACKUP_DISK` ein.
 
 Nicht enthalten sind:
 

@@ -250,7 +250,7 @@ new class extends Component
                                 @endphp
                                 @if ($this->canEdit || $task->assignee_id || $task->collaborators->isNotEmpty() || $task->due_date || $progress || $task->comments_count || $task->attachments_count)
                                     <div class="mt-3 flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
-                                        <x-assignee-picker :task="$task" :users="$this->assignableUsers" :editable="$this->canEdit" />
+                                        <x-assignee-picker :task="$task" :editable="$this->canEdit" />
                                         @if ($progress)
                                             <span class="inline-flex items-center gap-0.5 tabular-nums" title="{{ __('Subtasks') }}"><flux:icon.list-bullet variant="micro" />{{ $progress['done'] }}/{{ $progress['total'] }}</span>
                                         @endif
@@ -284,6 +284,10 @@ new class extends Component
             @endforeach
         </flux:kanban>
     </div>
+
+    @if ($this->canEdit)
+        <x-assignee-menu :users="$this->assignableUsers" />
+    @endif
 
     <x-task-panel :task="$this->panelTask" />
 </div>

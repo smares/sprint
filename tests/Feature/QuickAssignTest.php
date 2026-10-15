@@ -105,8 +105,8 @@ class QuickAssignTest extends TestCase
 
         Livewire::test($view, ['project' => $this->project])
             ->assertSee('Nur ansehen')
-            ->assertDontSeeHtml('aria-label="Zuständige Person ändern"')
-            ->assertDontSeeHtml('assign('.$task->id)
+            ->assertDontSeeHtml('data-assignee-menu')
+            ->assertDontSeeHtml('open-assignee-menu')
             ->call('assign', $task->id, $viewer->id)
             ->assertForbidden();
 
@@ -114,15 +114,21 @@ class QuickAssignTest extends TestCase
     }
 
     #[DataProvider('views')]
-    public function test_editors_get_the_menu_with_themselves_the_team_and_nobody(string $view): void
+    public function test_editors_get_one_menu_with_themselves_the_team_and_nobody_and_a_trigger_per_task(string $view): void
     {
-        $task = Task::factory()->for($this->project)->create(['assignee_id' => $this->member->id]);
+        $tasks = Task::factory()->for($this->project)->count(3)->create(['assignee_id' => $this->member->id]);
+        $html = Livewire::test($view, ['project' => $this->project])->html();
 
-        Livewire::test($view, ['project' => $this->project])
-            ->assertSeeHtml('wire:click="assign('.$task->id.', '.auth()->id().')"')
-            ->assertSeeHtml('wire:click="assign('.$task->id.', '.$this->member->id.')"')
-            ->assertSeeHtml('wire:click="assign('.$task->id.', null)"')
-            ->assertSee(__('Assign to me'));
+        // The people are in the page once, not once per task
+        $this->assertSame(1, substr_count($html, 'data-assignee-menu'));
+        $this->assertSame(1, substr_count($html, 'pick('.$this->member->id.')'));
+        $this->assertSame(1, substr_count($html, 'pick(meId)'));
+        $this->assertSame(1, substr_count($html, 'pick(null)'));
+
+        // Each task has a trigger that says which task it is and who is the assignee now, so the menu is never stale
+        foreach ($tasks as $task) {
+            $this->assertStringContainsString("task: {$task->id}, assignee: {$this->member->id}", $html);
+        }
     }
 
     public function test_a_task_without_people_still_offers_the_menu_to_editors(): void
@@ -131,7 +137,7 @@ class QuickAssignTest extends TestCase
 
         Livewire::test('pages::projects.board', ['project' => $this->project])
             ->assertSeeHtml('aria-label="'.__('Change assignee').'"')
-            ->assertDontSeeHtml('wire:click="assign('.$task->id.', null)"');
+            ->assertSeeHtml("task: {$task->id}, assignee: null");
     }
 
     #[DataProvider('views')]

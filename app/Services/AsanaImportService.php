@@ -16,6 +16,7 @@ use App\Models\TaskStatus;
 use App\Models\User;
 use Closure;
 use finfo;
+use Illuminate\Database\Query\JoinClause;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -1234,11 +1235,18 @@ class AsanaImportService
      */
     private function rewriteLinks(): void
     {
-        $resolve = function (string $gid): ?array {
+        // A task is linked from many texts, so its title is looked up once
+        $titles = [];
+        $resolve = function (string $gid) use (&$titles): ?array {
             $id = $this->map['task'][$gid] ?? null;
-            $title = $id === null ? null : Task::query()->whereKey($id)->value('title');
 
-            return $title === null ? null : ['id' => $id, 'title' => (string) $title];
+            if ($id === null) {
+                return null;
+            }
+
+            $titles[$id] ??= Task::query()->whereKey($id)->value('title');
+
+            return $titles[$id] === null ? null : ['id' => $id, 'title' => (string) $titles[$id]];
         };
 
         foreach ($this->linkTexts as [$table, $id]) {
@@ -1276,14 +1284,22 @@ class AsanaImportService
     {
         $this->map = [];
 
-        foreach (DB::table('asana_imports')->get(['kind', 'gid', 'model_id']) as $row) {
+        foreach (DB::table('asana_imports')->cursor() as $row) {
             $this->map[$row->kind][$row->gid] = (int) $row->model_id;
         }
 
-        // Rows whose task or project is gone are forgotten: it would not be created again otherwise
-        $this->projectOfTask = Task::query()->whereIn('id', array_values($this->map['task'] ?? []))->pluck('project_id', 'id')->map(fn (mixed $id) => (int) $id)->all();
+        // Rows whose task or project is gone are forgotten: it would not be created again otherwise. The mapping is joined
+        // rather than listed, as a list of tens of thousands of ids is more than SQLite takes in one query.
+        $this->projectOfTask = Task::query()
+            ->join('asana_imports', fn (JoinClause $join) => $join->on('asana_imports.model_id', '=', 'tasks.id')->where('asana_imports.kind', 'task'))
+            ->pluck('tasks.project_id', 'tasks.id')
+            ->map(fn (mixed $id) => (int) $id)
+            ->all();
         $this->map['task'] = array_filter($this->map['task'] ?? [], fn (int $id) => isset($this->projectOfTask[$id]));
-        $projects = Project::query()->whereIn('id', array_values($this->map['project'] ?? []))->pluck('id')->all();
+        $projects = Project::query()
+            ->join('asana_imports', fn (JoinClause $join) => $join->on('asana_imports.model_id', '=', 'projects.id')->where('asana_imports.kind', 'project'))
+            ->pluck('projects.id')
+            ->all();
         $this->map['project'] = array_filter($this->map['project'] ?? [], fn (int $id) => in_array($id, $projects, true));
     }
 

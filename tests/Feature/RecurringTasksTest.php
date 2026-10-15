@@ -190,7 +190,8 @@ class RecurringTasksTest extends TestCase
 
         $next = $this->others($task)->firstOrFail();
         $this->assertSame('2027-03-10', $next->due_date->toDateString());
-        $this->assertSame(31, $next->repeat_day);
+        // The due date follows the day of finishing, so there is no old day left to keep
+        $this->assertSame(10, $next->repeat_day);
     }
 
     public function test_the_wanted_day_is_still_kept_when_overdue_dates_are_skipped(): void
@@ -518,6 +519,24 @@ class RecurringTasksTest extends TestCase
         Livewire::test('pages::tasks.show', ['task' => $task])->set('repeatUnit', 'day')->call('save')->assertForbidden();
 
         $this->assertNull($task->fresh()->repeat_unit);
+    }
+
+    public function test_a_series_after_completion_has_no_old_day_to_keep_when_it_switches_to_the_schedule(): void
+    {
+        $task = $this->recurring(['due_date' => '2026-01-31', 'repeat_unit' => RepeatUnit::Month, 'repeat_mode' => RepeatMode::Completion]);
+        $this->assertSame(31, $task->repeat_day);
+
+        $this->travelTo('2026-02-10 10:00:00');
+        $task->toggleDone();
+        $next = $this->others($task)->first();
+        $this->assertSame('2026-03-10', $next->due_date->toDateString());
+        $this->assertSame(10, $next->repeat_day);
+
+        $next->update(['repeat_mode' => RepeatMode::Schedule]);
+        $this->assertSame(10, $next->fresh()->repeat_day);
+
+        $next->toggleDone();
+        $this->assertSame('2026-04-10', $this->others($next)->orderByDesc('id')->first()->due_date->toDateString());
     }
 
     public function test_the_date_carbon_helpers_are_not_confused_by_the_clock(): void

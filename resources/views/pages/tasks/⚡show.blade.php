@@ -750,7 +750,17 @@ new class extends Component
     {
         $ids = array_values(array_filter([$this->assigneeId, ...$this->collaboratorIds]));
 
-        return $ids === [] ? new Collection : User::whereIn('id', $ids)->orderBy('name')->get(self::USER_COLUMNS);
+        if ($ids === []) {
+            return new Collection;
+        }
+
+        // The ids come from the browser: only people the page offers anyway (the project's people, the collaborators, the assignee) show up
+        return User::whereIn('id', $ids)
+            ->where(fn ($people) => $people
+                ->whereIn('id', $this->task->project->eligibleUsers()->select('users.id'))
+                ->orWhereIn('id', $this->task->collaborators()->select('users.id'))
+                ->orWhere('id', $this->task->assignee_id))
+            ->orderBy('name')->get(self::USER_COLUMNS);
     }
 
     /**

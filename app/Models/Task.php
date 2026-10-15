@@ -257,7 +257,7 @@ class Task extends Model
             return;
         }
 
-        if ($this->repeat_day === null || (! $this->isDirty('repeat_day') && (! $this->exists || $this->isDirty(['due_date', 'repeat_unit'])))) {
+        if ($this->repeat_day === null || (! $this->isDirty('repeat_day') && (! $this->exists || $this->isDirty(['due_date', 'repeat_unit', 'repeat_mode'])))) {
             $this->repeat_day = $this->due_date->day;
         }
     }
@@ -338,7 +338,8 @@ class Task extends Model
             'repeat_interval' => $this->repeat_interval,
             'repeat_mode' => $this->repeat_mode,
             'repeat_until' => $this->repeat_until,
-            'repeat_day' => $day,
+            // After completion the due date follows the day of finishing, so the series has no day of its own to keep
+            'repeat_day' => $this->repeat_mode === RepeatMode::Completion ? $next->day : $day,
         ], $offset);
 
         $this->logActivity(ActivityType::RecurrenceCreated, ['to' => $next->toDateString()]);

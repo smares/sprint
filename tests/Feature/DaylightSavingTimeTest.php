@@ -144,6 +144,52 @@ class DaylightSavingTimeTest extends TestCase
         $this->assertSame(['03:30'], $ran);
     }
 
+    public function test_an_event_still_runs_when_a_longer_one_in_the_same_minute_delays_it(): void
+    {
+        // The scheduler picks the due events once per minute, but asks their filters one after the other
+        $ran = [];
+        $schedule = new Schedule('Europe/Berlin');
+        $schedule->call(function () use (&$ran): void {
+            $ran[] = 'first';
+            Carbon::setTestNow(now()->addSeconds(65));
+        })->dailyAt('08:00')->name('first')->when(ScheduleGuard::once('first', '08:00'));
+        $schedule->call(function () use (&$ran): void {
+            $ran[] = 'second';
+        })->dailyAt('08:00')->name('second')->when(ScheduleGuard::once('second', '08:00'));
+        $this->app->instance(Schedule::class, $schedule);
+
+        $this->travelTo($this->at('2026-10-16 08:00:00'));
+        $this->artisan('schedule:run');
+
+        $this->assertSame(['first', 'second'], $ran);
+    }
+
+    public function test_an_event_does_not_start_before_its_time_or_long_after_it(): void
+    {
+        $guard = ScheduleGuard::once('window', '03:15');
+
+        $this->travelTo($this->at('2026-10-16 02:15:00'));
+        $this->assertFalse($guard());
+
+        $this->travelTo($this->at('2026-10-16 03:15:00'));
+        $this->assertTrue($guard());
+        $this->assertFalse($guard(), 'the same day, a second time');
+
+        $this->travelTo($this->at('2026-10-17 05:16:00'));
+        $this->assertFalse(ScheduleGuard::once('late', '03:15')());
+    }
+
+    public function test_a_time_that_is_not_one_falls_back_instead_of_stopping_the_scheduler(): void
+    {
+        $this->assertSame('08:30', ScheduleGuard::time('8:30', '07:30'));
+        $this->assertSame('08:30', ScheduleGuard::time(' 08:30 ', '07:30'));
+        $this->assertSame('23:59', ScheduleGuard::time('23:59', '07:30'));
+
+        foreach (['8.30', '7h30', 'abc', '', '24:00', '12:60', null, 830] as $value) {
+            $this->assertSame('07:30', ScheduleGuard::time($value, '07:30'), var_export($value, true));
+        }
+    }
+
     public function test_reminders_find_the_tasks_due_tomorrow_on_the_days_the_clocks_change(): void
     {
         Notification::fake();

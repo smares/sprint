@@ -98,7 +98,7 @@ new class extends Component
 
     public function add(): void
     {
-        $validated = $this->validate(['newName' => ['required', 'string', 'max:50']], attributes: ['newName' => __('Name')]);
+        $validated = $this->validate(['newName' => ['required', 'string', 'max:'.\App\Models\Tag::MAX_NAME_LENGTH]], attributes: ['newName' => __('Name')]);
         $name = trim($validated['newName']);
 
         if ($this->nameTaken($name)) {
@@ -118,7 +118,7 @@ new class extends Component
         $tag = $this->tagOrFail($id);
         $name = trim($value);
 
-        if ($name === '' || mb_strlen($name) > 50) {
+        if ($name === '' || mb_strlen($name) > \App\Models\Tag::MAX_NAME_LENGTH) {
             $this->names[$id] = $tag->name;
 
             return;

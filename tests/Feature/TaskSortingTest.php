@@ -270,4 +270,18 @@ class TaskSortingTest extends TestCase
             ->call('resetSort')
             ->assertSeeHtml('wire:key="rows-draggable"');
     }
+
+    public function test_an_invalid_sort_criterion_in_the_address_counts_as_the_manual_order(): void
+    {
+        $task = $this->task();
+
+        foreach (['bogus', 'field:999999'] as $criterion) {
+            Livewire::withQueryParams(['sort' => $criterion])
+                ->test('pages::projects.show', ['project' => $this->project])
+                ->assertSeeHtml('wire:key="rows-draggable"')
+                ->assertSeeHtml('wire:sort:item="'.$task->id.'"')
+                ->call('moveTask', $task->id, 0)
+                ->assertStatus(200);
+        }
+    }
 }

@@ -13,6 +13,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 #[Fillable(['project_id', 'name', 'color'])]
 class Tag extends Model
 {
+    /** The longest name (in characters). */
+    public const int MAX_NAME_LENGTH = 50;
+
     /** @use HasFactory<TagFactory> */
     use HasFactory;
 

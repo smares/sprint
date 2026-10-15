@@ -77,6 +77,6 @@ class Attachment extends Model
 
     public function humanSize(): string
     {
-        return preg_replace('/\.0(?= )/', '', Number::fileSize($this->size, precision: 1));
+        return preg_replace('/[.,]0(?= )/', '', Number::fileSize($this->size, precision: 1));
     }
 }

@@ -214,7 +214,7 @@ class CustomFieldsInListTest extends TestCase
             ->set('tagFilter', (string) $tag->id);
 
         $this->assertSame(
-            ['Nur meine', 'Priorität: Hoch', 'Kunde A'],
+            ['Mir zugewiesen', 'Priorität: Hoch', 'Kunde A'],
             $page->instance()->activeFilters->pluck('label')->all(),
         );
 

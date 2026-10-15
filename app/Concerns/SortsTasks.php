@@ -141,11 +141,18 @@ trait SortsTasks
 
         return match (true) {
             $this->sortBy === 'due' => [['tasks.due_date is null', []], ["tasks.due_date {$direction}", []]],
-            // SQLite compares bytes, so "Zebra" would stand before "anton"; the other databases ignore the case by their collation
-            $this->sortBy === 'title' => [['tasks.title'.(DB::connection()->getDriverName() === 'sqlite' ? ' collate nocase' : '')." {$direction}", []]],
+            $this->sortBy === 'title' => [['tasks.title'.$this->caseInsensitiveCollation()." {$direction}", []]],
             $this->sortBy === 'status' => [["(select task_statuses.position from task_statuses where task_statuses.id = tasks.status_id) {$direction}", []]],
             default => $this->fieldSortTerms($direction),
         };
+    }
+
+    /**
+     * SQLite compares bytes, so "Zebra" would stand before "anton"; the other databases ignore the case by their collation.
+     */
+    private function caseInsensitiveCollation(): string
+    {
+        return DB::connection()->getDriverName() === 'sqlite' ? ' collate nocase' : '';
     }
 
     /**
@@ -176,6 +183,8 @@ trait SortsTasks
         $sql = $value->toSql();
         $bindings = $value->getBindings();
 
-        return [["({$sql}) is null", $bindings], ["({$sql}) {$direction}", $bindings]];
+        $collation = in_array($field->type, [CustomFieldType::Select, CustomFieldType::Number], true) ? '' : $this->caseInsensitiveCollation();
+
+        return [["({$sql}) is null", $bindings], ["({$sql}){$collation} {$direction}", $bindings]];
     }
 }

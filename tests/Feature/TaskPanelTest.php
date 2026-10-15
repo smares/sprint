@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\ProjectRole;
+use App\Models\CustomField;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
@@ -88,6 +89,50 @@ class TaskPanelTest extends TestCase
             ->assertSee('Ungespeicherte Änderungen an dieser Aufgabe verwerfen?');
 
         Livewire::test('pages::tasks.show', ['task' => $this->task, 'panel' => true])->assertSeeHtml('data-flyout-close');
+    }
+
+    public function test_the_check_for_unsaved_input_compares_the_task_form_with_the_server_and_follows_the_edits_of_the_others(): void
+    {
+        // The task form is compared with the state the server last sent, in the properties it names: the events of its
+        // fields cannot tell (the lists and date pickers of Flux send some at their start, a search sends them too), and
+        // Livewire's $dirty() is false again after any request, which takes along what was typed. taskFlyout in app.js
+        // remembers a request sent with changes until "Save". The forms for a comment or a subtask follow their input events.
+        $flyout = $this->flyout()->call('openTask', $this->task->id)
+            ->assertSeeHtml('x-on:input.capture="track($event)"')
+            ->assertSeeHtml('x-on:change.capture="track($event)"')
+            ->assertSeeHtml('x-on:task-saved.window="forgetEdits()"');
+
+        $html = $flyout->html();
+
+        $this->assertSame(1, substr_count($html, 'data-task-form'));
+        $this->assertStringContainsString('<form wire:submit="save" data-task-form data-dirty-properties="', $html);
+        $this->assertStringContainsString('<form wire:submit="addComment"', $html);
+    }
+
+    public function test_the_properties_the_check_compares_are_those_the_task_form_stores(): void
+    {
+        CustomField::factory()->for($this->project)->create(['name' => 'Kunde']);
+        $this->task->update(['repeat_unit' => 'week']);
+
+        $html = Livewire::test('pages::tasks.show', ['task' => $this->task, 'panel' => true])->html();
+        $form = (string) str($html)->after('<form wire:submit="save"')->before('</form>');
+
+        $listed = json_decode(html_entity_decode((string) str($form)->after('data-dirty-properties="')->before('"')), true);
+
+        preg_match_all('/wire:model(\.[a-z.0-9]+)?="([^"]+)"/', $form, $matches, PREG_SET_ORDER);
+        $bound = collect($matches)
+            // What searches or saves itself (wire:model.live), but the repeat unit, which is live only to show its fields; typed
+            // text for a new tag is no choice yet
+            ->reject(fn (array $match) => str_contains($match[1], 'live') && $match[2] !== 'repeatUnit')
+            ->map(fn (array $match) => explode('.', $match[2])[0])
+            ->reject(fn (string $property) => $property === 'newTag')
+            ->unique()->values()->all();
+
+        $this->assertContains('fieldValues', $bound);
+        $this->assertContains('repeatUnit', $bound);
+        $this->assertEqualsCanonicalizing($bound, $listed, 'every bound property of the form must be named in data-dirty-properties, and none else');
+        $this->assertStringContainsString('wire:model.live="repeatUnit"', $form);
+        $this->assertStringContainsString('wire:model.live.debounce.300ms="parentSearch"', $form);
     }
 
     public function test_opening_and_closing_by_event_and_action(): void

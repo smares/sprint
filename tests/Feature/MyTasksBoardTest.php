@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ProjectRole;
 use App\Models\PersonalColumn;
 use App\Models\PersonalPlacement;
 use App\Models\Project;
@@ -283,17 +284,43 @@ class MyTasksBoardTest extends TestCase
         $heute->place($erste, 0, []);
 
         $board = $this->board()
-            ->assertSeeHtml("moveTask({$zweite->id}, 100000, '{$heute->id}')")
-            ->assertSeeHtml("moveTask({$erste->id}, 100000, '0')")
+            ->assertSeeHtml('data-card-menu="'.$zweite->id.'"')
+            ->assertSeeHtml('data-card-menu="'.$erste->id.'"')
             ->assertSee('In Spalte verschieben');
 
         $board->call('moveTask', $zweite->id, 100000, (string) $heute->id);
 
         $this->assertSame(['Erste', 'Zweite'], $this->titles($board, $heute->id));
         $this->assertSame([], $this->titles($board, 0));
+
+        $board->call('moveTask', $erste->id, 100000, '0');
+
+        $this->assertSame(['Erste'], $this->titles($board, 0));
     }
 
-    public function test_the_card_menu_moves_a_task_up_and_down_within_its_column(): void
+    public function test_the_columns_of_the_card_menu_are_in_the_page_once_not_once_for_every_card(): void
+    {
+        $heute = $this->column('Heute');
+        $spaeter = $this->column('Später');
+
+        foreach (range(1, 5) as $number) {
+            $this->mine("Aufgabe {$number}");
+        }
+
+        $html = $this->board()->html();
+
+        // One menu for the board: its entries are made in the browser from the columns that stand once around the cards
+        $this->assertSame(1, substr_count($html, 'In Spalte verschieben'));
+        $this->assertSame(5, substr_count($html, 'data-card-menu="'));
+        $this->assertSame(1, substr_count($html, 'data-card-menu-list'));
+        $this->assertSame(0, substr_count($html, 'moveTask('));
+        $this->assertSame(
+            [['id' => 0, 'name' => 'Unsortiert'], ['id' => $heute->id, 'name' => 'Heute'], ['id' => $spaeter->id, 'name' => 'Später']],
+            json_decode(html_entity_decode((string) str($html)->after('data-move-targets="')->before('"')), true),
+        );
+    }
+
+    public function test_a_card_button_tells_where_the_card_is_for_moving_up_and_down_within_its_column(): void
     {
         $heute = $this->column('Heute');
         $a = $this->mine('A');
@@ -302,12 +329,63 @@ class MyTasksBoardTest extends TestCase
         $heute->place($b, 1, [$a->id]);
 
         $board = $this->board()
-            ->assertSeeHtml("moveTask({$a->id}, 1, '{$heute->id}')")
-            ->assertSeeHtml("moveTask({$b->id}, 0, '{$heute->id}')");
+            ->assertSeeHtml('data-card-menu="'.$a->id.'" data-column="'.$heute->id.'" data-index="0" data-last="0"')
+            ->assertSeeHtml('data-card-menu="'.$b->id.'" data-column="'.$heute->id.'" data-index="1" data-last="1"')
+            ->assertSee('Nach oben')
+            ->assertSee('Nach unten');
 
         $board->call('moveTask', $a->id, 1, (string) $heute->id);
 
         $this->assertSame(['B', 'A'], $this->titles($board, $heute->id));
+        $board->assertSeeHtml('data-card-menu="'.$a->id.'" data-column="'.$heute->id.'" data-index="1" data-last="1"');
+    }
+
+    public function test_every_card_that_can_be_dragged_has_the_menu_whatever_the_role_in_its_project(): void
+    {
+        $person = User::factory()->create();
+        $this->actingAs($person);
+        $heute = $this->column('Heute', $person);
+
+        $viewing = Project::factory()->create();
+        $viewing->setRole($person, ProjectRole::Viewer);
+        $archived = Project::factory()->create(['archived_at' => now()]);
+        $archived->setRole($person, ProjectRole::Admin);
+
+        $asViewer = Task::factory()->for($viewing)->create(['title' => 'Nur gelesen', 'assignee_id' => $person->id]);
+        $inArchive = Task::factory()->for($archived)->create(['title' => 'Im Archiv', 'assignee_id' => $person->id]);
+
+        $board = $this->board()
+            ->assertSeeHtml('data-card-menu="'.$asViewer->id.'"')
+            ->assertSeeHtml('data-card-menu="'.$inArchive->id.'"')
+            ->assertSeeHtml('wire:sort:item="'.$asViewer->id.'"')
+            ->assertSeeHtml('wire:sort:item="'.$inArchive->id.'"');
+
+        // The place is the person's own, so it needs no right to edit the project
+        $board->call('moveTask', $asViewer->id, 100000, (string) $heute->id)
+            ->call('moveTask', $inArchive->id, 100000, (string) $heute->id);
+
+        $this->assertSame(['Nur gelesen', 'Im Archiv'], $this->titles($board, $heute->id));
+        $this->assertSame(2, PersonalPlacement::where('user_id', $person->id)->count());
+    }
+
+    public function test_a_task_of_a_project_one_only_views_can_be_placed_only_while_it_is_one_s_own_open_task(): void
+    {
+        $person = User::factory()->create();
+        $this->actingAs($person);
+        $heute = $this->column('Heute', $person);
+
+        $viewing = Project::factory()->create();
+        $viewing->setRole($person, ProjectRole::Viewer);
+
+        $notInvolved = Task::factory()->for($viewing)->create();
+        $done = Task::factory()->for($viewing)->done()->create(['assignee_id' => $person->id]);
+        $hidden = Task::factory()->for(Project::factory()->create())->create(['assignee_id' => $person->id]);
+
+        foreach ([$notInvolved, $done, $hidden] as $task) {
+            $this->board()->call('moveTask', $task->id, 0, (string) $heute->id)->assertStatus(404);
+        }
+
+        $this->assertSame(0, PersonalPlacement::count());
     }
 
     public function test_the_sidebar_marks_my_tasks_on_the_board_too(): void

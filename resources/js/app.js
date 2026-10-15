@@ -549,43 +549,74 @@ window.addEventListener('keydown', (event) => {
     }
 }, true)
 
+// What the menus that open at a button of the page have in common (the assignee menu and the move menu of the board
+// cards): one menu for the whole page, shown at the button that was clicked, so its entries are in the page once and
+// not once for every task.
+const anchoredMenu = () => ({
+    isOpen: false,
+    anchor: null,
+
+    // A second click on the same button closes it again (false then)
+    openAt(anchor) {
+        if (this.isOpen && this.anchor === anchor) {
+            this.close(true)
+
+            return false
+        }
+
+        this.anchor?.setAttribute('aria-expanded', 'false')
+        this.anchor = anchor
+        this.anchor?.setAttribute('aria-expanded', 'true')
+        this.isOpen = true
+        this.$nextTick(() => this.items()[0]?.focus())
+
+        return true
+    },
+
+    close(restoreFocus = false) {
+        if (! this.isOpen) {
+            return
+        }
+
+        this.isOpen = false
+        this.anchor?.setAttribute('aria-expanded', 'false')
+
+        if (restoreFocus) {
+            this.anchor?.focus()
+        }
+    },
+
+    items() {
+        return [...this.$refs.menu.querySelectorAll('[role^=menuitem]')].filter((item) => item.offsetParent !== null)
+    },
+
+    move(step) {
+        const items = this.items()
+
+        if (! items.length) {
+            return
+        }
+
+        items[(items.indexOf(document.activeElement) + step + items.length) % items.length].focus()
+    },
+})
+
 // The menu to hand a task to someone (components/assignee-menu.blade.php): one per page, opened at the faces of a task
 // (components/assignee-picker.blade.php, which tells which task and who is the assignee), so the people are in the page once.
 const registerAssigneeMenu = () => {
     window.Alpine.data('assigneeMenu', (meId) => ({
+        ...anchoredMenu(),
         meId,
-        isOpen: false,
-        anchor: null,
         taskId: null,
         assigneeId: null,
 
         show(detail) {
-            // A second click on the same faces closes it again
-            if (this.isOpen && this.anchor === detail.anchor) {
-                this.close(true)
-
+            if (! this.openAt(detail.anchor)) {
                 return
             }
 
-            this.anchor = detail.anchor
-            this.anchor?.setAttribute('aria-expanded', 'true')
             this.taskId = detail.task
             this.assigneeId = detail.assignee
-            this.isOpen = true
-            this.$nextTick(() => this.items()[0]?.focus())
-        },
-
-        close(restoreFocus = false) {
-            if (! this.isOpen) {
-                return
-            }
-
-            this.isOpen = false
-            this.anchor?.setAttribute('aria-expanded', 'false')
-
-            if (restoreFocus) {
-                this.anchor?.focus()
-            }
         },
 
         pick(userId) {
@@ -594,19 +625,58 @@ const registerAssigneeMenu = () => {
             this.close(true)
             this.$wire.assign(task, userId)
         },
+    }))
+}
 
-        items() {
-            return [...this.$refs.menu.querySelectorAll('[role^=menuitem]')].filter((item) => item.offsetParent !== null)
-        },
+// The menu of the cards of the board "My tasks" (components/card-move-menu.blade.php) that moves a card without dragging it.
+// The button of a card (data-card-menu) tells which card it is, in which column and at which place; the columns to move
+// to are read from the board when the menu opens (data-move-targets), so a renamed or new column is there without
+// the menu being rendered again.
+const registerCardMenu = () => {
+    window.Alpine.data('cardMenu', () => ({
+        ...anchoredMenu(),
+        taskId: null,
+        column: null,
+        index: 0,
+        isLast: false,
+        columns: [],
 
-        move(step) {
-            const items = this.items()
-
-            if (! items.length) {
+        show(anchor) {
+            if (! this.openAt(anchor)) {
                 return
             }
 
-            items[(items.indexOf(document.activeElement) + step + items.length) % items.length].focus()
+            this.taskId = Number(anchor.dataset.cardMenu)
+            this.column = Number(anchor.dataset.column)
+            this.index = Number(anchor.dataset.index)
+            this.isLast = anchor.dataset.last === '1'
+            this.columns = JSON.parse(anchor.closest('[data-move-targets]')?.dataset.moveTargets ?? '[]').filter((column) => column.id !== this.column)
+        },
+
+        // Cards of "Unsorted" follow the due dates, they only move to another column
+        get canMoveUp() {
+            return this.column !== 0 && this.index > 0
+        },
+
+        get canMoveDown() {
+            return this.column !== 0 && ! this.isLast
+        },
+
+        // To the end of another column, or one place up or down in the own
+        pick(column, index = 100000) {
+            const task = this.taskId
+
+            this.close()
+            this.$wire.moveTask(task, index, String(column)).then(() => this.$nextTick(() => this.focusCard(task, column)))
+        },
+
+        // The menu button of the card where it is now, so the keyboard continues from there (the card was rendered again,
+        // maybe in another column). Not shown (beyond "Load more"): the button of the column's first card.
+        focusCard(task, column) {
+            const button = document.querySelector(`[data-card-menu="${task}"]`)
+                ?? document.querySelector(`[data-column="${column}"][data-card-menu]`)
+
+            button?.focus()
         },
     }))
 }
@@ -614,6 +684,38 @@ const registerAssigneeMenu = () => {
 // The task flyout (components/task-panel.blade.php). Flux does not close it by itself: Esc, a click next to it,
 // the close button and switching to another task go through here and ask first if the task has unsaved input.
 const registerTaskFlyout = () => {
+    // The task forms (components) that sent a request while they held changes. A request takes along what was typed, and
+    // from then on the server's state counts as the saved one for Livewire ($dirty() is false again), so the flyout
+    // remembers it until the form is saved or reloaded. Kept here and not in the markup, which is rendered again all the time.
+    const sentChanges = new WeakSet()
+
+    // The forms for a comment, a subtask or a comment being edited in which somebody typed (see track)
+    const edited = new WeakSet()
+
+    const componentOf = (form) => {
+        const id = form.closest('[wire\\:id]')?.getAttribute('wire:id')
+
+        return id ? window.Livewire.find(id)?.__instance : null
+    }
+
+    // Whether the form differs from the state the server last sent, in the properties it names (data-dirty-properties). Not
+    // what the fields say: the lists and date pickers of Flux send input and change events of their own when they start,
+    // and a search in a list or a native change event after saving say nothing about the values.
+    const differs = (form) => {
+        const component = componentOf(form)
+        const properties = JSON.parse(form.dataset.dirtyProperties ?? '[]')
+
+        return Boolean(component) && properties.some((property) => JSON.stringify(component.canonical[property]) !== JSON.stringify(component.reactive[property]))
+    }
+
+    window.Livewire.interceptMessage(({ message }) => {
+        const form = message.component.el.querySelector('form[data-task-form]')
+
+        if (form && differs(form)) {
+            sentChanges.add(message.component)
+        }
+    })
+
     window.Alpine.data('taskFlyout', (question, label) => ({
         init() {
             this.$nextTick(() => {
@@ -623,11 +725,31 @@ const registerTaskFlyout = () => {
             })
         },
 
+        // Input and change events of the forms of a comment, a subtask or a comment being edited. Not those of the task
+        // form, whose lists and date pickers send events without anybody having changed anything.
+        track(event) {
+            const form = event.target.closest?.('form')
+
+            if (form && ! form.hasAttribute('data-task-form')) {
+                edited.add(form)
+            }
+        },
+
+        // The task form is saved with its "Save" button (and by nothing else), so it stays changed until then; the others
+        // hold only what is typed, which is gone once it is sent.
+        forgetEdits() {
+            this.$el.querySelectorAll('form[data-task-form]').forEach((form) => sentChanges.delete(componentOf(form)))
+        },
+
         // Title, description, fields or a comment typed but not saved yet
         hasUnsavedInput() {
-            const task = this.$el.querySelector('dialog [wire\\:id]')
+            return [...this.$el.querySelectorAll('dialog form')].some((form) => {
+                if (form.hasAttribute('data-task-form')) {
+                    return sentChanges.has(componentOf(form)) || differs(form)
+                }
 
-            return Boolean(task && window.Livewire.find(task.getAttribute('wire:id'))?.$dirty())
+                return edited.has(form) && [...form.querySelectorAll('textarea, input:not([type=file], [type=hidden])')].some((field) => field.value.trim() !== '')
+            })
         },
 
         mayLeave() {
@@ -718,11 +840,11 @@ const registerOpenTask = () => {
     })
 }
 
-// A picker of the task flyout (tasks/⚡show.blade.php) holds only its chosen values until somebody points at it or
-// uses it; then the component sends its list of choices (loadPicker). Pointing is given a short moment so that passing
-// over a field on the way to another does not load anything. Keys that open or move through the list while it is on
-// its way are held back and played when it has arrived, so a fast keyboard user gets the same result as with a list
-// that was there all along.
+// A picker of the task flyout (tasks/⚡show.blade.php) holds only its chosen values until somebody uses it (focus, click
+// or a key); then the component sends its list of choices (loadPicker). Merely pointing at a field loads nothing: the
+// request renders the whole task again (comments and activity included), too much to spend on a mouse that passes by.
+// Keys that open or move through the list while it is on its way are held back and played when it has arrived, so a fast
+// keyboard user gets the same result as with a list that was there all along.
 const registerLazyPicker = () => {
     // The requests for choices, by the element of the component: fields that share their choices (assignee and
     // collaborators) ask once
@@ -730,14 +852,11 @@ const registerLazyPicker = () => {
     const listKeys = ['ArrowDown', 'ArrowUp', 'Enter', ' ']
 
     window.Alpine.data('lazyPicker', (name) => ({
-        timer: null,
         loading: false,
         replaying: false,
         held: [],
 
         load() {
-            clearTimeout(this.timer)
-
             const component = this.$el.closest('[wire\\:id]')
             const asked = requests.get(component) ?? new Map()
 
@@ -779,24 +898,22 @@ const registerLazyPicker = () => {
                     return
                 }
 
-                this.replaying = true
-                event.target.dispatchEvent(new KeyboardEvent('keydown', {
-                    key: event.key, code: event.code, shiftKey: event.shiftKey, bubbles: true, cancelable: true, composed: true,
-                }))
-                this.replaying = false
+                // Space and Enter open a closed list through the click that a button makes of them; a key event sent from
+                // here makes none. Once it is open they pick the active choice, which does listen to the key.
+                if ([' ', 'Enter'].includes(event.key) && ! this.$el.querySelector(':popover-open')) {
+                    event.target.click()
+                } else {
+                    this.replaying = true
+                    event.target.dispatchEvent(new KeyboardEvent('keydown', {
+                        key: event.key, code: event.code, shiftKey: event.shiftKey, bubbles: true, cancelable: true, composed: true,
+                    }))
+                    this.replaying = false
+                }
 
                 window.setTimeout(play, 20)
             }
 
             play()
-        },
-
-        point() {
-            this.timer = setTimeout(() => this.load(), 150)
-        },
-
-        leave() {
-            clearTimeout(this.timer)
         },
     }))
 }
@@ -812,6 +929,7 @@ const registerAll = () => {
     registerPresence()
     registerAvatarPicker()
     registerAssigneeMenu()
+    registerCardMenu()
     registerEmojiField()
     registerPushToggle()
 }

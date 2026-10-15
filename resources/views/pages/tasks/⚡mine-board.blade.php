@@ -245,7 +245,7 @@ new class extends Component
 
     {{-- The columns are the person's own: "Unsorted" holds what they have not put anywhere (and cannot be reordered by hand, it
          follows the due dates), every other column keeps the order the cards were dragged into. --}}
-    <div class="scroll-shadows" data-fills-height>
+    <div class="scroll-shadows" data-fills-height data-move-targets="{{ json_encode(collect([['id' => 0, 'name' => __('Unsorted')]])->concat($this->personalColumns->map(fn ($column) => ['id' => $column->id, 'name' => $column->name]))->values()->all()) }}">
         <flux:kanban class="items-start overflow-x-auto pb-4 max-sm:snap-x max-sm:snap-mandatory" data-scroll-edges>
             @foreach ([0 => __('Unsorted')] + $this->personalColumns->pluck('name', 'id')->all() as $key => $name)
                 @php
@@ -323,36 +323,15 @@ new class extends Component
                                         @endif
                                     </div>
 
-                                    {{-- Dragging is not the only way: the same moves from a menu (for the keyboard, switches and fingers that do not drag) --}}
-                                    @if (in_array($task->project_id, $this->editableProjectIds, true))
-                                        @php
-                                            $moveKey = $key;
-                                            $moveIndex = $loop->index;
-                                            $moveLast = $loop->last;
-                                        @endphp
-                                        <flux:dropdown align="end" x-on:click.stop>
-                                            <flux:button size="xs" variant="ghost" square class="-me-1 -mt-0.5 max-sm:size-10!" icon="ellipsis-horizontal" aria-label="{{ __('Move task') }}" />
-
-                                            <flux:menu>
-                                                <flux:menu.group :heading="__('Move to column')">
-                                                    @foreach ([0 => __('Unsorted')] + $this->personalColumns->pluck('name', 'id')->all() as $targetKey => $targetName)
-                                                        @if ($targetKey !== $moveKey)
-                                                            <flux:menu.item wire:key="move-{{ $task->id }}-{{ $targetKey }}" wire:click="moveTask({{ $task->id }}, 100000, '{{ $targetKey }}')">{{ $targetName }}</flux:menu.item>
-                                                        @endif
-                                                    @endforeach
-                                                </flux:menu.group>
-                                                @if ($personal && ($moveIndex > 0 || ! $moveLast))
-                                                    <flux:menu.separator />
-                                                    @if ($moveIndex > 0)
-                                                        <flux:menu.item icon="arrow-up" wire:click="moveTask({{ $task->id }}, {{ $moveIndex - 1 }}, '{{ $moveKey }}')">{{ __('Move up') }}</flux:menu.item>
-                                                    @endif
-                                                    @unless ($moveLast)
-                                                        <flux:menu.item icon="arrow-down" wire:click="moveTask({{ $task->id }}, {{ $moveIndex + 1 }}, '{{ $moveKey }}')">{{ __('Move down') }}</flux:menu.item>
-                                                    @endunless
-                                                @endif
-                                            </flux:menu>
-                                        </flux:dropdown>
-                                    @endif
+                                    {{-- Dragging is not the only way: the same moves from a menu (for the keyboard, switches and fingers that do not
+                                         drag). Every card can be dragged, so every card has it: the place is the person's own, whatever their role in
+                                         the project. The menu is in the page once (x-card-move-menu), the button only tells which card it is. --}}
+                                    <flux:button
+                                        size="xs" variant="ghost" square class="-me-1 -mt-0.5 max-sm:size-10!" icon="ellipsis-horizontal"
+                                        aria-label="{{ __('Move task') }}" aria-haspopup="menu" aria-expanded="false"
+                                        data-card-menu="{{ $task->id }}" data-column="{{ $key }}" data-index="{{ $loop->index }}" data-last="{{ $loop->last ? 1 : 0 }}"
+                                        x-on:click.stop="$dispatch('open-card-menu', { anchor: $el })"
+                                    />
                                 </div>
 
                                 <div class="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400">
@@ -403,4 +382,5 @@ new class extends Component
         </flux:kanban>
     </div>
 
+    <x-card-move-menu />
 </div>

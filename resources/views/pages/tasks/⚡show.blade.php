@@ -47,8 +47,18 @@ new class extends Component
     /** The columns of the people in the pickers: what the name, the avatar and the away note need. */
     private const USER_COLUMNS = ['id', 'name', 'avatar_updated_at', 'timezone', 'deactivated_at', 'absent_from', 'absent_until'];
 
-    /** The pickers that load their choices on demand, see loadPicker. */
-    private const PICKERS = ['people', 'tags', 'parent', 'blockers', 'blocking'];
+    /**
+     * The pickers that load their choices on demand (see loadPicker), with the islands of the page that hold them.
+     *
+     * @var array<string, list<string>>
+     */
+    private const PICKERS = [
+        'people' => ['assignee-choices', 'collaborator-choices'],
+        'tags' => ['tag-choices'],
+        'parent' => ['parent-choices'],
+        'blockers' => ['blocker-choices'],
+        'blocking' => ['blocking-choices'],
+    ];
 
     public Task $task;
 
@@ -142,18 +152,28 @@ new class extends Component
     public int $commentLimit = self::FEED_PAGE;
 
     /**
-     * The choices of a picker: the first time somebody points at or focuses the field (see lazyPicker in app.js).
-     * Fields that share their choices (assignee and collaborators) share the name.
+     * The choices of a picker: the first time somebody focuses or uses the field (see lazyPicker in app.js). Fields that
+     * share their choices (assignee and collaborators) share the name.
+     *
+     * Only the islands that hold the choices are sent (PICKERS), not the page: rendering it whole again (comments, activity,
+     * subtasks) cost 23 to 26 queries and 640 to 840 KB of HTML for a task with 62 comments; the islands take 5 to 8 queries
+     * and 26 to 69 KB, almost all of it the choices themselves. The islands render with the page as before (always), so
+     * what is chosen shows after every save; they carry variant="listbox" because an island sent alone has no flux:select
+     * around it to take the variant from.
      */
     public function loadPicker(string $picker): void
     {
-        if (! in_array($picker, self::PICKERS, true) || $this->pickerLoaded($picker)) {
-            $this->skipRender();
+        $this->skipRender();
 
+        if (! array_key_exists($picker, self::PICKERS) || $this->pickerLoaded($picker)) {
             return;
         }
 
         $this->loadedPickers[] = $picker;
+
+        foreach (self::PICKERS[$picker] as $island) {
+            $this->renderIsland($island);
+        }
     }
 
     private function pickerLoaded(string $picker): bool
@@ -1287,7 +1307,9 @@ new class extends Component
         @endif
     @endunless
 
-    <form wire:submit="save" class="space-y-4">
+    {{-- data-task-form: the flyout asks before it closes while this form holds changes that are not saved (see taskFlyout in app.js).
+         data-dirty-properties: the properties that "Save" stores, the ones that count (not searches, not what saves itself). --}}
+    <form wire:submit="save" data-task-form data-dirty-properties="{{ json_encode(['title', 'description', 'statusId', 'assigneeId', 'startDate', 'dueDate', 'repeatUnit', 'repeatInterval', 'repeatMode', 'repeatUntil', 'fieldValues', 'tagIds', 'parentId', 'collaboratorIds', 'blockerIds', 'blockingIds']) }}" class="space-y-4">
         {{-- The title as a heading and the properties as a quiet list: both look like text until pointed at or focused --}}
         {{-- Long titles wrap instead of being cut off; Enter saves as in a single line, a pasted line break becomes a space --}}
         <flux:textarea wire:model="title" :aria-label="__('Title')" rows="1" resize="none" class="task-title-input field-sizing-content"
@@ -1311,9 +1333,11 @@ new class extends Component
                 <flux:select size="sm" variant="listbox" wire:model="assigneeId" data-shortcut-assignee>
                     <x-slot name="trigger"><flux:select.button size="sm" :aria-label="__('Assignee')" :invalid="$errors->has('assigneeId')" /></x-slot>
                     <flux:select.option value="">{{ __('Nobody') }}</flux:select.option>
-                    @foreach ($this->assigneeOptions as $user)
-                        <flux:select.option wire:key="assignee-{{ $user->id }}" value="{{ $user->id }}">{{ $user->labelledName() }}</flux:select.option>
-                    @endforeach
+                    @island(name: 'assignee-choices', always: true)
+                        @foreach ($this->assigneeOptions as $user)
+                            <flux:select.option variant="listbox" wire:key="assignee-{{ $user->id }}" value="{{ $user->id }}">{{ $user->labelledName() }}</flux:select.option>
+                        @endforeach
+                    @endisland
                 </flux:select>
             </x-task-field>
 
@@ -1369,18 +1393,22 @@ new class extends Component
                         <flux:select.search wire:model.live.debounce.300ms="parentSearch" :placeholder="__('Search tasks …')" />
                     </x-slot>
                     <flux:select.option value="">{{ __('None') }}</flux:select.option>
-                    @foreach ($this->parentOptions as $candidate)
-                        <flux:select.option wire:key="parent-{{ $candidate->id }}" value="{{ $candidate->id }}">{{ $candidate->title }}</flux:select.option>
-                    @endforeach
+                    @island(name: 'parent-choices', always: true)
+                        @foreach ($this->parentOptions as $candidate)
+                            <flux:select.option variant="listbox" wire:key="parent-{{ $candidate->id }}" value="{{ $candidate->id }}">{{ $candidate->title }}</flux:select.option>
+                        @endforeach
+                    @endisland
                 </flux:select>
             </x-task-field>
 
             <x-task-field :label="__('Collaborators')" icon="users" lazy="people">
                 <flux:pillbox size="sm" wire:model="collaboratorIds" multiple searchable :placeholder="__('Choose more people …')">
                     <x-slot name="trigger"><flux:pillbox.trigger size="sm" :aria-label="__('Collaborators')" /></x-slot>
-                    @foreach ($this->collaboratorOptions as $user)
-                        <flux:pillbox.option wire:key="collaborator-{{ $user->id }}" value="{{ $user->id }}">{{ $user->labelledName() }}</flux:pillbox.option>
-                    @endforeach
+                    @island(name: 'collaborator-choices', always: true)
+                        @foreach ($this->collaboratorOptions as $user)
+                            <flux:pillbox.option wire:key="collaborator-{{ $user->id }}" value="{{ $user->id }}">{{ $user->labelledName() }}</flux:pillbox.option>
+                        @endforeach
+                    @endisland
                 </flux:pillbox>
             </x-task-field>
 
@@ -1392,9 +1420,11 @@ new class extends Component
                         </x-slot>
                     @endif
 
-                    @foreach ($this->tagOptions as $tag)
-                        <flux:pillbox.option wire:key="tag-{{ $tag->id }}" value="{{ $tag->id }}">{{ $tag->name }}</flux:pillbox.option>
-                    @endforeach
+                    @island(name: 'tag-choices', always: true)
+                        @foreach ($this->tagOptions as $tag)
+                            <flux:pillbox.option wire:key="tag-{{ $tag->id }}" value="{{ $tag->id }}">{{ $tag->name }}</flux:pillbox.option>
+                        @endforeach
+                    @endisland
 
                     @if ($this->canEdit)
                         <flux:pillbox.option.create wire:click="createTag" min-length="1">
@@ -1410,9 +1440,11 @@ new class extends Component
                     <x-slot name="search">
                         <flux:pillbox.search wire:model.live.debounce.300ms="blockerSearch" :placeholder="__('Search tasks …')" />
                     </x-slot>
-                    @foreach ($this->blockerOptions as $other)
-                        <flux:pillbox.option wire:key="blocker-{{ $other->id }}" value="{{ $other->id }}">{{ $other->title }}</flux:pillbox.option>
-                    @endforeach
+                    @island(name: 'blocker-choices', always: true)
+                        @foreach ($this->blockerOptions as $other)
+                            <flux:pillbox.option wire:key="blocker-{{ $other->id }}" value="{{ $other->id }}">{{ $other->title }}</flux:pillbox.option>
+                        @endforeach
+                    @endisland
                 </flux:pillbox>
             </x-task-field>
 
@@ -1422,9 +1454,11 @@ new class extends Component
                     <x-slot name="search">
                         <flux:pillbox.search wire:model.live.debounce.300ms="blockingSearch" :placeholder="__('Search tasks …')" />
                     </x-slot>
-                    @foreach ($this->blockingOptions as $other)
-                        <flux:pillbox.option wire:key="blocking-{{ $other->id }}" value="{{ $other->id }}">{{ $other->title }}</flux:pillbox.option>
-                    @endforeach
+                    @island(name: 'blocking-choices', always: true)
+                        @foreach ($this->blockingOptions as $other)
+                            <flux:pillbox.option wire:key="blocking-{{ $other->id }}" value="{{ $other->id }}">{{ $other->title }}</flux:pillbox.option>
+                        @endforeach
+                    @endisland
                 </flux:pillbox>
             </x-task-field>
 

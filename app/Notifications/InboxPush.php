@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\InboxTextService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
+use Illuminate\Queue\Attributes\DeleteWhenMissingModels;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Gate;
@@ -19,6 +20,7 @@ use NotificationChannels\WebPush\WebPushMessage;
  * the inbox sentence in the reader's language as the text, a tap opens the task. Not during an absence or a quiet time,
  * like the emails; the inbox still has everything.
  */
+#[DeleteWhenMissingModels]
 class InboxPush extends Notification implements ShouldQueueAfterCommit
 {
     use Queueable;

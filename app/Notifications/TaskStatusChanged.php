@@ -7,9 +7,11 @@ use App\Notifications\Concerns\BuildsLocalizedMail;
 use App\Notifications\Concerns\PausesMail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
+use Illuminate\Queue\Attributes\DeleteWhenMissingModels;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
+#[DeleteWhenMissingModels]
 class TaskStatusChanged extends Notification implements ShouldQueueAfterCommit
 {
     use BuildsLocalizedMail, PausesMail, Queueable;

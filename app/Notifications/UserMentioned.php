@@ -8,10 +8,12 @@ use App\Notifications\Concerns\PausesMail;
 use App\Services\MarkdownService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
+use Illuminate\Queue\Attributes\DeleteWhenMissingModels;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Str;
 
+#[DeleteWhenMissingModels]
 class UserMentioned extends Notification implements ShouldQueueAfterCommit
 {
     use BuildsLocalizedMail, PausesMail, Queueable;

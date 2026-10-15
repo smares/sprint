@@ -6,7 +6,7 @@ Diese Anleitung richtet Sprint für die Entwicklung oder einen einfachen Server 
 
 - PHP 8.3 oder neuer mit den Erweiterungen `dom`, `curl`, `intl`, `libxml`, `mbstring`, `zip`, `pdo` und `pdo_sqlite` (bzw. dem Treiber deiner Datenbank); für Push-Benachrichtigungen zusätzlich `gmp` oder `bcmath`
 - [Composer](https://getcomposer.org) 2
-- Node.js ab Version 22 und npm
+- Node.js ab Version 22.12 (oder 20.19) und npm
 - Eine Lizenz für **Flux UI Pro** (siehe unten)
 
 ## Flux Pro einrichten
@@ -37,7 +37,7 @@ Den ersten Benutzer legst du so an:
 php artisan user:create "Anna Beispiel" anna@example.com --password=geheim1234
 ```
 
-Die neue Person bekommt eine Mail, dass sie angelegt wurde (ohne Passwort; dafür muss der Mailversand eingerichtet sein, siehe [Konfiguration](configuration.md#e-mail-und-tageszusammenfassung)). Das Passwort braucht mindestens 8 Zeichen. Ohne `--password` erzeugt das Kommando ein Passwort und gibt es aus. Mit `--admin` wird die Person Administrator der ganzen Anwendung; bestehende Benutzer machst du so dazu (oder mit `--revoke` wieder zum normalen Benutzer):
+Die neue Person bekommt eine Mail, dass sie angelegt wurde (ohne Passwort; dafür muss der Mailversand eingerichtet sein, siehe [Konfiguration](configuration.md#e-mail-und-tageszusammenfassung)). Mit `--locale=de` bekommt die Person gleich ihre Sprache (sonst gilt `APP_LOCALE`). Das Passwort braucht mindestens 8 Zeichen. Ohne `--password` erzeugt das Kommando ein Passwort und gibt es aus. Mit `--admin` wird die Person Administrator der ganzen Anwendung; bestehende Benutzer machst du so dazu (oder mit `--revoke` wieder zum normalen Benutzer):
 
 ```bash
 php artisan user:admin anna@example.com

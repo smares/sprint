@@ -26,7 +26,7 @@ So gehst du vor:
 7. **Scheduler:** am App-Cluster (oder Worker-Cluster) den Schalter **Scheduler** einschalten. Bei mehreren Replikaten läuft die Tageszusammenfassung dank `onOneServer` nur einmal.
 8. **Deployen**, dann den ersten Administrator anlegen: im Reiter *Commands* der Umgebung `php artisan user:create "Anna Beispiel" anna@example.com --admin` ausführen.
 9. **Eigene Domain:** in Cloud hinzufügen und verifizieren, danach `APP_URL` auf die neue Adresse ändern und neu deployen. **Bestehende Passkeys gelten nur für die alte Adresse**, Passwort und 2FA funktionieren weiter.
-10. **Prüfen:** `https://<deine-domain>/health`; die Gesundheitsprüfung zeigt auch, ob Scheduler und Queue-Worker laufen. Backups für Datenbank und Bucket stellst du bei den jeweiligen Cloud-Ressourcen ein; die Befehle in [Backup und Wiederherstellung](maintenance.md#backup-und-wiederherstellung) gelten für eigene Server.
+10. **Prüfen:** `https://<deine-domain>/health`; die Gesundheitsprüfung zeigt auch, ob Scheduler und Queue-Worker laufen. Backups für Datenbank und Bucket stellst du bei den jeweiligen Cloud-Ressourcen ein; die Befehle in [Backup und Wiederherstellung](maintenance.md#backup-und-wiederherstellung) gelten für eigene Server. Die nächtlichen Backups von Sprint schaltest du hier mit `BACKUP_ENABLED=false` ab: Sie sichern nur SQLite und lokale Anhänge, und das Dateisystem von Cloud ist flüchtig.
 
 **Live-Updates (optional):** Lege in Laravel Cloud einen *WebSocket-Cluster* (Reverb) an und hänge ihn an die Umgebung; Cloud setzt `REVERB_*` selbst. Dazu `BROADCAST_CONNECTION=reverb` setzen und neu deployen. Der Queue-Worker (Schritt 6) muss laufen, denn die Meldungen gehen über die Queue. Einzelheiten: [Konfiguration](configuration.md#live-updates-reverb).
 

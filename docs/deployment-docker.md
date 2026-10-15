@@ -8,7 +8,7 @@ Im Repository liegen ein `Dockerfile` und eine `compose.yaml`. Alle Dienste nutz
 |---|---|
 | `sprint` | Webserver; migriert beim Start die Datenbank und baut die Caches (`php artisan optimize`) |
 | `queue` | Queue-Worker für Mails, Posteingang und Live-Meldungen |
-| `scheduler` | `php artisan schedule:work` (Tageszusammenfassung, Wiederholungen, Aufräumen) |
+| `scheduler` | `php artisan schedule:work` (Tageszusammenfassung, Erinnerungen, Backup, Aufräumen) |
 | `reverb` | nur mit `--profile realtime`: Live-Updates, der Browser verbindet sich über die Adresse der App |
 
 Dauerhaft liegt alles im Volume `storage`: SQLite-Datenbank (`storage/database/database.sqlite`) und Anhänge (`storage/app/private`). Logs gehen nach `docker compose logs`. Die Zertifikate von Caddy liegen in `caddy_data`.
@@ -71,7 +71,7 @@ Mit jedem Release baut GitHub das Image und legt es für `amd64` und `arm64` (Ra
 ```bash
 docker login ghcr.io                                  # einmal; Benutzername und ein Token mit read:packages
 cp .env.example .env                                  # APP_KEY, APP_URL, Mail … wie oben
-SPRINT_VERSION=0.1.0 docker compose -f compose.image.yaml up -d
+SPRINT_VERSION=1.5.1 docker compose -f compose.image.yaml up -d   # die aktuelle Version steht unter Releases
 ```
 
 `SPRINT_VERSION` in die `.env` zu schreiben genügt; ohne Angabe gilt `latest`. Der Befehl für Live-Updates ist `--profile realtime`, wie beim Selbstbauen.
@@ -232,7 +232,7 @@ Außerdem empfiehlt sich im Bucket eine Versionierung oder eine Aufbewahrungsreg
 ## Befehle
 
 ```bash
-docker compose logs -f app                 # Logs (Laravel schreibt nach stderr)
+docker compose logs -f sprint              # Logs (Laravel schreibt nach stderr)
 docker compose exec sprint php artisan …      # Artisan im laufenden Container
 docker compose restart queue               # Worker neu starten
 ```

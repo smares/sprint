@@ -13,6 +13,6 @@ Anleitungen für Sprint, nach Aufgabe sortiert.
   - [Traefik, selbst verwaltet](deployment-traefik.md): das fertige Image hinter einem eigenen Traefik, ohne veröffentlichte Ports
   - [Dokploy](deployment-dokploy.md): das Docker-Setup hinter Traefik, mit Domain, HTTPS und Volume-Backups aus der Oberfläche
 - [Umzug von Asana](asana-import.md): Projekte samt Aufgaben, Personen, Verweisen, Kommentaren und Anhängen über die API übernehmen
-- [Konfiguration](configuration.md): E-Mail, Tageszusammenfassung, Anhänge, MCP, Passkeys, Suche, Sprachen
+- [Konfiguration](configuration.md): E-Mail, Tageszusammenfassung, Push, Live-Updates, Anhänge, MCP, Passkeys, Suche, Sprachen
 - [Wartung](maintenance.md): Updates, Gesundheitsprüfung, Backup und Wiederherstellung
 - [Entwicklung](development.md): Befehle, Aufbau, Tests und Arbeitsweise

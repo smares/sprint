@@ -159,10 +159,13 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
      */
     public function isAbsent(): bool
     {
+        if ($this->absent_from === null || $this->absent_until === null) {
+            return false;
+        }
+
         $today = $this->today()->toDateString();
 
-        return $this->absent_from !== null && $this->absent_until !== null
-            && $this->absent_from->toDateString() <= $today && $today <= $this->absent_until->toDateString();
+        return $this->absent_from->toDateString() <= $today && $today <= $this->absent_until->toDateString();
     }
 
     /**

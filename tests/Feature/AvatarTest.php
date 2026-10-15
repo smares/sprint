@@ -58,6 +58,29 @@ class AvatarTest extends TestCase
         $this->assertStringContainsString('--avatar-radius:calc(infinity*1px)', $html);
     }
 
+    public function test_stacked_avatars_start_with_the_main_person_in_front_and_trail_off_behind_it(): void
+    {
+        $assignee = User::factory()->create(['name' => 'Zuerst Zuständig']);
+        $others = User::factory()->count(4)->create();
+
+        $html = Blade::render('<x-avatar-stack :users="$users" />', ['users' => [$assignee, ...$others]]);
+
+        // The assignee comes first in the markup, so at the left, and has the highest layer; each next one is lower, the "+n" lowest
+        preg_match_all('/z-index: (\d+)/', $html, $layers);
+        $this->assertSame([4, 3, 2, 0], array_map(intval(...), $layers[1]));
+        $this->assertLessThan(strpos($html, e($others[0]->name)), strpos($html, e($assignee->name)));
+        $this->assertStringContainsString('+2', $html);
+    }
+
+    public function test_a_person_named_twice_is_shown_once_in_front(): void
+    {
+        $assignee = User::factory()->create();
+
+        $html = Blade::render('<x-avatar-stack :users="$users" />', ['users' => [$assignee, null, $assignee]]);
+
+        $this->assertSame(1, preg_match_all('/z-index: /', $html));
+    }
+
     public function test_a_picture_is_stored_in_the_database_and_delivered_safely(): void
     {
         Livewire::test('pages::profile')->set('avatarUpload', $this->png())->assertHasNoErrors()->assertRedirect(route('profile'));

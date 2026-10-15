@@ -738,7 +738,7 @@ new class extends Component
                             </flux:table.cell>
                             {{-- Assignee first, then collaborators, as on the board; names and absences show on hover --}}
                             <flux:table.cell>
-                                <x-assignee-picker :task="$task" :users="$this->assignableUsers" :editable="$this->canEdit && ! $selecting" />
+                                <x-assignee-picker :task="$task" :editable="$this->canEdit && ! $selecting" />
                             </flux:table.cell>
                             <flux:table.cell>
                                 <x-task-due :task="$task" />
@@ -851,6 +851,7 @@ new class extends Component
     @endif
 
     @if ($this->canEdit)
+        <x-assignee-menu :users="$this->assignableUsers" />
     @endif
 
     <x-task-panel :task="$this->panelTask" />

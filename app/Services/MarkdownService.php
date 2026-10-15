@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Attachment;
 use App\Models\Task;
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\HtmlString;
 use League\CommonMark\Extension\ExternalLink\ExternalLinkExtension;
@@ -23,6 +24,11 @@ class MarkdownService
     private const string PLACEHOLDER_START = "\u{E000}";
 
     private const string PLACEHOLDER_END = "\u{E001}";
+
+    /** Texts from this length on (in bytes) are kept after converting; raise the version when the converter's settings change. */
+    private const int CACHE_FROM_BYTES = 2000;
+
+    private const int CACHE_VERSION = 1;
 
     private static ?GithubFlavoredMarkdownConverter $converter = null;
 
@@ -59,9 +65,22 @@ class MarkdownService
             return self::PLACEHOLDER_START.(count($mentions) - 1).self::PLACEHOLDER_END;
         }, $withPlaceholders);
 
-        $html = (string) self::converter()->convert($withPlaceholders);
+        $html = self::convert($withPlaceholders);
 
         return new HtmlString(self::insertMentions($html, $mentions));
+    }
+
+    /**
+     * The HTML for a text (mentions still as placeholders). Long texts, up to 65,000 characters now, take noticeable time
+     * to convert and the task page renders them on every request, so those are kept for a day, by their content.
+     */
+    private static function convert(string $text): string
+    {
+        if (strlen($text) < self::CACHE_FROM_BYTES) {
+            return (string) self::converter()->convert($text);
+        }
+
+        return Cache::remember('markdown:'.self::CACHE_VERSION.':'.hash('xxh128', $text), now()->addDay(), fn (): string => (string) self::converter()->convert($text));
     }
 
     /**

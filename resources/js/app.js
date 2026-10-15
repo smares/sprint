@@ -523,6 +523,66 @@ window.addEventListener('keydown', (event) => {
     }
 }, true)
 
+// The menu to hand a task to someone (components/assignee-menu.blade.php): one per page, opened at the faces of a task
+// (components/assignee-picker.blade.php, which tells which task and who is the assignee), so the people are in the page once.
+const registerAssigneeMenu = () => {
+    window.Alpine.data('assigneeMenu', (meId) => ({
+        meId,
+        isOpen: false,
+        anchor: null,
+        taskId: null,
+        assigneeId: null,
+
+        show(detail) {
+            // A second click on the same faces closes it again
+            if (this.isOpen && this.anchor === detail.anchor) {
+                this.close(true)
+
+                return
+            }
+
+            this.anchor = detail.anchor
+            this.taskId = detail.task
+            this.assigneeId = detail.assignee
+            this.isOpen = true
+            this.$nextTick(() => this.items()[0]?.focus())
+        },
+
+        close(restoreFocus = false) {
+            if (! this.isOpen) {
+                return
+            }
+
+            this.isOpen = false
+
+            if (restoreFocus) {
+                this.anchor?.focus()
+            }
+        },
+
+        pick(userId) {
+            const task = this.taskId
+
+            this.close(true)
+            this.$wire.assign(task, userId)
+        },
+
+        items() {
+            return [...this.$refs.menu.querySelectorAll('[role^=menuitem]')].filter((item) => item.offsetParent !== null)
+        },
+
+        move(step) {
+            const items = this.items()
+
+            if (! items.length) {
+                return
+            }
+
+            items[(items.indexOf(document.activeElement) + step + items.length) % items.length].focus()
+        },
+    }))
+}
+
 // The task flyout (components/task-panel.blade.php). Flux does not close it by itself: Esc, a click next to it,
 // the close button and switching to another task go through here and ask first if the task has unsaved input.
 const registerTaskFlyout = () => {
@@ -613,6 +673,7 @@ const registerAll = () => {
     registerTimelineBar()
     registerPresence()
     registerAvatarPicker()
+    registerAssigneeMenu()
     registerEmojiField()
     registerPushToggle()
 }

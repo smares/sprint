@@ -111,7 +111,9 @@ class PaginationTest extends TestCase
 
         $this->assertCount(30, $board->instance()->columns[$open->id]);
         $this->assertSame(75, $board->instance()->columnTotals[$open->id]);
-        $board->assertSee('Aufgabe 030')->assertDontSee('Aufgabe 031')->assertSee('Mehr laden (30 von 75)');
+        // At the end of the cards, and it loads the next ones when the column is scrolled down to it, as in the list
+        $board->assertSee('Aufgabe 030')->assertDontSee('Aufgabe 031')->assertSee('Mehr laden (30 von 75)')
+            ->assertSeeHtml('wire:intersect="loadMoreInColumn('.$open->id.')"');
 
         $board->call('loadMoreInColumn', $open->id)->assertSee('Aufgabe 060')->assertSee('Mehr laden (60 von 75)');
         $board->call('loadMoreInColumn', $open->id)->assertSee('Aufgabe 075')->assertDontSee('Mehr laden');

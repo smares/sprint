@@ -271,13 +271,17 @@ new class extends Component
                         @if ($this->columns[$status->id]->isEmpty())
                             <flux:text size="sm" class="px-2 py-3 text-center" wire:key="empty-{{ $status->id }}">{{ __('No tasks') }}</flux:text>
                         @endif
-                    </flux:kanban.column.cards>
 
-                    @if ($this->columnTotals[$status->id] > $this->columns[$status->id]->count())
-                        <flux:button size="sm" variant="ghost" class="w-full" wire:click="loadMoreInColumn({{ $status->id }})">
-                            {{ __('Load more (:shown of :total)', ['shown' => $this->columns[$status->id]->count(), 'total' => $this->columnTotals[$status->id]]) }}
-                        </flux:button>
-                    @endif
+                        {{-- At the end of the cards, like the list: it comes into sight (and loads the next cards) only when the column is
+                             scrolled down to it --}}
+                        @if ($this->columnTotals[$status->id] > $this->columns[$status->id]->count())
+                            <div class="px-2 py-2" wire:key="more-{{ $status->id }}" wire:intersect="loadMoreInColumn({{ $status->id }})">
+                                <flux:button size="sm" variant="ghost" class="w-full" wire:click="loadMoreInColumn({{ $status->id }})">
+                                    {{ __('Load more (:shown of :total)', ['shown' => $this->columns[$status->id]->count(), 'total' => $this->columnTotals[$status->id]]) }}
+                                </flux:button>
+                            </div>
+                        @endif
+                    </flux:kanban.column.cards>
 
                     @if ($this->canEdit)
                         <x-quick-add :status-id="$status->id" class="mt-1 px-2 pb-2" />

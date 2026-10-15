@@ -72,6 +72,19 @@ class AvatarTest extends TestCase
         $this->assertStringContainsString('+2', $html);
     }
 
+    public function test_without_an_assignee_an_empty_seat_stands_in_front_of_the_collaborators(): void
+    {
+        $collaborators = User::factory()->count(2)->create();
+
+        $html = Blade::render('<x-avatar-stack :users="$users" unassigned />', ['users' => $collaborators]);
+
+        $this->assertStringContainsString('data-unassigned', $html);
+        $this->assertLessThan(strpos($html, e($collaborators[0]->name)), strpos($html, 'data-unassigned'));
+        preg_match_all('/z-index: (\d+)/', $html, $layers);
+        $this->assertSame([4, 3, 2], array_map(intval(...), $layers[1]));
+        $this->assertStringNotContainsString('data-unassigned', Blade::render('<x-avatar-stack :users="$users" />', ['users' => $collaborators]));
+    }
+
     public function test_a_person_named_twice_is_shown_once_in_front(): void
     {
         $assignee = User::factory()->create();

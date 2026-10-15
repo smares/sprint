@@ -133,4 +133,31 @@ class QuickAssignTest extends TestCase
             ->assertSeeHtml('aria-label="'.__('Change assignee').'"')
             ->assertDontSeeHtml('wire:click="assign('.$task->id.', null)"');
     }
+
+    #[DataProvider('views')]
+    public function test_a_task_with_collaborators_but_no_assignee_shows_an_empty_seat_in_front(string $view): void
+    {
+        $task = Task::factory()->for($this->project)->create(['assignee_id' => null]);
+        $task->collaborators()->attach($this->member);
+
+        Livewire::test($view, ['project' => $this->project])->assertSeeHtml('data-unassigned');
+
+        $task->update(['assignee_id' => $this->member->id]);
+        $task->collaborators()->detach($this->member);
+        $task->collaborators()->attach(User::factory()->create());
+
+        Livewire::test($view, ['project' => $this->project])->assertDontSeeHtml('data-unassigned');
+    }
+
+    #[DataProvider('views')]
+    public function test_viewers_see_the_empty_seat_too(string $view): void
+    {
+        $task = Task::factory()->for($this->project)->create(['assignee_id' => null]);
+        $task->collaborators()->attach($this->member);
+        $viewer = User::factory()->create();
+        $this->project->setRole($viewer, ProjectRole::Viewer);
+        $this->actingAs($viewer);
+
+        Livewire::test($view, ['project' => $this->project])->assertSeeHtml('data-unassigned');
+    }
 }

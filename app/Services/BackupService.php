@@ -19,6 +19,12 @@ class BackupService
     /** Cache key with the outcome of the last run, for the health check. */
     public const LAST_RUN = 'sprint:backup-last-run';
 
+    /**
+     * A backup this young (in hours of real time) counts as the one of the night: the scheduler does not write another.
+     * It covers a run that happens twice because the clocks go back, or a second scheduler.
+     */
+    public const int RECENT_HOURS = 20;
+
     /** Backups are named sprint-YYYY-MM-DD-HHMMSS.zip; nothing else on the disk is ever touched. */
     private const string FILE_PATTERN = '/^sprint-(\d{4}-\d{2}-\d{2}-\d{6})\.zip$/';
 
@@ -109,6 +115,23 @@ class BackupService
     public function rememberFailure(Throwable $e): void
     {
         $this->remember(false, null, $e->getMessage());
+    }
+
+    /**
+     * Whether a backup succeeded within the last RECENT_HOURS. Counted in seconds since the epoch, so a change of the
+     * clock does not shift it.
+     */
+    public function hasRecentBackup(): bool
+    {
+        $last = $this->lastRun();
+
+        if ($last === null || ! $last['ok']) {
+            return false;
+        }
+
+        $age = now()->timestamp - $last['at'];
+
+        return $age >= 0 && $age < self::RECENT_HOURS * 3600;
     }
 
     /**

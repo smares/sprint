@@ -87,7 +87,7 @@ Migrationen laufen beim Start automatisch.
 
 ## Daten und Backup
 
-Alles Dauerhafte liegt im Volume `storage` (Compose nennt es `<Ordnername>_storage`): SQLite-Datenbank, Anhänge, Profilbilder (in der Datenbank) und die nächtlichen Backups unter `storage/app/backups` (jede Nacht um 02:30, siehe [Backup und Wiederherstellung](maintenance.md#backup-und-wiederherstellung)). Damit sie auch den Verlust des Servers überstehen, holst du das Backup-ZIP regelmäßig ab, nicht die laufende `database.sqlite`:
+Alles Dauerhafte liegt im Volume `storage` (Compose nennt es `<Ordnername>_storage`): SQLite-Datenbank, Anhänge, Profilbilder (in der Datenbank) und die nächtlichen Backups unter `storage/app/backups` (jede Nacht um 03:30, siehe [Backup und Wiederherstellung](maintenance.md#backup-und-wiederherstellung)). Damit sie auch den Verlust des Servers überstehen, holst du das Backup-ZIP regelmäßig ab, nicht die laufende `database.sqlite`:
 
 ```bash
 docker compose exec sprint php artisan sprint:backup      # sofort eines schreiben

@@ -22,6 +22,8 @@ return [
     | Time of day (24h, in the application time zone) at which the morning
     | summary of overdue and upcoming tasks is mailed on weekdays. It only runs
     | when the scheduler is set up (`php artisan schedule:run` every minute).
+    | Avoid 01:00 to 03:00: on the days the clocks change that time is missing
+    | in spring and happens twice in autumn.
     |
     */
 
@@ -34,7 +36,8 @@ return [
     |
     | Time of day at which assignees and collaborators get an inbox entry for
     | each open task that is due tomorrow (every day; people can turn it off
-    | in their profile).
+    | in their profile). Avoid 01:00 to 03:00 as for the digest; a second run
+    | on the same day is skipped anyway.
     |
     */
 
@@ -79,12 +82,17 @@ return [
     | disk ("backups" is storage/app/backups; a bucket keeps them off the
     | server) and removes backups older than `keep_days`.
     |
+    | Pick a time outside 01:00 to 03:00 (application time zone): in many zones
+    | the clock jumps over that stretch in spring (the run would be skipped) and
+    | repeats it in autumn (the run would happen twice). The scheduler also
+    | passes `--if-needed`, so a second run within 20 hours is skipped.
+    |
     */
 
     'backup' => [
         'enabled' => (bool) env('BACKUP_ENABLED', true),
         'disk' => env('BACKUP_DISK', 'backups'),
-        'time' => env('BACKUP_TIME', '02:30'),
+        'time' => env('BACKUP_TIME', '03:30'),
         'keep_days' => (int) env('BACKUP_KEEP_DAYS', 14),
     ],
 

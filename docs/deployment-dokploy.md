@@ -84,8 +84,8 @@ Eine zweite Domain braucht Reverb nicht: Der Browser verbindet sich mit `wss://s
 ## Daten und Backups
 
 - Alles Dauerhafte liegt im benannten Volume **`storage`**: SQLite-Datenbank, Anhänge, Profilbilder (in der Datenbank) und die nächtlichen Backups unter `storage/app/backups`. Es überdauert Deployments; bitte keine Bind-Mounts auf Pfade im Repository anlegen, die leert Dokploy beim nächsten Klonen.
-- Sprint schreibt jede Nacht um 02:30 ein konsistentes Backup (siehe [Backup und Wiederherstellung](maintenance.md#backup-und-wiederherstellung)). Damit es auch den Verlust des Servers übersteht:
-  - **Dokploy Volume Backups** (Tab *Volume Backups*) für das Volume `storage` auf ein S3-Ziel einrichten, zeitlich **nach** 02:30, z. B. 03:30. Für eine Wiederherstellung nimmst du dann die ZIP-Datei aus `storage/app/backups` und nicht die Live-Datei `database.sqlite`, die während des Kopierens beschrieben werden kann.
+- Sprint schreibt jede Nacht um 03:30 ein konsistentes Backup (siehe [Backup und Wiederherstellung](maintenance.md#backup-und-wiederherstellung)). Damit es auch den Verlust des Servers übersteht:
+  - **Dokploy Volume Backups** (Tab *Volume Backups*) für das Volume `storage` auf ein S3-Ziel einrichten, zeitlich **nach** 03:30, z. B. 04:30. Für eine Wiederherstellung nimmst du dann die ZIP-Datei aus `storage/app/backups` und nicht die Live-Datei `database.sqlite`, die während des Kopierens beschrieben werden kann.
   - oder Sprint die Backups direkt in einen Bucket schreiben lassen (`BACKUP_DISK`, siehe Backup-Doku).
 - `APP_KEY` und die übrigen Werte aus dem *Environment*-Tab sicherst du einmalig getrennt davon (Passwort-Manager).
 

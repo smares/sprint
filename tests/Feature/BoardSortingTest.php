@@ -184,4 +184,19 @@ class BoardSortingTest extends TestCase
             ->set('sortBy', 'field:999999')
             ->assertSet('sortBy', '');
     }
+
+    public function test_cards_can_only_be_reordered_by_dragging_in_the_manual_order(): void
+    {
+        $this->task('Eins');
+
+        Livewire::test('pages::projects.board', ['project' => $this->project])
+            ->assertSeeHtml('cards-'.$this->statusId.'-manual')
+            ->assertDontSeeHtml('sort: false')
+            ->set('sortBy', 'title')
+            ->assertSeeHtml('cards-'.$this->statusId.'-sorted')
+            ->assertSeeHtml('sort: false')
+            ->call('resetSort')
+            ->assertSeeHtml('cards-'.$this->statusId.'-manual')
+            ->assertDontSeeHtml('sort: false');
+    }
 }

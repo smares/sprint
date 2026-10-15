@@ -109,6 +109,126 @@ docker compose cp sprint:/app/storage/app/backups ./sprint-backups
 
 Einstellungen und Wiederherstellung unter [Backup und Wiederherstellung](maintenance.md#backup-und-wiederherstellung).
 
+### Letztes Backup auf den Host holen und per rsync sichern
+
+Solange `BACKUP_DISK=backups` gilt (Standard), liegen die Backups nur im Docker-Volume auf dem Server. Ein Skript auf dem Host holt das neueste heraus, prüft es und kopiert es per rsync auf einen anderen Rechner (NAS, zweiter Server, Storage-Box). Es bricht lieber laut ab, als etwas Falsches zu sichern:
+
+| Fall | Verhalten |
+| --- | --- |
+| Der Container `sprint` läuft nicht | Abbruch mit Fehler |
+| `BACKUP_DISK` zeigt auf einen Bucket (z. B. `s3`) | Abbruch mit Hinweis, **nichts** wird synchronisiert: das Volume ist dann leer, und ein rsync des leeren Ordners würde nichts sichern (siehe [Backups in einem Bucket](#backups-in-einem-bucket)) |
+| Im Volume liegt kein Backup | Abbruch mit Fehler |
+| Das neueste Backup ist älter als `MAX_AGE_HOURS` (Standard 30) | Abbruch: der nächtliche Lauf ist ausgefallen, ein altes Backup soll nicht als frisches gelten |
+| Kopie unvollständig, keine gültige ZIP oder ohne `database.sqlite` | Abbruch, die Teildatei wird gelöscht und nie weitergegeben |
+| rsync scheitert (Ziel nicht erreichbar, Platte voll) | Abbruch, der lokale Zwischenspeicher bleibt unangetastet |
+| Zwei Läufe überschneiden sich | der zweite beendet sich ohne Fehler (`flock`) |
+
+rsync überträgt nur diese eine Datei und **nie mit `--delete`**: Ein leeres oder kaputtes Quellverzeichnis kann so keine guten Backups am Ziel löschen. Das Aufräumen alter Dateien dort liegt beim Ziel (siehe unten). Lokal bleiben die letzten `KEEP_LOCAL` Backups (Standard 7) im Zwischenspeicher; sie werden erst nach einem erfolgreichen rsync aufgeräumt.
+
+Auf dem Host werden `docker` (mit Compose), `rsync`, `unzip` und `flock` gebraucht, zum Beispiel als `/usr/local/bin/sprint-backup-pull`:
+
+```bash
+#!/usr/bin/env bash
+# Holt das neueste Sprint-Backup aus dem Docker-Volume auf den Host, prüft es und sichert es per rsync.
+set -euo pipefail
+
+COMPOSE_DIR=${COMPOSE_DIR:-/opt/sprint}            # Ordner mit der compose.yaml
+STAGING=${STAGING:-/var/backups/sprint}            # lokaler Zwischenspeicher auf dem Host
+DEST=${DEST:?DEST fehlt, z. B. DEST=backup@nas.example.com:/srv/backups/sprint/}
+MAX_AGE_HOURS=${MAX_AGE_HOURS:-30}                 # älter gilt als "nächtlicher Lauf ausgefallen"
+KEEP_LOCAL=${KEEP_LOCAL:-7}                        # so viele Backups bleiben im Zwischenspeicher
+REQUIRE_DATABASE=${REQUIRE_DATABASE:-1}            # 0 bei MySQL/PostgreSQL: die ZIP enthält dann keine database.sqlite
+RSYNC_SSH=${RSYNC_SSH:-ssh -o BatchMode=yes -o ConnectTimeout=20}
+BACKUP_DIR=/app/storage/app/backups                # Pfad im Container
+
+fail() {
+    echo "sprint-backup-pull: $*" >&2
+    exit 1
+}
+
+for tool in docker rsync unzip flock; do
+    command -v "$tool" >/dev/null || fail "'$tool' fehlt auf dem Host"
+done
+
+mkdir -p "$STAGING"
+exec 9>"$STAGING/.lock"
+flock -n 9 || { echo "sprint-backup-pull: ein anderer Lauf ist noch aktiv" >&2; exit 0; }
+
+cd "$COMPOSE_DIR" || fail "Ordner $COMPOSE_DIR nicht gefunden"
+sprint() { docker compose exec -T sprint "$@"; }
+
+docker compose ps --status running --services | grep -qx sprint || fail "der Container 'sprint' läuft nicht"
+
+# Liegen die Backups in einem Bucket, ist das Volume leer: dann nichts synchronisieren, sondern laut scheitern
+disk=$(sprint php artisan --no-ansi config:show sprint.backup.disk | awk 'NF { last = $NF } END { print last }')
+[ "$disk" = backups ] || fail "BACKUP_DISK ist '$disk': die Backups liegen nicht im Volume, sondern dort. Sichere sie mit dem Werkzeug des Anbieters (siehe docs/deployment-docker.md)"
+
+latest=$(sprint ls -1 "$BACKUP_DIR" | tr -d '\r' | grep -E '^sprint-[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{6}\.zip$' | sort | tail -n 1 || true)
+[ -n "$latest" ] || fail "im Volume liegt kein Backup ($BACKUP_DIR); lief 'php artisan sprint:backup' schon, und ist BACKUP_ENABLED an?"
+
+mtime=$(sprint stat -c %Y "$BACKUP_DIR/$latest" | tr -d '\r')
+age_hours=$(( ($(date +%s) - mtime) / 3600 ))
+[ "$age_hours" -le "$MAX_AGE_HOURS" ] || fail "das neueste Backup ($latest) ist $age_hours Stunden alt, erlaubt sind $MAX_AGE_HOURS: der nächtliche Lauf ist ausgefallen (php artisan sprint:health prüfen)"
+
+# Erst als versteckte Teildatei laden und prüfen, damit nie eine halbe Datei als Backup herumliegt oder weitergegeben wird
+partial="$STAGING/.$latest.partial"
+trap 'rm -f "$partial"' EXIT
+sprint cat "$BACKUP_DIR/$latest" > "$partial"
+
+expected=$(sprint stat -c %s "$BACKUP_DIR/$latest" | tr -d '\r')
+actual=$(stat -c %s "$partial")
+[ "$expected" = "$actual" ] || fail "$latest wurde unvollständig kopiert ($actual von $expected Bytes)"
+unzip -tqq "$partial" >/dev/null || fail "$latest ist keine gültige ZIP-Datei"
+if [ "$REQUIRE_DATABASE" = 1 ]; then
+    unzip -Z1 "$partial" | grep -qx database.sqlite || fail "$latest enthält keine database.sqlite"
+fi
+
+chmod 600 "$partial"
+mv "$partial" "$STAGING/$latest"
+
+# Nur diese eine Datei und ohne --delete: ein leeres oder kaputtes Ziel kann nie ein gutes Backup löschen
+rsync -t --partial --chmod=F600 -e "$RSYNC_SSH" "$STAGING/$latest" "$DEST" || fail "rsync nach $DEST ist fehlgeschlagen"
+
+# Aufräumen erst nach erfolgreichem rsync
+printf '%s\n' "$STAGING"/sprint-*.zip | sort -r | tail -n +$((KEEP_LOCAL + 1)) | xargs -r rm -f --
+
+echo "sprint-backup-pull: $latest ($(du -h "$STAGING/$latest" | cut -f1)) gesichert nach $DEST"
+```
+
+Aufruf von Hand und per Cron, eine Stunde nach dem Backup (02:30 ist der Standard, siehe `BACKUP_TIME`):
+
+```bash
+sudo chmod +x /usr/local/bin/sprint-backup-pull
+sudo DEST=backup@nas.example.com:/srv/backups/sprint/ /usr/local/bin/sprint-backup-pull
+
+# /etc/cron.d/sprint-backup-pull
+30 3 * * * root DEST=backup@nas.example.com:/srv/backups/sprint/ /usr/local/bin/sprint-backup-pull 2>&1 | logger -t sprint-backup-pull
+```
+
+Hinweise:
+
+- **SSH-Zugang:** Der Benutzer, unter dem das Skript läuft (oben `root`), braucht einen SSH-Schlüssel ohne Passphrase, dessen öffentlicher Teil am Ziel hinterlegt ist. Am Ziel lässt sich der Schlüssel in `~/.ssh/authorized_keys` mit `command="rrsync /srv/backups/sprint",restrict` auf rsync in genau diesen Ordner beschränken (`rrsync` liegt dem rsync-Paket bei); dann ist `DEST` einfach `backup@nas.example.com:` und der Schlüssel kann auf dem Ziel nichts anderes tun.
+- **Alte Backups am Ziel:** Dort selbst aufräumen, zum Beispiel täglich mit `find /srv/backups/sprint -name 'sprint-*.zip' -mtime +30 -delete`.
+- **Alarm:** Cron meldet Fehler nur, wenn Mail eingerichtet ist. Zuverlässiger ist ein Dead-Man's-Switch wie Healthchecks.io: `… sprint-backup-pull && curl -fsS -m 10 --retry 3 https://hc-ping.com/<uuid> >/dev/null`. Bleibt der Ping aus, meldet der Dienst es, auch wenn der ganze Host steht.
+- **Andere Compose-Datei, anderer Ordner:** `COMPOSE_DIR` (Standard `/opt/sprint`) ist der Ordner mit der Compose-Datei. Wer `compose.image.yaml` nutzt, setzt zusätzlich `COMPOSE_FILE=compose.image.yaml`.
+- **MySQL/PostgreSQL:** Dann enthält die ZIP keine `database.sqlite` (nur die Anhänge); mit `REQUIRE_DATABASE=0` prüft das Skript das nicht, und den Dump sicherst du separat (siehe [Wartung](maintenance.md#backup-und-wiederherstellung)).
+- **Die `.env` (vor allem `APP_KEY`) steckt nicht im Backup** und gehört einmalig an einen eigenen, geschützten Ort.
+- Das Skript ist gegen ein nachgebautes `docker` getestet (alle Fälle der Tabelle), nicht gegen deinen Server: Probiere es einmal von Hand aus und spiele ein Backup wirklich ein, denn erst eine geprobte Wiederherstellung zählt (siehe [Wiederherstellen](maintenance.md#wiederherstellen)).
+
+#### Backups in einem Bucket
+
+Mit `BACKUP_DISK=s3` (oder einer anderen Cloud-Disk) liegen die Backups schon nicht mehr auf dem Server, und das Skript oben verweigert die Arbeit, weil das Volume leer ist. Die Kopie an einen weiteren Ort holst du dann mit dem Werkzeug des Anbieters, etwa mit der AWS-CLI (oder `rclone`). Bucket-Name und Zugang sind deine; geprüft und weitergegeben wird mit denselben Schritten wie oben:
+
+```bash
+latest=$(aws s3 ls s3://mein-bucket/ | awk '{print $4}' | grep -E '^sprint-[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{6}\.zip$' | sort | tail -n 1)
+[ -n "$latest" ] || { echo "kein Backup im Bucket" >&2; exit 1; }
+aws s3 cp "s3://mein-bucket/$latest" "/var/backups/sprint/.$latest.partial"
+unzip -tqq "/var/backups/sprint/.$latest.partial" && mv "/var/backups/sprint/.$latest.partial" "/var/backups/sprint/$latest"
+rsync -t --partial "/var/backups/sprint/$latest" backup@nas.example.com:/srv/backups/sprint/
+```
+
+Außerdem empfiehlt sich im Bucket eine Versionierung oder eine Aufbewahrungsregel (Lifecycle), damit gelöschte oder überschriebene Backups wiederherstellbar bleiben. Sprint löscht dort selbst nur Dateien nach dem Muster `sprint-JJJJ-MM-TT-HHMMSS.zip`, die älter als `BACKUP_KEEP_DAYS` sind.
+
 ## Befehle
 
 ```bash

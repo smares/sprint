@@ -131,6 +131,10 @@ class DateDisplayTest extends TestCase
 
     public function test_today_is_the_day_of_the_person_not_of_the_server(): void
     {
+        // The application's own zone is part of the picture ("Morgen" below), so it must not come from the environment
+        config(['app.timezone' => 'UTC']);
+        date_default_timezone_set('UTC');
+
         // 23:30 on the 14th in UTC is already 12:30 on the 15th in Auckland, and still the 14th in New York
         $this->travelTo(Carbon::parse('2026-10-14 23:30', 'UTC'));
         $auckland = $this->viewer('Pacific/Auckland');

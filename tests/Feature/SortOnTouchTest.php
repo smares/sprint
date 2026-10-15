@@ -14,6 +14,8 @@ class SortOnTouchTest extends TestCase
 {
     private const string TOUCH_CONFIG = 'wire:sort:config="{{ \\App\\Sortable::CONFIG }}"';
 
+    private const string MOVE_ONLY_CONFIG = '\\App\\Sortable::CONFIG_MOVE_ONLY';
+
     public function test_every_sortable_list_waits_for_a_long_press_on_touch_screens(): void
     {
         $missing = [];
@@ -22,12 +24,13 @@ class SortOnTouchTest extends TestCase
             $contents = $file->getContents();
             $sortables = preg_match_all('/(?<![\w-]):?wire:sort=/', $contents);
 
-            if ($sortables > substr_count($contents, self::TOUCH_CONFIG)) {
+            if ($sortables > substr_count($contents, self::TOUCH_CONFIG) + substr_count($contents, self::MOVE_ONLY_CONFIG)) {
                 $missing[] = $file->getRelativePathname();
             }
         }
 
         $this->assertSame([], $missing, 'Lists with wire:sort but without the touch delay start dragging on every tap');
         $this->assertSame('{ delay: 250, delayOnTouchOnly: true, touchStartThreshold: 12 }', Sortable::CONFIG);
+        $this->assertSame('{ sort: false, delay: 250, delayOnTouchOnly: true, touchStartThreshold: 12 }', Sortable::CONFIG_MOVE_ONLY);
     }
 }

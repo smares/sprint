@@ -194,7 +194,7 @@ new class extends Component
             @if ($this->tags->isEmpty())
                 <flux:callout icon="tag" :heading="__('No tags yet')" :text="__('Create the first tag here or directly on a task.')" />
             @else
-                <ul class="max-h-96 space-y-2 overflow-y-auto">
+                <ul class="relative max-h-96 space-y-2 overflow-y-auto">
                     @foreach ($this->tags as $tag)
                         <li wire:key="tag-{{ $tag->id }}" class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
                             <div class="flex items-center gap-3">

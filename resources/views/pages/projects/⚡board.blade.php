@@ -265,7 +265,7 @@ new class extends Component
     {{-- Columns can be collapsed to a narrow strip with the status upright (data-collapsed, see app.css), remembered per
          project in the browser; a click on the strip opens the column again. --}}
     <div class="scroll-shadows" data-fills-height>
-        <flux:kanban class="items-start overflow-x-auto pb-4 max-sm:snap-x max-sm:snap-mandatory" data-scroll-edges
+        <flux:kanban class="relative items-start overflow-x-auto pb-4 max-sm:snap-x max-sm:snap-mandatory" data-scroll-edges
             x-data="{ collapsed: $persist([]).as('board-collapsed-{{ $project->id }}'), toggle(id) { this.collapsed = this.collapsed.includes(id) ? this.collapsed.filter((other) => other !== id) : [...this.collapsed, id] } }">
             @foreach ($this->statuses as $status)
                 {{-- The status color as a line along the top of the column and a dot before its name --}}

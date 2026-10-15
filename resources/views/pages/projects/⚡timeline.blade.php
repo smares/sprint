@@ -132,7 +132,7 @@ new class extends Component
 <div>
     <x-project-header :project="$project" active="timeline" :presence="$this->presenceChannel()" />
 
-    <div class="mb-4 flex items-center gap-2">
+    <div class="mb-4 flex flex-wrap items-center gap-2">
         <flux:button icon="chevron-left" wire:click="earlier" aria-label="{{ __('Earlier') }}" tooltip="{{ __('Earlier') }}" />
         <flux:button icon="chevron-right" wire:click="later" aria-label="{{ __('Later') }}" tooltip="{{ __('Later') }}" />
         <flux:button wire:click="today">{{ __('Today') }}</flux:button>

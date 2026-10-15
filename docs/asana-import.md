@@ -83,8 +83,8 @@ Der Probelauf stellt alle Anfragen an Asana, schreibt aber nichts. Er zeigt, wie
 | Follower | Beteiligte, aber nur, wenn die Person Mitglied des Projekts ist (sonst gäbe es keine Rechte dafür) |
 | Start und Fällig | Start- und Fälligkeitsdatum; ein Zeitpunkt wird in der Zeitzone der Anwendung zum Datum |
 | Tags | Tags des Projekts, nach Namen; ein Meilenstein bekommt zusätzlich den Tag „Meilenstein“ |
-| Eigene Felder | Auswahl → Auswahlfeld (mit seinen Optionen), Zahl, Datum, Text; Mehrfachauswahl und Personen werden Textfelder mit den Werten durch Komma getrennt; Formeln und Verweise entfallen. Ein Feld, das in Sprint schon so heißt (z. B. *Priorität*), wird benutzt; Textwerte werden auf 500 Zeichen gekürzt (die Grenze der Textfelder) |
-| Abhängigkeiten („blockiert von“) | Abhängigkeiten zwischen den übernommenen Aufgaben, auch über Projekte hinweg; auf nicht übernommene Aufgaben verweisende entfallen mit einem Hinweis |
+| Eigene Felder | Auswahl → Auswahlfeld (mit seinen Optionen), Zahl, Datum, Text; Mehrfachauswahl und Personen werden Textfelder mit den Werten durch Komma getrennt; Formeln und Verweise entfallen. Ein Feld, das in Sprint schon so heißt und denselben Typ hat (z. B. *Priorität*), wird benutzt; hat das gleichnamige einen anderen Typ, entsteht „Name (Asana)“, und ein weiterer Lauf benutzt dieses wieder; Textwerte werden auf 500 Zeichen gekürzt (die Grenze der Textfelder) |
+| Abhängigkeiten („blockiert von“) | Abhängigkeiten zwischen den übernommenen Aufgaben, auch über Projekte hinweg; auf nicht übernommene Aufgaben verweisende entfallen mit einem Hinweis. Sie werden einmal je Aufgabe gesetzt (ein weiterer Lauf ergänzt nur Abhängigkeiten auf Aufgaben, die er neu anlegt): Was jemand in Sprint entfernt hat, kommt nicht zurück |
 | Links auf andere Aufgaben in Texten | Erwähnungen der übernommenen Aufgaben (`@[Titel](task:…)`); @-Erwähnungen von Personen werden Erwähnungen, ohne Konto bleibt der Name |
 | Kommentare | Kommentare mit Verfasser:in und Zeitpunkt. Stammt ein Kommentar von jemandem ohne Konto, steht „Von Name in Asana“ am Anfang und die importierende Person ist die Verfasser:in |
 | Kommentare ohne Text | werden nicht übernommen (etwa ein Kommentar, der in Asana nur aus einem Anhang oder Emoji besteht). Der Befehl nennt sie mit Aufgabe und Asana-ID in den Hinweisen, auch im Probelauf, und zählt sie in der Übersicht |
@@ -98,11 +98,11 @@ Der Probelauf stellt alle Anfragen an Asana, schreibt aber nichts. Er zeigt, wie
 - **Wiederholungen**, Reaktionen („Gefällt mir“), Genehmigungsaufgaben, Teilnahme an Portfolios, Ziele, Formulare, Automatisierungsregeln und Sichtweisen (Boards, Zeitleisten): Sprint hat eigene.
 - **Die Aktivitätsliste** einer Aufgabe (Zuweisungen, Datumsänderungen). Der Verlauf in Sprint beginnt mit dem Import.
 - **Unteraufgaben, die schon übernommen wurden:** Ein zweiter Lauf ändert keine vorhandene Aufgabe, also auch nicht ihren Status.
-- **Änderungen nach dem Import:** Ein zweiter Lauf übernimmt neue Aufgaben, Unteraufgaben, Kommentare und Anhänge, ändert aber keine bereits übernommene Aufgabe (Titel, Status, Datum …). Ein Link in einem früher übernommenen Text auf eine Aufgabe, die erst jetzt dazukommt, bleibt ein Asana-Link.
+- **Änderungen nach dem Import:** Ein zweiter Lauf übernimmt neue Aufgaben, Unteraufgaben, Kommentare und Anhänge, ändert aber keine bereits übernommene Aufgabe (Titel, Status, Datum …). Links auf Asana-Aufgaben in früher übernommenen Texten werden in jedem Lauf nachgezogen, sobald die Aufgabe in Sprint existiert (auch nach einem Abbruch oder wenn sie erst jetzt dazukommt).
 - **Aufgaben aus anderen Projekten** (siehe oben), solange sie nicht im ersten angegebenen Projekt liegen.
 
 ## Dauer und Grenzen von Asana
 
 Pro Aufgabe sind mindestens zwei Anfragen nötig (Kommentare, Anhänge), dazu je eine für Unteraufgaben. Asana begrenzt die Anfragen pro Minute (je nach Tarif etwa 150 bis 1500). Der Befehl wartet bei Überschreitung selbst und versucht es erneut, ein Projekt mit tausend Aufgaben dauert deshalb im kostenlosen Tarif eine Weile. Bricht der Lauf ab, startet man ihn einfach neu: Was fertig ist, bleibt, der Rest folgt.
 
-Was der Import sich gemerkt hat, steht in der Tabelle `asana_imports` (Asana-ID → Sprint-ID). Löscht man eine übernommene Aufgabe oder ein übernommenes Projekt in Sprint, legt ein weiterer Lauf es wieder an.
+Was der Import sich gemerkt hat, steht in der Tabelle `asana_imports` (Asana-ID → Sprint-ID). Löscht man eine übernommene Aufgabe oder ein übernommenes Projekt in Sprint, legt ein weiterer Lauf es wieder an, mit seinen Kommentaren, Anhängen und (bei `--sections=headings`) Überschriften. Auch die Status und Felder, die der Import angelegt hat, merkt er sich: Benennst du einen Status um, entsteht er nicht noch einmal.

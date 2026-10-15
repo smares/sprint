@@ -109,6 +109,11 @@ class Task extends Model
         // The completion time follows the status: set when the task becomes done, kept while it moves between done
         // statuses, cleared when it is reopened
         static::saving(function (self $task) {
+            if ($task->exists && $task->isDirty('due_date') && $task->due_date === null) {
+                $task->repeat_unit = null;
+                $task->repeat_until = null;
+            }
+
             if (! $task->exists || $task->isDirty('status_id')) {
                 $done = (bool) $task->statusById($task->status_id)?->is_done;
                 $task->completed_at = $done ? ($task->completed_at ?? now()) : null;
@@ -688,11 +693,13 @@ class Task extends Model
     /**
      * Hand the task to a person, or to nobody. Whoever becomes the assignee stops being a collaborator, which the history
      * records like the change of the assignee, all in one go.
+     *
+     * @param  array<string, mixed>  $attributes  Further columns saved together with the assignee.
      */
-    public function assignTo(?User $user): void
+    public function assignTo(?User $user, array $attributes = []): void
     {
-        DB::transaction(function () use ($user): void {
-            $this->update(['assignee_id' => $user?->getKey()]);
+        DB::transaction(function () use ($user, $attributes): void {
+            $this->update(['assignee_id' => $user?->getKey()] + $attributes);
 
             if ($user instanceof User && $this->collaborators()->whereKey($user->getKey())->exists()) {
                 $this->collaborators()->detach($user->getKey());
@@ -704,6 +711,25 @@ class Task extends Model
                 );
             }
         });
+    }
+
+    /**
+     * Save columns; when they hand the task to somebody, the assignee stops being a collaborator (see assignTo).
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    public function updateAssigning(array $attributes): void
+    {
+        if (! array_key_exists('assignee_id', $attributes)) {
+            $this->update($attributes);
+
+            return;
+        }
+
+        $assigneeId = $attributes['assignee_id'];
+        unset($attributes['assignee_id']);
+
+        $this->assignTo($assigneeId === null ? null : User::query()->find($assigneeId), $attributes);
     }
 
     /**

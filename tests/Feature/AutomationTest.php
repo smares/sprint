@@ -517,4 +517,17 @@ class AutomationTest extends TestCase
         $this->assertCount(1, $automationQueries);
         $this->assertStringContainsString('"trigger" = ?', $automationQueries->first()['query']);
     }
+
+    public function test_an_automation_that_assigns_a_collaborator_takes_them_off_the_collaborators(): void
+    {
+        $this->rule(AutomationTrigger::StatusChanged, $this->done(), [['type' => AutomationAction::SetAssignee, 'value' => $this->anna->id]]);
+        $task = $this->task(['assignee_id' => null]);
+        $task->collaborators()->attach($this->anna);
+
+        $this->actingAs($this->bernd);
+        $task->update(['status_id' => $this->done()]);
+
+        $this->assertSame($this->anna->id, $task->fresh()->assignee_id);
+        $this->assertSame(0, $task->collaborators()->count());
+    }
 }

@@ -214,7 +214,7 @@ trait EditsTasksInBulk
                 }
 
                 if ($changes !== []) {
-                    $task->update($changes);
+                    $task->updateAssigning($changes);
                 }
 
                 $this->syncBulkTags($task, $validated['bulkAddTags'], $validated['bulkRemoveTags'], $tagNames);

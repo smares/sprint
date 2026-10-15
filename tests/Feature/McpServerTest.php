@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Enums\CustomFieldType;
 use App\Enums\ProjectRole;
+use App\Enums\RepeatMode;
+use App\Enums\RepeatUnit;
 use App\Mcp\Servers\SprintServer;
 use App\Mcp\Tools\AddComment;
 use App\Mcp\Tools\CreateTask;
@@ -423,5 +425,30 @@ class McpServerTest extends TestCase
         $this->tool(CreateTask::class, ['project_id' => $other->id, 'title' => 'Vom Admin'], $admin)->assertOk();
 
         $this->assertSame($admin->id, Task::where('title', 'Vom Admin')->firstOrFail()->creator_id);
+    }
+
+    public function test_assigning_a_collaborator_by_agent_takes_them_off_the_collaborators(): void
+    {
+        $anna = User::factory()->create(['email' => 'anna@example.com']);
+        $this->project->setRole($anna, ProjectRole::Editor);
+        $task = Task::factory()->for($this->project)->create();
+        $task->collaborators()->attach($anna);
+
+        $this->tool(UpdateTask::class, ['task_id' => $task->id, 'assignee' => 'anna@example.com'])->assertOk();
+
+        $this->assertSame($anna->id, $task->fresh()->assignee_id);
+        $this->assertSame(0, $task->collaborators()->count());
+    }
+
+    public function test_clearing_the_due_date_by_agent_ends_the_repetition_and_says_so(): void
+    {
+        $task = Task::factory()->for($this->project)->create(['due_date' => '2026-12-01', 'repeat_unit' => RepeatUnit::Week, 'repeat_interval' => 1, 'repeat_mode' => RepeatMode::Schedule]);
+
+        $this->tool(UpdateTask::class, ['task_id' => $task->id, 'due_date' => ''])->assertOk();
+
+        $task->refresh();
+        $this->assertNull($task->due_date);
+        $this->assertNull($task->repeat_unit);
+        $this->assertContains('hat die Wiederholung entfernt', $task->activities()->get()->map->sentence()->all());
     }
 }

@@ -772,7 +772,7 @@ new class extends Component
                     <tbody>
                         <tr>
                             <td colspan="{{ $this::FIXED_COLUMNS + $this->listFields->count() }}">
-                                <div wire:intersect="loadMore" class="sticky start-0 flex w-max items-center gap-3 py-4">
+                                <div wire:intersect="loadMore" class="sticky start-0 flex w-[100cqw] items-center justify-center gap-3 py-4">
                                     <flux:text size="sm">{{ __(':shown of :total tasks', ['shown' => $this->tasks->count(), 'total' => $this->totalTasks]) }}</flux:text>
                                     <flux:button size="sm" wire:click="loadMore">{{ __('Load more') }}</flux:button>
                                 </div>

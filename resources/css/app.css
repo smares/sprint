@@ -229,6 +229,14 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
 
     position: relative;
 
+    /* A table inside: its scroll area takes the rounded corners of the wrapper, so header and rows do not cover them with
+       square ones, and it is a container for what is centered in its visible width, however far the table scrolls sideways
+       (the "n of m tasks" row of the list). */
+    & > ui-table-scroll-area {
+        border-radius: inherit;
+        container-type: inline-size;
+    }
+
     @variant dark {
         --scroll-shadow: rgb(0 0 0 / 0.6);
     }

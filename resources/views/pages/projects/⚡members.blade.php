@@ -208,18 +208,19 @@ new class extends Component
 <div class="max-w-4xl">
     <x-project-breadcrumbs :project="$project" :current="__('Members')" />
 
-    <flux:heading size="xl" class="mb-1">{{ __('Members') }}</flux:heading>
+    <flux:heading level="1" size="xl" class="mb-1">{{ __('Members') }}</flux:heading>
     <flux:text class="mb-6">{!! __('Only members can see this project. <strong>View</strong> can read, <strong>Edit</strong> can change and comment on tasks, <strong>Manage</strong> can also change members and statuses. Application administrators always have access.') !!}</flux:text>
 
     <ul class="space-y-2">
         @foreach ($this->members as $member)
-            <li wire:key="member-{{ $member->id }}" class="surface flex items-center gap-3 p-3">
+            <li wire:key="member-{{ $member->id }}" class="surface flex items-center gap-3 p-3 max-sm:flex-wrap">
                 <x-user-avatar size="sm" :user="$member" />
-                <div class="min-w-0 flex-1">
-                    <flux:heading class="truncate">{{ $member->name }} @unless ($member->isActive()) <flux:badge size="sm" color="zinc">{{ __('Deactivated') }}</flux:badge> @endunless @if ($member->isAbsent()) <flux:badge size="sm" color="amber">{{ \Illuminate\Support\Str::ucfirst($member->absenceNote()) }}</flux:badge> @endif</flux:heading>
-                    <flux:text size="sm" class="truncate">{{ $member->email }}</flux:text>
+                {{-- On phones the role has its own line under the name instead of squeezing it --}}
+                <div class="min-w-0 flex-1 max-sm:basis-[calc(100%-2.75rem)]">
+                    <flux:heading class="sm:truncate">{{ $member->name }} @unless ($member->isActive()) <flux:badge size="sm" color="zinc">{{ __('Deactivated') }}</flux:badge> @endunless @if ($member->isAbsent()) <flux:badge size="sm" color="amber">{{ \Illuminate\Support\Str::ucfirst($member->absenceNote()) }}</flux:badge> @endif</flux:heading>
+                    <flux:text size="sm" class="sm:truncate">{{ $member->email }}</flux:text>
                 </div>
-                <flux:select size="sm" variant="listbox" wire:model.live="roles.{{ $member->id }}" aria-label="{{ __('Role') }}" class="max-w-36">
+                <flux:select size="sm" variant="listbox" wire:model.live="roles.{{ $member->id }}" aria-label="{{ __('Role') }}" class="max-w-36 max-sm:ms-11 max-sm:max-w-none max-sm:flex-1">
                     @foreach (ProjectRole::cases() as $role)
                         <flux:select.option value="{{ $role->value }}">{{ $role->label() }}</flux:select.option>
                     @endforeach
@@ -243,18 +244,18 @@ new class extends Component
         <flux:button type="submit" icon="plus">{{ __('Add') }}</flux:button>
     </form>
 
-    <flux:heading size="lg" class="mb-1 mt-10">{{ __('Teams') }}</flux:heading>
+    <flux:heading level="2" size="lg" class="mb-1 mt-10">{{ __('Teams') }}</flux:heading>
     <flux:text class="mb-4">{{ __('Everyone in a team gets the role chosen here. Anyone who is also a direct member keeps the higher role.') }}</flux:text>
 
     <ul class="space-y-2">
         @forelse ($this->teams as $team)
-            <li wire:key="team-{{ $team->id }}" class="surface flex items-center gap-3 p-3">
+            <li wire:key="team-{{ $team->id }}" class="surface flex items-center gap-3 p-3 max-sm:flex-wrap">
                 <flux:icon.user-group class="shrink-0 text-zinc-400" />
-                <div class="min-w-0 flex-1">
+                <div class="min-w-0 flex-1 max-sm:basis-[calc(100%-2.75rem)]">
                     <flux:heading class="truncate">{{ $team->name }}</flux:heading>
                     <flux:text size="sm">{{ trans_choice('{0} :count people|{1} :count person|[2,*] :count people', $team->users_count) }}</flux:text>
                 </div>
-                <flux:select size="sm" variant="listbox" wire:model.live="teamRoles.{{ $team->id }}" aria-label="{{ __('Role') }}" class="max-w-36">
+                <flux:select size="sm" variant="listbox" wire:model.live="teamRoles.{{ $team->id }}" aria-label="{{ __('Role') }}" class="max-w-36 max-sm:ms-11 max-sm:max-w-none max-sm:flex-1">
                     @foreach (ProjectRole::cases() as $role)
                         <flux:select.option value="{{ $role->value }}">{{ $role->label() }}</flux:select.option>
                     @endforeach

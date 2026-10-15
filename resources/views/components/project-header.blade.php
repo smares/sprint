@@ -11,9 +11,12 @@
     <div class="flex items-start gap-3">
         <x-project-icon :project="$project" size="lg" />
         <div class="min-w-0">
-            <flux:heading size="xl">{{ $project->name }}</flux:heading>
+            <flux:heading level="1" size="xl">{{ $project->name }}</flux:heading>
             @if ($project->description)
-                <flux:text class="mt-1">{{ $project->description }}</flux:text>
+                {{-- On phones two lines, a tap on the text shows all of it --}}
+                <div x-data="{ open: false }">
+                    <flux:text class="mt-1 max-sm:cursor-pointer" x-bind:class="open ? '' : 'max-sm:line-clamp-2'" x-on:click="open = ! open">{{ $project->description }}</flux:text>
+                </div>
             @endif
         </div>
     </div>

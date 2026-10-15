@@ -224,7 +224,7 @@ new class extends Component
 <div class="max-w-4xl">
     <x-project-breadcrumbs :project="$project" :current="__('Fields')" />
 
-    <flux:heading size="xl" class="mb-1">{{ __('Fields') }}</flux:heading>
+    <flux:heading level="1" size="xl" class="mb-1">{{ __('Fields') }}</flux:heading>
     <flux:text class="mb-6">{!! __('Custom fields like <em>Priority</em> or <em>Effort</em> appear on every task in this project. Their order determines how they are displayed.') !!}</flux:text>
 
     @if ($this->fields->isEmpty())

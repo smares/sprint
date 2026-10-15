@@ -107,7 +107,7 @@ new class extends Component
 
 <div class="max-w-4xl">
     <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <flux:heading size="xl">{{ __('Inbox') }}</flux:heading>
+        <flux:heading level="1" size="xl">{{ __('Inbox') }}</flux:heading>
         @if ($this->hasUnread)
             <flux:button size="sm" icon="check" wire:click="markAllRead">{{ __('Mark all as read') }}</flux:button>
         @endif

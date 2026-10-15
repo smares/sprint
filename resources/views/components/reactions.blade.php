@@ -14,6 +14,7 @@
             <flux:button
                 type="button"
                 size="xs"
+                class="max-sm:h-10!"
                 :variant="$mine === $emoji ? 'primary' : 'outline'"
                 wire:click="react('{{ $target }}', {{ $id }}, '{{ $emoji }}')"
                 :disabled="! $canReact"
@@ -25,7 +26,7 @@
         @if ($canReact)
             {{-- The menu's content is only built once it is opened: a task page has a menu under every comment --}}
             <flux:dropdown x-data="{ built: false }">
-                <flux:button type="button" size="xs" variant="ghost" icon="face-smile" aria-label="{{ __('React') }}" :tooltip="__('React')" x-on:click="built = true" />
+                <flux:button type="button" size="xs" variant="ghost" icon="face-smile" class="max-sm:size-10!" aria-label="{{ __('React') }}" :tooltip="__('React')" x-on:click="built = true" />
 
                 <flux:popover class="w-64 p-3">
                     <template x-if="built">

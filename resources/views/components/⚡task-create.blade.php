@@ -106,7 +106,8 @@ new class extends Component
 
 <div>
     <flux:modal name="create-task" class="w-full max-w-lg">
-        <form wire:submit="create" class="space-y-6">
+        {{-- After a validation error the keyboard moves to the first field that is wrong (the submit button, disabled while saving, lost it) --}}
+        <form x-on:submit.prevent="$wire.create().then(() => $nextTick(() => $el.querySelector('input[data-invalid], textarea[data-invalid], button[data-invalid], [data-invalid] input, [data-invalid] button')?.focus()))" class="space-y-6">
             <flux:heading size="lg">{{ __('New task') }}</flux:heading>
             <flux:input wire:model="title" :label="__('Title')" autofocus />
             <x-markdown-editor wire:model="description" :label="__('Description')" grow :max="Task::MAX_DESCRIPTION_LENGTH" :placeholder="__('Describe the task … (Markdown, @ for mentions)')" :rows="3" :mentions="$this->mentionOptions" />

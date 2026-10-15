@@ -67,7 +67,7 @@ new class extends Component
     </div>
 
     <flux:card>
-        <flux:heading size="xl" class="mb-6">{{ __('Set a new password') }}</flux:heading>
+        <flux:heading level="1" size="xl" class="mb-6">{{ __('Set a new password') }}</flux:heading>
 
         <form wire:submit="save" class="space-y-6">
             <flux:input wire:model="email" :label="__('Email')" type="email" autocomplete="email" />

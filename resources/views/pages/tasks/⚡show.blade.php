@@ -1113,7 +1113,8 @@ new class extends Component
     @endif
 
     @if ($panel)
-        <div class="mb-4 flex items-center gap-2">
+        {{-- Stays at the top of the flyout while its content scrolls: sticky counts from inside the flyout's 1.25rem of padding, so -top-5 --}}
+        <div class="sticky -top-5 z-10 -mx-5 mb-2 flex items-center gap-2 bg-white px-5 py-2 dark:bg-zinc-800">
             <x-project-icon :project="$task->project" size="sm" />
             <flux:text size="sm" class="min-w-0 flex-1 truncate">
                 {{ $task->project->name }}
@@ -1153,7 +1154,8 @@ new class extends Component
 
         <div class="task-properties">
             <x-task-field :label="__('Status')" icon="signal">
-                <flux:select size="sm" variant="listbox" wire:model="statusId" :aria-label="__('Status')">
+                <flux:select size="sm" variant="listbox" wire:model="statusId">
+                    <x-slot name="trigger"><flux:select.button size="sm" :aria-label="__('Status')" :invalid="$errors->has('statusId')" /></x-slot>
                     @foreach ($task->project->statuses as $status)
                         <flux:select.option value="{{ $status->id }}">{{ $status->name }}</flux:select.option>
                     @endforeach
@@ -1161,7 +1163,8 @@ new class extends Component
             </x-task-field>
 
             <x-task-field :label="__('Assignee')" icon="user">
-                <flux:select size="sm" variant="listbox" wire:model="assigneeId" data-shortcut-assignee :aria-label="__('Assignee')">
+                <flux:select size="sm" variant="listbox" wire:model="assigneeId" data-shortcut-assignee>
+                    <x-slot name="trigger"><flux:select.button size="sm" :aria-label="__('Assignee')" :invalid="$errors->has('assigneeId')" /></x-slot>
                     <flux:select.option value="">{{ __('Nobody') }}</flux:select.option>
                     @foreach ($this->users as $user)
                         <flux:select.option value="{{ $user->id }}">{{ $user->labelledName() }}</flux:select.option>
@@ -1171,14 +1174,15 @@ new class extends Component
 
             <x-task-field :label="__('Dates')" icon="calendar">
                 <div class="grid gap-2 sm:grid-cols-2">
-                    <flux:date-picker size="sm" wire:model="dueDate" :aria-label="__('Due on')" :placeholder="__('Due on')" locale="{{ app()->getLocale() }}" clearable />
                     <flux:date-picker size="sm" wire:model="startDate" :aria-label="__('Starts on')" :placeholder="__('Starts on')" locale="{{ app()->getLocale() }}" clearable />
+                    <flux:date-picker size="sm" wire:model="dueDate" :aria-label="__('Due on')" :placeholder="__('Due on')" locale="{{ app()->getLocale() }}" clearable />
                 </div>
             </x-task-field>
 
             <x-task-field :label="__('Recurrence')" icon="arrow-path">
                 <div class="flex flex-wrap items-center gap-2">
-                    <flux:select size="sm" variant="listbox" wire:model.live="repeatUnit" :aria-label="__('Repeat')" placeholder="{{ __('Never') }}" class="!w-36">
+                    <flux:select size="sm" variant="listbox" wire:model.live="repeatUnit" placeholder="{{ __('Never') }}" class="!w-36">
+                        <x-slot name="trigger"><flux:select.button size="sm" :aria-label="__('Repeat')" :invalid="$errors->has('repeatUnit')" /></x-slot>
                         <flux:select.option value="">{{ __('Never') }}</flux:select.option>
                         @foreach (\App\Enums\RepeatUnit::cases() as $unit)
                             <flux:select.option value="{{ $unit->value }}">{{ $unit->label() }}</flux:select.option>
@@ -1186,7 +1190,8 @@ new class extends Component
                     </flux:select>
                     @if ($repeatUnit !== '')
                         <flux:input size="sm" wire:model="repeatInterval" type="number" min="1" max="365" :aria-label="__('Every')" :placeholder="__('Every')" class="!w-20" />
-                        <flux:select size="sm" variant="listbox" wire:model="repeatMode" :aria-label="__('Calculated')" class="!w-44">
+                        <flux:select size="sm" variant="listbox" wire:model="repeatMode" class="!w-44">
+                            <x-slot name="trigger"><flux:select.button size="sm" :aria-label="__('Calculated')" :invalid="$errors->has('repeatMode')" /></x-slot>
                             @foreach (\App\Enums\RepeatMode::cases() as $mode)
                                 <flux:select.option value="{{ $mode->value }}">{{ $mode->label() }}</flux:select.option>
                             @endforeach
@@ -1206,7 +1211,8 @@ new class extends Component
             @endforeach
 
             <x-task-field :label="__('Parent task')" icon="arrow-turn-left-up">
-                <flux:select size="sm" variant="listbox" wire:model="parentId" searchable :aria-label="__('Parent task')">
+                <flux:select size="sm" variant="listbox" wire:model="parentId" searchable>
+                    <x-slot name="trigger"><flux:select.button size="sm" :aria-label="__('Parent task')" :invalid="$errors->has('parentId')" /></x-slot>
                     <x-slot name="search">
                         <flux:select.search wire:model.live.debounce.300ms="parentSearch" :placeholder="__('Search tasks …')" />
                     </x-slot>
@@ -1218,7 +1224,8 @@ new class extends Component
             </x-task-field>
 
             <x-task-field :label="__('Collaborators')" icon="users">
-                <flux:pillbox size="sm" wire:model="collaboratorIds" multiple searchable :aria-label="__('Collaborators')" :placeholder="__('Choose more people …')">
+                <flux:pillbox size="sm" wire:model="collaboratorIds" multiple searchable :placeholder="__('Choose more people …')">
+                    <x-slot name="trigger"><flux:pillbox.trigger size="sm" :aria-label="__('Collaborators')" /></x-slot>
                     @foreach ($this->users as $user)
                         <flux:pillbox.option wire:key="collaborator-{{ $user->id }}" value="{{ $user->id }}">{{ $user->labelledName() }}</flux:pillbox.option>
                     @endforeach
@@ -1246,7 +1253,8 @@ new class extends Component
             </x-task-field>
 
             <x-task-field :label="__('Blocked by')" icon="lock-closed">
-                <flux:pillbox size="sm" wire:model="blockerIds" multiple searchable :aria-label="__('Blocked by')" :placeholder="__('Choose tasks …')">
+                <flux:pillbox size="sm" wire:model="blockerIds" multiple searchable :placeholder="__('Choose tasks …')">
+                    <x-slot name="trigger"><flux:pillbox.trigger size="sm" :aria-label="__('Blocked by')" /></x-slot>
                     <x-slot name="search">
                         <flux:pillbox.search wire:model.live.debounce.300ms="blockerSearch" :placeholder="__('Search tasks …')" />
                     </x-slot>
@@ -1257,7 +1265,8 @@ new class extends Component
             </x-task-field>
 
             <x-task-field :label="__('Blocking')" icon="no-symbol">
-                <flux:pillbox size="sm" wire:model="blockingIds" multiple searchable :aria-label="__('Blocking')" :placeholder="__('Choose tasks …')">
+                <flux:pillbox size="sm" wire:model="blockingIds" multiple searchable :placeholder="__('Choose tasks …')">
+                    <x-slot name="trigger"><flux:pillbox.trigger size="sm" :aria-label="__('Blocking')" /></x-slot>
                     <x-slot name="search">
                         <flux:pillbox.search wire:model.live.debounce.300ms="blockingSearch" :placeholder="__('Search tasks …')" />
                     </x-slot>
@@ -1279,7 +1288,8 @@ new class extends Component
 
         @if ($this->canEdit)
             {{-- On phones duplicate and delete show only their icon, so the row fits --}}
-            <div class="flex gap-3">
+            {{-- In the flyout the bar stays at the bottom edge while the properties scroll: changes are only taken with "Save" --}}
+            <div @class(['flex gap-3', 'sticky -bottom-5 z-10 -mx-5 border-t border-zinc-200 bg-white px-5 py-3 dark:border-zinc-700 dark:bg-zinc-800' => $panel])>
                 <flux:button type="submit" variant="primary">{{ __('Save') }}</flux:button>
                 <flux:button type="button" icon="document-duplicate" square class="sm:hidden" wire:click="duplicate" :aria-label="__('Duplicate')" :tooltip="__('Duplicate')" />
                 <flux:button type="button" icon="document-duplicate" class="max-sm:hidden" wire:click="duplicate">{{ __('Duplicate') }}</flux:button>
@@ -1390,7 +1400,7 @@ new class extends Component
                             <flux:button size="xs" variant="ghost" icon="pencil-square" wire:click="startEditComment({{ $comment->id }})" :aria-label="__('Edit comment')" :tooltip="__('Edit comment')" />
                         @endif
                         @can('delete', $comment)
-                            <flux:button size="xs" variant="ghost" icon="trash" wire:click="deleteComment({{ $comment->id }})" wire:confirm="{{ __('Delete comment?') }}" :aria-label="__('Delete comment')" :tooltip="__('Delete comment')" />
+                            <flux:button size="xs" variant="ghost" icon="trash" class="max-sm:size-10!" wire:click="deleteComment({{ $comment->id }})" wire:confirm="{{ __('Delete comment?') }}" :aria-label="__('Delete comment')" :tooltip="__('Delete comment')" />
                         @endcan
                     </div>
 

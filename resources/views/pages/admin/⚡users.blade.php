@@ -175,9 +175,15 @@ new class extends Component
 };
 ?>
 
-<div class="max-w-4xl">
-    <flux:heading size="xl" class="mb-1">{{ __('Users') }}</flux:heading>
-    <flux:text class="mb-6">{!! __('Create people here and decide who the administrators are. Who has access to which projects is set in the project under <em>Members</em>.') !!}</flux:text>
+<div class="max-w-4xl" x-data>
+    <div class="mb-6 flex items-start justify-between gap-3">
+        <div>
+            <flux:heading level="1" size="xl" class="mb-1">{{ __('Users') }}</flux:heading>
+            <flux:text>{!! __('Create people here and decide who the administrators are. Who has access to which projects is set in the project under <em>Members</em>.') !!}</flux:text>
+        </div>
+        {{-- The form is below all the people: this jumps there --}}
+        <flux:button size="sm" icon="plus" class="shrink-0" x-on:click="$refs.newPerson.scrollIntoView({ behavior: 'smooth', block: 'start' }); $refs.newPerson.querySelector('input')?.focus({ preventScroll: true })">{{ __('Create a new person') }}</flux:button>
+    </div>
 
     @if ($shownPassword)
         <flux:callout variant="warning" icon="key" class="mb-6" :heading="__('Password for :email', ['email' => $shownFor])">
@@ -225,8 +231,8 @@ new class extends Component
         @endforeach
     </ul>
 
-    <flux:heading size="lg" class="mb-3 mt-10">{{ __('Add a new person') }}</flux:heading>
-    <form wire:submit="create" class="space-y-4">
+    <flux:heading level="2" size="lg" class="mb-3 mt-10">{{ __('Add a new person') }}</flux:heading>
+    <form wire:submit="create" x-ref="newPerson" class="space-y-4 scroll-mt-6">
         <div class="grid gap-4 sm:grid-cols-2">
             <flux:input wire:model="name" :label="__('Name')" />
             <flux:input wire:model="email" type="email" :label="__('Email')" />

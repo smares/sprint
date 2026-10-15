@@ -239,32 +239,46 @@ new class extends Component
 
 <div>
     <div class="mb-6 flex items-center justify-between gap-3">
-        <flux:heading size="xl">{{ __('My tasks') }}</flux:heading>
+        <flux:heading level="1" size="xl">{{ __('My tasks') }}</flux:heading>
         <x-mine-views active="board" />
     </div>
 
     {{-- The columns are the person's own: "Unsorted" holds what they have not put anywhere (and cannot be reordered by hand, it
          follows the due dates), every other column keeps the order the cards were dragged into. --}}
     <div class="scroll-shadows" data-fills-height>
-        <flux:kanban class="items-start overflow-x-auto pb-4" data-scroll-edges>
+        <flux:kanban class="items-start overflow-x-auto pb-4 max-sm:snap-x max-sm:snap-mandatory" data-scroll-edges>
             @foreach ([0 => __('Unsorted')] + $this->personalColumns->pluck('name', 'id')->all() as $key => $name)
                 @php
                     $personal = $key !== 0;
                     $tasks = $this->columns[$key];
                 @endphp
-                <flux:kanban.column wire:key="column-{{ $key }}" class="shrink-0 border-t-3 {{ $personal ? 'border-t-accent' : 'border-t-zinc-400 dark:border-t-zinc-500' }}"
-                    x-data="{ renaming: false }">
+                {{-- On phones a column leaves the next one in sight; the empty "Unsorted" one is narrower still --}}
+                <flux:kanban.column wire:key="column-{{ $key }}" class="shrink-0 border-t-3 {{ $personal ? 'border-t-accent' : 'border-t-zinc-400 dark:border-t-zinc-500' }} {{ ! $personal && $tasks->isEmpty() ? 'max-sm:w-48' : 'max-sm:w-[min(20rem,calc(100vw-6rem))]' }}"
+                    x-data="{
+                        renaming: false,
+                        settled: false,
+                        start() { this.settled = false; this.renaming = true; setTimeout(() => { this.$refs.name.focus(); this.$refs.name.select() }, 50) }, {{-- after the menu closed and gave the keyboard back to its button --}}
+                        {{-- Enter and leaving the field both save (once); Escape drops the change. The keyboard goes back to the menu button. --}}
+                        finish(save, name, key) {
+                            if (this.settled) { return }
+                            this.settled = true
+                            this.renaming = false
+                            const value = this.$refs.name.value.trim()
+                            if (save && value !== '' && value !== name) { this.$wire.renameColumn(key, value) } else { this.$refs.name.value = name }
+                        },
+                    }">
                     <flux:kanban.column.header :count="$this->columnTotals[$key]">
                         @if ($personal)
                             <flux:heading x-show="! renaming">{{ $name }}</flux:heading>
-                            <input
-                                x-show="renaming" x-cloak x-ref="name" type="text" value="{{ $name }}" maxlength="{{ \App\Models\PersonalColumn::MAX_NAME_LENGTH }}"
-                                aria-label="{{ __('Column name') }}"
-                                class="w-40 rounded-md border border-zinc-300 bg-white px-2 py-0.5 text-sm dark:border-zinc-600 dark:bg-zinc-900"
-                                x-on:keydown.enter.prevent="renaming = false; $wire.renameColumn({{ $key }}, $el.value)"
-                                x-on:keydown.escape.prevent.stop="renaming = false; $el.value = {{ \Illuminate\Support\Js::from($name) }}"
-                                x-on:blur="renaming = false"
-                            />
+                            <div x-show="renaming" x-cloak class="w-40">
+                                <flux:input
+                                    size="sm" x-ref="name" type="text" value="{{ $name }}" maxlength="{{ \App\Models\PersonalColumn::MAX_NAME_LENGTH }}"
+                                    aria-label="{{ __('Column name') }}"
+                                    x-on:keydown.enter.prevent="finish(true, {{ \Illuminate\Support\Js::from($name) }}, {{ $key }}); $refs.options.focus()"
+                                    x-on:keydown.escape.prevent.stop="finish(false, {{ \Illuminate\Support\Js::from($name) }}, {{ $key }}); $refs.options.focus()"
+                                    x-on:blur="finish(true, {{ \Illuminate\Support\Js::from($name) }}, {{ $key }})"
+                                />
+                            </div>
                         @else
                             <flux:heading>{{ $name }}</flux:heading>
                         @endif
@@ -272,10 +286,10 @@ new class extends Component
                         @if ($personal)
                             <x-slot name="actions">
                                 <flux:dropdown align="end">
-                                    <flux:button size="xs" variant="ghost" square icon="ellipsis-horizontal" aria-label="{{ __('Column options') }}" tooltip="{{ __('Column options') }}" />
+                                    <flux:button x-ref="options" size="xs" variant="ghost" square class="max-sm:size-10!" icon="ellipsis-horizontal" aria-label="{{ __('Column options') }}" tooltip="{{ __('Column options') }}" />
 
                                     <flux:menu>
-                                        <flux:menu.item icon="pencil-square" x-on:click="renaming = true; $nextTick(() => { $refs.name.focus(); $refs.name.select() })">{{ __('Rename') }}</flux:menu.item>
+                                        <flux:menu.item icon="pencil-square" x-on:click="start()">{{ __('Rename') }}</flux:menu.item>
                                         @unless ($loop->iteration === 2)
                                             <flux:menu.item icon="arrow-left" wire:click="moveColumn({{ $key }}, 'left')">{{ __('Move left') }}</flux:menu.item>
                                         @endunless
@@ -302,12 +316,43 @@ new class extends Component
                             <flux:kanban.card wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" class="board-card cursor-pointer" wire:sort:item="{{ $task->id }}">
                                 <div class="flex items-start gap-2">
                                     <x-task-done-button :task="$task" :editable="in_array($task->project_id, $this->editableProjectIds, true)" />
-                                    <div class="min-w-0">
+                                    <div class="min-w-0 flex-1">
                                         <x-task-title-line :task="$task" :progress="$this->progress[$task->id] ?? null" />
                                         @if ($task->parent)
                                             <flux:text size="sm" class="block">{{ __('in :title', ['title' => $task->parent->title]) }}</flux:text>
                                         @endif
                                     </div>
+
+                                    {{-- Dragging is not the only way: the same moves from a menu (for the keyboard, switches and fingers that do not drag) --}}
+                                    @if (in_array($task->project_id, $this->editableProjectIds, true))
+                                        @php
+                                            $moveKey = $key;
+                                            $moveIndex = $loop->index;
+                                            $moveLast = $loop->last;
+                                        @endphp
+                                        <flux:dropdown align="end" x-on:click.stop>
+                                            <flux:button size="xs" variant="ghost" square class="-me-1 -mt-0.5 max-sm:size-10!" icon="ellipsis-horizontal" aria-label="{{ __('Move task') }}" />
+
+                                            <flux:menu>
+                                                <flux:menu.group :heading="__('Move to column')">
+                                                    @foreach ([0 => __('Unsorted')] + $this->personalColumns->pluck('name', 'id')->all() as $targetKey => $targetName)
+                                                        @if ($targetKey !== $moveKey)
+                                                            <flux:menu.item wire:key="move-{{ $task->id }}-{{ $targetKey }}" wire:click="moveTask({{ $task->id }}, 100000, '{{ $targetKey }}')">{{ $targetName }}</flux:menu.item>
+                                                        @endif
+                                                    @endforeach
+                                                </flux:menu.group>
+                                                @if ($personal && ($moveIndex > 0 || ! $moveLast))
+                                                    <flux:menu.separator />
+                                                    @if ($moveIndex > 0)
+                                                        <flux:menu.item icon="arrow-up" wire:click="moveTask({{ $task->id }}, {{ $moveIndex - 1 }}, '{{ $moveKey }}')">{{ __('Move up') }}</flux:menu.item>
+                                                    @endif
+                                                    @unless ($moveLast)
+                                                        <flux:menu.item icon="arrow-down" wire:click="moveTask({{ $task->id }}, {{ $moveIndex + 1 }}, '{{ $moveKey }}')">{{ __('Move down') }}</flux:menu.item>
+                                                    @endunless
+                                                @endif
+                                            </flux:menu>
+                                        </flux:dropdown>
+                                    @endif
                                 </div>
 
                                 <div class="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400">
@@ -336,18 +381,21 @@ new class extends Component
             @endforeach
 
             @if ($this->personalColumns->count() < \App\Models\PersonalColumn::MAX_PER_USER)
-                <div class="w-72 shrink-0 self-start" x-data="{ adding: false }" wire:key="add-column">
-                    <flux:button x-show="! adding" variant="subtle" icon="plus" class="w-full justify-start" x-on:click="adding = true; $nextTick(() => $refs.column.focus())">{{ __('Add column') }}</flux:button>
+                <div class="w-72 shrink-0 self-start max-sm:w-[min(18rem,calc(100vw-6rem))] max-sm:snap-start" x-data="{ adding: false, invalid: false, close() { this.adding = false; this.invalid = false; this.$nextTick(() => this.$refs.open.focus()) } }" wire:key="add-column">
+                    <flux:button x-ref="open" x-show="! adding" variant="subtle" icon="plus" class="w-full justify-start" x-on:click="adding = true; $nextTick(() => $refs.column.focus())">{{ __('Add column') }}</flux:button>
 
-                    <form x-show="adding" x-cloak wire:submit="addColumn" x-on:submit="adding = false" class="surface flex flex-col gap-2 p-2">
-                        <input
-                            x-ref="column" type="text" wire:model="newColumnName" maxlength="{{ \App\Models\PersonalColumn::MAX_NAME_LENGTH }}" placeholder="{{ __('Column name') }}" aria-label="{{ __('Column name') }}"
-                            class="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-900"
-                            x-on:keydown.escape.prevent="adding = false"
+                    {{-- An empty name keeps the form open and says why; the server is asked only with a name --}}
+                    <form x-show="adding" x-cloak x-on:submit.prevent="if ($refs.column.value.trim() === '') { invalid = true; $refs.column.focus(); return } $wire.addColumn(); close()" class="surface flex flex-col gap-2 p-2">
+                        <flux:input
+                            size="sm" x-ref="column" type="text" wire:model="newColumnName" maxlength="{{ \App\Models\PersonalColumn::MAX_NAME_LENGTH }}" placeholder="{{ __('Column name') }}" aria-label="{{ __('Column name') }}"
+                            x-bind:data-invalid="invalid" x-bind:aria-invalid="invalid" aria-describedby="new-column-error"
+                            x-on:input="invalid = false"
+                            x-on:keydown.escape.prevent="close()"
                         />
+                        <flux:text id="new-column-error" size="sm" class="text-red-600 dark:text-red-400" x-show="invalid" x-cloak role="alert">{{ __('Give the column a name.') }}</flux:text>
                         <div class="flex gap-2">
                             <flux:button size="sm" variant="primary" type="submit">{{ __('Add') }}</flux:button>
-                            <flux:button size="sm" variant="ghost" x-on:click="adding = false">{{ __('Cancel') }}</flux:button>
+                            <flux:button size="sm" variant="ghost" x-on:click="close()">{{ __('Cancel') }}</flux:button>
                         </div>
                     </form>
                 </div>

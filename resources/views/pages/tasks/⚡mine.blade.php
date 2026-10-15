@@ -76,7 +76,7 @@ new class extends Component
 
 <div>
     <div class="mb-6 flex items-center justify-between gap-3">
-        <flux:heading size="xl">{{ __('My tasks') }}</flux:heading>
+        <flux:heading level="1" size="xl">{{ __('My tasks') }}</flux:heading>
         <x-mine-views active="list" />
     </div>
 

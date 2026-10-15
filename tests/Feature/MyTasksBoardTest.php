@@ -274,4 +274,44 @@ class MyTasksBoardTest extends TestCase
             ->call('toggleDone', $task->id)
             ->assertDontSee('Eins');
     }
+
+    public function test_the_card_menu_moves_a_task_to_the_end_of_another_column_without_dragging(): void
+    {
+        $heute = $this->column('Heute');
+        $erste = $this->mine('Erste');
+        $zweite = $this->mine('Zweite');
+        $heute->place($erste, 0, []);
+
+        $board = $this->board()
+            ->assertSeeHtml("moveTask({$zweite->id}, 100000, '{$heute->id}')")
+            ->assertSeeHtml("moveTask({$erste->id}, 100000, '0')")
+            ->assertSee('In Spalte verschieben');
+
+        $board->call('moveTask', $zweite->id, 100000, (string) $heute->id);
+
+        $this->assertSame(['Erste', 'Zweite'], $this->titles($board, $heute->id));
+        $this->assertSame([], $this->titles($board, 0));
+    }
+
+    public function test_the_card_menu_moves_a_task_up_and_down_within_its_column(): void
+    {
+        $heute = $this->column('Heute');
+        $a = $this->mine('A');
+        $b = $this->mine('B');
+        $heute->place($a, 0, []);
+        $heute->place($b, 1, [$a->id]);
+
+        $board = $this->board()
+            ->assertSeeHtml("moveTask({$a->id}, 1, '{$heute->id}')")
+            ->assertSeeHtml("moveTask({$b->id}, 0, '{$heute->id}')");
+
+        $board->call('moveTask', $a->id, 1, (string) $heute->id);
+
+        $this->assertSame(['B', 'A'], $this->titles($board, $heute->id));
+    }
+
+    public function test_the_sidebar_marks_my_tasks_on_the_board_too(): void
+    {
+        $this->get(route('tasks.mine.board'))->assertOk()->assertSeeHtml('href="'.route('tasks.mine').'" data-current');
+    }
 }

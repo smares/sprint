@@ -421,7 +421,7 @@ new class extends Component
 
 <div class="max-w-2xl space-y-6">
     <div>
-        <flux:heading size="xl">{{ __('Profile') }}</flux:heading>
+        <flux:heading level="1" size="xl">{{ __('Profile') }}</flux:heading>
         <flux:text class="mt-1">{{ __('Your account, its security and access for AI agents.') }}</flux:text>
     </div>
 
@@ -434,7 +434,7 @@ new class extends Component
 
         <flux:tab.panel name="profile" class="surface mt-4 space-y-8 p-4 sm:p-6">
             <div>
-                <flux:heading size="lg">{{ __('Personal details') }}</flux:heading>
+                <flux:heading level="2" size="lg">{{ __('Personal details') }}</flux:heading>
                 <flux:text class="mt-1">{{ __('Your name and email address appear on assignments, comments and in notifications.') }}</flux:text>
             </div>
 
@@ -585,7 +585,7 @@ new class extends Component
 
         <flux:tab.panel name="security" class="surface mt-4 space-y-8 p-4 sm:p-6">
             <form wire:submit="changePassword" class="space-y-4">
-                <flux:heading size="lg">{{ __('Change password') }}</flux:heading>
+                <flux:heading level="2" size="lg">{{ __('Change password') }}</flux:heading>
                 <flux:input wire:model="currentPassword" type="password" :label="__('Current password')" autocomplete="current-password" />
                 <flux:input wire:model="newPassword" type="password" :label="__('New password')" :description="__('At least 8 characters.')" autocomplete="new-password" />
                 <flux:input wire:model="newPasswordConfirmation" type="password" :label="__('Repeat new password')" autocomplete="new-password" />

@@ -60,7 +60,7 @@ new class extends Component
 
     <flux:card class="space-y-6">
         <div>
-            <flux:heading size="xl">{{ __('Forgot password') }}</flux:heading>
+            <flux:heading level="1" size="xl">{{ __('Forgot password') }}</flux:heading>
             <flux:text class="mt-2">{{ __('Enter your email address and we will send you a link to set a new password.') }}</flux:text>
         </div>
 

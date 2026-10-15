@@ -80,12 +80,13 @@ new class extends Component
 <div>
     <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div class="max-w-2xl">
-            <flux:heading size="xl">{{ __('Workload') }}</flux:heading>
+            <flux:heading level="1" size="xl">{{ __('Workload') }}</flux:heading>
             <flux:text class="mt-1">{{ __('Open tasks with a due date per person and week, from the projects you can see. Absences from the profile are marked, so you see in time where to hand work over.') }}</flux:text>
         </div>
 
         <div class="sm:w-60">
-            <flux:select variant="listbox" wire:model.live="scope" :aria-label="__('Show')">
+            <flux:select variant="listbox" wire:model.live="scope">
+                <x-slot name="trigger"><flux:select.button :aria-label="__('Show')" /></x-slot>
                 <flux:select.option value="me">{{ __('Me') }}</flux:select.option>
                 @foreach ($this->teams as $team)
                     <flux:select.option value="team:{{ $team->id }}">{{ __('Team :name', ['name' => $team->name]) }}</flux:select.option>

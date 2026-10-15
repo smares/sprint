@@ -43,6 +43,8 @@ class MarkdownService
             return new HtmlString('');
         }
 
+        // The placeholders are private-use characters; typed into a text they would point at mentions that do not exist
+        $text = str_replace([self::PLACEHOLDER_START, self::PLACEHOLDER_END], '', $text);
         $mentions = [];
 
         $withPlaceholders = preg_replace_callback(self::MENTION_PATTERN, function (array $match) use (&$mentions): string {

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\CustomFieldType;
+use App\Enums\ProjectRole;
 use App\Models\Attachment;
 use App\Models\Comment;
 use App\Models\Project;
@@ -19,6 +20,7 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Sleep;
 use Illuminate\Testing\PendingCommand;
+use ReflectionMethod;
 use Tests\TestCase;
 
 /**
@@ -528,5 +530,82 @@ class AsanaImportTest extends TestCase
 
         $this->assertFalse((new AsanaClient('t'))->download('http://download.example.com/a', sys_get_temp_dir().'/asana-never'));
         Http::assertNothingSent();
+    }
+
+    public function test_a_person_with_another_address_is_not_matched_by_name(): void
+    {
+        // Another Cara: the address from Asana is not hers, so the Cara of Asana has no account here
+        User::factory()->create(['name' => 'Cara', 'email' => 'cara@firma.example']);
+
+        $this->asana(['projects' => ['100'], '--token' => 'secret-token'])
+            ->expectsOutputToContain('have no account here')
+            ->assertFailed();
+
+        $this->assertSame(0, Project::count());
+    }
+
+    public function test_a_person_without_any_address_is_matched_by_a_unique_name(): void
+    {
+        $dora = User::factory()->create(['name' => 'Dora', 'email' => 'dora@example.com']);
+        $this->routes['projects/100']['members'][] = $this->person('14', 'Dora', null);
+        $this->routes['users?workspace=900'][] = $this->person('14', 'Dora', null);
+
+        $this->import(['projects' => ['100']])->assertSuccessful();
+
+        $this->assertTrue(Project::where('name', 'Website')->firstOrFail()->members()->whereKey($dora->id)->exists());
+    }
+
+    public function test_the_stored_file_gets_the_extension_of_its_type_and_not_of_its_name(): void
+    {
+        $this->routes['attachments?parent=1001'][0]['name'] = 'evil.php';
+
+        $this->import()->assertSuccessful();
+
+        $attachment = Attachment::where('name', 'evil.php')->firstOrFail();
+        $this->assertSame('application/pdf', $attachment->mime_type);
+        $this->assertStringEndsWith('.pdf', $attachment->path);
+        $this->assertStringNotContainsString('php', $attachment->path);
+    }
+
+    public function test_a_failed_download_does_not_show_its_address_with_the_signature(): void
+    {
+        Http::fake(['download.example.com/*' => Http::failedConnection()]);
+
+        $client = new AsanaClient('t');
+        $client->whenPausing(fn () => null);
+        Sleep::fake();
+
+        try {
+            $client->download('https://download.example.com/plan.pdf?X-Amz-Signature=geheim', sys_get_temp_dir().'/asana-never');
+            $this->fail('The download should have failed.');
+        } catch (AsanaException $exception) {
+            $this->assertStringNotContainsString('geheim', $exception->getMessage());
+            $this->assertSame('the download failed', $exception->getMessage());
+        }
+    }
+
+    public function test_redirects_of_the_client_stay_on_https(): void
+    {
+        Http::fake(['*' => Http::response(['data' => []])]);
+
+        (new AsanaClient('t'))->get('workspaces');
+
+        $options = (new ReflectionMethod(AsanaClient::class, 'request'))->invoke(new AsanaClient('t'), true)->getOptions();
+        $this->assertSame(['https'], $options['allow_redirects']['protocols']);
+    }
+
+    public function test_the_importer_keeps_their_role_in_an_existing_project_and_gets_one_in_a_new_one(): void
+    {
+        $importer = User::factory()->create(['email' => 'importer@example.com']);
+        $existing = Project::factory()->create(['name' => 'Schon da']);
+        $existing->setRole($importer, ProjectRole::Viewer);
+
+        $this->asana(['projects' => ["200={$existing->id}"], '--token' => 'secret-token', '--as' => 'importer@example.com', '--ignore-missing-users' => true])->assertSuccessful();
+
+        $this->assertSame(ProjectRole::Viewer, $existing->roleFor($importer->fresh()));
+
+        $this->asana(['projects' => ['100'], '--token' => 'secret-token', '--as' => 'importer@example.com', '--ignore-missing-users' => true])->assertSuccessful();
+
+        $this->assertSame(ProjectRole::Admin, Project::where('name', 'Website')->firstOrFail()->roleFor($importer->fresh()));
     }
 }

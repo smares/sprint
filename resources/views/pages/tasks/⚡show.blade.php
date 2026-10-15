@@ -1340,7 +1340,7 @@ new class extends Component
                 <li wire:key="attachment-{{ $attachment->id }}" class="space-y-2">
                     <flux:file-item
                         :heading="$attachment->name"
-                        :text="$attachment->humanSize().' · '.($attachment->user?->name ?? __('Someone')).' · '.$attachment->created_at->isoFormat('L LT')"
+                        :text="$attachment->humanSize().' · '.($attachment->user?->name ?? __('Someone')).' · '.auth()->user()->inTimezone($attachment->created_at)->isoFormat('L LT')"
                         :icon="match ($kind) { 'image' => 'photo', 'pdf' => 'document-text', 'text' => 'document', default => 'paper-clip' }"
                     >
                         <x-slot name="actions">
@@ -1395,7 +1395,7 @@ new class extends Component
 
                 <flux:card size="sm" class="min-w-0 flex-1 space-y-1 transition-shadow" data-comment-card>
                     <div class="flex items-center gap-2">
-                        <flux:text class="min-w-0 flex-1 text-sm"><strong>{{ $comment->authorName() ?? __('Someone') }}</strong> · {{ $comment->created_at->isoFormat('L LT') }}@if ($comment->wasEdited()) · {{ __('edited') }} @endif</flux:text>
+                        <flux:text class="min-w-0 flex-1 text-sm"><strong>{{ $comment->authorName() ?? __('Someone') }}</strong> · <x-time :at="$comment->created_at" />@if ($comment->wasEdited()) · {{ __('edited') }} @endif</flux:text>
                         @if ($editingCommentId !== $comment->id && Gate::allows('update', $comment))
                             <flux:button size="xs" variant="ghost" icon="pencil-square" wire:click="startEditComment({{ $comment->id }})" :aria-label="__('Edit comment')" :tooltip="__('Edit comment')" />
                         @endif
@@ -1454,7 +1454,7 @@ new class extends Component
                             </flux:timeline.indicator>
 
                             <flux:timeline.content>
-                                <flux:text size="sm"><strong class="font-medium text-zinc-800 dark:text-white">{{ $comment->authorName() ?? __('Someone') }}</strong> {{ __('commented') }} · {{ $comment->created_at->isoFormat('L LT') }} · <flux:link href="#comment-{{ $comment->id }}" variant="subtle" wire:click.prevent="showComment({{ $comment->id }})" class="text-[length:inherit]!">{{ __('Go to comment') }}</flux:link></flux:text>
+                                <flux:text size="sm"><strong class="font-medium text-zinc-800 dark:text-white">{{ $comment->authorName() ?? __('Someone') }}</strong> {{ __('commented') }} · <x-time :at="$comment->created_at" /> · <flux:link href="#comment-{{ $comment->id }}" variant="subtle" wire:click.prevent="showComment({{ $comment->id }})" class="text-[length:inherit]!">{{ __('Go to comment') }}</flux:link></flux:text>
                             </flux:timeline.content>
                         </flux:timeline.item>
                     @else
@@ -1465,7 +1465,7 @@ new class extends Component
                             </flux:timeline.indicator>
 
                             <flux:timeline.content>
-                                <flux:text size="sm"><strong class="font-medium text-zinc-800 dark:text-white">{{ $activity->actorName() }}</strong> {{ $activity->sentence() }} · {{ $activity->created_at->isoFormat('L LT') }}@if ($activity->triggeredBy()) · {{ __('triggered by :name', ['name' => $activity->triggeredBy()]) }}@endif</flux:text>
+                                <flux:text size="sm"><strong class="font-medium text-zinc-800 dark:text-white">{{ $activity->actorName() }}</strong> {{ $activity->sentence() }} · <x-time :at="$activity->created_at" />@if ($activity->triggeredBy()) · {{ __('triggered by :name', ['name' => $activity->triggeredBy()]) }}@endif</flux:text>
                             </flux:timeline.content>
                         </flux:timeline.item>
                     @endif

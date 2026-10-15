@@ -15,6 +15,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable(['project_id', 'name', 'color', 'position', 'is_done'])]
 class TaskStatus extends Model
 {
+    /** The longest name (in characters). */
+    public const int MAX_NAME_LENGTH = 50;
+
     /** @use HasFactory<TaskStatusFactory> */
     use HasFactory;
 

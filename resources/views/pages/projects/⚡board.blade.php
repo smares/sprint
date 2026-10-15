@@ -238,9 +238,9 @@ new class extends Component
 <div>
     <x-project-header :project="$project" active="board" :presence="$this->presenceChannel()" />
 
-    <div class="mb-3 flex items-center gap-1">
+    <div class="mb-4 flex items-center gap-2">
         <flux:dropdown align="start">
-            <flux:button size="sm" variant="subtle" icon="arrows-up-down">{{ $this->sortActive ? $this->sortLabel : __('Sort') }}</flux:button>
+            <flux:button icon="arrows-up-down">{{ $this->sortActive ? $this->sortLabel : __('Sort') }}</flux:button>
 
             {{-- What to sort by; picking one orders the cards at once --}}
             <flux:menu>
@@ -248,7 +248,7 @@ new class extends Component
                     <flux:menu.radio value="">{{ __('Manual order') }}</flux:menu.radio>
                     <flux:menu.radio value="due">{{ __('Due') }}</flux:menu.radio>
                     <flux:menu.radio value="title">{{ __('Title') }}</flux:menu.radio>
-                    @foreach ($this->customFields as $field)
+                    @foreach ($this->customFields->where('show_in_list', true) as $field)
                         <flux:menu.radio wire:key="sort-field-{{ $field->id }}" value="field:{{ $field->id }}">{{ $field->name }}</flux:menu.radio>
                     @endforeach
                 </flux:menu.radio.group>
@@ -257,8 +257,8 @@ new class extends Component
 
         {{-- The direction is one click on its own: the arrow shows the order in force and turns it --}}
         @if ($this->sortActive)
-            <flux:button size="sm" variant="subtle" :icon="$sortDirection === 'desc' ? 'arrow-down' : 'arrow-up'" wire:click="reverseSort" aria-label="{{ __('Reverse order') }}" tooltip="{{ $sortDirection === 'desc' ? __('Descending') : __('Ascending') }}: {{ __('Reverse order') }}" />
-            <flux:button size="sm" variant="subtle" icon="x-mark" wire:click="resetSort" aria-label="{{ __('Reset') }}" tooltip="{{ __('Reset') }}" />
+            <flux:button :icon="$sortDirection === 'desc' ? 'arrow-down' : 'arrow-up'" wire:click="reverseSort" aria-label="{{ __('Reverse order') }}" tooltip="{{ $sortDirection === 'desc' ? __('Descending') : __('Ascending') }}: {{ __('Reverse order') }}" />
+            <flux:button icon="x-mark" wire:click="resetSort" aria-label="{{ __('Reset') }}" tooltip="{{ __('Reset') }}" />
         @endif
     </div>
 

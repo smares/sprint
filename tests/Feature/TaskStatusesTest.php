@@ -276,12 +276,18 @@ class TaskStatusesTest extends TestCase
         Task::factory()->for($this->project)->create(['status_id' => $status->id]);
 
         Livewire::test('project-statuses', ['project' => $this->project])
-            ->assertDontSee('wechseln in den Ersatz-Status')
+            ->assertDontSee('Ersatz-Status.')
             ->call('confirmDelete', $status->id)
-            ->assertSee('wechseln in den Ersatz-Status')
+            ->assertSee('Die Aufgabe mit diesem Status wechselt in den Ersatz-Status.')
             ->call('cancelDelete')
             ->assertSet('deletingId', '')
-            ->assertDontSee('wechseln in den Ersatz-Status');
+            ->assertDontSee('wechselt in den Ersatz-Status');
+
+        Task::factory()->for($this->project)->create(['status_id' => $status->id]);
+
+        Livewire::test('project-statuses', ['project' => $this->project])
+            ->call('confirmDelete', $status->id)
+            ->assertSee('Die 2 Aufgaben mit diesem Status wechseln in den Ersatz-Status.');
 
         $this->assertModelExists($status);
     }

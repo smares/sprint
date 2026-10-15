@@ -5,8 +5,8 @@
             [['/', '⌘ K', __('Ctrl K')], __('Search or jump to…')],
             ['?', __('Show this overview')],
         ],
-        __('List and board') => [
-            ['c', __('Create a task')],
+        __('Task lists') => [
+            ['c', __('Create a task (in projects)')],
             ['j', __('Open the next task')],
             ['k', __('Open the previous task')],
             ['Esc', __('Close the task')],

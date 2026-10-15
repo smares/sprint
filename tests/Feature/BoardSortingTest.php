@@ -78,6 +78,30 @@ class BoardSortingTest extends TestCase
         $this->assertSame(['Anton', 'berta', 'zebra'], $this->column($board));
     }
 
+    public function test_text_fields_are_sorted_without_regard_to_the_case(): void
+    {
+        $note = CustomField::factory()->for($this->project)->create(['name' => 'Notiz', 'type' => CustomFieldType::Text]);
+        foreach (['Zebra' => 0, 'anton' => 1, 'Berta' => 2] as $value => $position) {
+            $task = $this->task($value.' Aufgabe', ['position' => $position]);
+            CustomFieldValue::create(['task_id' => $task->id, 'custom_field_id' => $note->id, 'value' => $value]);
+        }
+        $this->task('Ohne', ['position' => 3]);
+
+        $board = Livewire::test('pages::projects.board', ['project' => $this->project])->call('sort', 'field:'.$note->id);
+
+        $this->assertSame(['anton Aufgabe', 'Berta Aufgabe', 'Zebra Aufgabe', 'Ohne'], $this->column($board));
+    }
+
+    public function test_the_menu_offers_the_fields_that_the_list_shows_as_columns(): void
+    {
+        CustomField::factory()->for($this->project)->create(['name' => 'Sichtbar', 'type' => CustomFieldType::Text, 'show_in_list' => true]);
+        CustomField::factory()->for($this->project)->create(['name' => 'Versteckt', 'type' => CustomFieldType::Text, 'show_in_list' => false]);
+
+        Livewire::test('pages::projects.board', ['project' => $this->project])
+            ->assertSee('Sichtbar')
+            ->assertDontSee('Versteckt');
+    }
+
     public function test_cards_can_be_sorted_by_title_and_by_a_custom_field(): void
     {
         $effort = CustomField::factory()->for($this->project)->create(['name' => 'Aufwand', 'type' => CustomFieldType::Number]);

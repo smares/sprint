@@ -14,6 +14,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['custom_field_id', 'name', 'color', 'position'])]
 class CustomFieldOption extends Model
 {
+    /** The longest name (in characters). */
+    public const int MAX_NAME_LENGTH = 100;
+
     /** @use HasFactory<CustomFieldOptionFactory> */
     use HasFactory;
 

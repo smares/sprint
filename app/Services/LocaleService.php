@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Carbon\Translator;
 use Illuminate\Support\Facades\Date;
+use Illuminate\Support\Number;
 
 /**
  * The languages of the application, as two-letter codes (de, en, fr, …). A new language needs a `lang/xx.json`
@@ -83,11 +84,12 @@ class LocaleService
     }
 
     /**
-     * Use the language for everything that follows in this request, including dates.
+     * Use the language for everything that follows in this request, including dates and numbers (file sizes).
      */
     public static function apply(string $code): void
     {
         app()->setLocale($code);
         Date::setLocale($code);
+        Number::useLocale($code);
     }
 }

@@ -114,7 +114,7 @@ new class extends Component
 
     public function add(): void
     {
-        $validated = $this->validate(['newName' => ['required', 'string', 'max:50']], attributes: ['newName' => __('Name')]);
+        $validated = $this->validate(['newName' => ['required', 'string', 'max:'.\App\Models\TaskStatus::MAX_NAME_LENGTH]], attributes: ['newName' => __('Name')]);
 
         $this->project->statuses()->create([
             'name' => trim($validated['newName']),
@@ -130,9 +130,9 @@ new class extends Component
         $status = $this->statusOrFail($id);
         $name = trim($value);
 
-        if ($name === '' || mb_strlen($name) > 50) {
+        if ($name === '' || mb_strlen($name) > \App\Models\TaskStatus::MAX_NAME_LENGTH) {
             $this->names[$id] = $status->name;
-            Flux::toast(variant: 'danger', text: __('The name must not be empty and may have at most :max characters.', ['max' => 50]));
+            Flux::toast(variant: 'danger', text: __('The name must not be empty and may have at most :max characters.', ['max' => \App\Models\TaskStatus::MAX_NAME_LENGTH]));
 
             return;
         }
@@ -253,7 +253,7 @@ new class extends Component
                         @if ($deletingId === (string) $status->id)
                             <form wire:submit="delete" class="mt-3 space-y-3 border-t border-zinc-200 pt-3 dark:border-zinc-700">
                                 @if ($status->tasks_count > 0)
-                                    <flux:text size="sm">{{ __('The :count tasks with this status move to the replacement status.', ['count' => $status->tasks_count]) }}</flux:text>
+                                    <flux:text size="sm">{{ trans_choice('{1} The task with this status moves to the replacement status.|[2,*] The :count tasks with this status move to the replacement status.', $status->tasks_count) }}</flux:text>
                                     <flux:select size="sm" variant="listbox" wire:model="replacementId" :label="__('Replacement status')" :placeholder="__('Select status…')">
                                         @foreach ($this->statuses->where('id', '!=', $status->id) as $candidate)
                                             <flux:select.option value="{{ $candidate->id }}">{{ $candidate->name }}</flux:select.option>

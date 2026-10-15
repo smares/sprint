@@ -79,6 +79,7 @@ Der Probelauf stellt alle Anfragen an Asana, schreibt aber nichts. Er zeigt, wie
 | Erledigt | der erledigte Status samt Erledigt-Datum (die Spalte, in der die Aufgabe stand, geht dabei verloren) |
 | Status einer Unteraufgabe | Asana kennt für Unteraufgaben nur offen oder erledigt, Spalten haben sie nicht (sie stehen nur bei ihrer Aufgabe). Eine offene Unteraufgabe bekommt in Sprint den Status ihrer Aufgabe, außer der ist ein erledigter Status: Dann bleibt sie im ersten Status, damit offene Arbeit nicht als fertig zählt. Eine erledigte kommt in den erledigten Status |
 | Beschreibung, Kommentare | Markdown: Fett, Kursiv, Durchgestrichen, Code, Listen, Überschriften, Zitate und Links bleiben erhalten; Bilder in der Beschreibung nicht (sie kommen, soweit Asana sie als Anhang führt, als Anhang). Was in Asana als Text getippt wurde, bleibt Text: `*Hinweis*`, `# kein Titel` oder `<div>` werden nicht zu Formatierung bzw. verschluckt. Texte über 65.000 Zeichen (die Grenze der Eingabefelder) werden gekürzt, der Bericht nennt, wie viele |
+| Erstellt (Verlauf) | Die Aufgabe trägt das Erstellungsdatum aus Asana, und der Verlauf beginnt mit „Name hat die Aufgabe angelegt“ zu diesem Zeitpunkt (nicht am Tag des Imports), sodass er vor den Kommentaren steht. Wer die Aufgabe in Asana angelegt hat, steht dort (ohne Konto: die importierende Person) |
 | Zuständige, Ersteller | Zuständige und Ersteller, per E-Mail zugeordnet; ohne Konto bleibt die Aufgabe ohne Zuständige, in der Beschreibung steht dann „Zuständig in Asana: Name“, und als Ersteller steht die importierende Person |
 | Follower | Beteiligte, aber nur, wenn die Person Mitglied des Projekts ist (sonst gäbe es keine Rechte dafür) |
 | Start und Fällig | Start- und Fälligkeitsdatum; ein Zeitpunkt wird in der Zeitzone der Anwendung zum Datum |
@@ -98,6 +99,7 @@ Der Probelauf stellt alle Anfragen an Asana, schreibt aber nichts. Er zeigt, wie
 - **Wiederholungen**, Reaktionen („Gefällt mir“), Genehmigungsaufgaben, Teilnahme an Portfolios, Ziele, Formulare, Automatisierungsregeln und Sichtweisen (Boards, Zeitleisten): Sprint hat eigene.
 - **Die Aktivitätsliste** einer Aufgabe (Zuweisungen, Datumsänderungen). Der Verlauf in Sprint beginnt mit dem Import.
 - **Unteraufgaben, die schon übernommen wurden:** Ein zweiter Lauf ändert keine vorhandene Aufgabe, also auch nicht ihren Status.
+- **Importe vor Version 1.5.9:** Dort steht im Verlauf die Person, die den Import gestartet hat, und der Tag des Imports als Anlegedatum. `php artisan asana:fix-created-history` setzt Datum und Ersteller dieser Einträge nach den Angaben der Aufgabe (ohne Verbindung zu Asana; `--dry-run` zeigt nur, was sich ändert).
 - **Änderungen nach dem Import:** Ein zweiter Lauf übernimmt neue Aufgaben, Unteraufgaben, Kommentare und Anhänge, ändert aber keine bereits übernommene Aufgabe (Titel, Status, Datum …). Links auf Asana-Aufgaben in früher übernommenen Texten werden in jedem Lauf nachgezogen, sobald die Aufgabe in Sprint existiert (auch nach einem Abbruch oder wenn sie erst jetzt dazukommt).
 - **Aufgaben aus anderen Projekten** (siehe oben), solange sie nicht im ersten angegebenen Projekt liegen.
 

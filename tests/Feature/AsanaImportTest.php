@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ActivityType;
 use App\Enums\CustomFieldType;
 use App\Enums\ProjectRole;
 use App\Models\Attachment;
@@ -306,6 +307,41 @@ class AsanaImportTest extends TestCase
         $this->assertSame([$implementation->id], $concept->blockers()->pluck('tasks.id')->all());
         $this->assertStringContainsString("@[Umsetzung](task:{$implementation->id})", (string) $concept->description);
         $this->assertStringContainsString("**Plan** für @[Ben](user:{$this->ben->id}),", (string) $concept->description);
+    }
+
+    public function test_the_history_starts_with_the_creation_in_asana_by_its_creator(): void
+    {
+        $this->import()->assertSuccessful();
+
+        $concept = Task::where('title', 'Konzept')->firstOrFail();
+        $entry = $concept->activities()->where('type', ActivityType::Created)->sole();
+
+        $this->assertSame($this->ben->id, $entry->user_id);
+        $this->assertSame($concept->created_at->toDateTimeString(), $entry->created_at->toDateTimeString());
+        $this->assertSame('2026-09-01', $entry->created_at->toDateString());
+    }
+
+    public function test_the_command_dates_the_creation_entries_of_earlier_imports_by_asana(): void
+    {
+        $this->import()->assertSuccessful();
+
+        $concept = Task::where('title', 'Konzept')->firstOrFail();
+        $concept->activities()->where('type', ActivityType::Created)->toBase()->update(['user_id' => $this->admin->id, 'created_at' => now()]);
+        $own = Task::factory()->for($concept->project)->create();
+        $ownEntry = $own->activities()->where('type', ActivityType::Created)->sole();
+
+        $this->artisan('asana:fix-created-history', ['--dry-run' => true])->expectsOutputToContain('1 history entries would be')->assertSuccessful();
+        $this->assertSame($this->admin->id, $concept->activities()->where('type', ActivityType::Created)->sole()->user_id);
+
+        $this->artisan('asana:fix-created-history')->expectsOutputToContain('1 history entries were')->assertSuccessful();
+
+        $entry = $concept->activities()->where('type', ActivityType::Created)->sole();
+        $this->assertSame($this->ben->id, $entry->user_id);
+        $this->assertSame('2026-09-01', $entry->created_at->toDateString());
+        $this->assertTrue($ownEntry->is($own->activities()->where('type', ActivityType::Created)->sole()));
+        $this->assertSame($ownEntry->created_at->toDateTimeString(), $own->activities()->where('type', ActivityType::Created)->sole()->created_at->toDateTimeString());
+
+        $this->artisan('asana:fix-created-history')->expectsOutputToContain('0 history entries were')->assertSuccessful();
     }
 
     public function test_comments_keep_author_time_and_text_and_unknown_authors_are_named(): void

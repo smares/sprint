@@ -34,7 +34,7 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
-#[Fillable(['project_id', 'parent_id', 'is_section', 'assignee_id', 'creator_id', 'title', 'description', 'status_id', 'position', 'start_date', 'due_date', 'completed_at', 'repeat_unit', 'repeat_interval', 'repeat_mode', 'repeat_until'])]
+#[Fillable(['project_id', 'parent_id', 'is_section', 'assignee_id', 'creator_id', 'title', 'description', 'status_id', 'position', 'start_date', 'due_date', 'completed_at', 'repeat_unit', 'repeat_interval', 'repeat_mode', 'repeat_until', 'repeat_day'])]
 class Task extends Model
 {
     /** @use HasFactory<TaskFactory> */
@@ -113,6 +113,8 @@ class Task extends Model
                 $task->repeat_unit = null;
                 $task->repeat_until = null;
             }
+
+            $task->keepRepeatDayInSync();
 
             if (! $task->exists || $task->isDirty('status_id')) {
                 $done = (bool) $task->statusById($task->status_id)?->is_done;
@@ -205,6 +207,7 @@ class Task extends Model
             'repeat_unit' => RepeatUnit::class,
             'repeat_mode' => RepeatMode::class,
             'repeat_until' => 'date',
+            'repeat_day' => 'integer',
             'is_section' => 'boolean',
         ];
     }
@@ -238,6 +241,25 @@ class Task extends Model
         $this->update([
             'status_id' => $this->isDone() ? $this->project->defaultStatus()->id : $this->project->doneStatus()->id,
         ]);
+    }
+
+    /**
+     * The wanted day of the month of a repeat rule follows the due date whenever the rule or the due date is set or
+     * changed, so a date entered by hand (31 January) is the day the series keeps coming back to. It is gone with the
+     * rule. A value assigned together with the change is kept: that is how the next task of a series inherits the day
+     * of the series instead of the shortened day of its own due date (28 February).
+     */
+    private function keepRepeatDayInSync(): void
+    {
+        if ($this->repeat_unit === null || $this->due_date === null) {
+            $this->repeat_day = null;
+
+            return;
+        }
+
+        if ($this->repeat_day === null || (! $this->isDirty('repeat_day') && (! $this->exists || $this->isDirty(['due_date', 'repeat_unit'])))) {
+            $this->repeat_day = $this->due_date->day;
+        }
     }
 
     public function isRecurring(): bool
@@ -289,16 +311,17 @@ class Task extends Model
         }
 
         $interval = max(1, (int) $this->repeat_interval);
+        $day = $this->repeat_day;
         $today = today();
         $next = $this->repeat_mode === RepeatMode::Completion
             ? $unit->addTo($today, $interval)
-            : $unit->addTo($due->copy()->startOfDay(), $interval);
+            : $unit->addTo($due->copy()->startOfDay(), $interval, $day);
 
         for ($guard = 0; $this->repeat_mode === RepeatMode::Schedule && $next < $today && $guard < self::MAX_CATCH_UP_STEPS; $guard++) {
-            $next = $unit->addTo($next, $interval);
+            $next = $unit->addTo($next, $interval, $day);
         }
 
-        $this->updateQuietly(['repeat_unit' => null]);
+        $this->updateQuietly(['repeat_unit' => null, 'repeat_day' => null]);
 
         if ($this->repeat_until !== null && $next->startOfDay() > $this->repeat_until->copy()->startOfDay()) {
             $this->logActivity(ActivityType::RecurrenceEnded);
@@ -315,6 +338,7 @@ class Task extends Model
             'repeat_interval' => $this->repeat_interval,
             'repeat_mode' => $this->repeat_mode,
             'repeat_until' => $this->repeat_until,
+            'repeat_day' => $day,
         ], $offset);
 
         $this->logActivity(ActivityType::RecurrenceCreated, ['to' => $next->toDateString()]);

@@ -119,6 +119,154 @@ class RecurringTasksTest extends TestCase
         $this->assertSame('2026-02-28', $this->others($task)->firstOrFail()->due_date->toDateString());
     }
 
+    public function test_the_wanted_day_of_the_month_comes_back_after_a_short_month(): void
+    {
+        $this->travelTo('2027-01-01 10:00:00');
+        $task = $this->recurring(['due_date' => '2027-01-31', 'repeat_unit' => RepeatUnit::Month, 'repeat_interval' => 1]);
+        $this->assertSame(31, $task->repeat_day);
+
+        $dates = [];
+
+        foreach (range(1, 4) as $step) {
+            $task->toggleDone();
+            $task = $this->others($task)->whereNotNull('repeat_unit')->firstOrFail();
+            $dates[] = $task->due_date->toDateString();
+        }
+
+        $this->assertSame(['2027-02-28', '2027-03-31', '2027-04-30', '2027-05-31'], $dates);
+    }
+
+    public function test_the_wanted_day_comes_back_in_a_leap_year_for_yearly_rules(): void
+    {
+        $this->travelTo('2028-01-01 10:00:00');
+        $task = $this->recurring(['due_date' => '2028-02-29', 'repeat_unit' => RepeatUnit::Year, 'repeat_interval' => 1]);
+
+        $dates = [];
+
+        foreach (range(1, 4) as $step) {
+            $task->toggleDone();
+            $task = $this->others($task)->whereNotNull('repeat_unit')->firstOrFail();
+            $dates[] = $task->due_date->toDateString();
+        }
+
+        $this->assertSame(['2029-02-28', '2030-02-28', '2031-02-28', '2032-02-29'], $dates);
+    }
+
+    public function test_the_wanted_day_is_kept_with_an_interval_of_two_months(): void
+    {
+        $this->travelTo('2026-12-01 10:00:00');
+        $task = $this->recurring(['due_date' => '2026-12-31', 'repeat_unit' => RepeatUnit::Month, 'repeat_interval' => 2]);
+
+        $dates = [];
+
+        foreach (range(1, 4) as $step) {
+            $task->toggleDone();
+            $task = $this->others($task)->whereNotNull('repeat_unit')->firstOrFail();
+            $dates[] = $task->due_date->toDateString();
+        }
+
+        $this->assertSame(['2027-02-28', '2027-04-30', '2027-06-30', '2027-08-31'], $dates);
+    }
+
+    public function test_the_wanted_day_is_passed_on_unchanged_and_not_taken_from_the_shortened_date(): void
+    {
+        $this->travelTo('2027-01-01 10:00:00');
+        $task = $this->recurring(['due_date' => '2027-01-31', 'repeat_unit' => RepeatUnit::Month]);
+
+        $task->toggleDone();
+
+        $next = $this->others($task)->firstOrFail();
+        $this->assertSame('2027-02-28', $next->due_date->toDateString());
+        $this->assertSame(31, $next->repeat_day);
+        $this->assertNull($task->fresh()->repeat_day);
+    }
+
+    public function test_the_completion_mode_still_counts_from_the_day_it_was_finished(): void
+    {
+        $this->travelTo('2027-02-10 10:00:00');
+        $task = $this->recurring(['due_date' => '2027-01-31', 'repeat_unit' => RepeatUnit::Month, 'repeat_mode' => RepeatMode::Completion]);
+
+        $task->toggleDone();
+
+        $next = $this->others($task)->firstOrFail();
+        $this->assertSame('2027-03-10', $next->due_date->toDateString());
+        $this->assertSame(31, $next->repeat_day);
+    }
+
+    public function test_the_wanted_day_is_still_kept_when_overdue_dates_are_skipped(): void
+    {
+        $this->travelTo('2027-04-01 10:00:00');
+        $task = $this->recurring(['due_date' => '2027-01-31', 'repeat_unit' => RepeatUnit::Month]);
+
+        $task->toggleDone();
+
+        $this->assertSame('2027-04-30', $this->others($task)->firstOrFail()->due_date->toDateString());
+    }
+
+    public function test_changing_the_due_date_by_hand_sets_the_wanted_day_again(): void
+    {
+        $this->travelTo('2027-01-01 10:00:00');
+        $task = $this->recurring(['due_date' => '2027-01-31', 'repeat_unit' => RepeatUnit::Month]);
+
+        $task->update(['title' => 'Anderer Titel', 'repeat_interval' => 2]);
+        $this->assertSame(31, $task->fresh()->repeat_day);
+
+        $task->update(['due_date' => '2027-02-15']);
+        $this->assertSame(15, $task->fresh()->repeat_day);
+
+        $task->fresh()->toggleDone();
+        $this->assertSame('2027-04-15', $this->others($task)->firstOrFail()->due_date->toDateString());
+    }
+
+    public function test_the_wanted_day_follows_the_rule_when_it_is_set_changed_and_removed(): void
+    {
+        $task = Task::factory()->for($this->project)->create(['due_date' => '2026-10-31']);
+        $this->assertNull($task->repeat_day);
+
+        $task->update(['repeat_unit' => RepeatUnit::Month]);
+        $this->assertSame(31, $task->fresh()->repeat_day);
+
+        $task->update(['due_date' => '2026-10-20']);
+        $this->assertSame(20, $task->fresh()->repeat_day);
+
+        $task->update(['repeat_unit' => null]);
+        $this->assertNull($task->fresh()->repeat_day);
+
+        $task->update(['repeat_unit' => RepeatUnit::Year]);
+        $this->assertSame(20, $task->fresh()->repeat_day);
+
+        $task->update(['due_date' => null]);
+        $this->assertNull($task->fresh()->repeat_day);
+        $this->assertNull($task->fresh()->repeat_unit);
+    }
+
+    public function test_the_task_page_sets_the_wanted_day_with_the_rule_and_with_a_new_due_date(): void
+    {
+        $task = Task::factory()->for($this->project)->create(['due_date' => '2026-10-31']);
+
+        Livewire::test('pages::tasks.show', ['task' => $task])
+            ->set('repeatUnit', 'month')->call('save')->assertHasNoErrors();
+        $this->assertSame(31, $task->fresh()->repeat_day);
+
+        Livewire::test('pages::tasks.show', ['task' => $task->fresh()])
+            ->set('dueDate', '2026-11-12')->call('save')->assertHasNoErrors();
+        $this->assertSame(12, $task->fresh()->repeat_day);
+
+        Livewire::test('pages::tasks.show', ['task' => $task->fresh()])
+            ->set('repeatUnit', '')->call('save')->assertHasNoErrors();
+        $this->assertNull($task->fresh()->repeat_day);
+    }
+
+    public function test_adding_months_and_years_keeps_the_wanted_day_where_the_month_is_long_enough(): void
+    {
+        $this->assertSame('2027-03-31', RepeatUnit::Month->addTo(Carbon::parse('2027-02-28'), 1, 31)->toDateString());
+        $this->assertSame('2027-04-30', RepeatUnit::Month->addTo(Carbon::parse('2027-03-31'), 1, 31)->toDateString());
+        $this->assertSame('2027-02-28', RepeatUnit::Month->addTo(Carbon::parse('2027-01-31'), 1)->toDateString());
+        $this->assertSame('2028-02-29', RepeatUnit::Year->addTo(Carbon::parse('2027-02-28'), 1, 29)->toDateString());
+        $this->assertSame('2027-02-28', RepeatUnit::Year->addTo(Carbon::parse('2026-02-28'), 1, 29)->toDateString());
+        $this->assertSame('2026-10-09', RepeatUnit::Day->addTo(Carbon::parse('2026-10-06'), 3, 31)->toDateString());
+    }
+
     public function test_schedule_mode_skips_dates_that_are_already_in_the_past(): void
     {
         $task = $this->recurring(['due_date' => '2026-09-01']);

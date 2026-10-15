@@ -449,7 +449,18 @@ class McpServerTest extends TestCase
         $task->refresh();
         $this->assertNull($task->due_date);
         $this->assertNull($task->repeat_unit);
+        $this->assertNull($task->repeat_day);
         $this->assertContains('hat die Wiederholung entfernt', $task->activities()->get()->map->sentence()->all());
+    }
+
+    public function test_a_new_due_date_by_agent_sets_the_wanted_day_of_the_repetition_again(): void
+    {
+        $task = Task::factory()->for($this->project)->create(['due_date' => '2026-12-31', 'repeat_unit' => RepeatUnit::Month, 'repeat_interval' => 1, 'repeat_mode' => RepeatMode::Schedule]);
+        $this->assertSame(31, $task->repeat_day);
+
+        $this->tool(UpdateTask::class, ['task_id' => $task->id, 'due_date' => '2026-12-15'])->assertOk();
+
+        $this->assertSame(15, $task->fresh()->repeat_day);
     }
 
     public function test_a_search_leaves_out_subtasks_when_asked_to(): void

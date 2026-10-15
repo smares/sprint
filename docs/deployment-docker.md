@@ -71,7 +71,7 @@ Mit jedem Release baut GitHub das Image und legt es für `amd64` und `arm64` (Ra
 ```bash
 docker login ghcr.io                                  # einmal; Benutzername und ein Token mit read:packages
 cp .env.example .env                                  # APP_KEY, APP_URL, Mail … wie oben
-SPRINT_VERSION=1.5.1 docker compose -f compose.image.yaml up -d   # die aktuelle Version steht unter Releases
+SPRINT_VERSION=x.y.z docker compose -f compose.image.yaml up -d   # x.y.z durch die aktuelle Version ersetzen (siehe Releases)
 ```
 
 `SPRINT_VERSION` in die `.env` zu schreiben genügt; ohne Angabe gilt `latest`. Der Befehl für Live-Updates ist `--profile realtime`, wie beim Selbstbauen.
@@ -195,7 +195,7 @@ printf '%s\n' "$STAGING"/sprint-*.zip | sort -r | tail -n +$((KEEP_LOCAL + 1)) |
 echo "sprint-backup-pull: $latest ($(du -h "$STAGING/$latest" | cut -f1)) gesichert nach $DEST"
 ```
 
-Aufruf von Hand und per Cron, eine Stunde nach dem Backup (02:30 ist der Standard, siehe `BACKUP_TIME`):
+Aufruf von Hand und per Cron, eine Stunde nach dem Backup (02:30 ist der Standard, siehe `BACKUP_TIME`). Achtung, zwei Uhren: `BACKUP_TIME` gilt in `APP_TIMEZONE` der Anwendung, die Cron-Zeit in der Zeitzone des Hosts (oder von `CRON_TZ=`, wenn dein Cron es kennt). Rechne um, sonst läuft das Skript vor dem Backup und holt, weil es noch durch die Altersprüfung kommt, das der Vornacht:
 
 ```bash
 sudo chmod +x /usr/local/bin/sprint-backup-pull

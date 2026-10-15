@@ -28,7 +28,7 @@ class AsanaTextService
         $html = trim((string) $html);
 
         if ($html === '') {
-            return trim($plain);
+            return trim($this->literal($plain));
         }
 
         $document = new DOMDocument;
@@ -38,7 +38,7 @@ class AsanaTextService
         libxml_use_internal_errors($previous);
 
         if (! $loaded || ! $document->documentElement instanceof DOMElement) {
-            return trim($plain);
+            return trim($this->literal($plain));
         }
 
         $markdown = $this->render($document->documentElement, $mention);
@@ -85,7 +85,7 @@ class AsanaTextService
     private function render(DOMNode $node, Closure $mention): string
     {
         if ($node instanceof DOMText) {
-            return $this->text($node->nodeValue ?? '');
+            return $this->text($this->literal($node->nodeValue ?? ''));
         }
 
         if (! $node instanceof DOMElement) {
@@ -125,6 +125,19 @@ class AsanaTextService
         }
 
         return $text;
+    }
+
+    /**
+     * Text from Asana as it was typed: characters that Markdown would take for formatting (or HTML, which is dropped)
+     * are escaped, so "*note*", "# not a heading" or "<div>" show up as written.
+     */
+    private function literal(string $text): string
+    {
+        $text = (string) preg_replace('/[<*`\[\]~]/', '\\\\$0', $text);
+        $text = (string) preg_replace('/(?<![\p{L}\p{N}])_|_(?![\p{L}\p{N}])/u', '\\\\_', $text);
+        $text = (string) preg_replace('/^(\s*)(#{1,6}(?=\s)|>|[-+](?=\s))/m', '$1\\\\$2', $text);
+
+        return (string) preg_replace('/^(\s*\d+)([.)])(?=\s)/m', '$1\\\\$2', $text);
     }
 
     /**

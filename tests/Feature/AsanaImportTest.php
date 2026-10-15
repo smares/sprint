@@ -529,4 +529,51 @@ class AsanaImportTest extends TestCase
         $this->assertFalse((new AsanaClient('t'))->download('http://download.example.com/a', sys_get_temp_dir().'/asana-never'));
         Http::assertNothingSent();
     }
+
+    public function test_texts_over_the_limit_are_shortened_with_a_warning(): void
+    {
+        $this->routes['projects/100/tasks'][0]['notes'] = str_repeat('ä', Task::MAX_DESCRIPTION_LENGTH + 500);
+        $this->routes['projects/100/tasks'][0]['html_notes'] = null;
+        $this->routes['tasks/1001/stories'][] = ['gid' => '9009', 'resource_subtype' => 'comment_added', 'created_at' => '2026-10-09T10:00:00.000Z', 'created_by' => ['gid' => '11', 'name' => 'Anna'], 'text' => str_repeat('b', Comment::MAX_BODY_LENGTH + 10), 'html_text' => ''];
+
+        $this->import()->expectsOutputToContain('was shortened')->assertSuccessful();
+
+        $concept = Task::where('title', 'Konzept')->firstOrFail();
+        $this->assertSame(Task::MAX_DESCRIPTION_LENGTH, mb_strlen((string) $concept->description));
+        $this->assertSame(Comment::MAX_BODY_LENGTH, $concept->comments()->get()->max(fn (Comment $comment) => mb_strlen($comment->body)));
+    }
+
+    public function test_files_that_could_not_be_fetched_make_the_run_fail_and_a_second_run_fetches_them(): void
+    {
+        $this->routes['attachments/7001'] = ['__error' => ['status' => 403, 'message' => 'forbidden']];
+
+        $this->import()->expectsOutputToContain('1 file(s) were not taken over')->assertFailed();
+
+        $concept = Task::where('title', 'Konzept')->firstOrFail();
+        $this->assertSame(0, Attachment::where('task_id', $concept->id)->count());
+
+        $this->routes['attachments/7001'] = ['gid' => '7001', 'download_url' => 'https://download.example.com/plan.pdf?e=1791992839&t=signature'];
+
+        $this->import()->assertSuccessful();
+
+        $this->assertSame(1, Attachment::where('task_id', $concept->id)->count());
+        $this->assertSame(2, Project::count());
+    }
+
+    public function test_a_project_named_twice_is_imported_once(): void
+    {
+        $this->import(['projects' => ['100', '100']])->assertSuccessful();
+
+        $this->assertSame(1, Project::where('name', 'Website')->count());
+    }
+
+    public function test_an_answer_that_is_not_json_does_not_pass_for_an_empty_list(): void
+    {
+        Http::fake(['*' => Http::response('<html>Please log in to the Wi-Fi</html>', 200)]);
+
+        $this->expectException(AsanaException::class);
+        $this->expectExceptionMessage('not JSON');
+
+        (new AsanaClient('t'))->get('workspaces');
+    }
 }

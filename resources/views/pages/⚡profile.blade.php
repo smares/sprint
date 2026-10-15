@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\User;
 use App\Models\UserAvatar;
 use App\Notifications\TestPush;
 use App\Services\LocaleService;
@@ -110,7 +111,7 @@ new class extends Component
     {
         $validated = $this->validate([
             'absentFrom' => ['required', 'date_format:Y-m-d'],
-            'absentUntil' => ['required', 'date_format:Y-m-d', 'after_or_equal:absentFrom', 'after_or_equal:today'],
+            'absentUntil' => ['required', 'date_format:Y-m-d', 'after_or_equal:absentFrom', 'after_or_equal:'.auth()->user()->today()->toDateString()],
         ], attributes: ['absentFrom' => __('Away from'), 'absentUntil' => __('Away until')]);
 
         auth()->user()->update(['absent_from' => $validated['absentFrom'], 'absent_until' => $validated['absentUntil']]);
@@ -170,6 +171,9 @@ new class extends Component
 
     public function updatedTimezone(string $value): void
     {
+        // A browser may still report an old name (Asia/Calcutta); the list has the current one
+        $this->timezone = $value = User::canonicalTimezone($value);
+
         $this->validate(['timezone' => ['nullable', 'string', Rule::in(timezone_identifiers_list())]], attributes: ['timezone' => __('Time zone')]);
 
         auth()->user()->update(['timezone' => $value !== '' ? $value : null]);
@@ -475,7 +479,7 @@ new class extends Component
             </flux:select>
 
             {{-- Empty means the application's zone; the browser's own zone is offered when it differs from the one in use --}}
-            <div x-data="{ browserZone: Intl.DateTimeFormat().resolvedOptions().timeZone }">
+            <div x-data="{ browserZone: ({{ \Illuminate\Support\Js::from(User::LEGACY_TIMEZONES) }})[Intl.DateTimeFormat().resolvedOptions().timeZone] ?? Intl.DateTimeFormat().resolvedOptions().timeZone }">
                 <flux:select variant="listbox" searchable clearable wire:model.live="timezone" :label="__('Time zone')"
                     :description="__('Your quiet times and absence apply in this time zone.')"
                     :placeholder="__('Like the application (:zone)', ['zone' => config('app.timezone')])">

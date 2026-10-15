@@ -102,6 +102,13 @@ class ImportFromAsana extends Command
 
         $this->report($report, $dryRun);
 
+        // Files that could not be fetched are not a success for a script that runs this; a second run fetches them again
+        if ($report['counts']['attachments_failed'] > 0) {
+            $this->components->error("{$report['counts']['attachments_failed']} file(s) were not taken over (see the warnings). Run the import again to fetch them; everything else is skipped then.");
+
+            return self::FAILURE;
+        }
+
         return self::SUCCESS;
     }
 
@@ -193,6 +200,8 @@ class ImportFromAsana extends Command
             'Left out, as they lie in another project' => $counts['tasks_elsewhere'],
             'Comments by people without an account (name in the text)' => $counts['comments_unknown_author'],
             'Comments without text (not taken over)' => $counts['comments_empty'],
+            'Texts shortened to the limit' => $counts['texts_shortened'],
+            'Files that could not be taken over' => $counts['attachments_failed'],
         ] as $label => $value) {
             $this->components->twoColumnDetail($label, (string) $value);
         }
@@ -233,10 +242,11 @@ class ImportFromAsana extends Command
                 return [];
             }
 
-            $targets[] = ['gid' => (string) $gid, 'project_id' => $id === null ? null : (int) $id];
+            // The same project named twice would be created twice, as the mapping only grows while writing
+            $targets[(string) $gid] ??= ['gid' => (string) $gid, 'project_id' => $id === null ? null : (int) $id];
         }
 
-        return $targets;
+        return array_values($targets);
     }
 
     /**

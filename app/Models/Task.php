@@ -48,8 +48,9 @@ class Task extends Model
 
     /**
      * The longest description, counted in characters as Laravel counts them (Unicode code points, so an emoji made of
-     * several parts, like a family or a flag, counts for each part; the length in bytes does not matter). Long texts
-     * from other tools, e.g. an import from Asana, fit in.
+     * several parts, like a family or a flag, counts for each part). The column is MEDIUMTEXT on MySQL (16 MB, see the
+     * migration use_medium_text_for_long_texts), so 65,000 characters of up to four bytes fit; SQLite and PostgreSQL have no
+     * limit in bytes. Long texts from other tools, e.g. an import from Asana, fit in.
      */
     public const int MAX_DESCRIPTION_LENGTH = 65000;
 
@@ -682,6 +683,27 @@ class Task extends Model
         ]);
 
         app(AutomationService::class)->record($this, $type, $data);
+    }
+
+    /**
+     * Hand the task to a person, or to nobody. Whoever becomes the assignee stops being a collaborator, which the history
+     * records like the change of the assignee, all in one go.
+     */
+    public function assignTo(?User $user): void
+    {
+        DB::transaction(function () use ($user): void {
+            $this->update(['assignee_id' => $user?->getKey()]);
+
+            if ($user instanceof User && $this->collaborators()->whereKey($user->getKey())->exists()) {
+                $this->collaborators()->detach($user->getKey());
+                $this->logSyncChanges(
+                    ActivityType::CollaboratorsAdded,
+                    ActivityType::CollaboratorsRemoved,
+                    ['detached' => [$user->getKey()]],
+                    fn (array $ids) => User::whereIn('id', $ids)->orderBy('name')->pluck('name')->all(),
+                );
+            }
+        });
     }
 
     /**

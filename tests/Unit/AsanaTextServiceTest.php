@@ -86,4 +86,18 @@ class AsanaTextServiceTest extends TestCase
         $this->assertTrue($service->hasTaskLinks('x https://app.asana.com/0/1/2 y'));
         $this->assertFalse($service->hasTaskLinks('x https://app.asana.com/0/1 y'));
     }
+
+    public function test_text_typed_in_asana_is_not_read_as_markdown_or_html(): void
+    {
+        // "<div>" would be dropped as HTML, the others would turn into formatting
+        $this->assertSame('Nimm \<div> hier', $this->markdown('<body>Nimm &lt;div&gt; hier</body>'));
+        $this->assertSame('\\*Hinweis\\* und snake_case und \\_Kursiv\\_', $this->markdown('<body>*Hinweis* und snake_case und _Kursiv_</body>'));
+        $this->assertSame("\\# keine Überschrift\n\n\\- kein Punkt\n\n1\\. keine Liste", $this->markdown("<body># keine Überschrift\n\n- kein Punkt\n\n1. keine Liste</body>"));
+        $this->assertSame('\\[kein\\](Link)', $this->markdown('<body>[kein](Link)</body>'));
+    }
+
+    public function test_the_plain_text_is_taken_literally_too(): void
+    {
+        $this->assertSame('\\*Hinweis\\* mit \\<b>', $this->markdown('', '*Hinweis* mit <b>'));
+    }
 }

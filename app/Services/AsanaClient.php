@@ -100,7 +100,10 @@ class AsanaClient
             throw new AsanaException($this->describe($response, $path), $response->status());
         }
 
-        return $response->json() ?? [];
+        // A captive portal or proxy page with status 200 is not an answer of Asana and must not pass for an empty list
+        throw_unless(is_array($response->json()), AsanaException::class, 'Asana sent something that is not JSON (is there a proxy or login page in between?).');
+
+        return $response->json();
     }
 
     /**

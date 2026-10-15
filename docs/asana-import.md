@@ -46,7 +46,7 @@ docker compose exec sprint php artisan asana:import 1200000000000001 12000000000
 
 - **Token:** Am einfachsten lässt man den Befehl danach fragen. Wer es mitgeben will, ohne dass es in der Shell-Historie steht: `read -rs ASANA_TOKEN && export ASANA_TOKEN`, dann `docker compose exec -e ASANA_TOKEN sprint php artisan asana:import …` (ohne `=Wert`, der Wert kommt aus der Umgebung der Shell). Ein Eintrag in der `.env` wirkt erst nach einem Neustart des Containers, weil der die Konfiguration beim Start zwischenspeichert.
 - **Daten:** Aufgaben landen in der Datenbank im Volume `storage`, Anhänge unter `storage/app/private`; beides bleibt über Updates erhalten. Die Tabelle für die Zuordnung (`asana_imports`) legt die Migration an, die der Container beim Start ausführt.
-- **Lange Läufe:** Ein Projekt mit Hunderten Aufgaben braucht eine Weile (Asana begrenzt die Anfragen). Bei einer SSH-Verbindung also in `tmux` oder `screen` starten. Bricht ein Lauf ab, einfach neu starten: Was fertig ist, wird übersprungen.
+- **Lange Läufe:** Ein Projekt mit Hunderten Aufgaben braucht eine Weile (Asana begrenzt die Anfragen). Bei einer SSH-Verbindung also in `tmux` oder `screen` starten. Bricht ein Lauf ab, einfach neu starten: Was fertig ist, wird übersprungen. Konnten Dateien nicht geladen werden, meldet der Befehl am Ende einen Fehler (Exit-Code 1), damit ein Skript es merkt; ein zweiter Lauf holt genau diese Dateien nach. Das Lesen aus Asana beginnt nach einem Abbruch von vorn, nur das Schreiben macht dort weiter, wo es war.
 
 Die Reihenfolge der Projekte zählt: **Eine Aufgabe, die in mehreren Asana-Projekten liegt, wird nur im ersten angegeben Projekt angelegt** (Sprint-Aufgaben gehören zu genau einem Projekt). In den anderen Projekten fehlt sie, der Bericht nennt, wie viele es waren.
 
@@ -78,7 +78,7 @@ Der Probelauf stellt alle Anfragen an Asana, schreibt aber nichts. Er zeigt, wie
 | Aufgabe | Aufgabe in der Reihenfolge von Asana, auch Unteraufgaben in beliebiger Tiefe |
 | Erledigt | der erledigte Status samt Erledigt-Datum (die Spalte, in der die Aufgabe stand, geht dabei verloren) |
 | Status einer Unteraufgabe | Asana kennt für Unteraufgaben nur offen oder erledigt, Spalten haben sie nicht (sie stehen nur bei ihrer Aufgabe). Eine offene Unteraufgabe bekommt in Sprint den Status ihrer Aufgabe, außer der ist ein erledigter Status: Dann bleibt sie im ersten Status, damit offene Arbeit nicht als fertig zählt. Eine erledigte kommt in den erledigten Status |
-| Beschreibung, Kommentare | Markdown: Fett, Kursiv, Durchgestrichen, Code, Listen, Überschriften, Zitate und Links bleiben erhalten; Bilder in der Beschreibung nicht (sie kommen, soweit Asana sie als Anhang führt, als Anhang) |
+| Beschreibung, Kommentare | Markdown: Fett, Kursiv, Durchgestrichen, Code, Listen, Überschriften, Zitate und Links bleiben erhalten; Bilder in der Beschreibung nicht (sie kommen, soweit Asana sie als Anhang führt, als Anhang). Was in Asana als Text getippt wurde, bleibt Text: `*Hinweis*`, `# kein Titel` oder `<div>` werden nicht zu Formatierung bzw. verschluckt. Texte über 65.000 Zeichen (die Grenze der Eingabefelder) werden gekürzt, der Bericht nennt, wie viele |
 | Zuständige, Ersteller | Zuständige und Ersteller, per E-Mail zugeordnet; ohne Konto bleibt die Aufgabe ohne Zuständige, in der Beschreibung steht dann „Zuständig in Asana: Name“, und als Ersteller steht die importierende Person |
 | Follower | Beteiligte, aber nur, wenn die Person Mitglied des Projekts ist (sonst gäbe es keine Rechte dafür) |
 | Start und Fällig | Start- und Fälligkeitsdatum; ein Zeitpunkt wird in der Zeitzone der Anwendung zum Datum |
@@ -88,7 +88,7 @@ Der Probelauf stellt alle Anfragen an Asana, schreibt aber nichts. Er zeigt, wie
 | Links auf andere Aufgaben in Texten | Erwähnungen der übernommenen Aufgaben (`@[Titel](task:…)`); @-Erwähnungen von Personen werden Erwähnungen, ohne Konto bleibt der Name |
 | Kommentare | Kommentare mit Verfasser:in und Zeitpunkt. Stammt ein Kommentar von jemandem ohne Konto, steht „Von Name in Asana“ am Anfang und die importierende Person ist die Verfasser:in |
 | Kommentare ohne Text | werden nicht übernommen (etwa ein Kommentar, der in Asana nur aus einem Anhang oder Emoji besteht). Der Befehl nennt sie mit Aufgabe und Asana-ID in den Hinweisen, auch im Probelauf, und zählt sie in der Übersicht |
-| Anhänge | Dateien bis 20 MB werden heruntergeladen und angehängt; Dateien anderer Dienste (Dropbox, Google Drive …) und zu große Dateien werden als Links an die Beschreibung angehängt |
+| Anhänge | Dateien bis 20 MB werden heruntergeladen und angehängt (die Endung folgt dem erkannten Dateityp; Weiterleitungen nur über https); Dateien anderer Dienste (Dropbox, Google Drive …) und zu große Dateien werden als Links an die Beschreibung angehängt |
 | Zeitpunkt der Anlage und Änderung | bleibt bei Aufgaben, Kommentaren und Anhängen erhalten |
 
 **Benachrichtigungen:** Der Import verschickt nichts, weder E-Mails noch Push noch Einträge im Posteingang, auch nicht an erwähnte, zuständige oder beteiligte Personen.

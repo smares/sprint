@@ -158,8 +158,7 @@ new class extends Component
             return;
         }
 
-        $this->task->update(['assignee_id' => auth()->id()]);
-        $this->task->collaborators()->detach(auth()->id());
+        $this->task->assignTo(auth()->user());
         $this->assigneeId = (string) auth()->id();
         $this->collaboratorIds = array_values(array_diff($this->collaboratorIds, [(string) auth()->id()]));
         $this->announceChange();
@@ -646,7 +645,7 @@ new class extends Component
             ->filter()
             ->unique();
 
-        return User::whereIn('id', $ids)->orderBy('name')->get(['id', 'name', 'deactivated_at', 'absent_from', 'absent_until']);
+        return User::whereIn('id', $ids)->orderBy('name')->get(['id', 'name', 'avatar_updated_at', 'timezone', 'deactivated_at', 'absent_from', 'absent_until']);
     }
 
     /**

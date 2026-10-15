@@ -261,7 +261,8 @@ new class extends Component
         @endif
 
         @if ($this->sortActive)
-            <flux:button size="sm" variant="ghost" wire:click="resetSort">{{ __('Reset') }}</flux:button>
+            <flux:button icon="x-mark" variant="ghost" wire:click="resetSort" aria-label="{{ __('Reset') }}" tooltip="{{ __('Reset') }}" class="sm:hidden" />
+            <flux:button variant="ghost" wire:click="resetSort" class="max-sm:hidden">{{ __('Reset') }}</flux:button>
         @endif
     </div>
 

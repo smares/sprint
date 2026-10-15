@@ -84,8 +84,8 @@ return [
     |
     | Pick a time outside 01:00 to 03:00 (application time zone): in many zones
     | the clock jumps over that stretch in spring (the run would be skipped) and
-    | repeats it in autumn (the run would happen twice). The scheduler also
-    | passes `--if-needed`, so a second run within 20 hours is skipped.
+    | repeats it in autumn (the run would happen twice); the scheduler still
+    | runs it once a day (see ScheduleGuard).
     |
     */
 

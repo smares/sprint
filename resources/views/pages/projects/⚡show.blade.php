@@ -11,6 +11,7 @@ use App\Models\CustomFieldValue;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskStatus;
+use App\Services\DateService;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
@@ -104,8 +105,8 @@ new class extends Component
             ->when(ctype_digit($this->tagFilter), fn ($q) => $q->whereHas('tags', fn ($tags) => $tags->whereKey((int) $this->tagFilter)))
             ->when($this->dateFilter === 'none', fn ($q) => $q->whereNull('start_date')->whereNull('due_date'))
             ->when($this->dateFilter === 'dated', fn ($q) => $q->where(fn ($dated) => $dated->whereNotNull('start_date')->orWhereNotNull('due_date')))
-            ->when($this->dateFilter === 'overdue', fn ($q) => $q->overdue())
-            ->when($this->dateFilter === 'soon', fn ($q) => $q->dueSoon())
+            ->when($this->dateFilter === 'overdue', fn ($q) => $q->overdue(DateService::today(auth()->user())))
+            ->when($this->dateFilter === 'soon', fn ($q) => $q->dueSoon(DateService::today(auth()->user())))
             ->tap(fn ($q) => $this->applyFieldFilters($q));
     }
 

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Concerns\HasPosition;
 use App\Concerns\HasReactions;
 use App\Enums\ActivityType;
+use App\Enums\CustomFieldType;
 use App\Enums\RepeatMode;
 use App\Enums\RepeatUnit;
 use App\Notifications\TasksStatusChanged;
@@ -257,7 +258,7 @@ class Task extends Model
             return;
         }
 
-        if ($this->repeat_day === null || (! $this->isDirty('repeat_day') && (! $this->exists || $this->isDirty(['due_date', 'repeat_unit'])))) {
+        if ($this->repeat_day === null || (! $this->isDirty('repeat_day') && (! $this->exists || $this->isDirty(['due_date', 'repeat_unit', 'repeat_mode'])))) {
             $this->repeat_day = $this->due_date->day;
         }
     }
@@ -338,7 +339,8 @@ class Task extends Model
             'repeat_interval' => $this->repeat_interval,
             'repeat_mode' => $this->repeat_mode,
             'repeat_until' => $this->repeat_until,
-            'repeat_day' => $day,
+            // After completion the due date follows the day of finishing, so the series has no day of its own to keep
+            'repeat_day' => $this->repeat_mode === RepeatMode::Completion ? $next->day : $day,
         ], $offset);
 
         $this->logActivity(ActivityType::RecurrenceCreated, ['to' => $next->toDateString()]);
@@ -800,6 +802,7 @@ class Task extends Model
             'name' => $field->name,
             'from' => $field->text($old) ?? '–',
             'to' => $field->text($new) ?? '–',
+            'is_date' => $field->type === CustomFieldType::Date,
             'field_id' => $field->id,
             'value' => $new === null ? null : (string) $new,
         ]);
@@ -1069,25 +1072,27 @@ class Task extends Model
     }
 
     /**
-     * Open tasks whose due date has passed (before today, in the app's time zone).
+     * Open tasks whose due date has passed (before today; today is the app's day unless the day of a person is given).
      *
      * @param  Builder<static>  $query
      */
-    protected function scopeOverdue(Builder $query): void
+    protected function scopeOverdue(Builder $query, ?CarbonInterface $today = null): void
     {
-        $query->open()->where('tasks.due_date', '<', today()->toDateString());
+        $query->open()->where('tasks.due_date', '<', ($today ?? today())->toDateString());
     }
 
     /**
-     * Open tasks due from today on within the next DUE_SOON_DAYS days ("due this week").
+     * Open tasks due from today on within the next DUE_SOON_DAYS days ("due this week"; see scopeOverdue for today).
      *
      * @param  Builder<static>  $query
      */
-    protected function scopeDueSoon(Builder $query): void
+    protected function scopeDueSoon(Builder $query, ?CarbonInterface $today = null): void
     {
+        $today ??= today();
+
         $query->open()
-            ->where('tasks.due_date', '>=', today()->toDateString())
-            ->where('tasks.due_date', '<', today()->addDays(self::DUE_SOON_DAYS)->toDateString());
+            ->where('tasks.due_date', '>=', $today->toDateString())
+            ->where('tasks.due_date', '<', $today->copy()->addDays(self::DUE_SOON_DAYS)->toDateString());
     }
 
     /**

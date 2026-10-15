@@ -83,6 +83,21 @@ class CustomField extends Model
     }
 
     /**
+     * A stored value as it reads on screen: like text(), with a date in the format of the language (it is stored as
+     * YYYY-MM-DD, and stays so in CSV, MCP and the URLs).
+     */
+    public function displayText(int|string|null $stored): ?string
+    {
+        $text = $this->text($stored);
+
+        if ($text !== null && $this->type === CustomFieldType::Date) {
+            return DateService::parseIsoDate($text)?->isoFormat('L') ?? $text;
+        }
+
+        return $text;
+    }
+
+    /**
      * What to store for typed text (an option's name in any case, a number, a date as YYYY-MM-DD
      * or a text of up to 500 characters); null when the text does not fit the field.
      *

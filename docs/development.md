@@ -35,6 +35,10 @@ composer refactor:check  # Rector prüfen (ohne Änderungen); composer refactor 
 | `app/Mcp` | MCP-Server für KI-Agenten (Tools unter `app/Mcp/Tools`) |
 | `tests/Feature` | Feature-Tests je Funktionsbereich |
 
+### Flyout: erst bei Bedarf rendern
+
+Das Flyout (`tasks/⚡show`) schickt beim Öffnen nur die gewählten Werte der Auswahllisten, das Reaktionsmenü nur einmal und die Personen für `@` gar nicht mit; die Listen kommen, sobald ein Feld berührt oder fokussiert wird (`lazy` an `x-task-field`, `lazyPicker` in `app.js`, Aktion `loadPicker`, Namen in `PICKERS`), die Personen beim Fokus des Editors (`mentionPeople`). `TaskFlyoutWeightTest` begrenzt Abfragen und HTML-Größe beim Öffnen.
+
 ### Automatisierungen
 
 Eine Regel (`Automation`) gehört zu einem Projekt: **Auslöser** (Status wechselt zu X, Zuständige wechseln, Tag wird hinzugefügt, eigenes Feld wird gesetzt), optionale **Bedingungen** (Status, Zuständige, Tag; geprüft nach der Änderung) und eine Liste von **Aktionen** (Zuständige oder Status setzen, Tag hinzufügen, eigenes Feld setzen, Fälligkeit verschieben, kommentieren, jemanden im Posteingang benachrichtigen).

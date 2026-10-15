@@ -673,7 +673,7 @@ document.addEventListener('click', (event) => {
 })
 
 // Keyboard shortcuts, listed in the overview behind "?" (components/keyboard-shortcuts.blade.php).
-// They never fire while typing, with a modifier key held or while a dialog is open (the task flyout allows j, k and e).
+// They never fire while typing, with a modifier key held or while a dialog is open (the task flyout allows j, k, e, a and m).
 const typingIn = (target) => target.closest?.('input, textarea, select, [contenteditable], [role=combobox], [role=listbox], ui-select, ui-date-picker, ui-editor')
 
 const openTaskId = () => new URLSearchParams(window.location.search).get('task')
@@ -701,12 +701,12 @@ document.addEventListener('keydown', (event) => {
         return
     }
 
-    // A dialog handles its own keys (Escape closes it); only the task flyout still lets j, k and e step through and complete tasks
+    // A dialog handles its own keys (Escape closes it); only the task flyout still lets j and k step through tasks and e, a and m change the open one
     if (document.querySelector('dialog[open]:not([data-modal=task-panel])')) {
         return
     }
 
-    if (document.querySelector('dialog[open][data-modal=task-panel]') && ! ['j', 'k', 'e'].includes(event.key)) {
+    if (document.querySelector('dialog[open][data-modal=task-panel]') && ! ['j', 'k', 'e', 'a', 'm'].includes(event.key)) {
         return
     }
 
@@ -717,6 +717,8 @@ document.addEventListener('keydown', (event) => {
         j: () => stepThroughTasks(1),
         k: () => stepThroughTasks(-1),
         e: () => window.Livewire.dispatch('shortcut-toggle-done'),
+        a: () => document.querySelector('[data-shortcut-assignee] button')?.click(),
+        m: () => window.Livewire.dispatch('shortcut-assign-me'),
     }
 
     if (actions[event.key]) {

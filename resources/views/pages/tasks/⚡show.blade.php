@@ -148,6 +148,26 @@ new class extends Component
     }
 
     /**
+     * The "m" key: the task goes to the person at the keyboard, who then is no collaborator, as with the assignee menu of
+     * the lists. Like "e" it leaves the rest of the form alone.
+     */
+    #[On('shortcut-assign-me')]
+    public function assignToMeByShortcut(): void
+    {
+        if (! $this->canEdit || ! $this->users->contains('id', auth()->id())) {
+            return;
+        }
+
+        $this->task->update(['assignee_id' => auth()->id()]);
+        $this->task->collaborators()->detach(auth()->id());
+        $this->assigneeId = (string) auth()->id();
+        $this->collaboratorIds = array_values(array_diff($this->collaboratorIds, [(string) auth()->id()]));
+        $this->announceChange();
+
+        Flux::toast(variant: 'success', text: __('Assigned to you.'));
+    }
+
+    /**
      * React to the task or to one of its comments; the same emoji again takes the reaction back.
      */
     public function react(string $target, int $id, string $emoji): void
@@ -1122,7 +1142,7 @@ new class extends Component
             </x-task-field>
 
             <x-task-field :label="__('Assignee')" icon="user">
-                <flux:select size="sm" variant="listbox" wire:model="assigneeId" :aria-label="__('Assignee')">
+                <flux:select size="sm" variant="listbox" wire:model="assigneeId" data-shortcut-assignee :aria-label="__('Assignee')">
                     <flux:select.option value="">{{ __('Nobody') }}</flux:select.option>
                     @foreach ($this->users as $user)
                         <flux:select.option value="{{ $user->id }}">{{ $user->labelledName() }}</flux:select.option>

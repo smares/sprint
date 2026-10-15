@@ -64,4 +64,40 @@ class KeyboardShortcutsTest extends TestCase
 
         $this->assertFalse($this->task->fresh()->isDone());
     }
+
+    public function test_the_overview_lists_a_and_m_for_the_open_task(): void
+    {
+        $this->get(route('projects.index'))->assertOk()->assertSee('Zuständige Person wählen')->assertSee('Mir zuweisen');
+    }
+
+    public function test_m_assigns_the_open_task_to_me_and_takes_me_out_of_the_collaborators(): void
+    {
+        $me = auth()->user();
+        $this->task->update(['assignee_id' => User::factory()->create()->id]);
+        $this->task->collaborators()->attach($me);
+
+        $page = Livewire::test('pages::tasks.show', ['task' => $this->task, 'panel' => true]);
+
+        $page->dispatch('shortcut-assign-me')
+            ->assertDispatched('task-changed')
+            ->assertSet('assigneeId', (string) $me->id)
+            ->assertSet('collaboratorIds', []);
+
+        $this->assertSame($me->id, $this->task->fresh()->assignee_id);
+        $this->assertFalse($this->task->collaborators()->exists());
+    }
+
+    public function test_the_assignee_field_carries_the_hook_for_a(): void
+    {
+        Livewire::test('pages::tasks.show', ['task' => $this->task])->assertSeeHtml('data-shortcut-assignee');
+    }
+
+    public function test_m_does_nothing_for_people_who_may_only_read(): void
+    {
+        $viewer = User::factory()->create();
+        $this->project->setRole($viewer, ProjectRole::Viewer);
+        Livewire::actingAs($viewer)->test('pages::tasks.show', ['task' => $this->task])->dispatch('shortcut-assign-me')->assertNotDispatched('task-changed');
+
+        $this->assertNull($this->task->fresh()->assignee_id);
+    }
 }

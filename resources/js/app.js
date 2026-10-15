@@ -754,7 +754,11 @@ const stepThroughTasks = (direction) => {
     }
 
     items[next].scrollIntoView({ block: 'nearest' })
-    window.Livewire.dispatch('open-task', { id: Number(items[next].dataset.taskId) })
+
+    // From the element of the flyout when there is one, so that its guard asks about unsaved input first (Livewire.dispatch skips it)
+    const flyout = document.querySelector('[data-task-flyout]')
+
+    ;(flyout ?? window).dispatchEvent(new CustomEvent('open-task', { detail: { id: Number(items[next].dataset.taskId) }, bubbles: true }))
 }
 
 document.addEventListener('keydown', (event) => {
@@ -778,13 +782,21 @@ document.addEventListener('keydown', (event) => {
         j: () => stepThroughTasks(1),
         k: () => stepThroughTasks(-1),
         e: () => window.Livewire.dispatch('shortcut-toggle-done'),
-        a: () => document.querySelector('[data-shortcut-assignee] button')?.click(),
+        // Only where there is an assignee field; elsewhere the key stays a key
+        a: () => {
+            const field = document.querySelector('[data-shortcut-assignee] button')
+
+            if (! field) {
+                return false
+            }
+
+            field.click()
+        },
         m: () => window.Livewire.dispatch('shortcut-assign-me'),
     }
 
-    if (actions[event.key]) {
+    if (actions[event.key] && actions[event.key]() !== false) {
         event.preventDefault()
-        actions[event.key]()
     }
 })
 

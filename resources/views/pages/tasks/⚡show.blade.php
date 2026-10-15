@@ -154,7 +154,13 @@ new class extends Component
     #[On('shortcut-assign-me')]
     public function assignToMeByShortcut(): void
     {
-        if (! $this->canEdit || ! $this->users->contains('id', auth()->id())) {
+        if (! $this->canEdit) {
+            return;
+        }
+
+        if (! $this->users->contains('id', auth()->id())) {
+            Flux::toast(variant: 'warning', text: __('You cannot be assigned to tasks of this project.'));
+
             return;
         }
 

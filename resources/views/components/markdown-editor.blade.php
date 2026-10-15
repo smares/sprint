@@ -19,7 +19,11 @@
         showPreview() {
             this.tab = 'preview'
             this.loading = true
-            $wire.previewMarkdown(this.$root.querySelector('textarea').value).then((result) => { this.html = result; this.loading = false })
+            $wire.previewMarkdown(this.$root.querySelector('textarea').value)
+                .then((result) => { this.html = result })
+                // Without an answer the text cannot be shown rendered: back to the field, where nothing is lost
+                .catch(() => { this.tab = 'write' })
+                .finally(() => { this.loading = false })
         },
         edit() {
             this.tab = 'write'
@@ -77,9 +81,11 @@
         },
     }"
     {{-- The "New task" dialog stays on the page: after creating, the next task starts on Write, not on the old preview --}}
-    x-on:task-created.window="tab = 'write'; html = ''"
+    @unless ($preview)
+        x-on:task-created.window="tab = 'write'; html = ''"
+    @endunless
     @if ($max !== null)
-        x-init="count = size(); $wire.$watch(@js($attributes->wire('model')->value()), () => { count = size() })"
+        x-init="$nextTick(() => { count = size() }); $wire.$watch(@js($attributes->wire('model')->value()), () => { count = size() })"
         x-on:input="count = size()"
     @endif
     @if ($preview)
@@ -110,24 +116,32 @@
                     </div>
                 </div>
             @endif
-            <div @class(['flex gap-1', 'flex-row-reverse' => $preview])>
-            <button type="button" x-on:click="edit()" x-bind:class="tab === 'write' ? 'font-semibold underline' : 'text-zinc-500'">{{ $preview ? __('Edit') : __('Write') }}</button>
-            <span class="text-zinc-300">|</span>
-            <button type="button" x-on:click="showPreview()" x-bind:class="tab === 'preview' ? 'font-semibold underline' : 'text-zinc-500'">{{ __('Preview') }}</button>
+            {{-- Preview first when the text starts rendered: the order in the markup is the order on the screen (and for the Tab key) --}}
+            <div class="flex gap-1" role="group">
+                @if ($preview)
+                    <button type="button" class="touch-target" x-on:click="showPreview()" x-bind:aria-pressed="tab === 'preview'" x-bind:class="tab === 'preview' ? 'font-semibold underline' : 'text-zinc-500 dark:text-zinc-400'">{{ __('Preview') }}</button>
+                    <span class="text-zinc-300 dark:text-zinc-600" aria-hidden="true">|</span>
+                    <button type="button" class="touch-target" x-on:click="edit()" x-bind:aria-pressed="tab === 'write'" x-bind:class="tab === 'write' ? 'font-semibold underline' : 'text-zinc-500 dark:text-zinc-400'">{{ __('Edit') }}</button>
+                @else
+                    <button type="button" class="touch-target" x-on:click="edit()" x-bind:aria-pressed="tab === 'write'" x-bind:class="tab === 'write' ? 'font-semibold underline' : 'text-zinc-500 dark:text-zinc-400'">{{ __('Write') }}</button>
+                    <span class="text-zinc-300 dark:text-zinc-600" aria-hidden="true">|</span>
+                    <button type="button" class="touch-target" x-on:click="showPreview()" x-bind:aria-pressed="tab === 'preview'" x-bind:class="tab === 'preview' ? 'font-semibold underline' : 'text-zinc-500 dark:text-zinc-400'">{{ __('Preview') }}</button>
+                @endif
             </div>
         </div>
     </div>
 
-    <div x-show="tab === 'write'" class="relative" x-data="mentionable(@js($mentions))" x-on:input="onInput($event)" x-on:keydown="onKeydown($event)" x-on:click.outside="open = false"@if ($images !== null) x-on:paste="onPaste($event)" x-on:drop="onDrop($event)" x-on:dragover.prevent @endif>
+    <div x-show="tab === 'write'" @if ($preview) x-cloak @endif class="relative" x-data="mentionable(@js($mentions))" x-on:input="onInput($event)" x-on:keydown="onKeydown($event)" x-on:click.outside="open = false"@if ($images !== null) x-on:paste="onPaste($event)" x-on:drop="onDrop($event)" x-on:dragover.prevent @endif>
         {{-- grow: the field is as tall as its text (at least $rows lines), so a long description is never hidden behind a scrollbar --}}
-        <flux:textarea :rows="$rows" :placeholder="$placeholder" :resize="$grow ? 'none' : 'vertical'" :class="$grow ? 'field-sizing-content min-h-24' : ''" {{ $attributes->whereStartsWith('wire:model') }} />
+        <flux:textarea :rows="$rows" :placeholder="$placeholder" :resize="$grow ? 'none' : 'vertical'" :class="$grow ? 'field-sizing-content min-h-24 not-supports-[field-sizing:content]:resize-y!' : ''" {{ $attributes->whereStartsWith('wire:model') }} />
 
         @if ($max !== null)
             <div
                 class="mt-1 text-end text-xs tabular-nums"
-                x-bind:class="count > max ? 'font-medium text-red-600 dark:text-red-400' : (count > max * 0.9 ? 'text-amber-600 dark:text-amber-400' : 'text-zinc-400')"
+                x-bind:class="count > max ? 'font-medium text-red-600 dark:text-red-400' : (count > max * 0.9 ? 'text-amber-700 dark:text-amber-400' : 'text-zinc-500 dark:text-zinc-400')"
                 title="{{ __('Counted are Unicode characters: an emoji made of several parts (a family, a flag) counts for each part.') }}"
             ><span x-text="count.toLocaleString(document.documentElement.lang || undefined)"></span> / <span x-text="max.toLocaleString(document.documentElement.lang || undefined)"></span></div>
+            <span class="sr-only" role="status" x-text="count > max ? @js(__('The text is too long.')) : ''"></span>
         @endif
 
         <ul x-show="open && matches.length" x-cloak class="absolute z-20 mt-1 max-h-64 w-72 overflow-auto rounded-lg border border-zinc-200 bg-white p-1 text-sm shadow-lg dark:border-zinc-700 dark:bg-zinc-800" role="listbox">

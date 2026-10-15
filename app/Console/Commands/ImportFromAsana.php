@@ -12,6 +12,7 @@ use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Number;
 use Symfony\Component\Console\Helper\ProgressBar;
+use Throwable;
 
 use function Laravel\Prompts\multiselect;
 
@@ -76,12 +77,26 @@ class ImportFromAsana extends Command
 
     private function import(AsanaImportService $service): int
     {
-        $targets = $this->targets($service);
         $importer = $this->importer();
         $sections = (string) $this->option('sections');
 
-        if ($targets === [] || ! $importer instanceof User || ! in_array($sections, ['status', 'headings'], true)) {
-            $this->components->error($targets === [] ? 'Name at least one Asana project (see --list) or run the command interactively to choose.' : ($importer instanceof User ? '--sections is status or headings.' : 'No such person for --as (and no administrator to fall back on).'));
+        // The options are checked before anything is read from Asana or chosen from a list
+        if (! in_array($sections, ['status', 'headings'], true)) {
+            $this->components->error('--sections is status or headings.');
+
+            return self::FAILURE;
+        }
+
+        if (! $importer instanceof User) {
+            $this->components->error('No such person for --as (and no administrator to fall back on).');
+
+            return self::FAILURE;
+        }
+
+        $targets = $this->targets($service);
+
+        if ($targets === []) {
+            $this->components->error('Name at least one Asana project (see --list) or run the command interactively to choose.');
 
             return self::FAILURE;
         }
@@ -96,6 +111,12 @@ class ImportFromAsana extends Command
                 'followers' => ! $this->option('skip-followers'),
                 'dry_run' => $dryRun,
             ], $this->message(...), $this->progress(...));
+        } catch (Throwable $exception) {
+            // Whatever stopped it, what was written stays and a second run goes on from there
+            $this->finishProgress();
+            $this->components->error('The import stopped. Run it again: what was written is kept and only the rest is added.');
+
+            throw $exception;
         } finally {
             $this->finishProgress();
         }

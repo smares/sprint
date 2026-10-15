@@ -238,9 +238,9 @@ new class extends Component
 <div>
     <x-project-header :project="$project" active="board" :presence="$this->presenceChannel()" />
 
-    <div class="mb-4 flex flex-wrap items-center gap-2">
+    <div class="mb-3 flex items-center gap-1">
         <flux:dropdown align="start">
-            <flux:button icon="arrows-up-down" icon:trailing="chevron-down">{{ __('Sort') }}: {{ $this->sortLabel }}</flux:button>
+            <flux:button size="sm" variant="subtle" icon="arrows-up-down">{{ $this->sortActive ? $this->sortLabel : __('Sort') }}</flux:button>
 
             {{-- What to sort by; picking one orders the cards at once --}}
             <flux:menu>
@@ -257,12 +257,8 @@ new class extends Component
 
         {{-- The direction is one click on its own: the arrow shows the order in force and turns it --}}
         @if ($this->sortActive)
-            <flux:button :icon="$sortDirection === 'desc' ? 'arrow-down' : 'arrow-up'" wire:click="reverseSort" aria-label="{{ __('Reverse order') }}" tooltip="{{ $sortDirection === 'desc' ? __('Descending') : __('Ascending') }}: {{ __('Reverse order') }}" />
-        @endif
-
-        @if ($this->sortActive)
-            <flux:button icon="x-mark" variant="ghost" wire:click="resetSort" aria-label="{{ __('Reset') }}" tooltip="{{ __('Reset') }}" class="sm:hidden" />
-            <flux:button variant="ghost" wire:click="resetSort" class="max-sm:hidden">{{ __('Reset') }}</flux:button>
+            <flux:button size="sm" variant="subtle" :icon="$sortDirection === 'desc' ? 'arrow-down' : 'arrow-up'" wire:click="reverseSort" aria-label="{{ __('Reverse order') }}" tooltip="{{ $sortDirection === 'desc' ? __('Descending') : __('Ascending') }}: {{ __('Reverse order') }}" />
+            <flux:button size="sm" variant="subtle" icon="x-mark" wire:click="resetSort" aria-label="{{ __('Reset') }}" tooltip="{{ __('Reset') }}" />
         @endif
     </div>
 

@@ -1,5 +1,6 @@
 <?php
 
+use App\Concerns\AssignsTasks;
 use App\Concerns\OpensTaskPanel;
 use App\Concerns\QuickAddsTasks;
 use App\Concerns\ShowsProject;
@@ -19,6 +20,7 @@ use Livewire\Component;
 new class extends Component
 {
     use ShowsProject;
+    use AssignsTasks;
     use OpensTaskPanel;
     use QuickAddsTasks;
 
@@ -102,6 +104,11 @@ new class extends Component
     protected function quickAddDefaults(): array
     {
         return [];
+    }
+
+    protected function afterAssigning(): void
+    {
+        unset($this->columns);
     }
 
     /**
@@ -240,11 +247,10 @@ new class extends Component
                                 {{-- One line of facts: who (stacked faces), when, and how much is attached to it --}}
                                 @php
                                     $progress = $this->progress[$task->id] ?? null;
-                                    $people = collect([$task->assignee, ...$task->collaborators])->filter()->unique('id')->values();
                                 @endphp
-                                @if ($people->isNotEmpty() || $task->due_date || $progress || $task->comments_count || $task->attachments_count)
+                                @if ($this->canEdit || $task->assignee_id || $task->collaborators->isNotEmpty() || $task->due_date || $progress || $task->comments_count || $task->attachments_count)
                                     <div class="mt-3 flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
-                                        <x-avatar-stack :users="$people" />
+                                        <x-assignee-picker :task="$task" :users="$this->assignableUsers" :editable="$this->canEdit" />
                                         @if ($progress)
                                             <span class="inline-flex items-center gap-0.5 tabular-nums" title="{{ __('Subtasks') }}"><flux:icon.list-bullet variant="micro" />{{ $progress['done'] }}/{{ $progress['total'] }}</span>
                                         @endif

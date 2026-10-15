@@ -297,6 +297,16 @@ class Project extends Model
     }
 
     /**
+     * The people for the pickers of an assignee, by name and with what the avatar and the away note need.
+     *
+     * @return EloquentCollection<int, User>
+     */
+    public function assignableUsers(): EloquentCollection
+    {
+        return $this->eligibleUsers()->orderBy('name')->get(['id', 'name', 'avatar_updated_at', 'timezone', 'absent_from', 'absent_until']);
+    }
+
+    /**
      * @return HasMany<Automation, $this>
      */
     public function automations(): HasMany

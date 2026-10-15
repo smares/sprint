@@ -44,7 +44,7 @@ class Task extends Model
     use HasReactions;
 
     /** How far a task can be moved or stretched in one go (calendar and timeline), about ten years. */
-    public const MAX_SHIFT_DAYS = 3650;
+    public const int MAX_SHIFT_DAYS = 3650;
 
     /**
      * The longest description, counted in characters as Laravel counts them (Unicode code points, so an emoji made of

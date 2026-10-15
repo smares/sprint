@@ -23,9 +23,12 @@ trait AssignsTasks
     #[Computed]
     public function assignableUsers(): Collection
     {
-        return $this->project->eligibleUsers()->orderBy('name')->get(['id', 'name', 'avatar_updated_at', 'timezone', 'absent_from', 'absent_until']);
+        return $this->project->assignableUsers();
     }
 
+    /**
+     * Hand a top-level task of the project to a person who can be assigned, or (null) to nobody.
+     */
     public function assign(int $taskId, ?int $userId): void
     {
         Gate::authorize('edit', $this->project);

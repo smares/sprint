@@ -132,7 +132,7 @@ new class extends Component
     @if ($this->confirmed)
         <div class="flex items-center gap-3 border-t border-green-200 bg-green-50 px-5 py-3 text-sm text-green-900 dark:border-green-900 dark:bg-green-950/40 dark:text-green-200">
             <flux:icon.lock-open variant="mini" class="shrink-0" />
-            <span>{{ __('Unlocked until :time – until then you can change everything in this group.', ['time' => $this->confirmedUntil->isoFormat('LT')]) }}</span>
+            <span>{{ __('Unlocked until :time – until then you can change everything in this group.', ['time' => auth()->user()->inTimezone($this->confirmedUntil)->isoFormat('LT')]) }}</span>
         </div>
     @else
         <form wire:submit="confirmPassword" class="space-y-3 border-t border-zinc-200 bg-zinc-50 p-5 dark:border-zinc-700 dark:bg-zinc-800/50">
@@ -219,7 +219,7 @@ new class extends Component
                             <div class="truncate font-medium">{{ $passkey->name }}</div>
                             <flux:text size="sm">
                                 @if ($passkey->authenticator){{ $passkey->authenticator }} · @endif
-                                {{ __('created on :date', ['date' => $passkey->created_at->isoFormat('L')]) }}
+                                {{ __('created on :date', ['date' => auth()->user()->inTimezone($passkey->created_at)->isoFormat('L')]) }}
                                 · {{ $passkey->last_used_at ? __('last used :time', ['time' => $passkey->last_used_at->diffForHumans()]) : __('never used') }}
                             </flux:text>
                         </div>

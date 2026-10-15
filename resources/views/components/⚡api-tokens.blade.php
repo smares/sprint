@@ -106,7 +106,7 @@ new class extends Component
                         <flux:text size="sm">
                             {{ $token->can('write') ? __('Read and write') : __('Read only') }}
                             · {{ $token->last_used_at ? __('last used :time', ['time' => $token->last_used_at->diffForHumans()]) : __('never used') }}
-                            · {{ $token->expires_at ? ($token->expires_at->isPast() ? __('expired') : __('valid until :date', ['date' => $token->expires_at->isoFormat('L')])) : __('valid indefinitely') }}
+                            · {{ $token->expires_at ? ($token->expires_at->isPast() ? __('expired') : __('valid until :date', ['date' => auth()->user()->inTimezone($token->expires_at)->isoFormat('L')])) : __('valid indefinitely') }}
                         </flux:text>
                     </div>
                     <flux:button size="sm" variant="ghost" icon="trash" wire:click="revoke({{ $token->id }})" wire:confirm="{{ __('Revoke token “:name”? Agents using it lose access immediately.', ['name' => $token->name]) }}" aria-label="{{ __('Revoke token') }}" tooltip="{{ __('Revoke token') }}" />

@@ -212,6 +212,16 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
     }
 
     /**
+     * A point in time as it reads on the person's clock. Only the display changes: the moment stays the same, so the
+     * hour that clocks repeat or skip when summer time starts or ends is shown correctly. Dates without a time
+     * (due date, start date) are calendar days and must not go through here.
+     */
+    public function inTimezone(CarbonInterface $moment): CarbonInterface
+    {
+        return $moment->copy()->setTimezone($this->preferredTimezone());
+    }
+
+    /**
      * Today where the person is; an absence starts and ends by their calendar.
      */
     public function today(): Carbon
@@ -233,7 +243,7 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
      */
     public function isQuietAt(CarbonInterface $moment): bool
     {
-        $moment = $moment->copy()->setTimezone($this->preferredTimezone());
+        $moment = $this->inTimezone($moment);
 
         if (in_array($moment->dayOfWeekIso, $this->quiet_days ?? [], true)) {
             return true;

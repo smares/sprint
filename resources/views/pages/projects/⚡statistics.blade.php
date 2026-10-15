@@ -336,7 +336,7 @@ new class extends Component
                                     </flux:table.cell>
                                     <flux:table.cell>
                                         @php($days = (int) $task->in_status_since->diffInDays(now()))
-                                        <span title="{{ __('since :date', ['date' => $task->in_status_since->isoFormat('L')]) }}" @class(['font-medium text-amber-600 dark:text-amber-500' => $days >= $this::LONG_IN_STATUS_DAYS])>{{ trans_choice(':count day|:count days', $days) }}</span>
+                                        <span title="{{ __('since :date', ['date' => auth()->user()->inTimezone($task->in_status_since)->isoFormat('L')]) }}" @class(['font-medium text-amber-600 dark:text-amber-500' => $days >= $this::LONG_IN_STATUS_DAYS])>{{ trans_choice(':count day|:count days', $days) }}</span>
                                     </flux:table.cell>
                                     <flux:table.cell>
                                         @if ($task->assignee)

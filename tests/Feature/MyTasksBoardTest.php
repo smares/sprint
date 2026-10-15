@@ -280,7 +280,7 @@ class MyTasksBoardTest extends TestCase
         $heute = $this->column('Heute');
         $erste = $this->mine('Erste');
         $zweite = $this->mine('Zweite');
-        $heute->place($erste, 0);
+        $heute->place($erste, 0, []);
 
         $board = $this->board()
             ->assertSeeHtml("moveTask({$zweite->id}, 100000, '{$heute->id}')")
@@ -298,8 +298,8 @@ class MyTasksBoardTest extends TestCase
         $heute = $this->column('Heute');
         $a = $this->mine('A');
         $b = $this->mine('B');
-        $heute->place($a, 0);
-        $heute->place($b, 1);
+        $heute->place($a, 0, []);
+        $heute->place($b, 1, [$a->id]);
 
         $board = $this->board()
             ->assertSeeHtml("moveTask({$a->id}, 1, '{$heute->id}')")

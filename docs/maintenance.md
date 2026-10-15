@@ -19,7 +19,7 @@ Gesichert werden müssen drei Dinge, sonst nichts (Logs, Caches und der Suchinde
 
 ### Automatisch (Standard)
 
-Jede Nacht um 02:30 schreibt der Scheduler mit `php artisan sprint:backup` eine ZIP-Datei `sprint-JJJJ-MM-TT-HHMMSS.zip` mit
+Jede Nacht um 03:30 schreibt der Scheduler mit `php artisan sprint:backup` eine ZIP-Datei `sprint-JJJJ-MM-TT-HHMMSS.zip` mit
 
 - `database.sqlite`: einer konsistenten Kopie der SQLite-Datenbank (per `VACUUM INTO`, also auch im laufenden Betrieb und im WAL-Modus korrekt; Profilbilder stecken mit drin),
 - `attachments/…`: allen Anhängen der Standard-Disk, wenn sie lokal liegt.
@@ -29,9 +29,11 @@ Backups, die älter als `BACKUP_KEEP_DAYS` Tage sind, löscht derselbe Lauf. Die
 ```ini
 BACKUP_ENABLED=true      # false schaltet die nächtlichen Backups ab
 BACKUP_DISK=backups      # "backups" = storage/app/backups; besser ein eigener Bucket (s3), damit die Kopie nicht auf demselben Server liegt
-BACKUP_TIME=02:30
+BACKUP_TIME=03:30        # Ortszeit der Anwendung (APP_TIMEZONE); nicht zwischen 01:00 und 03:00 wählen, siehe unten
 BACKUP_KEEP_DAYS=14
 ```
+
+**Sommer- und Winterzeit:** `BACKUP_TIME`, `SPRINT_DIGEST_TIME` und `SPRINT_REMINDER_TIME` gelten in der Zeitzone der Anwendung (`APP_TIMEZONE`). Zwischen 01:00 und 03:00 springt die Uhr in vielen Zonen (EU, USA): Im Frühjahr fällt diese Stunde aus, im Herbst kommt sie doppelt vor, und die Bibliothek hinter dem Scheduler startet in der Umstellungsnacht außerdem Aufgaben, die für 03:xx eingetragen sind, schon in der ersten Durchlaufstunde. Deshalb steht der Standard auf 03:30, und du solltest für die drei Zeiten keine Uhrzeit zwischen 01:00 und 03:00 wählen. Sprint schützt sich trotzdem: Jeder tägliche Befehl läuft pro Kalendertag genau einmal und nur, wenn die Uhr wirklich die eingetragene Zeit zeigt (eine ausgefallene Zeit wie 02:30 im Frühjahr wird um 03:30 nachgeholt, eine doppelte läuft nur beim ersten Mal); das merkt sich der Cache, es braucht also einen gemeinsamen Cache wie den Standard `database`. Zusätzlich ruft der Scheduler `php artisan sprint:backup --if-needed` auf: Lief in den letzten 20 Stunden (gerechnet in echten Sekunden) schon ein erfolgreiches Backup, tut der Aufruf nichts. Von Hand läuft `php artisan sprint:backup` ohne diese Option immer. `onOneServer()` und `withoutOverlapping()` ersetzen das nicht: Ersteres sperrt nur die jeweilige Minute für eine Stunde und Letzteres nur einen noch laufenden Lauf.
 
 Liegen die Backups auf dem Server selbst (`BACKUP_DISK=backups`), schützen sie vor versehentlichem Löschen und kaputten Updates, aber nicht vor dem Verlust des Servers; dann sollte ein externer Job den Ordner `storage/app/backups` regelmäßig woanders hin kopieren. Bei Docker Compose beschreibt [Letztes Backup auf den Host holen und per rsync sichern](deployment-docker.md#letztes-backup-auf-den-host-holen-und-per-rsync-sichern) ein fertiges Skript dafür. Für einen Bucket legst du in `config/filesystems.php` eine eigene Disk an (oder nutzt `s3` mit einem eigenen `AWS_BUCKET`) und trägst ihren Namen in `BACKUP_DISK` ein.
 

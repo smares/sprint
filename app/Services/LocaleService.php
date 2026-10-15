@@ -13,6 +13,18 @@ use Illuminate\Support\Number;
 class LocaleService
 {
     /**
+     * Language => its date format (L) where that is not YYYY-MM-DD.
+     */
+    private const array DATE_FORMATS = ['de' => 'DD.MM.YYYY'];
+
+    /**
+     * Carbon's wording where it reads badly: "after tomorrow", "3 days from now".
+     */
+    private const array RELATIVE_DAY_WORDS = [
+        'en' => ['diff_before_yesterday' => 'the day before yesterday', 'diff_after_tomorrow' => 'the day after tomorrow', 'from_now' => 'in :time'],
+    ];
+
+    /**
      * Code => name in the language itself.
      *
      * @return array<string, string>
@@ -63,11 +75,12 @@ class LocaleService
     }
 
     /**
-     * Dates appear as YYYY-MM-DD and times in 24 hours in every language; only month and weekday names
-     * and relative times ("2 hours ago") stay in the person's language. Changes the short formats
-     * (L, LT, LTS) that the views use with isoFormat().
+     * Dates appear as YYYY-MM-DD in every language except German (DD.MM.YYYY, the way people write them there), times
+     * in 24 hours everywhere; month and weekday names and relative times ("2 hours ago") stay in the person's
+     * language. Changes the short formats (L, LT, LTS) that the views use with isoFormat(). Machine formats
+     * (addresses, CSV, MCP, API, the datetime attribute) never go through here and stay YYYY-MM-DD.
      */
-    public static function useIsoDateFormats(): void
+    public static function useDateFormats(): void
     {
         $global = Date::getTranslator();
 
@@ -76,8 +89,8 @@ class LocaleService
             foreach ([$global, Translator::get($code)] as $translator) {
                 if ($translator instanceof Translator) {
                     $translator->setMessages($code, []);
-                    $formats = ['L' => 'YYYY-MM-DD', 'LT' => 'HH:mm', 'LTS' => 'HH:mm:ss'] + ($translator->getMessages($code)['formats'] ?? []);
-                    $translator->setMessages($code, ['formats' => $formats]);
+                    $formats = ['L' => self::DATE_FORMATS[$code] ?? 'YYYY-MM-DD', 'LT' => 'HH:mm', 'LTS' => 'HH:mm:ss'] + ($translator->getMessages($code)['formats'] ?? []);
+                    $translator->setMessages($code, ['formats' => $formats] + (self::RELATIVE_DAY_WORDS[$code] ?? []));
                 }
             }
         }

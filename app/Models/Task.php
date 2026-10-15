@@ -1103,12 +1103,15 @@ class Task extends Model
         );
     }
 
-    public function isOverdue(): bool
+    /**
+     * Open and due before today. Pass the day of the person looking ($user->today()) where they live in another time
+     * zone than the application; without it, today is the application's.
+     */
+    public function isOverdue(?CarbonInterface $today = null): bool
     {
         return $this->due_date !== null
             && ! $this->isDone()
-            && $this->due_date->isPast()
-            && ! $this->due_date->isToday();
+            && $this->due_date->toDateString() < ($today ?? today())->toDateString();
     }
 
     /**

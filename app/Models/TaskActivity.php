@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\ActivityType;
+use App\Services\DateService;
 use Database\Factories\TaskActivityFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -79,7 +80,22 @@ class TaskActivity extends Model
     }
 
     /**
-     * What happened, as a sentence that continues after the person's name.
+     * The entries of the data that are dates.
+     *
+     * @return list<string>
+     */
+    private function dateKeys(): array
+    {
+        return match ($this->type) {
+            ActivityType::DueDateChanged, ActivityType::StartDateChanged => ['from', 'to'],
+            ActivityType::RecurrenceCreated => ['to'],
+            default => [],
+        };
+    }
+
+    /**
+     * What happened, as a sentence that continues after the person's name. Dates in it read in the format of the
+     * language of whoever reads it (they are stored as YYYY-MM-DD).
      */
     public function sentence(): string
     {
@@ -88,6 +104,12 @@ class TaskActivity extends Model
         foreach (['from', 'to'] as $key) {
             if (array_key_exists($key, $data)) {
                 $data[$key] = $this->isoDate($data[$key]);
+            }
+        }
+
+        foreach ($this->dateKeys() as $key) {
+            if (is_string($data[$key] ?? null)) {
+                $data[$key] = DateService::parseIsoDate($data[$key])?->isoFormat('L') ?? $data[$key];
             }
         }
 

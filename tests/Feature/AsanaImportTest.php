@@ -812,4 +812,46 @@ class AsanaImportTest extends TestCase
         $this->assertSame(1, Task::where('title', 'Detail')->count());
         $this->assertSame(Task::where('title', 'Skizzen')->firstOrFail()->id, Task::where('title', 'Detail')->firstOrFail()->parent_id);
     }
+
+    public function test_new_tasks_of_a_second_headings_run_go_below_the_heading_of_their_section(): void
+    {
+        $arguments = ['projects' => ['100'], '--sections' => 'headings'];
+        $this->import($arguments)->assertSuccessful();
+
+        // One in the section "Backlog" (111), one in none; the list of Asana has them at the end
+        $this->routes['projects/100/tasks'][] = $this->task('1011', 'Neu im Backlog', ['memberships' => [['project' => ['gid' => '100'], 'section' => ['gid' => '111']]]]);
+        $this->routes['projects/100/tasks'][] = $this->task('1012', 'Neu ohne Abschnitt');
+
+        $this->import($arguments)->assertSuccessful();
+
+        $order = Project::where('name', 'Website')->firstOrFail()->tasks()->topLevel()->orderBy('position')->pluck('title')->all();
+        $this->assertSame(['Neu ohne Abschnitt', 'Backlog', 'Konzept', 'Fertig', 'Neu im Backlog', 'Doing', 'Umsetzung'], $order);
+    }
+
+    public function test_links_to_new_files_of_a_task_that_exists_are_added_once(): void
+    {
+        $this->import(['projects' => ['100']])->assertSuccessful();
+
+        $concept = Task::where('title', 'Konzept')->firstOrFail();
+        $this->assertSame(1, substr_count((string) $concept->description, 'dropbox.test/entwurf'));
+
+        $this->routes['attachments?parent=1001'][] = ['gid' => '7003', 'name' => 'Neu in Drive', 'host' => 'gdrive', 'permanent_url' => 'https://drive.test/neu'];
+
+        $this->import(['projects' => ['100']])->assertSuccessful();
+        $this->import(['projects' => ['100']])->assertSuccessful();
+
+        $description = (string) $concept->fresh()->description;
+        $this->assertSame(1, substr_count($description, 'drive.test/neu'));
+        $this->assertSame(1, substr_count($description, 'dropbox.test/entwurf'));
+    }
+
+    public function test_a_follower_who_is_assigned_a_later_task_follows_the_earlier_ones_too(): void
+    {
+        // Ben is no member in Asana; he follows "Konzept" and is assigned the subtask "Skizzen" (and "Umsetzung") later on
+        $this->routes['projects/100']['members'] = [$this->person('11', 'Anna', 'anna@example.com')];
+
+        $this->import(['projects' => ['100']])->assertSuccessful();
+
+        $this->assertContains($this->ben->id, Task::where('title', 'Konzept')->firstOrFail()->collaborators()->pluck('users.id')->all());
+    }
 }

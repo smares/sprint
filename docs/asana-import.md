@@ -61,7 +61,7 @@ Der Probelauf stellt alle Anfragen an Asana, schreibt aber nichts. Er zeigt, wie
 | `--dry-run` | nur lesen und berichten |
 | `--list` | Workspaces und Projekte des Tokens anzeigen |
 | `--sections=status` (Standard) | Asana-Abschnitte werden **Status** des Projekts (Board-Spalten) |
-| `--sections=headings` | Abschnitte werden **Überschriften** in der Liste, die Status bleiben Standard. Die Überschriften stehen in der Liste ohne Filter und Sortierung; Board und Zählungen übergehen sie |
+| `--sections=headings` | Abschnitte werden **Überschriften** in der Liste, die Status bleiben Standard. Die Überschriften stehen in der Liste ohne Filter und Sortierung; Board und Zählungen übergehen sie. Eine neue Aufgabe in einem weiteren Lauf kommt ans Ende ihres Abschnitts (ohne Abschnitt: vor die erste Überschrift) |
 | `--create-users` | Personen ohne Konto deaktiviert und ohne Willkommens-Mail anlegen (mit ihrer Adresse aus Asana); später aktivierbar |
 | `--ignore-missing-users` | trotz fehlender Konten weitermachen, deren Zuständigkeiten entfallen |
 | `--skip-followers` | Follower nicht als Beteiligte übernehmen |
@@ -74,7 +74,7 @@ Der Probelauf stellt alle Anfragen an Asana, schreibt aber nichts. Er zeigt, wie
 | --- | --- |
 | Projekt (Name, Notizen, Farbe, archiviert) | Projekt; die importierende Person bekommt die Rolle *Verwalten*. Archivierte Projekte werden archiviert angelegt |
 | Mitglieder des Projekts | Mitglieder mit der Rolle *Bearbeiten*, der Besitzer mit *Verwalten*; wer eine Aufgabe zugewiesen bekommt, kommt mit *Bearbeiten* dazu |
-| Abschnitt | Status (oder Überschrift, siehe oben). „Untitled section“ bleibt der erste Standard-Status. Abschnitte, die so heißen wie ein vorhandener Status, nutzen diesen. Neue Status stehen vor den erledigten |
+| Abschnitt | Status (oder Überschrift, siehe oben). „Untitled section“ bleibt der erste Standard-Status. Abschnitte, die so heißen wie ein vorhandener Status, nutzen diesen (auch „Done“ oder „Erledigt“: Eine offene Aufgabe in einer solchen Spalte ist in Sprint danach erledigt). Neue Status stehen vor den erledigten |
 | Aufgabe | Aufgabe in der Reihenfolge von Asana, auch Unteraufgaben in beliebiger Tiefe; Titel über 255 Zeichen werden gekürzt |
 | Erledigt | der erledigte Status samt Erledigt-Datum (die Spalte, in der die Aufgabe stand, geht dabei verloren) |
 | Status einer Unteraufgabe | Asana kennt für Unteraufgaben nur offen oder erledigt, Spalten haben sie nicht (sie stehen nur bei ihrer Aufgabe). Eine offene Unteraufgabe bekommt in Sprint den Status ihrer Aufgabe, außer der ist ein erledigter Status: Dann bleibt sie im ersten Status, damit offene Arbeit nicht als fertig zählt. Eine erledigte kommt in den erledigten Status |
@@ -88,7 +88,7 @@ Der Probelauf stellt alle Anfragen an Asana, schreibt aber nichts. Er zeigt, wie
 | Links auf andere Aufgaben in Texten | Erwähnungen der übernommenen Aufgaben (`@[Titel](task:…)`); @-Erwähnungen von Personen werden Erwähnungen, ohne Konto bleibt der Name |
 | Kommentare | Kommentare mit Verfasser:in und Zeitpunkt. Stammt ein Kommentar von jemandem ohne Konto, steht „Von Name in Asana“ am Anfang und die importierende Person ist die Verfasser:in |
 | Kommentare ohne Text | werden nicht übernommen (etwa ein Kommentar, der in Asana nur aus einem Anhang oder Emoji besteht). Der Befehl nennt sie mit Aufgabe und Asana-ID in den Hinweisen, auch im Probelauf, und zählt sie in der Übersicht |
-| Anhänge | Dateien bis 20 MB werden heruntergeladen und angehängt (die Endung folgt dem erkannten Dateityp; Weiterleitungen nur über https); Dateien anderer Dienste (Dropbox, Google Drive …) und zu große Dateien werden als Links an die Beschreibung angehängt |
+| Anhänge | Dateien bis 20 MB werden heruntergeladen und angehängt (die Endung folgt dem erkannten Dateityp; Weiterleitungen nur über https); Dateien anderer Dienste (Dropbox, Google Drive …) und zu große Dateien werden als Links an die Beschreibung angehängt; kommen sie erst in einem weiteren Lauf dazu, werden die Links an die Beschreibung der vorhandenen Aufgabe angefügt (je Datei einmal) |
 | Zeitpunkt der Anlage und Änderung | bleibt bei Aufgaben, Kommentaren und Anhängen erhalten |
 
 **Benachrichtigungen:** Der Import verschickt nichts, weder E-Mails noch Push noch Einträge im Posteingang, auch nicht an erwähnte, zuständige oder beteiligte Personen.
@@ -104,5 +104,7 @@ Der Probelauf stellt alle Anfragen an Asana, schreibt aber nichts. Er zeigt, wie
 ## Dauer und Grenzen von Asana
 
 Pro Aufgabe sind mindestens zwei Anfragen nötig (Kommentare, Anhänge), dazu je eine für Unteraufgaben. Asana begrenzt die Anfragen pro Minute (je nach Tarif etwa 150 bis 1500). Der Befehl wartet bei Überschreitung selbst und versucht es erneut, ein Projekt mit tausend Aufgaben dauert deshalb im kostenlosen Tarif eine Weile. Bricht der Lauf ab, startet man ihn einfach neu: Was fertig ist, bleibt, der Rest folgt.
+
+Der Import hält den Plan eines Laufs (alle Aufgaben, Kommentare und Texte der angegebenen Projekte) im Speicher, bevor er schreibt. Der Docker-Container erlaubt dafür 256 MB (`docker/php.ini`); bei Projekten mit vielen zehntausend Aufgaben oder Kommentaren ruf ihn mit mehr auf, z. B. `php -d memory_limit=1G artisan asana:import …`, oder importiere die Projekte einzeln.
 
 Was der Import sich gemerkt hat, steht in der Tabelle `asana_imports` (Asana-ID → Sprint-ID). Löscht man eine übernommene Aufgabe oder ein übernommenes Projekt in Sprint, legt ein weiterer Lauf es wieder an, mit seinen Kommentaren, Anhängen und (bei `--sections=headings`) Überschriften. Auch die Status und Felder, die der Import angelegt hat, merkt er sich: Benennst du einen Status um, entsteht er nicht noch einmal.

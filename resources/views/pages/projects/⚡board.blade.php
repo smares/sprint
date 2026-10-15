@@ -291,12 +291,15 @@ new class extends Component
                         </x-slot>
                     </flux:kanban.column.header>
 
+                    {{-- wire:sort is set up once per element: keyed by the mode, the list is built anew and dragging within a column
+                         really stops while the cards are sorted --}}
                     <flux:kanban.column.cards
+                        wire:key="cards-{{ $status->id }}-{{ $this->sortActive ? 'sorted' : 'manual' }}"
                         class="min-h-16"
                         :wire:sort="$this->canEdit ? 'moveTask' : null"
                         :wire:sort:group="$this->canEdit ? 'tasks' : null"
                         wire:sort:group-id="{{ $status->id }}"
-                        wire:sort:config="{{ \App\Sortable::CONFIG }}"
+                        wire:sort:config="{{ $this->sortActive ? \App\Sortable::CONFIG_MOVE_ONLY : \App\Sortable::CONFIG }}"
                     >
                         @foreach ($this->columns[$status->id] as $task)
                             <flux:kanban.card wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" class="board-card cursor-pointer" :wire:sort:item="$this->canEdit ? $task->id : null">

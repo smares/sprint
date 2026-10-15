@@ -36,8 +36,11 @@
                         </x-slot>
                     </flux:sidebar.brand>
                     <flux:sidebar.collapse class="max-lg:hidden in-data-flux-sidebar-on-desktop:not-in-data-flux-sidebar-collapsed-desktop:-me-2" />
-                    {{-- On phones and tablets the sidebar lies over the page and this only closes it --}}
-                    <flux:sidebar.toggle class="lg:hidden" icon="x-mark" variant="ghost" :aria-label="__('Close menu')" :tooltip="__('Close menu')" />
+                    {{-- On phones and tablets the sidebar lies over the page and this only closes it. Hidden by its wrapper: the tooltip
+                         around the button stays in the header's row otherwise and pushes the collapse button away from the edge. --}}
+                    <div class="lg:hidden">
+                        <flux:sidebar.toggle icon="x-mark" variant="ghost" :aria-label="__('Close menu')" :tooltip="__('Close menu')" />
+                    </div>
                 </flux:sidebar.header>
 
                 <flux:modal.trigger name="command-palette" shortcut="cmd.k">

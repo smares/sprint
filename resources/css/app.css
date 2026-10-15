@@ -612,6 +612,10 @@ tr[data-task-id] {
 [data-task-flyout] > dialog[data-flux-flyout] {
     --flux-flyout-translate: translateX(100%);
     opacity: 1;
+
+    /* Scrolling to the end of the flyout must not carry on to the page behind it (on iOS the lock by overflow: hidden on
+       the page does not stop that). */
+    overscroll-behavior: contain;
     transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), overlay 0.35s allow-discrete, display 0.35s allow-discrete;
 }
 

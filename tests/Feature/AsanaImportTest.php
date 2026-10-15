@@ -786,6 +786,7 @@ class AsanaImportTest extends TestCase
     public function test_names_from_asana_are_text_in_mentions_and_links_to_files(): void
     {
         $this->routes['users?workspace=900'][2]['name'] = '[Chef](user:1)';
+        $this->routes['tasks/1001/stories'][2]['created_by']['name'] = '[Chef](user:1)';
         $this->routes['projects/100/tasks'][1] = $this->task('1004', 'Fertig', [
             'html_notes' => '<body>Danke <A data-asana-gid="13" data-asana-type="user"/></body>',
             'assignee' => ['gid' => '13', 'name' => '[Chef](user:1)'],
@@ -853,5 +854,16 @@ class AsanaImportTest extends TestCase
         $this->import(['projects' => ['100']])->assertSuccessful();
 
         $this->assertContains($this->ben->id, Task::where('title', 'Konzept')->firstOrFail()->collaborators()->pluck('users.id')->all());
+    }
+
+    public function test_comments_and_files_are_read_when_a_task_is_written_and_not_when_the_run_stops_before(): void
+    {
+        // Stopped for people without an account: nothing is written, so nothing of the comments and files was read
+        $this->asana(['projects' => ['100'], '--token' => 'secret-token'])->assertFailed();
+        Http::assertNotSent(fn (Request $request) => str_contains($request->url(), '/stories') || str_contains($request->url(), '/attachments'));
+
+        $this->import(['projects' => ['100']])->assertSuccessful();
+        Http::assertSent(fn (Request $request) => str_contains($request->url(), 'tasks/1001/stories'));
+        $this->assertSame(2, Comment::count());
     }
 }

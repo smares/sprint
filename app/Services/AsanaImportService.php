@@ -347,8 +347,15 @@ class AsanaImportService
             $this->counts['tasks_new'] += $knownId === null ? 1 : 0;
             $this->counts['subtasks'] += $parentGid === null ? 0 : 1;
 
-            $node['comments'] = $this->planComments($gid, $node['name']);
-            $node['attachments'] = $this->planAttachments($gid);
+            // Comments and files are the bulk of a project, so the plan does not keep them: a dry run counts them as it reads
+            // and lets go, a real run reads them from Asana when it writes the task (see importTasks)
+            if ($this->options['dry_run']) {
+                $this->planComments($gid, $node['name']);
+                $this->planAttachments($gid);
+            }
+
+            $node['comments'] = [];
+            $node['attachments'] = [];
             $this->tick('read', $this->counts['tasks']);
             $node['subtasks'] = ((int) ($raw['num_subtasks'] ?? 0)) > 0 ? $this->planTasks("tasks/{$gid}/subtasks", $projectGid, $projectId, $gid) : [];
             $nodes[] = $node;
@@ -899,6 +906,9 @@ class AsanaImportService
             if (! $parent instanceof Task && $this->options['sections'] === 'headings') {
                 $this->headingFor($plan, $node);
             }
+
+            $node['comments'] = $this->planComments($node['gid'], $node['name']);
+            $node['attachments'] = $this->planAttachments($node['gid']);
 
             $task = $node['id'] !== null ? Task::find($node['id']) : $this->createTask($node, $parent);
 

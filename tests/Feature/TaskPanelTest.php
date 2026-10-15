@@ -90,6 +90,24 @@ class TaskPanelTest extends TestCase
         Livewire::test('pages::tasks.show', ['task' => $this->task, 'panel' => true])->assertSeeHtml('data-flyout-close');
     }
 
+    public function test_the_check_for_unsaved_input_follows_the_edits_of_the_forms_not_the_state_of_the_server(): void
+    {
+        // Every request (a list that loads, a live update) takes along what was typed, so Livewire's $dirty() is false after
+        // the first one. taskFlyout in app.js therefore marks a form as changed on its input and change events, and the form
+        // that "Save" sends, the pickers that save themselves and the searches are told apart by what they are bound to.
+        $flyout = $this->flyout()->call('openTask', $this->task->id)
+            ->assertSeeHtml('x-on:input.capture="track($event)"')
+            ->assertSeeHtml('x-on:change.capture="track($event)"')
+            ->assertSeeHtml('x-on:task-saved.window="forgetEdits()"');
+
+        $html = $flyout->html();
+
+        $this->assertSame(1, substr_count($html, 'data-task-form'));
+        $this->assertStringContainsString('<form wire:submit="save" data-task-form', $html);
+        $this->assertStringContainsString('<form wire:submit="addComment"', $html);
+        $this->assertStringContainsString('wire:model.live="repeatUnit"', $html);
+    }
+
     public function test_opening_and_closing_by_event_and_action(): void
     {
         $other = Task::factory()->for($this->project)->create(['title' => 'Zweite']);

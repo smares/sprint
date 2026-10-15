@@ -104,21 +104,58 @@ class TaskFlyoutWeightTest extends TestCase
         $this->assertCount(1, $page->instance()->blockingOptions);
     }
 
+    /**
+     * What the last request sent as the new choices of the pickers (island fragments), and whether the page was rendered whole.
+     */
+    private function choicesSent(Testable $page): string
+    {
+        return implode('', $page->effects['islandFragments'] ?? []);
+    }
+
     public function test_a_picker_sends_its_list_after_its_trigger_and_only_its_own(): void
     {
         $page = $this->page()->call('loadPicker', 'people');
 
-        $page->assertSee('Mitglied 20 Ypsilon')->assertDontSee('Etikett 5 Zeta')->assertDontSee('Fernes Thema 20 Omega');
+        $choices = $this->choicesSent($page);
+
+        // Only the lists of the picker, not the page: comments, activity and subtasks stay where they are
+        $this->assertArrayNotHasKey('html', $page->effects);
+        $this->assertStringContainsString('Mitglied 20 Ypsilon', $choices);
+        $this->assertStringNotContainsString('Etikett 5 Zeta', $choices);
+        $this->assertStringNotContainsString('Fernes Thema 20 Omega', $choices);
+        $this->assertStringNotContainsString('data-comment-card', $choices);
+        $this->assertSame(2, substr_count($choices, 'ENDFRAGMENT'));
+        $this->assertStringContainsString('name=assignee-choices', $choices);
+        $this->assertStringContainsString('name=collaborator-choices', $choices);
         $this->assertCount(31, $page->instance()->assigneeOptions);
         $this->assertCount(31, $page->instance()->collaboratorOptions);
 
-        $page->call('loadPicker', 'tags')->assertSee('Etikett 5 Zeta')->assertDontSee('Fernes Thema 20 Omega');
+        $tags = $this->choicesSent($page->call('loadPicker', 'tags'));
+        $this->assertStringContainsString('Etikett 5 Zeta', $tags);
+        $this->assertStringNotContainsString('Mitglied 20 Ypsilon', $tags);
         $this->assertCount(8, $page->instance()->tagOptions);
 
-        $page->call('loadPicker', 'parent')->assertSee('Fernes Thema 20 Omega');
+        $parent = $this->choicesSent($page->call('loadPicker', 'parent'));
+        $this->assertStringContainsString('Fernes Thema 20 Omega', $parent);
         $this->assertSame(['people', 'tags', 'parent'], $page->get('loadedPickers'));
         $this->assertCount(40, $page->instance()->parentOptions);
         $this->assertCount(1, $page->instance()->blockerOptions);
+    }
+
+    public function test_the_loaded_choices_stay_when_the_page_is_rendered_whole_again(): void
+    {
+        $page = $this->page()->call('loadPicker', 'people')->call('loadPicker', 'tags');
+
+        $page->call('$refresh')->assertSee('Mitglied 20 Ypsilon')->assertSee('Etikett 5 Zeta')->assertDontSee('Fernes Thema 20 Omega');
+    }
+
+    public function test_pointing_at_a_field_loads_nothing_only_using_it_does(): void
+    {
+        $html = $this->page()->html();
+
+        $this->assertStringContainsString('x-data="lazyPicker(', $html);
+        $this->assertStringContainsString('x-on:pointerdown="load()" x-on:focusin="load()"', $html);
+        $this->assertStringNotContainsString('x-on:pointerenter', $html);
     }
 
     public function test_loading_a_picker_twice_or_an_unknown_one_changes_nothing(): void

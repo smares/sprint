@@ -623,11 +623,36 @@ const registerTaskFlyout = () => {
             })
         },
 
+        // Input and change events of the fields (also of the lists and date pickers of Flux, which send their own; heard
+        // while they go down, as some fields stop them on the way up) mark their form as changed. Livewire's $dirty()
+        // cannot tell: every request, even one that only loads a list, takes along what was typed, and from then on the
+        // server's state counts as the saved one.
+        // Fields that save themselves or search are bound live (wire:model.live): they are no unsaved input. The repeat
+        // unit is live only to show its other fields.
+        track(event) {
+            const form = event.target.closest?.('form')
+            const field = form && boundField(event.target, form)
+
+            if (field && (! field.name.includes('.live') || field.property === 'repeatUnit')) {
+                edited.add(form)
+            }
+        },
+
+        // The task form is saved with its "Save" button (and by nothing else), so it stays changed until then. The
+        // others (a new comment, a new subtask, a comment being edited) hold only what is typed, which is gone once it is sent.
+        forgetEdits() {
+            this.$el.querySelectorAll('form[data-task-form]').forEach((form) => edited.delete(form))
+        },
+
         // Title, description, fields or a comment typed but not saved yet
         hasUnsavedInput() {
-            const task = this.$el.querySelector('dialog [wire\\:id]')
+            return [...this.$el.querySelectorAll('dialog form')].some((form) => {
+                if (! edited.has(form)) {
+                    return false
+                }
 
-            return Boolean(task && window.Livewire.find(task.getAttribute('wire:id'))?.$dirty())
+                return form.hasAttribute('data-task-form') || [...form.querySelectorAll('textarea, input:not([type=file], [type=hidden])')].some((field) => field.value.trim() !== '')
+            })
         },
 
         mayLeave() {
@@ -718,11 +743,11 @@ const registerOpenTask = () => {
     })
 }
 
-// A picker of the task flyout (tasks/⚡show.blade.php) holds only its chosen values until somebody points at it or
-// uses it; then the component sends its list of choices (loadPicker). Pointing is given a short moment so that passing
-// over a field on the way to another does not load anything. Keys that open or move through the list while it is on
-// its way are held back and played when it has arrived, so a fast keyboard user gets the same result as with a list
-// that was there all along.
+// A picker of the task flyout (tasks/⚡show.blade.php) holds only its chosen values until somebody uses it (focus, click
+// or a key); then the component sends its list of choices (loadPicker). Merely pointing at a field loads nothing: the
+// request renders the whole task again (comments and activity included), too much to spend on a mouse that passes by.
+// Keys that open or move through the list while it is on its way are held back and played when it has arrived, so a fast
+// keyboard user gets the same result as with a list that was there all along.
 const registerLazyPicker = () => {
     // The requests for choices, by the element of the component: fields that share their choices (assignee and
     // collaborators) ask once
@@ -730,14 +755,11 @@ const registerLazyPicker = () => {
     const listKeys = ['ArrowDown', 'ArrowUp', 'Enter', ' ']
 
     window.Alpine.data('lazyPicker', (name) => ({
-        timer: null,
         loading: false,
         replaying: false,
         held: [],
 
         load() {
-            clearTimeout(this.timer)
-
             const component = this.$el.closest('[wire\\:id]')
             const asked = requests.get(component) ?? new Map()
 
@@ -779,24 +801,22 @@ const registerLazyPicker = () => {
                     return
                 }
 
-                this.replaying = true
-                event.target.dispatchEvent(new KeyboardEvent('keydown', {
-                    key: event.key, code: event.code, shiftKey: event.shiftKey, bubbles: true, cancelable: true, composed: true,
-                }))
-                this.replaying = false
+                // Space and Enter open a closed list through the click that a button makes of them; a key event sent from
+                // here makes none. Once it is open they pick the active choice, which does listen to the key.
+                if ([' ', 'Enter'].includes(event.key) && ! this.$el.querySelector(':popover-open')) {
+                    event.target.click()
+                } else {
+                    this.replaying = true
+                    event.target.dispatchEvent(new KeyboardEvent('keydown', {
+                        key: event.key, code: event.code, shiftKey: event.shiftKey, bubbles: true, cancelable: true, composed: true,
+                    }))
+                    this.replaying = false
+                }
 
                 window.setTimeout(play, 20)
             }
 
             play()
-        },
-
-        point() {
-            this.timer = setTimeout(() => this.load(), 150)
-        },
-
-        leave() {
-            clearTimeout(this.timer)
         },
     }))
 }

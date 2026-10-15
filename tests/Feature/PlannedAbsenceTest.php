@@ -25,8 +25,8 @@ class PlannedAbsenceTest extends TestCase
         $user = User::factory()->create(['absent_from' => '2026-10-12', 'absent_until' => '2026-10-16']);
 
         $this->assertTrue($user->isAbsent());
-        $this->assertSame('abwesend bis 2026-10-16', $user->absenceNote());
-        $this->assertSame($user->name.' (abwesend bis 2026-10-16)', $user->labelledName());
+        $this->assertSame('abwesend bis 16.10.2026', $user->absenceNote());
+        $this->assertSame($user->name.' (abwesend bis 16.10.2026)', $user->labelledName());
 
         $this->travelTo('2026-10-16 23:00');
         $this->assertTrue($user->fresh()->isAbsent());
@@ -123,15 +123,15 @@ class PlannedAbsenceTest extends TestCase
         $task = Task::factory()->for($project)->create(['assignee_id' => $away->id]);
         $this->actingAs(User::factory()->admin()->create());
 
-        $label = 'Anna Abwesend (abwesend bis 2026-10-16)';
+        $label = 'Anna Abwesend (abwesend bis 16.10.2026)';
 
         $this->get(route('projects.show', $project))->assertSee($label);
         $this->get(route('projects.board', $project))->assertSee($label)->assertSee('data-absent', false);
         $this->get(route('tasks.show', $task))->assertSee($label);
-        $this->get(route('projects.members', $project))->assertSee('Abwesend bis 2026-10-16');
-        $this->get(route('admin.users'))->assertSee('Abwesend bis 2026-10-16');
+        $this->get(route('projects.members', $project))->assertSee('Abwesend bis 16.10.2026');
+        $this->get(route('admin.users'))->assertSee('Abwesend bis 16.10.2026');
 
         Livewire::test('pages::tasks.show', ['task' => $task])
-            ->assertSet('mentionOptions.users', fn (array $users) => collect($users)->firstWhere('name', 'Anna Abwesend')['note'] === 'abwesend bis 2026-10-16');
+            ->assertSet('mentionOptions.users', fn (array $users) => collect($users)->firstWhere('name', 'Anna Abwesend')['note'] === 'abwesend bis 16.10.2026');
     }
 }

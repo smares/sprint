@@ -92,7 +92,7 @@ class TimeDisplayTest extends TestCase
             ->map->isoFormat('L LT');
 
         $this->assertCount(46, $shown->unique(), 'a day of 23 hours, no time twice');
-        $this->assertNotContains('2027-03-28 02:30', $shown->all());
+        $this->assertNotContains('28.03.2027 02:30', $shown->all());
     }
 
     public function test_the_hour_that_winter_time_repeats_shows_twice_and_stays_apart(): void
@@ -102,8 +102,8 @@ class TimeDisplayTest extends TestCase
         $first = $berlin->inTimezone($this->utc('2026-10-25 00:30:00'));
         $second = $berlin->inTimezone($this->utc('2026-10-25 01:30:00'));
 
-        $this->assertSame('2026-10-25 02:30', $first->isoFormat('L LT'));
-        $this->assertSame('2026-10-25 02:30', $second->isoFormat('L LT'));
+        $this->assertSame('25.10.2026 02:30', $first->isoFormat('L LT'));
+        $this->assertSame('25.10.2026 02:30', $second->isoFormat('L LT'));
         $this->assertSame('+02:00', $first->format('P'));
         $this->assertSame('+01:00', $second->format('P'));
         $this->assertSame('CEST', $first->format('T'));
@@ -125,7 +125,7 @@ class TimeDisplayTest extends TestCase
             ->assertSeeHtml('datetime="2026-10-25T02:30:00+01:00"')
             ->assertSeeHtml('datetime="2026-10-25T02:45:00+02:00"')
             ->assertSeeHtml('title="Europe/Berlin"')
-            ->assertSee('2026-10-25 02:45');
+            ->assertSee('25.10.2026 02:45');
     }
 
     public function test_the_history_stays_in_the_order_of_the_moments_not_of_the_clock(): void
@@ -149,7 +149,7 @@ class TimeDisplayTest extends TestCase
 
         $this->actingAs($this->viewer('Pacific/Auckland'));
 
-        $this->taskPage()->assertSee('2026-10-15 12:30')->assertDontSee('2026-10-14 23:30')->assertSeeHtml('title="Pacific/Auckland"');
+        $this->taskPage()->assertSee('15.10.2026 12:30')->assertDontSee('14.10.2026 23:30')->assertSeeHtml('title="Pacific/Auckland"');
     }
 
     public function test_without_a_zone_of_their_own_people_see_the_application_clock_without_a_hint(): void
@@ -157,7 +157,7 @@ class TimeDisplayTest extends TestCase
         $this->commentAt('2026-10-14 23:30:00');
 
         $this->actingAs($this->viewer(null));
-        $page = $this->taskPage()->assertSee('2026-10-14 23:30');
+        $page = $this->taskPage()->assertSee('14.10.2026 23:30');
 
         $this->assertMatchesRegularExpression('/<time datetime="2026-10-14T23:30:00\+00:00"\s*>/', $page->html());
     }
@@ -167,10 +167,10 @@ class TimeDisplayTest extends TestCase
         $this->commentAt('2026-10-14 23:30:00');
 
         $this->actingAs($this->viewer('America/New_York'));
-        $this->taskPage()->assertSee('2026-10-14 19:30');
+        $this->taskPage()->assertSee('14.10.2026 19:30');
 
         $this->actingAs($this->viewer('Asia/Tokyo'));
-        $this->taskPage()->assertSee('2026-10-15 08:30');
+        $this->taskPage()->assertSee('15.10.2026 08:30');
     }
 
     public function test_the_upload_time_of_an_attachment_follows_the_viewer(): void
@@ -179,7 +179,7 @@ class TimeDisplayTest extends TestCase
 
         $this->actingAs($this->viewer('Pacific/Auckland'));
 
-        $this->taskPage()->assertSee('2026-10-15 12:30');
+        $this->taskPage()->assertSee('15.10.2026 12:30');
     }
 
     public function test_a_due_date_never_moves_whatever_zone_the_person_is_in(): void
@@ -191,8 +191,8 @@ class TimeDisplayTest extends TestCase
 
             $this->taskPage()->assertSet('dueDate', '2026-10-20')->assertSet('startDate', '2026-10-19');
             Livewire::test('pages::projects.show', ['project' => $this->project])
-                ->assertSee('2026-10-20')
-                ->assertDontSee('2026-10-21');
+                ->assertSee('20.10.2026')
+                ->assertDontSee('21.10.2026');
         }
 
         $this->assertSame('2026-10-20', $this->task->fresh()->due_date->toDateString());
@@ -205,7 +205,7 @@ class TimeDisplayTest extends TestCase
         $this->actingAs($user);
         session(['auth.password_confirmed_at' => time()]);
 
-        Livewire::test('api-tokens')->assertSee('2099-06-21')->assertDontSee('2099-06-20');
+        Livewire::test('api-tokens')->assertSee('21.06.2099')->assertDontSee('20.06.2099');
     }
 
     public function test_the_day_a_project_was_archived_is_the_day_where_the_person_is(): void
@@ -214,7 +214,7 @@ class TimeDisplayTest extends TestCase
 
         $this->actingAs($this->viewer('Pacific/Auckland'));
 
-        Livewire::test('pages::projects.index')->assertSee('2026-10-15')->assertDontSee('2026-10-14');
+        Livewire::test('pages::projects.index')->assertSee('15.10.2026')->assertDontSee('14.10.2026');
     }
 
     public function test_the_time_until_which_a_password_stays_confirmed_follows_the_person(): void

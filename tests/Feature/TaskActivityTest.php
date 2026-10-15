@@ -71,12 +71,12 @@ class TaskActivityTest extends TestCase
         $sentences = $task->activities()->orderBy('id')->get()->map->sentence()->all();
 
         $this->assertContains('hat die Zuständigkeit von – auf Ben Muster geändert', $sentences);
-        $this->assertContains('hat die Fälligkeit von 2026-12-01 auf 2026-12-24 geändert', $sentences);
+        $this->assertContains('hat die Fälligkeit von 01.12.2026 auf 24.12.2026 geändert', $sentences);
         $this->assertContains('hat den Titel von „Alt“ in „Neu“ geändert', $sentences);
         $this->assertContains('hat die Beschreibung geändert', $sentences);
     }
 
-    public function test_dates_show_as_iso_dates_in_every_language_also_in_older_entries(): void
+    public function test_dates_read_in_the_format_of_the_language_also_in_older_entries(): void
     {
         $task = Task::factory()->create();
         $old = TaskActivity::factory()->for($task)->create(['type' => 'due_date_changed', 'data' => ['from' => '01.12.2026', 'to' => '12/24/2026']]);
@@ -85,7 +85,12 @@ class TaskActivityTest extends TestCase
         $this->assertSame('changed the due date from 2026-12-01 to 2026-12-24', $old->sentence());
 
         $task->update(['due_date' => '2027-01-05']);
-        $this->assertStringContainsString('to 2027-01-05', $task->activities()->latest('id')->first()->sentence());
+        $latest = $task->activities()->latest('id')->first();
+        $this->assertStringContainsString('to 2027-01-05', $latest->sentence());
+
+        app()->setLocale('de');
+        $this->assertSame('hat die Fälligkeit von 01.12.2026 auf 24.12.2026 geändert', $old->sentence());
+        $this->assertStringContainsString('auf 05.01.2027', $latest->sentence());
     }
 
     public function test_unchanged_saves_record_nothing(): void

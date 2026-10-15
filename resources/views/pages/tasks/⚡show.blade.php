@@ -1173,9 +1173,16 @@ new class extends Component
             </x-task-field>
 
             <x-task-field :label="__('Dates')" icon="calendar">
-                <div class="grid gap-2 sm:grid-cols-2">
-                    <flux:date-picker size="sm" wire:model="startDate" :aria-label="__('Starts on')" :placeholder="__('Starts on')" locale="{{ app()->getLocale() }}" clearable />
-                    <flux:date-picker size="sm" wire:model="dueDate" :aria-label="__('Due on')" :placeholder="__('Due on')" locale="{{ app()->getLocale() }}" clearable />
+                {{-- The words below a field ("Tomorrow") follow the date as soon as it is picked, saved or not; they come from DateService. --}}
+                <div class="grid gap-2 sm:grid-cols-2" x-data="{ words: @js(\App\Services\DateService::relativeLabelsByDate(auth()->user())) }">
+                    <div>
+                        <flux:date-picker size="sm" wire:model="startDate" :aria-label="__('Starts on')" :placeholder="__('Starts on')" locale="{{ app()->getLocale() }}" clearable />
+                        <flux:text size="sm" class="mt-1" x-cloak x-show="words[$wire.startDate]" x-text="words[$wire.startDate]" />
+                    </div>
+                    <div>
+                        <flux:date-picker size="sm" wire:model="dueDate" :aria-label="__('Due on')" :placeholder="__('Due on')" locale="{{ app()->getLocale() }}" clearable />
+                        <flux:text size="sm" class="mt-1" x-cloak x-show="words[$wire.dueDate]" x-text="words[$wire.dueDate]" />
+                    </div>
                 </div>
             </x-task-field>
 

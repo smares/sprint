@@ -95,7 +95,7 @@ class DueReminderTest extends TestCase
         $this->assertSame(1, $this->anna->notifications()->count());
         $this->actingAs($this->anna)->get(route('inbox'))->assertOk()
             ->assertSee('Angebot schicken')
-            ->assertSee('Morgen fällig (2026-10-09)');
+            ->assertSee('Morgen fällig (09.10.2026)');
     }
 
     public function test_it_runs_every_morning(): void

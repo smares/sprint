@@ -4,6 +4,11 @@
     $fieldValue = $task->fieldValues->firstWhere('custom_field_id', $field->id);
     $option = $fieldValue?->option_id ? $field->options->firstWhere('id', $fieldValue->option_id) : null;
     $text = $field->text($fieldValue?->value);
+
+    // A date is stored as YYYY-MM-DD and reads in the format of the language.
+    if ($text !== null && $field->type === \App\Enums\CustomFieldType::Date) {
+        $text = \App\Services\DateService::parseIsoDate($text)?->isoFormat('L') ?? $text;
+    }
 @endphp
 
 @if ($option)

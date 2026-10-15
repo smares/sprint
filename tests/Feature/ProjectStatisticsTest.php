@@ -64,7 +64,7 @@ class ProjectStatisticsTest extends TestCase
         $this->assertSame(['KW 39', 'KW 40', 'Diese Woche'], array_column($flow, 'week'));
         $this->assertSame([0, 2, 1], array_column($flow, 'created'));
         $this->assertSame([0, 0, 1], array_column($flow, 'completed'));
-        $this->assertSame('2026-09-28 – 2026-10-04', $flow[1]['range']);
+        $this->assertSame('28.09.2026 – 04.10.2026', $flow[1]['range']);
     }
 
     public function test_stuck_tasks_are_the_open_ones_longest_in_their_status_outside_the_backlog(): void

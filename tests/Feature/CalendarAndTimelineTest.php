@@ -36,7 +36,7 @@ class CalendarAndTimelineTest extends TestCase
 
         // The whole cell and a plus button for the keyboard both open the dialog with the day as the due date
         $calendar->assertSeeHtml("\$wire.\$dispatch('new-task', { dueDate: '2026-10-15' })")
-            ->assertSeeHtml('aria-label="Neue Aufgabe am 2026-10-15"')
+            ->assertSeeHtml('aria-label="Neue Aufgabe am 15.10.2026"')
             ->assertSeeHtml("{ dueDate: '2026-10-31' }");
 
         $viewer = User::factory()->create();
@@ -70,7 +70,7 @@ class CalendarAndTimelineTest extends TestCase
             ->assertHasNoErrors();
 
         $this->assertSame('2026-10-10', $task->fresh()->start_date->toDateString());
-        $this->assertContains('hat den Beginn von – auf 2026-10-10 geändert', $task->activities()->get()->map->sentence()->all());
+        $this->assertContains('hat den Beginn von – auf 10.10.2026 geändert', $task->activities()->get()->map->sentence()->all());
     }
 
     public function test_start_date_must_not_be_after_the_due_date(): void
@@ -249,7 +249,7 @@ class CalendarAndTimelineTest extends TestCase
         Task::factory()->for($this->project)->create(['title' => 'Irgendwann']);
 
         $this->get(route('projects.calendar', $this->project))->assertOk()
-            ->assertSeeInOrder(['Di, 2026-10-20', 'Termin'])
+            ->assertSeeInOrder(['Di, 20.10.2026', 'Termin'])
             ->assertSee('In der Liste zeigen')
             ->assertSee(route('projects.show', [$this->project, 'dates' => 'none', 'status' => 'all']));
     }

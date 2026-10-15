@@ -55,7 +55,7 @@ class AppServiceProvider extends ServiceProvider
             TrustProxies::at($proxies === '*' ? '*' : array_map(trim(...), explode(',', (string) $proxies)));
         }
 
-        LocaleService::useIsoDateFormats();
+        LocaleService::useDateFormats();
 
         Gate::define('administer', fn (User $user) => $user->is_admin);
 

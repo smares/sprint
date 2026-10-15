@@ -75,7 +75,7 @@ class AppearanceTest extends TestCase
             ->assertSee('25 %')
             ->assertSee('aria-valuenow="25"', false)
             ->assertSee('Bea Mitglied')
-            ->assertSee('2026-10-15')
+            ->assertSee('15.10.2026')
             ->assertSee('data-project-icon', false);
     }
 

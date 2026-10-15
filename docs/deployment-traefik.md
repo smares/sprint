@@ -28,7 +28,7 @@ Dazu eine `.env` im selben Ordner:
 
 ```ini
 SPRINT_HOST=sprint.example.com       # Adresse, unter der Sprint erreichbar sein soll
-SPRINT_VERSION=0.1.0                  # oder latest
+SPRINT_VERSION=1.5.1                  # aktuelle Version siehe Releases, oder latest
 
 APP_ENV=production
 APP_DEBUG=false

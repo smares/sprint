@@ -10,6 +10,7 @@
         :dismissible="false"
         :escapable="false"
         wire:close="closeTask"
+        data-task-flyout
         x-data="taskFlyout({{ \Illuminate\Support\Js::from(__('Discard your unsaved changes to this task?')) }}, {{ \Illuminate\Support\Js::from($task->title) }})"
         x-on:keydown.window.capture="onKeydown($event)"
         x-on:click="onClick($event)"

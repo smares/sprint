@@ -4,7 +4,7 @@ Updates, Gesundheitsprüfung und Backups.
 
 ## Updates
 
-- Nach jedem Update: `composer install --no-dev --optimize-autoloader`, `php artisan migrate --force`, `npm ci --ignore-scripts && npm run build`
+- Nach jedem Update: `composer install --no-dev --optimize-autoloader`, `php artisan migrate --force`, `npm ci --ignore-scripts && npm run build`, `php artisan optimize` und `php artisan queue:restart` (mit Reverb auch `php artisan reverb:restart`)
 - Vor Migrationen, die bestehende Daten umbauen, ein Datenbank-Backup ziehen
 
 ## Gesundheitsprüfung
@@ -45,16 +45,32 @@ Ein Backup zählt erst, wenn die Wiederherstellung einmal ausprobiert wurde.
 
 ### Wiederherstellen
 
-Auf einem frischen oder vorbereiteten System Anwendung und Abhängigkeiten installieren (siehe [Installation](installation.md)) und `.env` zurückspielen. Dann bei angehaltenem Queue-Worker:
+Auf einem frischen oder vorbereiteten System Anwendung und Abhängigkeiten installieren (siehe [Installation](installation.md)) und `.env` zurückspielen. Dann Webserver, Queue-Worker und Scheduler anhalten (nichts darf die Datenbank offen haben) und die alten `-wal`- und `-shm`-Dateien entfernen, sonst spielt SQLite sie in die zurückgespielte Datei ein (die Datenbank läuft im WAL-Modus):
 
 ```bash
 unzip sprint-2026-10-08-023000.zip -d /tmp/restore
+rm -f database/database.sqlite-wal database/database.sqlite-shm
 cp /tmp/restore/database.sqlite database/database.sqlite      # bzw. an den Pfad aus DB_DATABASE
 cp -r /tmp/restore/attachments/. storage/app/private/
 php artisan migrate --force        # falls das Backup von einer älteren Version stammt
 php artisan search:rebuild
-php artisan queue:restart
-php artisan sprint:health
 ```
+
+Danach Webserver, Queue-Worker und Scheduler wieder starten und mit `php artisan sprint:health` prüfen.
+
+Mit **Docker Compose** liegen Datenbank und Anhänge im Volume `storage`. Die Dateien aus der ZIP (hier auf dem Host in `./restore`) kopierst du mit einem einmaligen Container hinein, der als dieselbe Person läuft wie die Anwendung, damit die Besitzrechte stimmen:
+
+```bash
+unzip sprint-2026-10-08-023000.zip -d restore
+docker compose stop
+docker compose run --rm --no-deps -v "$PWD/restore:/restore:ro" --entrypoint sh sprint -c '
+  rm -f storage/database/database.sqlite-wal storage/database/database.sqlite-shm &&
+  cp /restore/database.sqlite storage/database/database.sqlite &&
+  { [ ! -d /restore/attachments ] || cp -r /restore/attachments/. storage/app/private/; }'
+docker compose up -d
+docker compose exec sprint php artisan search:rebuild
+```
+
+Der Container migriert beim Start selbst. Wie bei jeder Wiederherstellung gilt: erst ein Probelauf auf einem zweiten System, nicht erst im Ernstfall.
 
 Bei MySQL/PostgreSQL spielst du stattdessen den Dump ein (`mysql sprint < sprint.sql` bzw. `pg_restore -d sprint sprint.dump`).

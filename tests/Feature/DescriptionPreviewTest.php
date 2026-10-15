@@ -33,6 +33,18 @@ class DescriptionPreviewTest extends TestCase
         $component->assertSeeHtml("tab: 'preview'");
     }
 
+    public function test_the_toolbar_lists_preview_before_edit_in_the_order_of_the_screen_and_is_hidden_until_alpine_runs(): void
+    {
+        $this->task->update(['description' => 'Text']);
+
+        $html = Livewire::test('pages::tasks.show', ['task' => $this->task])->html();
+
+        // Preview comes first (it is what is shown), then Edit; the field stays out of sight until Alpine has decided
+        $this->assertLessThan(strpos($html, '>Bearbeiten<'), strpos($html, '>Vorschau<'));
+        $this->assertStringContainsString("aria-pressed=\"tab === 'preview'\"", $html);
+        $this->assertMatchesRegularExpression('/x-show="tab === \'write\'"\s+x-cloak/', $html);
+    }
+
     public function test_a_task_without_a_description_opens_the_field(): void
     {
         $this->task->update(['description' => null]);

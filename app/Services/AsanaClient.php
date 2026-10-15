@@ -87,11 +87,16 @@ class AsanaClient
         }
 
         try {
-            return $this->send($url, [], authorized: false, sink: $path)->successful();
+            $response = $this->send($url, [], authorized: false, sink: $path);
         } catch (Throwable) {
             // The message of a failed connection names the whole address, including its signature
             throw new AsanaException('the download failed');
         }
+
+        // The status says why (403 or 404 once the address has expired), without the address itself
+        throw_unless($response->successful(), AsanaException::class, 'the download answered with HTTP '.$response->status(), $response->status());
+
+        return true;
     }
 
     /**

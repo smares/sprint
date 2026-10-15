@@ -671,4 +671,27 @@ class AsanaImportTest extends TestCase
 
         $this->assertGuest();
     }
+
+    public function test_a_refused_download_says_why_without_its_address(): void
+    {
+        Http::fake(['download.example.com/*' => Http::response('expired', 403)]);
+
+        try {
+            (new AsanaClient('t'))->download('https://download.example.com/plan.pdf?X-Amz-Signature=geheim', sys_get_temp_dir().'/asana-never');
+            $this->fail('The download should have failed.');
+        } catch (AsanaException $exception) {
+            $this->assertSame('the download answered with HTTP 403', $exception->getMessage());
+        }
+    }
+
+    public function test_options_are_checked_before_anything_is_read_from_asana(): void
+    {
+        $this->serveAsana();
+
+        $this->artisan('asana:import', ['projects' => ['100'], '--token' => 'secret-token', '--sections' => 'nonsense'])
+            ->expectsOutputToContain('--sections is status or headings.')
+            ->assertFailed();
+
+        Http::assertNothingSent();
+    }
 }

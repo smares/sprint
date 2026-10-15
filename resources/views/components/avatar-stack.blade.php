@@ -13,7 +13,7 @@
 @if ($people->isNotEmpty())
     <flux:avatar.group {{ $attributes }}>
         @if ($unassigned)
-            <x-unassigned-avatar class="relative ring-2 ring-white dark:ring-zinc-800" :style="'z-index: '.($shown->count() + 2)" />
+            <x-unassigned-avatar class="relative ring-2 ring-white dark:ring-zinc-900" :style="'z-index: '.($shown->count() + 2)" />
         @endif
         @foreach ($shown as $person)
             <x-user-avatar size="xs" :user="$person" :tooltip="$person->labelledName()" class="relative" :style="'z-index: '.($shown->count() + 1 - $loop->index)" />

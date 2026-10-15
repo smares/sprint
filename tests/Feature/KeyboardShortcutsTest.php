@@ -100,4 +100,11 @@ class KeyboardShortcutsTest extends TestCase
 
         $this->assertNull($this->task->fresh()->assignee_id);
     }
+
+    public function test_the_open_flyout_carries_the_hook_that_j_and_k_use_to_ask_about_unsaved_input(): void
+    {
+        $this->get(route('projects.show', ['project' => $this->project, 'task' => $this->task->id]))
+            ->assertOk()
+            ->assertSee('data-task-flyout', false);
+    }
 }

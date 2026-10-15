@@ -11,7 +11,7 @@ Er liest nur aus Asana und verändert dort nichts. Er läuft auf dem Server von 
 1. **Zugang in Asana:** unter *Profil → Einstellungen → Apps → Entwicklerkonsole* ein **persönliches Zugriffstoken** erzeugen. Es sieht, was die Person in Asana sieht. Am besten nimmt man ein Konto, das alle zu übernehmenden Projekte sehen darf.
 2. **Token hinterlegen**, ohne dass es in der Shell-Historie landet: als `ASANA_TOKEN` in der `.env` (danach wieder entfernen) oder den Befehl interaktiv starten, dann fragt er danach. `--token=…` geht auch, ist aber die unsicherste Variante. Das Token gehört wie ein Passwort behandelt; es wird weder ausgegeben noch gespeichert.
 3. **Personen in Sprint anlegen**, mit denselben E-Mail-Adressen wie in Asana (`php artisan user:create "Anna Beispiel" anna@firma.de`, siehe [Installation](installation.md)). Liefert Asana für eine Person gar keine Adresse, wird nach dem Namen gesucht, sofern er eindeutig ist; hat sie eine Adresse, die hier niemandem gehört, gilt sie als jemand ohne Konto (ein gleichnamiges Konto mit anderer Adresse ist eine andere Person). Wer fehlt, steht im Bericht; mit `--create-users` legt der Import die Konten selbst an, und zwar **deaktiviert** und **ohne Willkommens-Mail**. Die E-Mail-Adresse aus Asana bekommen sie trotzdem (ohne Adresse, oder wenn sie hier schon vergeben ist, entsteht kein Konto und der Bericht nennt die Person), das Passwort ist zufällig und unbekannt. Zuweisungen, Mitgliedschaften und Erwähnungen stimmen dann schon, die Personen werden mit „(deaktiviert)“ gekennzeichnet und bekommen keine Mails. Wer sich anmelden soll, wird von einer Administratorin unter *Personen* wieder aktiviert (oder per `php artisan user:deactivate name@firma.de --reactivate`) und fordert über „Passwort vergessen“ ein Passwort an, die Mail geht an die Adresse aus Asana. Die Willkommens-Mail kommt beim Aktivieren nicht von allein.
-4. **Projekte finden:** `php artisan asana:import --list` zeigt Workspaces und Projekte samt Asana-ID (die Zahl in der Adresse des Projekts).
+4. **Projekte finden:** `php artisan asana:import --list` zeigt Workspaces und Projekte samt Asana-ID (die Zahl in der Adresse des Projekts). Archivierte Projekte stehen dort nicht; die übernimmst du mit ihrer ID.
 
 ## Ablauf
 
@@ -44,7 +44,7 @@ docker compose exec sprint php artisan asana:import 1200000000000001 12000000000
 docker compose exec sprint php artisan asana:import 1200000000000001 1200000000000002 --create-users
 ```
 
-- **Token:** Am einfachsten lässt man den Befehl danach fragen. Wer es mitgeben will, ohne dass es in der Shell-Historie steht: `read -rs ASANA_TOKEN && export ASANA_TOKEN`, dann `docker compose exec -e ASANA_TOKEN sprint php artisan asana:import …` (ohne `=Wert`, der Wert kommt aus der Umgebung der Shell). Ein Eintrag in der `.env` wirkt erst nach einem Neustart des Containers, weil der die Konfiguration beim Start zwischenspeichert.
+- **Token:** Am einfachsten lässt man den Befehl danach fragen. Wer es mitgeben will, ohne dass es in der Shell-Historie steht: `read -rs ASANA_TOKEN && export ASANA_TOKEN`, dann `docker compose exec -e ASANA_TOKEN sprint php artisan asana:import …` (ohne `=Wert`, der Wert kommt aus der Umgebung der Shell). Ein Eintrag in der `.env` wirkt erst, wenn der Container neu erstellt wird (`docker compose up -d`; ein `docker compose restart` liest die `.env` nicht neu), weil er die Konfiguration beim Start zwischenspeichert.
 - **Daten:** Aufgaben landen in der Datenbank im Volume `storage`, Anhänge unter `storage/app/private`; beides bleibt über Updates erhalten. Die Tabelle für die Zuordnung (`asana_imports`) legt die Migration an, die der Container beim Start ausführt.
 - **Lange Läufe:** Ein Projekt mit Hunderten Aufgaben braucht eine Weile (Asana begrenzt die Anfragen). Bei einer SSH-Verbindung also in `tmux` oder `screen` starten. Bricht ein Lauf ab, einfach neu starten: Was fertig ist, wird übersprungen. Konnten Dateien nicht geladen werden, meldet der Befehl am Ende einen Fehler (Exit-Code 1), damit ein Skript es merkt; ein zweiter Lauf holt genau diese Dateien nach. Das Lesen aus Asana beginnt nach einem Abbruch von vorn, nur das Schreiben macht dort weiter, wo es war.
 
@@ -65,17 +65,17 @@ Der Probelauf stellt alle Anfragen an Asana, schreibt aber nichts. Er zeigt, wie
 | `--create-users` | Personen ohne Konto deaktiviert und ohne Willkommens-Mail anlegen (mit ihrer Adresse aus Asana); später aktivierbar |
 | `--ignore-missing-users` | trotz fehlender Konten weitermachen, deren Zuständigkeiten entfallen |
 | `--skip-followers` | Follower nicht als Beteiligte übernehmen |
-| `--as=anna@firma.de` | wer als importierende Person eingetragen wird (Standard: der erste Administrator); in einem neuen Projekt wird sie dessen Administratorin, in ein bestehendes (`GID=ID`) kommt sie ohne Rolle nur als Bearbeiterin hinein, eine vorhandene Rolle bleibt |
+| `--as=anna@firma.de` | wer als importierende Person eingetragen wird (Standard: der erste Administrator); in einem neuen Projekt bekommt sie die Rolle *Verwalten*, in ein bestehendes (`GID=ID`) kommt sie ohne Rolle mit *Bearbeiten* hinein, eine vorhandene Rolle bleibt |
 | `GID=ID` statt `GID` | in das bestehende Sprint-Projekt mit dieser ID importieren, statt ein neues anzulegen |
 
 ## Was wie übernommen wird
 
 | Asana | Sprint |
 | --- | --- |
-| Projekt (Name, Notizen, Farbe, archiviert) | Projekt; die importierende Person wird Verwalter. Archivierte Projekte werden archiviert angelegt |
-| Mitglieder des Projekts | Mitglieder mit der Rolle *Bearbeiten*, der Besitzer mit *Verwalten* |
+| Projekt (Name, Notizen, Farbe, archiviert) | Projekt; die importierende Person bekommt die Rolle *Verwalten*. Archivierte Projekte werden archiviert angelegt |
+| Mitglieder des Projekts | Mitglieder mit der Rolle *Bearbeiten*, der Besitzer mit *Verwalten*; wer eine Aufgabe zugewiesen bekommt, kommt mit *Bearbeiten* dazu |
 | Abschnitt | Status (oder Überschrift, siehe oben). „Untitled section“ bleibt der erste Standard-Status. Abschnitte, die so heißen wie ein vorhandener Status, nutzen diesen. Neue Status stehen vor den erledigten |
-| Aufgabe | Aufgabe in der Reihenfolge von Asana, auch Unteraufgaben in beliebiger Tiefe |
+| Aufgabe | Aufgabe in der Reihenfolge von Asana, auch Unteraufgaben in beliebiger Tiefe; Titel über 255 Zeichen werden gekürzt |
 | Erledigt | der erledigte Status samt Erledigt-Datum (die Spalte, in der die Aufgabe stand, geht dabei verloren) |
 | Status einer Unteraufgabe | Asana kennt für Unteraufgaben nur offen oder erledigt, Spalten haben sie nicht (sie stehen nur bei ihrer Aufgabe). Eine offene Unteraufgabe bekommt in Sprint den Status ihrer Aufgabe, außer der ist ein erledigter Status: Dann bleibt sie im ersten Status, damit offene Arbeit nicht als fertig zählt. Eine erledigte kommt in den erledigten Status |
 | Beschreibung, Kommentare | Markdown: Fett, Kursiv, Durchgestrichen, Code, Listen, Überschriften, Zitate und Links bleiben erhalten; Bilder in der Beschreibung nicht (sie kommen, soweit Asana sie als Anhang führt, als Anhang). Was in Asana als Text getippt wurde, bleibt Text: `*Hinweis*`, `# kein Titel` oder `<div>` werden nicht zu Formatierung bzw. verschluckt. Texte über 65.000 Zeichen (die Grenze der Eingabefelder) werden gekürzt, der Bericht nennt, wie viele |
@@ -83,7 +83,7 @@ Der Probelauf stellt alle Anfragen an Asana, schreibt aber nichts. Er zeigt, wie
 | Follower | Beteiligte, aber nur, wenn die Person Mitglied des Projekts ist (sonst gäbe es keine Rechte dafür) |
 | Start und Fällig | Start- und Fälligkeitsdatum; ein Zeitpunkt wird in der Zeitzone der Anwendung zum Datum |
 | Tags | Tags des Projekts, nach Namen; ein Meilenstein bekommt zusätzlich den Tag „Meilenstein“ |
-| Eigene Felder | Auswahl → Auswahlfeld (mit seinen Optionen), Zahl, Datum, Text; Mehrfachauswahl und Personen werden Textfelder mit den Werten durch Komma getrennt; Formeln und Verweise entfallen. Ein Feld, das in Sprint schon so heißt (z. B. *Priorität*), wird benutzt |
+| Eigene Felder | Auswahl → Auswahlfeld (mit seinen Optionen), Zahl, Datum, Text; Mehrfachauswahl und Personen werden Textfelder mit den Werten durch Komma getrennt; Formeln und Verweise entfallen. Ein Feld, das in Sprint schon so heißt (z. B. *Priorität*), wird benutzt; Textwerte werden auf 500 Zeichen gekürzt (die Grenze der Textfelder) |
 | Abhängigkeiten („blockiert von“) | Abhängigkeiten zwischen den übernommenen Aufgaben, auch über Projekte hinweg; auf nicht übernommene Aufgaben verweisende entfallen mit einem Hinweis |
 | Links auf andere Aufgaben in Texten | Erwähnungen der übernommenen Aufgaben (`@[Titel](task:…)`); @-Erwähnungen von Personen werden Erwähnungen, ohne Konto bleibt der Name |
 | Kommentare | Kommentare mit Verfasser:in und Zeitpunkt. Stammt ein Kommentar von jemandem ohne Konto, steht „Von Name in Asana“ am Anfang und die importierende Person ist die Verfasser:in |

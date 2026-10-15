@@ -37,7 +37,7 @@ Was live ist:
 - **Liste, Board, Kalender, Zeitleiste und Statistik** eines Projekts laden neu, sobald eine Aufgabe, ein Kommentar oder ein Anhang im Projekt geändert wird (bei Massenaktionen und CSV-Import eine einzige Meldung statt einer je Aufgabe)
 - **Aufgabenseite:** neue Kommentare, Anhänge und Unteraufgaben erscheinen sofort; speichert jemand anderes die Aufgabe, erscheint ein Hinweis mit „Neu laden“, ohne dass deine ungespeicherten Eingaben überschrieben werden
 - **Wer ist gerade da:** Avatare im Projekt-Kopf und ein Hinweis an der Aufgabe („Anna sieht sich diese Aufgabe auch gerade an“)
-- **Posteingang:** die Glocke zählt sofort hoch und zeigt eine Meldung
+- **Posteingang:** der Zähler am Posteingang in der Seitenleiste zählt sofort hoch und zeigt eine Meldung
 
 Über den Socket gehen nur Kennungen (Projekt, Aufgabe, Art der Änderung), nie Inhalte; die Seiten holen sich die Daten selbst, mit den Rechten der jeweiligen Person. Wer ein Projekt nicht sehen darf, kann seinen Kanal nicht abonnieren.
 

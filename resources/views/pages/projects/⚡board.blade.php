@@ -47,6 +47,7 @@ new class extends Component
         // One query for all columns: number the tasks within each status and keep the first n per column.
         $ranked = $this->project->tasks()
             ->topLevel()
+            ->withoutSections()
             ->select('tasks.*')
             ->selectRaw('row_number() over (partition by status_id order by position, id) as column_rank');
 
@@ -77,7 +78,7 @@ new class extends Component
     #[Computed]
     public function columnTotals(): array
     {
-        $counts = $this->project->tasks()->topLevel()->selectRaw('status_id, count(*) as total')->groupBy('status_id')->pluck('total', 'status_id');
+        $counts = $this->project->tasks()->topLevel()->withoutSections()->selectRaw('status_id, count(*) as total')->groupBy('status_id')->pluck('total', 'status_id');
 
         return $this->statuses->mapWithKeys(fn (TaskStatus $status) => [$status->id => (int) ($counts[$status->id] ?? 0)])->all();
     }
@@ -86,6 +87,7 @@ new class extends Component
     {
         return $this->project->tasks()
             ->topLevel()
+            ->withoutSections()
             ->where('status_id', $statusId)
             ->orderBy('position')
             ->orderBy('id');

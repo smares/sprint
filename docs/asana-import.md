@@ -61,7 +61,7 @@ Der Probelauf stellt alle Anfragen an Asana, schreibt aber nichts. Er zeigt, wie
 | `--dry-run` | nur lesen und berichten |
 | `--list` | Workspaces und Projekte des Tokens anzeigen |
 | `--sections=status` (Standard) | Asana-Abschnitte werden **Status** des Projekts (Board-Spalten) |
-| `--sections=headings` | Abschnitte werden **Überschriften** in der Liste, die Status bleiben Standard |
+| `--sections=headings` | Abschnitte werden **Überschriften** in der Liste, die Status bleiben Standard. Die Überschriften stehen in der Liste ohne Filter und Sortierung; Board und Zählungen übergehen sie |
 | `--create-users` | Personen ohne Konto deaktiviert und ohne Willkommens-Mail anlegen (mit ihrer Adresse aus Asana); später aktivierbar |
 | `--ignore-missing-users` | trotz fehlender Konten weitermachen, deren Zuständigkeiten entfallen |
 | `--skip-followers` | Follower nicht als Beteiligte übernehmen |

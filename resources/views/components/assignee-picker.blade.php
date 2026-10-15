@@ -18,6 +18,7 @@
         type="button"
         class="touch-target -m-1 flex cursor-pointer items-center rounded-full p-1 hover:bg-zinc-100 dark:hover:bg-white/10"
         aria-haspopup="menu"
+        aria-expanded="false"
         aria-label="{{ __('Change assignee') }}{{ $names !== '' ? ': '.$names : '' }}"
         x-on:click.stop="$dispatch('open-assignee-menu', { task: {{ $task->id }}, assignee: {{ $task->assignee_id ?? 'null' }}, anchor: $el })"
     >

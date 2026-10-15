@@ -19,7 +19,7 @@
         x-on:click.outside="close()"
         x-on:keydown.arrow-down.prevent="move(1)"
         x-on:keydown.arrow-up.prevent="move(-1)"
-        x-on:keydown.tab="close()"
+        x-on:keydown.tab="close(true)"
         role="menu"
         aria-label="{{ __('Change assignee') }}"
         class="z-50 max-h-80 w-64 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-lg border border-zinc-200 bg-white p-1 shadow-lg dark:border-zinc-600 dark:bg-zinc-700"

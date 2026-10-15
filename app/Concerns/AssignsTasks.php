@@ -4,6 +4,7 @@ namespace App\Concerns;
 
 use App\Models\Project;
 use App\Models\User;
+use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
@@ -37,7 +38,12 @@ trait AssignsTasks
 
         $user = $userId === null ? null : $this->assignableUsers->firstWhere('id', $userId);
 
-        abort_unless($userId === null || $user instanceof User, 422);
+        // The menu keeps the people it was opened with, so someone removed from the project meanwhile can still be picked
+        if ($userId !== null && ! $user instanceof User) {
+            Flux::toast(variant: 'warning', text: __('This person can no longer be assigned to tasks of this project.'));
+
+            return;
+        }
 
         $task->assignTo($user);
 

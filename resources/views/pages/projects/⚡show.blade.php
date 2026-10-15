@@ -100,6 +100,7 @@ new class extends Component
     {
         return $this->project->tasks()
             ->topLevel()
+            ->unless($this->showsHeadings(), fn ($q) => $q->withoutSections())
             ->when($this->statusFilter === 'open', fn ($q) => $q->open())
             ->when(ctype_digit($this->statusFilter), fn ($q) => $q->where('status_id', (int) $this->statusFilter))
             ->when($this->assigneeFilter === 'me', fn ($q) => $q->where('assignee_id', auth()->id()))
@@ -110,6 +111,15 @@ new class extends Component
             ->when($this->dateFilter === 'overdue', fn ($q) => $q->overdue())
             ->when($this->dateFilter === 'soon', fn ($q) => $q->dueSoon())
             ->tap(fn ($q) => $this->applyFieldFilters($q));
+    }
+
+    /**
+     * Headings (imported with `--sections=headings`) stand among the tasks in the plain list. A filter or a sort order
+     * would only scatter them, as they have no status, person or date of their own, so those views leave them out.
+     */
+    protected function showsHeadings(): bool
+    {
+        return $this->sortBy === '' && $this->activeFilters->isEmpty() && in_array($this->statusFilter, ['open', 'all'], true);
     }
 
     /**
@@ -703,7 +713,17 @@ new class extends Component
                     @endforeach
                 </flux:table.columns>
                 <flux:table.rows :wire:sort="$sortBy === '' && $this->canEdit && ! $selecting ? 'moveTask' : null" wire:sort:config="{{ \App\Sortable::CONFIG }}">
+                    @php($number = 0)
                     @foreach ($this->tasks as $task)
+                        @if ($task->is_section)
+                            <flux:table.row wire:key="task-{{ $task->id }}" :wire:sort:item="$sortBy === '' && $this->canEdit && ! $selecting ? $task->id : null">
+                                <flux:table.cell colspan="{{ $this::FIXED_COLUMNS + $this->listFields->count() }}" class="bg-zinc-50 dark:bg-zinc-900/40">
+                                    <flux:heading size="sm">{{ $task->title }}</flux:heading>
+                                </flux:table.cell>
+                            </flux:table.row>
+                            @continue
+                        @endif
+                        @php($number++)
                         <flux:table.row wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" class="cursor-pointer" :wire:sort:item="$sortBy === '' && $this->canEdit && ! $selecting ? $task->id : null">
                             <flux:table.cell :class="$pinnedDone">
                                 <div class="flex items-center gap-3">
@@ -725,7 +745,7 @@ new class extends Component
                                 </div>
                             </flux:table.cell>
                             <flux:table.cell :class="'min-w-56 whitespace-normal max-sm:min-w-[45vw] '.$pinnedTitle">
-                                <x-task-title-line :task="$task" :open="(string) $task->id === $openTaskId" :progress="$this->progress[$task->id] ?? null" :number="$loop->iteration" />
+                                <x-task-title-line :task="$task" :open="(string) $task->id === $openTaskId" :progress="$this->progress[$task->id] ?? null" :number="$number" />
                             </flux:table.cell>
                             <flux:table.cell>
                                 <x-status-badge :status="$task->status" />

@@ -149,6 +149,9 @@ class AsanaImportService
     /** @var array<string, true> Asana ids of the tasks this run created. */
     private array $created = [];
 
+    /** @var array<string, true> Asana ids of the sections whose heading this run made. */
+    private array $headingsMade = [];
+
     public function __construct(private readonly AsanaClient $asana)
     {
         $this->text = new AsanaTextService;
@@ -193,6 +196,7 @@ class AsanaImportService
         $this->progress = $progress;
         $this->written = 0;
         $this->created = [];
+        $this->headingsMade = [];
         $this->startedWriting = false;
         $this->importer = $importer;
         $this->loadMap();
@@ -460,7 +464,7 @@ class AsanaImportService
         $attachments = [];
 
         foreach ($this->asana->paginate('attachments', ['parent' => $taskGid, 'opt_fields' => 'name,host,size,created_at,permanent_url,view_url']) as $attachment) {
-            if (isset($this->map['attachment'][(string) $attachment['gid']])) {
+            if (isset($this->map['attachment'][(string) $attachment['gid']]) || isset($this->map['link'][(string) $attachment['gid']])) {
                 continue;
             }
 
@@ -644,6 +648,7 @@ class AsanaImportService
 
         $this->prepareStatuses($plan, $fresh);
         $this->prepareFields($plan);
+        $this->ensureAssigneesAreMembers($plan['tasks']);
         $this->importTasks($plan, $plan['tasks'], null);
 
         if ($plan['archived'] && $fresh) {
@@ -671,6 +676,25 @@ class AsanaImportService
 
         $this->project->setRole($user, $role);
         $this->memberIds[$user->id] = true;
+    }
+
+    /**
+     * The people who get a task become members before the first task is written, so that a follower who is also the
+     * assignee of a later task follows the earlier ones too (followers are kept for members only).
+     *
+     * @param  list<Node>  $nodes
+     */
+    private function ensureAssigneesAreMembers(array $nodes): void
+    {
+        foreach ($nodes as $node) {
+            $assignee = $node['id'] === null && $node['assignee'] !== null ? $this->user($node['assignee']) : null;
+
+            if ($assignee instanceof User) {
+                $this->ensureMember($assignee, ProjectRole::Editor);
+            }
+
+            $this->ensureAssigneesAreMembers($node['subtasks']);
+        }
     }
 
     // Sections become statuses (the default) or headings in the list
@@ -878,6 +902,10 @@ class AsanaImportService
 
             $task = $node['id'] !== null ? Task::find($node['id']) : $this->createTask($node, $parent);
 
+            if ($node['id'] === null && ! $parent instanceof Task && $this->options['sections'] === 'headings') {
+                $this->placeInSection($task, $node['section']);
+            }
+
             if ($task instanceof Task) {
                 $this->importComments($task, $node);
                 $this->importAttachments($task, $node);
@@ -921,6 +949,41 @@ class AsanaImportService
             'position' => $this->rootPosition++,
         ]);
         $this->remembered('section', $section, $heading->id);
+        $this->headingsMade[$section] = true;
+    }
+
+    /**
+     * A new task of a section that has its heading from an earlier run goes to the end of that section, not of the list.
+     * One without a section goes in front of the first heading. (Sections of this run are written in their order.)
+     */
+    private function placeInSection(Task $task, ?string $section): void
+    {
+        if ($section !== null && isset($this->headingsMade[$section])) {
+            return;
+        }
+
+        $rows = $this->project->tasks()->topLevel()->orderBy('position')->orderBy('id')->get(['id', 'position', 'is_section']);
+        $positions = $rows->pluck('position', 'id')->all();
+        $ids = $rows->pluck('id')->map(fn (mixed $id) => (int) $id)->reject(fn (int $id) => $id === $task->id)->values()->all();
+        $index = array_flip($ids);
+        $headings = $rows->where('is_section', true)->pluck('id')->map(fn (mixed $id) => $index[(int) $id] ?? null)->filter(fn (?int $at) => $at !== null)->sort()->values()->all();
+        $headingId = $section !== null ? ($this->map['section'][$section] ?? null) : null;
+
+        if ($headingId === null) {
+            $at = $headings[0] ?? count($ids);
+        } elseif (isset($index[$headingId])) {
+            $at = collect($headings)->first(fn (int $heading) => $heading > $index[$headingId]) ?? count($ids);
+        } else {
+            return;
+        }
+
+        if ($at >= count($ids)) {
+            return;
+        }
+
+        array_splice($ids, $at, 0, [$task->id]);
+        Task::writePositions($ids, $positions);
+        $this->rootPosition = count($ids);
     }
 
     /**
@@ -962,6 +1025,11 @@ class AsanaImportService
 
             $this->remembered('task', $node['gid'], $task->id);
             $this->created[$node['gid']] = true;
+
+            foreach ($this->linkedAttachments($node) as $attachment) {
+                $this->remembered('link', (string) $attachment['gid'], $task->id);
+            }
+
             $this->projectOfTask[$task->id] = $this->project->id;
             $this->syncTags($task, $node);
             $task->collaborators()->sync($this->followers($node, $assignee));
@@ -981,16 +1049,9 @@ class AsanaImportService
     private function description(array $node): ?string
     {
         $description = $this->text->toMarkdown($node['html'], $node['notes'], fn (string $gid) => $this->mentionText($gid));
-        $links = [];
 
-        foreach ($node['attachments'] as $attachment) {
-            if (! $attachment['stored'] && $attachment['url'] !== null) {
-                $links[] = '- ['.$this->literalName($attachment['name']).']('.strtr($attachment['url'], [' ' => '%20', '(' => '%28', ')' => '%29', '<' => '%3C', '>' => '%3E', "\n" => '', "\r" => '']).')';
-            }
-        }
-
-        if ($links !== []) {
-            $description .= "\n\n---\n\n**".__('Attachments not copied')."**\n\n".implode("\n", $links);
+        if (($links = $this->linkLines($node)) !== []) {
+            $description .= $this->linksBlock($links);
         }
 
         // Without an account the person cannot be assigned, so the description says who it was
@@ -1001,6 +1062,65 @@ class AsanaImportService
         }
 
         return trim($description) === '' ? null : $this->shortened(trim($description), Task::MAX_DESCRIPTION_LENGTH, (string) $node['name']);
+    }
+
+    /**
+     * The attachments that are not copied but only linked: other services, and files over the limit.
+     *
+     * @param  Node  $node
+     * @return list<array<string, mixed>>
+     */
+    private function linkedAttachments(array $node): array
+    {
+        return array_values(array_filter($node['attachments'], fn (array $attachment) => ! $attachment['stored'] && $attachment['url'] !== null));
+    }
+
+    /**
+     * @param  Node  $node
+     * @return list<string>
+     */
+    private function linkLines(array $node): array
+    {
+        return array_map(
+            fn (array $attachment) => '- ['.$this->literalName($attachment['name']).']('.strtr($attachment['url'], [' ' => '%20', '(' => '%28', ')' => '%29', '<' => '%3C', '>' => '%3E', "\n" => '', "\r" => '']).')',
+            $this->linkedAttachments($node),
+        );
+    }
+
+    /**
+     * @param  list<string>  $links
+     */
+    private function linksBlock(array $links): string
+    {
+        return "\n\n---\n\n**".__('Attachments not copied')."**\n\n".implode("\n", $links);
+    }
+
+    /**
+     * A task that exists already gets the links to files that are new in Asana (or were too large before) at the end of its description.
+     *
+     * @param  Node  $node
+     */
+    private function appendLinks(Task $task, array $node): void
+    {
+        // Links of an import before they were remembered are in the description already
+        $links = array_values(array_filter($this->linkLines($node), fn (string $line) => ! str_contains((string) $task->description, $line)));
+
+        if ($links !== []) {
+            $description = $task->description.$this->linksBlock($links);
+
+            if (mb_strlen($description) > Task::MAX_DESCRIPTION_LENGTH) {
+                $this->warn("“{$task->title}”: the links to new files do not fit into the description any more and are left out.");
+
+                return;
+            }
+
+            DB::table('tasks')->where('id', $task->id)->update(['description' => $description]);
+            app(TaskSearchService::class)->index($task->id);
+        }
+
+        foreach ($this->linkedAttachments($node) as $attachment) {
+            $this->remembered('link', (string) $attachment['gid'], $task->id);
+        }
     }
 
     /**
@@ -1168,6 +1288,8 @@ class AsanaImportService
      */
     private function importAttachments(Task $task, array $node): void
     {
+        $stored = 0;
+
         foreach ($node['attachments'] as $attachment) {
             if (! $attachment['stored']) {
                 continue;
@@ -1175,10 +1297,19 @@ class AsanaImportService
 
             try {
                 $this->storeAttachment($task, $attachment);
+                $stored++;
             } catch (Throwable $exception) {
                 $this->counts['attachments_failed']++;
                 $this->warn("“{$task->title}”: the file “{$attachment['name']}” was not taken over ({$exception->getMessage()}).");
             }
+        }
+
+        if ($node['id'] !== null) {
+            $this->appendLinks($task, $node);
+        }
+
+        if ($stored > 0) {
+            app(TaskSearchService::class)->index($task);
         }
     }
 
@@ -1225,7 +1356,7 @@ class AsanaImportService
 
             // Saved and remembered together: a crash in between would store the file again in the next run
             DB::transaction(function () use ($record, $attachment): void {
-                $record->save();
+                Attachment::withoutEvents(fn () => $record->save());
                 $this->remembered('attachment', (string) $attachment['gid'], $record->id);
             });
         } catch (Throwable $exception) {

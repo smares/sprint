@@ -488,7 +488,7 @@ new class extends Component
                     @endforeach
                 </flux:select>
                 <div x-show="browserZone && browserZone !== ($wire.timezone || {{ \Illuminate\Support\Js::from(config('app.timezone')) }})" x-cloak class="mt-2 flex flex-wrap items-center gap-2">
-                    <flux:text size="sm">{{ __('Your device is set to') }} <span class="font-medium" x-text="browserZone.replaceAll('_', ' ')"></span>.</flux:text>
+                    <flux:text size="sm" x-text="{{ \Illuminate\Support\Js::from(__('Your device is set to :zone.')) }}.replace(':zone', browserZone.replaceAll('_', ' '))"></flux:text>
                     <flux:button size="xs" x-on:click="$wire.set('timezone', browserZone)">{{ __('Apply') }}</flux:button>
                 </div>
             </div>

@@ -1,5 +1,6 @@
 <?php
 
+use App\Concerns\AssignsTasks;
 use App\Concerns\EditsTasksInBulk;
 use App\Concerns\OpensTaskPanel;
 use App\Concerns\QuickAddsTasks;
@@ -26,6 +27,7 @@ use Livewire\Component;
 new class extends Component
 {
     use ShowsProject;
+    use AssignsTasks;
     use EditsTasksInBulk;
     use OpensTaskPanel;
     use QuickAddsTasks;
@@ -301,7 +303,12 @@ new class extends Component
     #[Computed]
     public function users(): Collection
     {
-        return $this->project->eligibleUsers()->orderBy('name')->get(['id', 'name', 'absent_from', 'absent_until']);
+        return $this->assignableUsers;
+    }
+
+    protected function afterAssigning(): void
+    {
+        unset($this->tasks);
     }
 
     /**
@@ -731,7 +738,7 @@ new class extends Component
                             </flux:table.cell>
                             {{-- Assignee first, then collaborators, as on the board; names and absences show on hover --}}
                             <flux:table.cell>
-                                <x-avatar-stack :users="[$task->assignee, ...$task->collaborators]" />
+                                <x-assignee-picker :task="$task" :users="$this->assignableUsers" :editable="$this->canEdit && ! $selecting" />
                             </flux:table.cell>
                             <flux:table.cell>
                                 <x-task-due :task="$task" />

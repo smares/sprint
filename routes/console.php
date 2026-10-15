@@ -10,6 +10,8 @@ Schedule::command('reminders:send')->dailyAt(config('sprint.reminder_time'))->on
 
 Schedule::command('notifications:prune')->dailyAt('03:15')->onOneServer();
 
+Schedule::command('cache:prune-expired')->dailyAt('03:20')->onOneServer();
+
 Schedule::command('sprint:backup')->dailyAt(config('sprint.backup.time'))->onOneServer()->withoutOverlapping()->when(fn () => config('sprint.backup.enabled'));
 
 Schedule::call(fn () => Cache::put(HealthCheckService::SCHEDULER_HEARTBEAT, now()->timestamp, now()->addDay()))->everyMinute()->name('scheduler-heartbeat');

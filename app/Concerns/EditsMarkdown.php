@@ -51,6 +51,6 @@ trait EditsMarkdown
     #[Renderless]
     public function previewMarkdown(string $text): string
     {
-        return (string) MarkdownService::render(mb_substr($text, 0, Task::MAX_DESCRIPTION_LENGTH));
+        return (string) MarkdownService::render(mb_substr($text, 0, Task::MAX_DESCRIPTION_LENGTH), cache: false);
     }
 }

@@ -41,7 +41,10 @@ class MarkdownService
         return (string) preg_replace('/([\\\\`*_{}\[\]()#+\-.!|~])/', '\\\\$1', (string) $text);
     }
 
-    public static function render(?string $text): HtmlString
+    /**
+     * @param  bool  $cache  Whether a long text may be kept by its content; a preview is typed anew each time, so it is not
+     */
+    public static function render(?string $text, bool $cache = true): HtmlString
     {
         $text = trim((string) $text);
 
@@ -65,7 +68,7 @@ class MarkdownService
             return self::PLACEHOLDER_START.(count($mentions) - 1).self::PLACEHOLDER_END;
         }, $withPlaceholders);
 
-        $html = self::convert($withPlaceholders);
+        $html = self::convert($withPlaceholders, $cache);
 
         return new HtmlString(self::insertMentions($html, $mentions));
     }
@@ -74,9 +77,9 @@ class MarkdownService
      * The HTML for a text (mentions still as placeholders). Long texts, up to 65,000 characters now, take noticeable time
      * to convert and the task page renders them on every request, so those are kept for a day, by their content.
      */
-    private static function convert(string $text): string
+    private static function convert(string $text, bool $cache): string
     {
-        if (strlen($text) < self::CACHE_FROM_BYTES) {
+        if (! $cache || strlen($text) < self::CACHE_FROM_BYTES) {
             return (string) self::converter()->convert($text);
         }
 
@@ -152,7 +155,12 @@ class MarkdownService
         return (string) preg_replace_callback(
             '/'.self::PLACEHOLDER_START.'(\d+)'.self::PLACEHOLDER_END.'/u',
             function (array $match) use ($mentions, $users, $tasks, $images): string {
-                $mention = $mentions[(int) $match[1]];
+                // A placeholder written as an HTML entity (&#xE000;) is decoded by the converter after the strip above
+                $mention = $mentions[(int) $match[1]] ?? null;
+
+                if ($mention === null) {
+                    return '';
+                }
 
                 if ($mention['type'] === 'image') {
                     $image = $images->get($mention['id']);

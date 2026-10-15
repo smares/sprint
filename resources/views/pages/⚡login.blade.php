@@ -5,6 +5,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
+use Illuminate\Support\Timebox;
 use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Contracts\TwoFactorAuthenticationProvider;
 use Laravel\Fortify\Fortify;
@@ -13,6 +14,11 @@ use Livewire\Component;
 new class extends Component
 {
     private const CHALLENGE_MINUTES = 5;
+
+    /**
+     * Every failed check takes at least this long, so the response time does not tell whether an address has an account.
+     */
+    private const MINIMUM_CHECK_MICROSECONDS = 400_000;
 
     public string $email = '';
 
@@ -48,22 +54,28 @@ new class extends Component
             ]);
         }
 
-        $credentials = ['email' => $this->email, 'password' => $this->password];
-        $provider = Auth::getProvider();
-        $user = $provider->retrieveByCredentials($credentials);
+        $user = (new Timebox)->call(function (Timebox $timebox) use ($throttleKey): User {
+            $credentials = ['email' => $this->email, 'password' => $this->password];
+            $provider = Auth::getProvider();
+            $user = $provider->retrieveByCredentials($credentials);
 
-        if ($user === null || ! $provider->validateCredentials($user, $credentials)) {
-            RateLimiter::hit($throttleKey);
+            if ($user === null || ! $provider->validateCredentials($user, $credentials)) {
+                RateLimiter::hit($throttleKey);
 
-            throw ValidationException::withMessages(['email' => __('Email or password is incorrect.')]);
-        }
+                throw ValidationException::withMessages(['email' => __('Email or password is incorrect.')]);
+            }
 
-        if (! $user->isActive()) {
-            RateLimiter::hit($throttleKey);
+            if (! $user->isActive()) {
+                RateLimiter::hit($throttleKey);
 
-            // Only somebody who knows the password learns that the account was deactivated.
-            throw ValidationException::withMessages(['email' => __('This account has been deactivated. Please contact an administrator.')]);
-        }
+                // Only somebody who knows the password learns that the account was deactivated.
+                throw ValidationException::withMessages(['email' => __('This account has been deactivated. Please contact an administrator.')]);
+            }
+
+            $timebox->returnEarly();
+
+            return $user;
+        }, microseconds: self::MINIMUM_CHECK_MICROSECONDS);
 
         RateLimiter::clear($throttleKey);
 

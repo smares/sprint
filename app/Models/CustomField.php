@@ -17,6 +17,9 @@ use Illuminate\Support\Carbon;
 #[Fillable(['project_id', 'name', 'type', 'position', 'show_in_list'])]
 class CustomField extends Model
 {
+    /** The longest name (in characters). */
+    public const int MAX_NAME_LENGTH = 100;
+
     /** @use HasFactory<CustomFieldFactory> */
     use HasFactory;
 

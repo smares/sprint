@@ -282,4 +282,14 @@ class CalendarAndTimelineTest extends TestCase
         $this->actingAs($viewer)->get(route('projects.calendar', $this->project))->assertOk();
         $this->actingAs($viewer)->get(route('projects.timeline', $this->project))->assertOk();
     }
+
+    public function test_the_calendar_numbers_its_weeks_from_zero_in_a_list(): void
+    {
+        $calendar = Livewire::test('pages::projects.calendar', ['project' => $this->project]);
+        $weeks = $calendar->instance()->weeks;
+
+        $this->assertTrue(array_is_list($weeks));
+        $this->assertContains(count($weeks), [4, 5, 6]);
+        $this->assertSame(7, count($weeks[0]));
+    }
 }

@@ -22,7 +22,7 @@ new class extends Component
     public string $passwordConfirmation = '';
 
     /**
-     * A new password ends every session and API token of the account, like a change in the profile.
+     * A new password ends every session, API token and passkey of the account; unlike a change in the profile, this one is not made by a signed-in person.
      */
     public function save(): void
     {
@@ -39,7 +39,7 @@ new class extends Component
                 }
 
                 $user->forceFill(['password' => $password])->save();
-                $user->signOutEverywhere();
+                $user->signOutEverywhere(withPasskeys: true);
 
                 event(new PasswordReset($user));
             },

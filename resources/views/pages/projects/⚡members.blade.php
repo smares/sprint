@@ -89,9 +89,6 @@ new class extends Component
     }
 
     /**
-     * A project always keeps somebody who may manage it: a member or a team with that role.
-     */
-    /**
      * Whether somebody can still manage the project without the given member or team; says so when not.
      */
     private function stillManaged(?int $exceptUserId = null, ?int $exceptTeamId = null): bool

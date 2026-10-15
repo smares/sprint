@@ -7,6 +7,7 @@ use App\Models\Attachment;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
+use App\Services\LocaleService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -225,5 +226,13 @@ class AttachmentsTest extends TestCase
         $this->assertSame('1.5 MB', $attachment->humanSize());
         $this->assertSame('10 B', Attachment::factory()->make(['size' => 10])->humanSize());
         $this->assertSame('293 KB', Attachment::factory()->make(['size' => 300000])->humanSize());
+    }
+
+    public function test_sizes_follow_the_language_of_the_interface(): void
+    {
+        LocaleService::apply('de');
+
+        $this->assertSame('1,5 MB', Attachment::factory()->make(['size' => 1_572_864])->humanSize());
+        $this->assertSame('2 MB', Attachment::factory()->make(['size' => 2_097_152])->humanSize());
     }
 }

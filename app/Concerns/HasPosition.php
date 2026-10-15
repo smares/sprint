@@ -40,6 +40,30 @@ trait HasPosition
     }
 
     /**
+     * Insert an id at the given place among the ids the user can see (0 = first); the ids hidden from them keep their
+     * relative place. With nothing visible the id goes to the end.
+     *
+     * @param  list<int>  $orderedIds  All ids in their order, without the one to insert.
+     * @param  list<int>  $visibleIds  The ids the user sees, in the order they see them; others are ignored.
+     * @return list<int>
+     */
+    public static function insertAmongVisible(array $orderedIds, array $visibleIds, int $position, int $id): array
+    {
+        $visibleIds = array_values(array_intersect($visibleIds, $orderedIds));
+        $position = max(0, min($position, count($visibleIds)));
+
+        $insertAt = match (true) {
+            $visibleIds === [] => count($orderedIds),
+            $position < count($visibleIds) => (int) array_search($visibleIds[$position], $orderedIds, true),
+            default => (int) array_search(end($visibleIds), $orderedIds, true) + 1,
+        };
+
+        array_splice($orderedIds, $insertAt, 0, [$id]);
+
+        return $orderedIds;
+    }
+
+    /**
      * Number the given ids in their order, writing only those whose position changes.
      *
      * @param  list<int>  $orderedIds

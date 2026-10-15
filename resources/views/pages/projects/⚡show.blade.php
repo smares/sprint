@@ -2,7 +2,7 @@
 
 use App\Concerns\AssignsTasks;
 use App\Concerns\EditsTasksInBulk;
-use App\Concerns\OpensTaskPanel;
+use App\Concerns\RefreshesOnTaskChanges;
 use App\Concerns\QuickAddsTasks;
 use App\Concerns\ShowsProject;
 use App\Concerns\SortsTasks;
@@ -30,7 +30,7 @@ new class extends Component
     use ShowsProject;
     use AssignsTasks;
     use EditsTasksInBulk;
-    use OpensTaskPanel;
+    use RefreshesOnTaskChanges;
     use QuickAddsTasks;
     use SortsTasks;
 
@@ -115,7 +115,7 @@ new class extends Component
      */
     protected function showsHeadings(): bool
     {
-        return $this->sortBy === '' && $this->activeFilters->isEmpty() && in_array($this->statusFilter, ['open', 'all'], true);
+        return ! $this->sortActive && $this->activeFilters->isEmpty() && in_array($this->statusFilter, ['open', 'all'], true);
     }
 
     /**
@@ -285,7 +285,7 @@ new class extends Component
         $filters = collect();
 
         if ($this->assigneeFilter === 'me') {
-            $filters->push(['key' => 'assignee', 'label' => __('Only mine')]);
+            $filters->push(['key' => 'assignee', 'label' => __('Assigned to me')]);
         } elseif (ctype_digit($this->assigneeFilter) && ($user = $this->assignableUsers->firstWhere('id', (int) $this->assigneeFilter))) {
             $filters->push(['key' => 'assignee', 'label' => $user->name]);
         }
@@ -444,7 +444,7 @@ new class extends Component
     {
         Gate::authorize('edit', $this->project);
 
-        abort_unless($this->sortBy === '', 422);
+        abort_if($this->sortActive, 422);
 
         $task = $this->project->tasks()->topLevel()->findOrFail($taskId);
 
@@ -574,7 +574,7 @@ new class extends Component
 
             <flux:select variant="listbox" wire:model.live="assigneeFilter" :label="__('Person')">
                 <flux:select.option value="">{{ __('All people') }}</flux:select.option>
-                <flux:select.option value="me">{{ __('Only mine') }}</flux:select.option>
+                <flux:select.option value="me">{{ __('Assigned to me') }}</flux:select.option>
                 @foreach ($this->assignableUsers as $user)
                     <flux:select.option value="{{ $user->id }}">{{ $user->labelledName() }}</flux:select.option>
                 @endforeach
@@ -654,7 +654,7 @@ new class extends Component
                     @endforeach
                 </flux:table.columns>
                 {{-- wire:sort is set up once per element: keyed by the mode, the rows are built anew and dragging really stops while sorted or selecting --}}
-                @php($draggable = $sortBy === '' && $this->canEdit && ! $selecting)
+                @php($draggable = ! $this->sortActive && $this->canEdit && ! $selecting)
                 <flux:table.rows wire:key="rows-{{ $draggable ? 'draggable' : 'fixed' }}" :wire:sort="$draggable ? 'moveTask' : null" wire:sort:config="{{ \App\Sortable::CONFIG }}">
                     @php($number = 0)
                     @foreach ($this->tasks as $task)
@@ -688,7 +688,7 @@ new class extends Component
                                 </div>
                             </flux:table.cell>
                             <flux:table.cell :class="'min-w-56 whitespace-normal max-sm:min-w-[45vw] '.$pinnedTitle">
-                                <x-task-title-line :task="$task" :open="(string) $task->id === $openTaskId" :progress="$this->progress[$task->id] ?? null" :number="$number" />
+                                <x-task-title-line :task="$task" :progress="$this->progress[$task->id] ?? null" :number="$number" />
                             </flux:table.cell>
                             <flux:table.cell>
                                 <x-status-badge :status="$task->status" />
@@ -761,7 +761,7 @@ new class extends Component
         <flux:modal name="bulk-edit" class="w-full max-w-md">
             <form wire:submit="applyBulkChanges" class="space-y-5">
                 <div>
-                    <flux:heading size="lg">{!! __('Change :count tasks', ['count' => '<span x-text="$wire.selected.length">0</span>']) !!}</flux:heading>
+                    <flux:heading size="lg">{!! __('Change selected (:count)', ['count' => '<span x-text="$wire.selected.length">0</span>']) !!}</flux:heading>
                     <flux:text class="mt-1">{{ __('Only what you fill in is changed; everything else stays as it is.') }}</flux:text>
                 </div>
 
@@ -811,5 +811,4 @@ new class extends Component
         <x-assignee-menu :users="$this->assignableUsers" />
     @endif
 
-    <x-task-panel :task="$this->panelTask" />
 </div>

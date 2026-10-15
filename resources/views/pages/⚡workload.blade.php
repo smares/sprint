@@ -1,12 +1,10 @@
 <?php
 
-use App\Concerns\OpensTaskPanel;
-use App\Models\Task;
+use App\Concerns\RefreshesOnTaskChanges;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\WorkloadService;
 use Illuminate\Contracts\View\View;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Url;
@@ -14,7 +12,7 @@ use Livewire\Component;
 
 new class extends Component
 {
-    use OpensTaskPanel;
+    use RefreshesOnTaskChanges;
 
     /** Whose work is shown: "me", "team:<id>" for a team of one's own (any team for admins) or "all" (admins only). */
     #[Url]
@@ -70,16 +68,6 @@ new class extends Component
     public function load(): array
     {
         return app(WorkloadService::class)->forPeople($this->people, auth()->user());
-    }
-
-    /**
-     * The flyout opens any task one may see, whatever its project.
-     *
-     * @return Builder<Task>
-     */
-    protected function tasksForPanel(): Builder
-    {
-        return Task::query()->visibleTo(auth()->user());
     }
 
     public function rendering(View $view): void
@@ -160,5 +148,4 @@ new class extends Component
         <flux:text size="sm" class="mt-4 text-zinc-500">{{ __('A number opens its tasks. Days away count Monday to Friday; amber means there is work due while the person is away.') }}</flux:text>
     @endif
 
-    <x-task-panel :task="$this->panelTask" />
 </div>

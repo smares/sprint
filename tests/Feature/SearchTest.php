@@ -315,4 +315,15 @@ class SearchTest extends TestCase
             ->call('explain', $foreign->id)
             ->assertForbidden();
     }
+
+    public function test_deleting_a_task_removes_its_subtasks_from_the_index_too(): void
+    {
+        $parent = $this->task('Umzug planen');
+        $child = $this->task('Kartons besorgen', ['parent_id' => $parent->id]);
+        $grandchild = $this->task('Kartons beschriften', ['parent_id' => $child->id]);
+
+        $parent->delete();
+
+        $this->assertSame(0, DB::table(TaskSearchService::TABLE)->whereIn('rowid', [$parent->id, $child->id, $grandchild->id])->count());
+    }
 }

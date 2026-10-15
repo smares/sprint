@@ -1,7 +1,7 @@
 <?php
 
 use App\Concerns\AssignsTasks;
-use App\Concerns\OpensTaskPanel;
+use App\Concerns\RefreshesOnTaskChanges;
 use App\Concerns\QuickAddsTasks;
 use App\Concerns\ShowsProject;
 use App\Concerns\SortsTasks;
@@ -22,7 +22,7 @@ new class extends Component
 {
     use ShowsProject;
     use AssignsTasks;
-    use OpensTaskPanel;
+    use RefreshesOnTaskChanges;
     use QuickAddsTasks;
     use SortsTasks;
 
@@ -238,9 +238,9 @@ new class extends Component
 <div>
     <x-project-header :project="$project" active="board" :presence="$this->presenceChannel()" />
 
-    <div class="mb-3 flex items-center gap-1">
+    <div class="mb-4 flex items-center gap-2">
         <flux:dropdown align="start">
-            <flux:button size="sm" variant="subtle" icon="arrows-up-down">{{ $this->sortActive ? $this->sortLabel : __('Sort') }}</flux:button>
+            <flux:button icon="arrows-up-down">{{ $this->sortActive ? $this->sortLabel : __('Sort') }}</flux:button>
 
             {{-- What to sort by; picking one orders the cards at once --}}
             <flux:menu>
@@ -248,7 +248,7 @@ new class extends Component
                     <flux:menu.radio value="">{{ __('Manual order') }}</flux:menu.radio>
                     <flux:menu.radio value="due">{{ __('Due') }}</flux:menu.radio>
                     <flux:menu.radio value="title">{{ __('Title') }}</flux:menu.radio>
-                    @foreach ($this->customFields as $field)
+                    @foreach ($this->customFields->where('show_in_list', true) as $field)
                         <flux:menu.radio wire:key="sort-field-{{ $field->id }}" value="field:{{ $field->id }}">{{ $field->name }}</flux:menu.radio>
                     @endforeach
                 </flux:menu.radio.group>
@@ -257,8 +257,8 @@ new class extends Component
 
         {{-- The direction is one click on its own: the arrow shows the order in force and turns it --}}
         @if ($this->sortActive)
-            <flux:button size="sm" variant="subtle" :icon="$sortDirection === 'desc' ? 'arrow-down' : 'arrow-up'" wire:click="reverseSort" class="max-sm:size-10!" aria-label="{{ $sortDirection === 'desc' ? __('Descending') : __('Ascending') }}, {{ __('Reverse order') }}" tooltip="{{ $sortDirection === 'desc' ? __('Descending') : __('Ascending') }}: {{ __('Reverse order') }}" />
-            <flux:button size="sm" variant="subtle" icon="x-mark" wire:click="resetSort" class="max-sm:size-10!" aria-label="{{ __('Reset') }}" tooltip="{{ __('Reset') }}" />
+            <flux:button :icon="$sortDirection === 'desc' ? 'arrow-down' : 'arrow-up'" wire:click="reverseSort" class="max-sm:size-10!" aria-label="{{ $sortDirection === 'desc' ? __('Descending') : __('Ascending') }}, {{ __('Reverse order') }}" tooltip="{{ $sortDirection === 'desc' ? __('Descending') : __('Ascending') }}: {{ __('Reverse order') }}" />
+            <flux:button icon="x-mark" wire:click="resetSort" class="max-sm:size-10!" aria-label="{{ __('Reset') }}" tooltip="{{ __('Reset') }}" />
         @endif
     </div>
 
@@ -303,7 +303,7 @@ new class extends Component
                     >
                         @foreach ($this->columns[$status->id] as $task)
                             <flux:kanban.card wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" class="board-card cursor-pointer" :wire:sort:item="$this->canEdit ? $task->id : null">
-                                <x-task-title-link :task="$task" :open="(string) $task->id === $openTaskId" />
+                                <x-task-title-link :task="$task" />
 
                                 @if ($this->listFields->isNotEmpty())
                                     <div class="mt-2 flex flex-wrap gap-1">
@@ -370,5 +370,4 @@ new class extends Component
         <x-assignee-menu :users="$this->assignableUsers" />
     @endif
 
-    <x-task-panel :task="$this->panelTask" />
 </div>

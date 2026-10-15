@@ -86,7 +86,7 @@ new class extends Component
     public function add(): void
     {
         $validated = $this->validate([
-            'newName' => ['required', 'string', 'max:100'],
+            'newName' => ['required', 'string', 'max:'.\App\Models\CustomField::MAX_NAME_LENGTH],
             'newType' => ['required', Rule::enum(CustomFieldType::class)],
         ], attributes: ['newName' => __('Name'), 'newType' => __('Type')]);
 
@@ -105,9 +105,9 @@ new class extends Component
         $field = $this->fieldOrFail($id);
         $name = trim($value);
 
-        if ($name === '' || mb_strlen($name) > 100) {
+        if ($name === '' || mb_strlen($name) > \App\Models\CustomField::MAX_NAME_LENGTH) {
             $this->names[$id] = $field->name;
-            Flux::toast(variant: 'danger', text: __('The name must not be empty and may have at most :max characters.', ['max' => 100]));
+            Flux::toast(variant: 'danger', text: __('The name must not be empty and may have at most :max characters.', ['max' => \App\Models\CustomField::MAX_NAME_LENGTH]));
 
             return;
         }
@@ -152,7 +152,7 @@ new class extends Component
         abort_unless($field->type === CustomFieldType::Select, 404);
 
         $this->validate([
-            "newOptions.$fieldId" => ['required', 'string', 'max:100'],
+            "newOptions.$fieldId" => ['required', 'string', 'max:'.\App\Models\CustomFieldOption::MAX_NAME_LENGTH],
         ], attributes: ["newOptions.$fieldId" => __('Name')]);
 
         $field->options()->create([
@@ -170,9 +170,9 @@ new class extends Component
         $option = $this->optionOrFail($id);
         $name = trim($value);
 
-        if ($name === '' || mb_strlen($name) > 100) {
+        if ($name === '' || mb_strlen($name) > \App\Models\CustomFieldOption::MAX_NAME_LENGTH) {
             $this->optionNames[$id] = $option->name;
-            Flux::toast(variant: 'danger', text: __('The name must not be empty and may have at most :max characters.', ['max' => 100]));
+            Flux::toast(variant: 'danger', text: __('The name must not be empty and may have at most :max characters.', ['max' => \App\Models\CustomFieldOption::MAX_NAME_LENGTH]));
 
             return;
         }
@@ -249,7 +249,7 @@ new class extends Component
                                 <x-color-badge size="sm" :color="$option->color" class="shrink-0">&nbsp;</x-color-badge>
                                 <flux:input size="sm" wire:model.live.blur="optionNames.{{ $option->id }}" aria-label="{{ __('Option') }}" class="min-w-0 flex-1" />
                                 <flux:color-picker type="button" size="sm" class="shrink-0 sm:w-32" with-confirmation :swatches="\App\Color::swatches()" wire:model.live="optionColors.{{ $option->id }}" aria-label="{{ __('Color') }}" />
-                                <flux:button size="xs" variant="ghost" icon="x-mark" wire:click="removeOption({{ $option->id }})" aria-label="{{ __('Remove option') }}" tooltip="{{ __('Remove option') }}" />
+                                <flux:button size="xs" variant="ghost" icon="x-mark" wire:click="removeOption({{ $option->id }})" wire:confirm="{{ __('Remove option “:name”? Tasks lose this value.', ['name' => $option->name]) }}" aria-label="{{ __('Remove option') }}" tooltip="{{ __('Remove option') }}" />
                             </li>
                         @endforeach
                     </ul>

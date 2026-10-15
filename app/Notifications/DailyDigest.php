@@ -8,8 +8,10 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use Illuminate\Queue\Attributes\DeleteWhenMissingModels;
 use Illuminate\Support\Collection;
 
+#[DeleteWhenMissingModels]
 class DailyDigest extends Notification implements ShouldQueueAfterCommit
 {
     use BuildsLocalizedMail, Queueable;

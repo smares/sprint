@@ -46,15 +46,18 @@ class PersonalColumn extends Model
     }
 
     /**
-     * Put the task in this column at the given place (0 = first); wherever it stood before, it leaves that column.
+     * Put the task in this column at the given place (0 = first) among the tasks the person sees there; wherever it
+     * stood before, it leaves that column. Placements of tasks that are hidden (done, not involved any more, project
+     * not visible) keep their relative place.
+     *
+     * @param  list<int>  $visibleTaskIds  The tasks of this column the person sees, in any order (the placements give the order).
      */
-    public function place(Task $task, int $position): void
+    public function place(Task $task, int $position, array $visibleTaskIds): void
     {
-        DB::transaction(function () use ($task, $position): void {
+        DB::transaction(function () use ($task, $position, $visibleTaskIds): void {
             $current = $this->placements()->where('task_id', '!=', $task->getKey())->orderBy('position')->orderBy('id')->pluck('position', 'task_id')->all();
-            $orderedIds = array_keys($current);
-
-            array_splice($orderedIds, max(0, min($position, count($orderedIds))), 0, [$task->getKey()]);
+            $placedIds = array_keys($current);
+            $orderedIds = static::insertAmongVisible($placedIds, array_values(array_intersect($placedIds, $visibleTaskIds)), $position, $task->getKey());
 
             PersonalPlacement::query()->updateOrCreate(
                 ['user_id' => $this->user_id, 'task_id' => $task->getKey()],

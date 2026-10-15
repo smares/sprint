@@ -229,6 +229,26 @@ class MyTasksBoardTest extends TestCase
         $this->assertSame(1, PersonalPlacement::count());
     }
 
+    public function test_the_place_counts_the_visible_cards_when_a_done_task_still_has_a_place_in_the_column(): void
+    {
+        $a = $this->mine('A');
+        $b = $this->mine('B');
+        $c = $this->mine('C');
+        $d = $this->mine('D');
+        $column = $this->column();
+        $board = $this->board()
+            ->call('moveTask', $a->id, 0, (string) $column->id)
+            ->call('moveTask', $b->id, 1, (string) $column->id)
+            ->call('moveTask', $c->id, 2, (string) $column->id)
+            ->call('toggleDone', $a->id);
+
+        $this->assertSame(['B', 'C'], $this->titles($board, $column->id));
+
+        $board->call('moveTask', $d->id, 1, (string) $column->id);
+
+        $this->assertSame(['B', 'D', 'C'], $this->titles($board, $column->id));
+    }
+
     public function test_columns_show_a_page_of_cards_and_load_more_on_request(): void
     {
         foreach (range(1, 35) as $number) {

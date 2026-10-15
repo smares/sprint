@@ -9,7 +9,9 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use Illuminate\Queue\Attributes\DeleteWhenMissingModels;
 
+#[DeleteWhenMissingModels]
 class TaskStatusChanged extends Notification implements ShouldQueueAfterCommit
 {
     use BuildsLocalizedMail, PausesMail, Queueable;

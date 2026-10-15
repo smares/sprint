@@ -604,31 +604,34 @@ tr[data-task-id] {
     background-color: rgb(255 255 255 / 0.08);
 }
 
-/* The task flyout slides in and out a little more calmly than Flux's default (0.15 s in, 0.075 s out, 50px): further, over
-   about a fifth of a second. Sliding out is started by taskFlyout in app.js (data-closing) before the flyout closes,
-   because the page removes it as soon as the close reaches the server. */
+/* The task flyout slides in from the edge of the screen and out again, without fading (Flux's default is a fade with a shift
+   of 50px, 0.15 s in and 0.075 s out): about 0.35 s in, with a curve that starts at full speed, so it can be used at once and
+   only the picture catches up, and 0.18 s out, so that closing does not wait long. Only the dimming behind it fades.
+   Sliding out is started by taskFlyout in app.js (data-closing) before the flyout closes, because the page removes it
+   as soon as the close reaches the server. */
 [data-task-flyout] > dialog[data-flux-flyout] {
-    --flux-flyout-translate: translateX(3rem);
+    --flux-flyout-translate: translateX(100%);
+    opacity: 1;
+    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), overlay 0.35s allow-discrete, display 0.35s allow-discrete;
 }
 
-[data-task-flyout] > dialog[data-flux-flyout],
 [data-task-flyout] > dialog[data-flux-flyout]::backdrop {
-    transition-duration: 0.22s;
-    transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-[data-task-flyout] > dialog[data-flux-flyout][open][data-closing],
-[data-task-flyout] > dialog[data-flux-flyout][open][data-closing]::backdrop {
-    opacity: 0;
+    transition: opacity 0.3s ease-out, overlay 0.3s allow-discrete, display 0.3s allow-discrete;
 }
 
 [data-task-flyout] > dialog[data-flux-flyout][open][data-closing] {
     transform: scale(1) var(--flux-flyout-translate);
+    transition: transform 0.18s cubic-bezier(0.4, 0, 1, 1);
+}
+
+[data-task-flyout] > dialog[data-flux-flyout][open][data-closing]::backdrop {
+    opacity: 0;
+    transition: opacity 0.18s ease-in;
 }
 
 @media (prefers-reduced-motion: reduce) {
     [data-task-flyout] > dialog[data-flux-flyout],
     [data-task-flyout] > dialog[data-flux-flyout]::backdrop {
-        transition-duration: 0s;
+        transition: none;
     }
 }

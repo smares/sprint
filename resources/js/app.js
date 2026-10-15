@@ -627,7 +627,7 @@ const registerTaskFlyout = () => {
             }
 
             dialog.setAttribute('data-closing', '')
-            window.setTimeout(finish, 220)
+            window.setTimeout(finish, 180)
         },
 
         // Listens on the window before everything else (capture), also when the focus left the flyout: an open menu, list or

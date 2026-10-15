@@ -285,21 +285,21 @@ class BulkTaskActionsTest extends TestCase
         $this->assertFalse($task->fresh()->isDone());
     }
 
-    public function test_selected_tasks_are_deleted_with_their_subtasks_and_the_open_panel_closes(): void
+    public function test_selected_tasks_are_deleted_with_their_subtasks_and_the_flyout_is_told(): void
     {
         $a = $this->task('Eins');
         $b = $this->task('Zwei');
         $keep = $this->task('Behalten');
         $child = $this->task('Kind', ['parent_id' => $a->id]);
 
-        $page = Livewire::test('pages::projects.show', ['project' => $this->project])->call('openTask', $a->id)->set('selecting', true)
-            ->set('selected', [(string) $a->id, (string) $b->id])->call('bulkDelete');
+        $page = Livewire::test('pages::projects.show', ['project' => $this->project])->set('selecting', true)
+            ->set('selected', [(string) $a->id, (string) $b->id])->call('bulkDelete')->assertDispatched('tasks-deleted');
 
         $this->assertNull(Task::find($a->id));
         $this->assertNull(Task::find($b->id));
         $this->assertNull(Task::find($child->id));
         $this->assertNotNull(Task::find($keep->id));
-        $page->assertSet('openTaskId', '')->assertSet('selecting', false);
+        $page->assertSet('selecting', false);
     }
 
     public function test_viewers_and_archived_projects_cannot_change_anything_in_bulk(): void

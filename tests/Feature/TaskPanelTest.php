@@ -37,39 +37,48 @@ class TaskPanelTest extends TestCase
         return Livewire::test('pages::projects.board', ['project' => $this->project]);
     }
 
-    public function test_the_panel_is_closed_by_default(): void
+    private function flyout()
     {
-        $this->list()->assertSet('openTaskId', '')->assertDontSee('Bitte bis Freitag');
-        $this->board()->assertSet('openTaskId', '')->assertDontSee('Bitte bis Freitag');
+        return Livewire::test('task-flyout');
     }
 
-    public function test_the_task_in_the_url_opens_next_to_the_list_and_the_board(): void
+    public function test_the_panel_is_closed_by_default(): void
     {
-        $this->get(route('projects.show', ['project' => $this->project, 'task' => $this->task->id]))
-            ->assertOk()->assertSee('data-modal="task-panel"', false)->assertSee('Als Seite öffnen');
+        $this->flyout()->assertSet('openTaskId', '')->assertDontSee('Bitte bis Freitag')->assertDontSeeHtml('data-modal="task-panel"');
+    }
 
-        Livewire::withQueryParams(['task' => $this->task->id])->test('pages::projects.show', ['project' => $this->project])
+    public function test_the_task_in_the_url_opens_the_flyout_on_every_page(): void
+    {
+        foreach ([route('projects.show', ['project' => $this->project, 'task' => $this->task->id]), route('projects.board', ['project' => $this->project, 'task' => $this->task->id]), route('tasks.mine', ['task' => $this->task->id])] as $url) {
+            $this->get($url)->assertOk()->assertSee('data-modal="task-panel"', false)->assertSee('Als Seite öffnen');
+        }
+
+        Livewire::withQueryParams(['task' => $this->task->id])->test('task-flyout')
             ->assertSet('openTaskId', (string) $this->task->id)
             ->assertSeeHtml('data-modal="task-panel"');
+    }
 
-        Livewire::withQueryParams(['task' => $this->task->id])->test('pages::projects.board', ['project' => $this->project])
-            ->assertSeeHtml('data-modal="task-panel"');
+    public function test_the_pages_do_not_draw_the_flyout_themselves(): void
+    {
+        // Opening and closing asks the server for the flyout only, not for the list or board behind it
+        $this->list()->assertDontSeeHtml('data-modal="task-panel"')->assertSeeHtml('$openTask($event, '.$this->task->id.')');
+        $this->assertFalse(property_exists($this->list()->instance(), 'openTaskId'));
     }
 
     public function test_the_task_opens_in_a_flyout_that_closes_the_task_again(): void
     {
-        $list = $this->list()->call('openTask', $this->task->id);
+        $flyout = $this->flyout()->call('openTask', $this->task->id);
 
-        $list->assertSeeHtml('data-modal="task-panel"')->assertSeeHtml('data-flux-flyout')
+        $flyout->assertSeeHtml('data-modal="task-panel"')->assertSeeHtml('data-flux-flyout')
             ->assertSeeHtml('wire:close="closeTask"')->assertSeeHtml('x-data="taskFlyout(');
 
-        $this->list()->assertDontSeeHtml('data-modal="task-panel"');
+        $this->flyout()->assertDontSeeHtml('data-modal="task-panel"');
     }
 
     public function test_closing_the_flyout_goes_through_the_check_for_unsaved_input(): void
     {
         // Flux does not close it by itself (no click outside, no Esc); taskFlyout in app.js asks first when something is unsaved
-        $this->list()->call('openTask', $this->task->id)
+        $this->flyout()->call('openTask', $this->task->id)
             ->assertSeeHtml('disable-click-outside')
             ->assertSeeHtml('disable-escape')
             ->assertSeeHtml('x-on:keydown.window.capture="onKeydown($event)"')
@@ -85,29 +94,31 @@ class TaskPanelTest extends TestCase
     {
         $other = Task::factory()->for($this->project)->create(['title' => 'Zweite']);
 
-        $list = $this->list();
-        $list->call('openTask', $this->task->id)->assertSet('openTaskId', (string) $this->task->id)->assertSeeHtml('data-modal="task-panel"');
-        $list->dispatch('open-task', id: $other->id)->assertSet('openTaskId', (string) $other->id);
-        $list->dispatch('close-task')->assertSet('openTaskId', '')->assertDontSeeHtml('data-modal="task-panel"');
+        $flyout = $this->flyout();
+        $flyout->call('openTask', $this->task->id)->assertSet('openTaskId', (string) $this->task->id)->assertSeeHtml('data-modal="task-panel"');
+        $flyout->dispatch('open-task', id: $other->id)->assertSet('openTaskId', (string) $other->id);
+        $flyout->dispatch('close-task')->assertSet('openTaskId', '')->assertDontSeeHtml('data-modal="task-panel"');
 
-        $board = $this->board();
-        $board->call('openTask', $this->task->id)->assertSet('openTaskId', (string) $this->task->id);
-        $board->call('closeTask')->assertSet('openTaskId', '');
+        $flyout->call('openTask', $this->task->id)->call('closeTask')->assertSet('openTaskId', '');
     }
 
-    public function test_foreign_tasks_headings_and_nonsense_do_not_open(): void
+    public function test_headings_nonsense_and_tasks_of_hidden_projects_do_not_open(): void
     {
-        $foreign = Task::factory()->for(Project::factory()->create())->create(['title' => 'Fremde Aufgabe']);
         $heading = Task::factory()->for($this->project)->create(['parent_id' => $this->task->id, 'is_section' => true, 'title' => 'Überschrift']);
+        $viewer = User::factory()->create();
+        $this->project->setRole($viewer, ProjectRole::Viewer);
+        $hidden = Task::factory()->for(Project::factory()->create())->create(['title' => 'Fremde Aufgabe']);
+        $this->actingAs($viewer);
 
-        $list = $this->list();
-        $list->call('openTask', $foreign->id)->assertSet('openTaskId', '');
-        $list->call('openTask', $heading->id)->assertSet('openTaskId', '');
-        $list->call('openTask', 99999)->assertSet('openTaskId', '');
+        $flyout = $this->flyout();
+        $flyout->call('openTask', $hidden->id)->assertSet('openTaskId', '');
+        $flyout->call('openTask', $heading->id)->assertSet('openTaskId', '');
+        $flyout->call('openTask', 99999)->assertSet('openTaskId', '');
+        $flyout->call('openTask', $this->task->id)->assertSet('openTaskId', (string) $this->task->id);
 
-        Livewire::withQueryParams(['task' => $foreign->id])->test('pages::projects.show', ['project' => $this->project])
+        Livewire::withQueryParams(['task' => $hidden->id])->test('task-flyout')
             ->assertDontSee('Fremde Aufgabe')->assertDontSeeHtml('data-modal="task-panel"');
-        Livewire::withQueryParams(['task' => 'abc'])->test('pages::projects.show', ['project' => $this->project])
+        Livewire::withQueryParams(['task' => 'abc'])->test('task-flyout')
             ->assertDontSeeHtml('data-modal="task-panel"');
     }
 
@@ -116,6 +127,7 @@ class TaskPanelTest extends TestCase
         $this->actingAs(User::factory()->create());
 
         $this->get(route('projects.show', ['project' => $this->project, 'task' => $this->task->id]))->assertForbidden();
+        Livewire::withQueryParams(['task' => $this->task->id])->test('task-flyout')->assertDontSeeHtml('data-modal="task-panel"');
     }
 
     public function test_viewers_see_the_panel_read_only(): void
@@ -124,7 +136,7 @@ class TaskPanelTest extends TestCase
         $this->project->setRole($viewer, ProjectRole::Viewer);
         $this->actingAs($viewer);
 
-        Livewire::withQueryParams(['task' => $this->task->id])->test('pages::projects.show', ['project' => $this->project])
+        Livewire::withQueryParams(['task' => $this->task->id])->test('task-flyout')
             ->assertSee('Nur ansehen');
     }
 
@@ -168,9 +180,25 @@ class TaskPanelTest extends TestCase
             ->call('delete')->assertRedirect(route('projects.show', $this->project));
     }
 
-    public function test_the_list_closes_the_panel_when_its_task_was_deleted(): void
+    public function test_the_flyout_closes_when_its_task_was_deleted_and_stays_when_another_one_was(): void
     {
-        $this->list()->call('openTask', $this->task->id)->dispatch('task-deleted')->assertSet('openTaskId', '');
+        $other = Task::factory()->for($this->project)->create();
+        $flyout = $this->flyout()->call('openTask', $this->task->id);
+
+        $other->delete();
+        $flyout->dispatch('tasks-deleted')->assertSet('openTaskId', (string) $this->task->id);
+
+        $this->task->delete();
+        $flyout->dispatch('tasks-deleted')->assertSet('openTaskId', '');
+        $this->flyout()->call('openTask', $other->id)->assertSet('openTaskId', '');
+    }
+
+    public function test_the_list_and_board_draw_again_when_the_flyout_reports_a_change(): void
+    {
+        $this->task->update(['title' => 'Angebot überarbeitet']);
+
+        $this->list()->dispatch('task-changed')->assertSee('Angebot überarbeitet');
+        $this->board()->dispatch('task-deleted')->assertSee('Angebot überarbeitet');
     }
 
     public function test_subtasks_in_the_panel_switch_the_panel_instead_of_navigating(): void
@@ -210,24 +238,15 @@ class TaskPanelTest extends TestCase
         $task = Task::factory()->for($this->project)->create(['title' => 'Überall offen', 'due_date' => today()]);
 
         foreach (['pages::projects.calendar', 'pages::projects.timeline'] as $view) {
-            Livewire::test($view, ['project' => $this->project])
-                ->assertSeeHtml('$openTask($event, '.$task->id.')')
-                ->call('openTask', $task->id)->assertSet('openTaskId', (string) $task->id)
-                ->assertSeeHtml('data-modal="task-panel"');
+            Livewire::test($view, ['project' => $this->project])->assertSeeHtml('$openTask($event, '.$task->id.')');
         }
 
-        // Search and workload open any task one may see, whatever its project, but no other
         $me = User::factory()->create();
         $this->project->setRole($me, ProjectRole::Editor);
         $task->update(['assignee_id' => $me->id]);
-        $foreign = Task::factory()->create();
         $this->actingAs($me);
 
-        Livewire::test('pages::search', ['query' => 'Überall'])->assertSeeHtml('$openTask($event, '.$task->id.')')
-            ->call('openTask', $task->id)->assertSet('openTaskId', (string) $task->id)
-            ->call('openTask', $foreign->id)->assertSet('openTaskId', (string) $task->id);
-
-        Livewire::test('pages::workload')->assertSeeHtml('$openTask($event, '.$task->id.')')
-            ->call('openTask', $task->id)->assertSet('openTaskId', (string) $task->id);
+        Livewire::test('pages::search', ['query' => 'Überall'])->assertSeeHtml('$openTask($event, '.$task->id.')');
+        Livewire::test('pages::workload')->assertSeeHtml('$openTask($event, '.$task->id.')');
     }
 }

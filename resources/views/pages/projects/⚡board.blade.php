@@ -4,6 +4,7 @@ use App\Concerns\AssignsTasks;
 use App\Concerns\OpensTaskPanel;
 use App\Concerns\QuickAddsTasks;
 use App\Concerns\ShowsProject;
+use App\Concerns\SortsTasks;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskStatus;
@@ -23,6 +24,7 @@ new class extends Component
     use AssignsTasks;
     use OpensTaskPanel;
     use QuickAddsTasks;
+    use SortsTasks;
 
     private const PAGE_SIZE = 30;
 
@@ -45,11 +47,16 @@ new class extends Component
     public function columns(): array
     {
         // One query for all columns: number the tasks within each status and keep the first n per column.
+        // The chosen order (if any) comes before the manual one, which settles ties
+        $terms = $this->sortTerms();
+        $order = implode(', ', [...array_column($terms, 0), 'tasks.position', 'tasks.id']);
+        $bindings = array_merge(...array_column($terms, 1));
+
         $ranked = $this->project->tasks()
             ->topLevel()
             ->withoutSections()
             ->select('tasks.*')
-            ->selectRaw('row_number() over (partition by status_id order by position, id) as column_rank');
+            ->selectRaw("row_number() over (partition by status_id order by {$order}) as column_rank", $bindings);
 
         $tasks = Task::query()
             ->fromSub($ranked, 'tasks')
@@ -59,8 +66,7 @@ new class extends Component
                 }
             })
             ->with(['assignee', 'collaborators', 'tags', 'status', 'blockers.status', 'fieldValues'])
-            ->orderBy('position')
-            ->orderBy('id')
+            ->orderBy('column_rank')
             ->get()
             ->loadCount(['comments', 'attachments'])
             ->groupBy('status_id');
@@ -140,7 +146,44 @@ new class extends Component
     #[Computed]
     public function listFields(): Collection
     {
-        return $this->project->customFields()->with('options')->where('show_in_list', true)->get();
+        return $this->customFields->where('show_in_list', true)->values();
+    }
+
+    #[Computed]
+    public function customFields(): Collection
+    {
+        return $this->project->customFields()->with('options')->get();
+    }
+
+    /**
+     * A column of the board has one status, so that is nothing to sort it by.
+     *
+     * @return list<string>
+     */
+    protected function sortableColumns(): array
+    {
+        return ['due', 'title'];
+    }
+
+    protected function sorted(): void
+    {
+        $this->columnLimits = [];
+
+        unset($this->columns, $this->columnTotals);
+    }
+
+    /**
+     * What the sort menu shows for the order in force.
+     */
+    #[Computed]
+    public function sortLabel(): string
+    {
+        return match (true) {
+            ! $this->isSorted() => __('Manual order'),
+            $this->sortBy === 'due' => __('Due'),
+            $this->sortBy === 'title' => __('Title'),
+            default => (string) $this->customFields->firstWhere('id', (int) substr($this->sortBy, 6))?->name,
+        };
     }
 
     #[Computed]
@@ -170,6 +213,11 @@ new class extends Component
         DB::transaction(function () use ($task, $status, $position) {
             $task->update(['status_id' => $status->id]);
 
+            // A sort order puts the card where it belongs; only the manual order has a place to drop it at
+            if ($this->isSorted()) {
+                return;
+            }
+
             $this->project->placeRootTask($task, $this->columnQuery($status->id)
                 ->whereKeyNot($task->getKey())
                 ->limit($this->columnLimit($status->id))
@@ -189,6 +237,37 @@ new class extends Component
 
 <div>
     <x-project-header :project="$project" active="board" :presence="$this->presenceChannel()" />
+
+    <div class="mb-4 flex flex-wrap items-center gap-2">
+        <flux:dropdown align="start">
+            <flux:button icon="arrows-up-down" icon:trailing="chevron-down">
+                {{ __('Sort') }}: {{ $this->sortLabel }}
+                @if ($this->sortActive)
+                    <flux:icon :icon="$this->sortDirection === 'desc' ? 'arrow-down' : 'arrow-up'" variant="micro" class="ms-1" />
+                @endif
+            </flux:button>
+
+            <flux:menu>
+                <flux:menu.item wire:click="resetSort">
+                    <span @class(['font-semibold' => ! $this->sortActive])>{{ __('Manual order') }}</span>
+                </flux:menu.item>
+                <flux:menu.separator />
+                {{-- The same click again turns the direction, a third one is back to the manual order, as in the list --}}
+                @foreach ([['due', __('Due')], ['title', __('Title')], ...$this->customFields->map(fn ($field) => ['field:'.$field->id, $field->name])->all()] as [$column, $label])
+                    <flux:menu.item wire:key="sort-{{ $column }}" wire:click="sort('{{ $column }}')">
+                        <span @class(['font-semibold' => $sortBy === $column])>{{ $label }}</span>
+                        @if ($sortBy === $column)
+                            <flux:icon :icon="$sortDirection === 'desc' ? 'arrow-down' : 'arrow-up'" variant="micro" class="ms-auto" />
+                        @endif
+                    </flux:menu.item>
+                @endforeach
+            </flux:menu>
+        </flux:dropdown>
+
+        @if ($this->sortActive)
+            <flux:button size="sm" variant="ghost" wire:click="resetSort">{{ __('Reset') }}</flux:button>
+        @endif
+    </div>
 
     {{-- Columns can be collapsed to a narrow strip with the status upright (data-collapsed, see app.css), remembered per
          project in the browser; a click on the strip opens the column again. --}}

@@ -5,6 +5,7 @@ use App\Concerns\EditsTasksInBulk;
 use App\Concerns\OpensTaskPanel;
 use App\Concerns\QuickAddsTasks;
 use App\Concerns\ShowsProject;
+use App\Concerns\SortsTasks;
 use App\Enums\CustomFieldType;
 use App\Models\CustomFieldValue;
 use App\Models\Project;
@@ -31,6 +32,7 @@ new class extends Component
     use EditsTasksInBulk;
     use OpensTaskPanel;
     use QuickAddsTasks;
+    use SortsTasks;
 
     private const int PAGE_SIZE = 50;
 
@@ -58,12 +60,6 @@ new class extends Component
     /** @var array<int|string, string> */
     #[Url(as: 'f')]
     public array $fieldFilters = [];
-
-    #[Url(as: 'sort')]
-    public string $sortBy = '';
-
-    #[Url(as: 'dir')]
-    public string $sortDirection = 'asc';
 
     public string $saveName = '';
 
@@ -139,14 +135,6 @@ new class extends Component
     }
 
     /**
-     * The sort direction from the address, limited to the two valid values.
-     */
-    protected function direction(): string
-    {
-        return $this->sortDirection === 'desc' ? 'desc' : 'asc';
-    }
-
-    /**
      * The first page of the list; more is loaded when the end of the list comes into view.
      */
     #[Computed]
@@ -154,10 +142,11 @@ new class extends Component
     {
         return $this->filteredTasks()
             ->with(['assignee', 'collaborators', 'tags', 'status', 'blockers.status', 'fieldValues'])
-            ->tap(fn ($q) => $this->applyFieldSort($q))
-            ->when($this->sortBy === 'due', fn ($q) => $q->orderByRaw('due_date is null')->orderBy('due_date', $this->direction()))
-            ->when($this->sortBy === 'title', fn ($q) => $q->orderBy('title', $this->direction()))
-            ->when($this->sortBy === 'status', fn ($q) => $q->orderBy(TaskStatus::select('position')->whereColumn('task_statuses.id', 'tasks.status_id'), $this->direction()))
+            ->tap(function ($q) {
+                foreach ($this->sortTerms() as [$sql, $bindings]) {
+                    $q->orderByRaw($sql, $bindings);
+                }
+            })
             ->orderBy('position')
             ->orderBy('id')
             ->limit($this->limit)
@@ -263,36 +252,6 @@ new class extends Component
                     ->where('option_id', (int) $option));
             }
         }
-    }
-
-    private function applyFieldSort($query): void
-    {
-        if (! str_starts_with($this->sortBy, 'field:')) {
-            return;
-        }
-
-        $field = $this->customFields->firstWhere('id', (int) substr($this->sortBy, 6));
-
-        if ($field === null) {
-            return;
-        }
-
-        $value = CustomFieldValue::query()
-            ->where('custom_field_values.custom_field_id', $field->id)
-            ->whereColumn('custom_field_values.task_id', 'tasks.id');
-
-        match ($field->type) {
-            CustomFieldType::Select => $value->join('custom_field_options as sort_options', 'sort_options.id', '=', 'custom_field_values.option_id')->select('sort_options.position'),
-            CustomFieldType::Number => $value->select(DB::raw('cast(custom_field_values.value as '.match (DB::connection()->getDriverName()) {
-                'mysql', 'mariadb' => 'decimal(30, 10)',
-                'pgsql' => 'double precision',
-                default => 'real',
-            }.')')),
-            default => $value->select('custom_field_values.value'),
-        };
-
-        $query->orderByRaw("({$value->toSql()}) is null", $value->getBindings())
-            ->orderBy($value, $this->direction());
     }
 
     #[Computed]
@@ -445,8 +404,7 @@ new class extends Component
         }
 
         $sort = (string) ($filters['sort'] ?? '');
-        $validSort = in_array($sort, ['due', 'title', 'status'], true) || (str_starts_with($sort, 'field:') && $this->customFields->contains('id', (int) substr($sort, 6)));
-        $this->sortBy = $validSort ? $sort : '';
+        $this->sortBy = $this->isSortable($sort) ? $sort : '';
         $this->sortDirection = ($filters['direction'] ?? 'asc') === 'desc' ? 'desc' : 'asc';
 
         $this->limit = self::PAGE_SIZE;
@@ -475,26 +433,9 @@ new class extends Component
         $this->limit = self::PAGE_SIZE;
     }
 
-    public function sort(string $column): void
+    protected function sorted(): void
     {
         $this->limit = self::PAGE_SIZE;
-
-        $isField = str_starts_with($column, 'field:') && $this->customFields->contains('id', (int) substr($column, 6));
-
-        if (! $isField && ! in_array($column, ['due', 'title', 'status'], true)) {
-            return;
-        }
-
-        if ($this->sortBy === $column) {
-            if ($this->sortDirection === 'asc') {
-                $this->sortDirection = 'desc';
-            } else {
-                $this->reset('sortBy', 'sortDirection');
-            }
-        } else {
-            $this->sortBy = $column;
-            $this->sortDirection = 'asc';
-        }
 
         unset($this->tasks);
     }

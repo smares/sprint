@@ -156,4 +156,32 @@ class BoardSortingTest extends TestCase
         $this->assertSame($other->id, $b->fresh()->status_id);
         $this->assertSame([0, 1], [$a->fresh()->position, $b->fresh()->position]);
     }
+
+    public function test_the_menu_sets_the_criterion_and_the_arrow_turns_the_direction(): void
+    {
+        $this->task('Zebra', ['position' => 0]);
+        $this->task('Anton', ['position' => 1]);
+
+        $board = Livewire::test('pages::projects.board', ['project' => $this->project])
+            ->call('reverseSort')
+            ->assertSet('sortDirection', 'asc')
+            ->set('sortBy', 'title');
+        $this->assertSame(['Anton', 'Zebra'], $this->column($board));
+
+        $board->call('reverseSort')->assertSet('sortDirection', 'desc');
+        $this->assertSame(['Zebra', 'Anton'], $this->column($board));
+
+        // Back to the manual order from the menu: the direction starts again with ascending
+        $board->set('sortBy', '')->assertSet('sortDirection', 'asc');
+        $this->assertSame(['Zebra', 'Anton'], $this->column($board));
+    }
+
+    public function test_a_criterion_the_menu_does_not_offer_is_not_taken(): void
+    {
+        Livewire::test('pages::projects.board', ['project' => $this->project])
+            ->set('sortBy', 'status')
+            ->assertSet('sortBy', '')
+            ->set('sortBy', 'field:999999')
+            ->assertSet('sortBy', '');
+    }
 }

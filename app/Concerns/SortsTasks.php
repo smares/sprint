@@ -79,6 +79,29 @@ trait SortsTasks
     }
 
     /**
+     * The criterion was picked in a menu: only a valid one counts, and none is the manual order.
+     */
+    public function updatedSortBy(): void
+    {
+        if (! $this->isSorted()) {
+            $this->reset('sortBy', 'sortDirection');
+        }
+
+        $this->sorted();
+    }
+
+    public function reverseSort(): void
+    {
+        if (! $this->isSorted()) {
+            return;
+        }
+
+        $this->sortDirection = $this->direction() === 'asc' ? 'desc' : 'asc';
+
+        $this->sorted();
+    }
+
+    /**
      * Back to the manual order.
      */
     public function resetSort(): void

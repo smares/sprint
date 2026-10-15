@@ -1,6 +1,6 @@
 <?php
 
-use App\Concerns\OpensTaskPanel;
+use App\Concerns\RefreshesOnTaskChanges;
 use App\Concerns\ShowsProject;
 use App\Models\Project;
 use App\Models\Task;
@@ -13,7 +13,7 @@ use Livewire\Component;
 
 new class extends Component
 {
-    use OpensTaskPanel;
+    use RefreshesOnTaskChanges;
     use ShowsProject;
 
     /** How many weeks the chart of created and completed tasks covers. */
@@ -329,7 +329,7 @@ new class extends Component
                             @foreach ($this->stuck as $task)
                                 <flux:table.row wire:key="stuck-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" class="cursor-pointer">
                                     <flux:table.cell class="pinned-column min-w-48 whitespace-normal max-sm:min-w-[45vw]">
-                                        <x-task-title-link :task="$task" :open="(string) $task->id === $openTaskId" />
+                                        <x-task-title-link :task="$task" />
                                     </flux:table.cell>
                                     <flux:table.cell>
                                         <x-status-badge :status="$task->status" />
@@ -352,5 +352,4 @@ new class extends Component
         </section>
     </div>
 
-    <x-task-panel :task="$this->panelTask" />
 </div>

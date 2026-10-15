@@ -254,9 +254,8 @@ trait EditsTasksInBulk
             }
         }));
 
-        if (ctype_digit($this->openTaskId) && $tasks->contains('id', (int) $this->openTaskId)) {
-            $this->openTaskId = '';
-        }
+        // The flyout closes when its task was one of them
+        $this->dispatch('tasks-deleted');
 
         $this->finishBulk(trans_choice('{1} One task deleted.|[0,*] :count tasks deleted.', $tasks->count()));
     }

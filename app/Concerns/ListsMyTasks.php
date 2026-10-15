@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Gate;
  */
 trait ListsMyTasks
 {
-    use OpensTaskPanel;
+    use RefreshesOnTaskChanges;
 
     /**
      * Drop the loaded tasks (and what is counted from them) after one of them changed.
@@ -56,15 +56,5 @@ trait ListsMyTasks
         $task->toggleDone();
 
         $this->forgetTasks();
-    }
-
-    /**
-     * The flyout opens any task one may see, whatever its project.
-     *
-     * @return Builder<Task>
-     */
-    protected function tasksForPanel(): Builder
-    {
-        return Task::query()->visibleTo(auth()->user());
     }
 }

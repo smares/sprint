@@ -5,7 +5,7 @@ Vorher: die [Checkliste](deployment.md#checkliste-für-jeden-host). Grundlage is
 So sieht es danach aus:
 
 ```
-Browser ──HTTPS──▶ Traefik (Dokploy) ──HTTP──▶ app (Caddy + PHP) ──▶ /app/* WebSocket ──▶ reverb
+Browser ──HTTPS──▶ Traefik (Dokploy) ──HTTP──▶ sprint (Caddy + PHP) ──▶ /app/* WebSocket ──▶ reverb
                                                     │
                                      queue, scheduler, Volume "storage" (SQLite, Anhänge, Backups)
 ```
@@ -48,7 +48,7 @@ Browser ──HTTPS──▶ Traefik (Dokploy) ──HTTP──▶ app (Caddy + 
 
    **`APP_KEY`** erzeugst du einmal, z. B. lokal mit `php artisan key:generate --show` oder mit `echo "base64:$(openssl rand -base64 32)"`, und hebst ihn getrennt von den Backups gut auf: Ohne ihn sind Zwei-Faktor-Geheimnisse und Sitzungen nach einem Restore nicht mehr lesbar.
 
-4. **Domain** (Tab *Domains*; *Preview Compose* zeigt vorher die fertige Datei mit den erzeugten Labels): **Service** `sprint`, **Port** `80`, Host `sprint.example.com`, **HTTPS** an mit Let's Encrypt als Zertifikat. Dokploy hängt `app` dafür ans Netz `dokploy-network` und setzt die Traefik-Labels selbst; eigene Labels in der `compose.yaml` sind nicht nötig. Die Domain muss per DNS (A-Record) auf den Server zeigen. Änderungen an Domains wirken erst nach dem nächsten **Deploy**.
+4. **Domain** (Tab *Domains*; *Preview Compose* zeigt vorher die fertige Datei mit den erzeugten Labels): **Service** `sprint`, **Port** `80`, Host `sprint.example.com`, **HTTPS** an mit Let's Encrypt als Zertifikat. Dokploy hängt `sprint` dafür ans Netz `dokploy-network` und setzt die Traefik-Labels selbst; eigene Labels in der `compose.yaml` sind nicht nötig. Die Domain muss per DNS (A-Record) auf den Server zeigen. Änderungen an Domains wirken erst nach dem nächsten **Deploy**.
 5. **Deploy**. Beim ersten Start migriert der `sprint`-Container die Datenbank; `queue` und `scheduler` starten, sobald `sprint` gesund ist (Healthcheck `php artisan sprint:health`).
 6. **Ersten Administrator anlegen** im Terminal des Containers `sprint` (in Dokploy über *Docker Terminal*):
 
@@ -62,7 +62,7 @@ Mit **Auto Deploy** (Webhook von GitHub) baut Dokploy nach jedem Push auf `main`
 
 ## Fertiges Image statt Bauen
 
-Dokploy muss Sprint nicht selbst bauen: Als **Compose Path** `./compose.image.yaml` eintragen und im *Environment* `SPRINT_VERSION=0.1.0` (oder `latest`) setzen; `COMPOSER_AUTH` entfällt. Das Image liegt privat auf `ghcr.io`: einmal im Terminal des Servers `docker login ghcr.io` (Token mit `read:packages`, siehe [Fertiges Image](deployment-docker.md#fertiges-image)), oder in Dokploy unter *Settings → Registry* ein Registry-Konto für `ghcr.io` anlegen. Ein neues Release spielst du ein, indem du `SPRINT_VERSION` änderst und **Deploy** drückst.
+Dokploy muss Sprint nicht selbst bauen: Als **Compose Path** `./compose.image.yaml` eintragen und im *Environment* `SPRINT_VERSION=1.5.1` (die aktuelle Version steht unter *Releases*, oder `latest`) setzen; `COMPOSER_AUTH` entfällt. Das Image liegt privat auf `ghcr.io`: einmal im Terminal des Servers `docker login ghcr.io` (Token mit `read:packages`, siehe [Fertiges Image](deployment-docker.md#fertiges-image)), oder in Dokploy unter *Settings → Registry* ein Registry-Konto für `ghcr.io` anlegen. Ein neues Release spielst du ein, indem du `SPRINT_VERSION` änderst und **Deploy** drückst.
 
 ## Live-Updates (Reverb)
 

@@ -24,7 +24,7 @@ Alles Weitere steht in [`docs/`](docs/README.md):
 
 - [Funktionen](docs/features.md)
 - [Installation](docs/installation.md)
-- [Bereitstellung](docs/deployment.md) (Laravel Forge, Laravel Cloud, Docker Compose, Dokploy)
+- [Bereitstellung](docs/deployment.md) (Laravel Forge, Laravel Cloud, Docker Compose, Traefik, Dokploy)
 - [Umzug von Asana](docs/asana-import.md)
 - [Konfiguration](docs/configuration.md)
 - [Wartung](docs/maintenance.md) (Updates, Gesundheitsprüfung, Backup)

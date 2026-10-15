@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Sleep;
+use Laravel\Passkeys\Passkey;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -23,6 +25,7 @@ class PasswordResetTest extends TestCase
         parent::setUp();
 
         Notification::fake();
+        Sleep::fake();
         $this->user = User::factory()->create(['email' => 'anna@example.com', 'password' => 'altes-passwort', 'locale' => 'en']);
     }
 
@@ -45,6 +48,14 @@ class PasswordResetTest extends TestCase
                 && str_contains((string) $mail->render(), route('password.reset', ['token' => $notification->token, 'email' => 'anna@example.com']));
         });
         Notification::assertCount(1);
+    }
+
+    public function test_an_unknown_address_gets_the_same_answer_and_waits_out_the_minimum_time(): void
+    {
+        Livewire::test('pages::forgot-password')->set('email', 'niemand@example.com')->call('send')->assertSet('sent', true);
+
+        Sleep::assertSleptTimes(1);
+        Notification::assertNothingSent();
     }
 
     public function test_deactivated_people_get_no_link(): void
@@ -84,6 +95,30 @@ class PasswordResetTest extends TestCase
         $this->assertTrue(Hash::check('neues-passwort', $this->user->fresh()->password));
         $this->assertDatabaseMissing('sessions', ['id' => 'alt']);
         $this->assertSame(0, $this->user->tokens()->count());
+    }
+
+    public function test_the_reset_removes_all_passkeys(): void
+    {
+        $this->passkeyFor($this->user, 'Laptop');
+        $this->passkeyFor($this->user, 'Handy');
+        $other = User::factory()->create();
+        $this->passkeyFor($other);
+        $token = Password::broker()->createToken($this->user);
+
+        Livewire::test('pages::reset-password', ['token' => $token])
+            ->set('email', 'anna@example.com')
+            ->set('password', 'neues-passwort')->set('passwordConfirmation', 'neues-passwort')
+            ->call('save')->assertHasNoErrors();
+
+        $this->assertSame(0, $this->user->passkeys()->count());
+        $this->assertSame(1, $other->passkeys()->count());
+    }
+
+    private function passkeyFor(User $user, string $name = 'Laptop'): void
+    {
+        $passkey = new Passkey(['name' => $name, 'credential_id' => 'cred-'.$name.$user->id, 'credential' => ['id' => 'x']]);
+        $passkey->user()->associate($user);
+        $passkey->save();
     }
 
     public function test_wrong_tokens_and_weak_passwords_are_refused(): void

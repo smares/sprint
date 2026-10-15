@@ -9,6 +9,7 @@ use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Laravel\Passkeys\Passkey;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -235,6 +236,18 @@ class TeamsAndUsersTest extends TestCase
 
         $this->assertNotSame('alt', $this->member->fresh()->remember_token);
         $this->assertSame(0, $this->member->tokens()->count());
+    }
+
+    public function test_resetting_a_password_removes_the_passkeys(): void
+    {
+        $this->actingAs($this->appAdmin);
+        $passkey = new Passkey(['name' => 'Laptop', 'credential_id' => 'cred-1', 'credential' => ['id' => 'x']]);
+        $passkey->user()->associate($this->member);
+        $passkey->save();
+
+        Livewire::test('pages::admin.users')->call('resetPassword', $this->member->id);
+
+        $this->assertSame(0, $this->member->passkeys()->count());
     }
 
     public function test_an_admin_manages_teams_and_their_people(): void

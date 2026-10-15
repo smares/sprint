@@ -2,7 +2,7 @@
 
 use App\Concerns\AssignsTasks;
 use App\Concerns\EditsTasksInBulk;
-use App\Concerns\OpensTaskPanel;
+use App\Concerns\RefreshesOnTaskChanges;
 use App\Concerns\QuickAddsTasks;
 use App\Concerns\ShowsProject;
 use App\Concerns\SortsTasks;
@@ -30,7 +30,7 @@ new class extends Component
     use ShowsProject;
     use AssignsTasks;
     use EditsTasksInBulk;
-    use OpensTaskPanel;
+    use RefreshesOnTaskChanges;
     use QuickAddsTasks;
     use SortsTasks;
 
@@ -688,7 +688,7 @@ new class extends Component
                                 </div>
                             </flux:table.cell>
                             <flux:table.cell :class="'min-w-56 whitespace-normal max-sm:min-w-[45vw] '.$pinnedTitle">
-                                <x-task-title-line :task="$task" :open="(string) $task->id === $openTaskId" :progress="$this->progress[$task->id] ?? null" :number="$number" />
+                                <x-task-title-line :task="$task" :progress="$this->progress[$task->id] ?? null" :number="$number" />
                             </flux:table.cell>
                             <flux:table.cell>
                                 <x-status-badge :status="$task->status" />
@@ -811,5 +811,4 @@ new class extends Component
         <x-assignee-menu :users="$this->assignableUsers" />
     @endif
 
-    <x-task-panel :task="$this->panelTask" />
 </div>

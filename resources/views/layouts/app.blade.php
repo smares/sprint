@@ -95,6 +95,9 @@
             @persist('command-palette')
                 <livewire:command-palette />
             @endpersist
+
+            {{-- Not kept: the open task is part of the address of the page it was opened on --}}
+            <livewire:task-flyout />
         @endauth
 
         <flux:main container>

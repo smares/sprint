@@ -679,20 +679,22 @@ const registerTaskFlyout = () => {
     }))
 }
 
-// $openTask($event, id): a click on a task link opens the task in the page's flyout (OpensTaskPanel); with a modifier key or
+// $openTask($event, id): a click on a task link opens the task in the flyout (the component task-flyout); with a modifier key or
 // another button it stays a normal link to the full page, and a click a drag already used (timeline bars) does nothing.
 const registerOpenTask = () => {
-    window.Alpine.magic('openTask', (el, { Alpine }) => (event, id) => {
+    window.Alpine.magic('openTask', () => (event, id) => {
         if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) {
             return
         }
 
         event.preventDefault()
-        Alpine.evaluate(el, '$wire').openTask(id)
+        window.Livewire.dispatch('open-task', { id })
     })
 }
 
 const registerAll = () => {
+    // Which task the flyout shows (task-flyout sets it): its title links light up
+    window.Alpine.store('taskFlyout', { id: '' })
     registerOpenTask()
     registerTaskFlyout()
     registerMentionable()

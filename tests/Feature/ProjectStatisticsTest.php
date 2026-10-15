@@ -87,7 +87,7 @@ class ProjectStatisticsTest extends TestCase
             ->assertSeeInOrder(['Lange in Arbeit', '37 Tage', 'Kurz in Arbeit', '7 Tage'])
             ->assertDontSee('Nur im Backlog')
             ->assertDontSee('Schon erledigt')
-            ->call('openTask', $old->id)->assertSet('openTaskId', (string) $old->id);
+            ->assertSeeHtml('$openTask($event, '.$old->id.')');
     }
 
     /**

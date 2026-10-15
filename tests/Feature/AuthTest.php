@@ -4,12 +4,20 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Sleep;
 use Livewire\Livewire;
 use Tests\TestCase;
 
 class AuthTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Sleep::fake();
+    }
 
     public function test_user_can_log_in(): void
     {
@@ -36,6 +44,38 @@ class AuthTest extends TestCase
             ->assertHasErrors('email');
 
         $this->assertGuest();
+    }
+
+    public function test_an_unknown_address_gets_the_same_error_and_the_same_minimum_duration(): void
+    {
+        $unknown = Livewire::test('pages::login')->set('email', 'niemand@example.com')->set('password', 'wrong')->call('login');
+
+        $known = Livewire::test('pages::login')->set('email', User::factory()->create()->email)->set('password', 'wrong')->call('login');
+
+        $this->assertSame($known->errors()->first('email'), $unknown->errors()->first('email'));
+        $this->assertGuest();
+        Sleep::assertSleptTimes(2);
+    }
+
+    public function test_a_deactivated_account_is_refused_after_the_password_check(): void
+    {
+        $user = User::factory()->create(['password' => 'secret-pass', 'deactivated_at' => now()]);
+
+        Livewire::test('pages::login')->set('email', $user->email)->set('password', 'wrong')->call('login')
+            ->assertHasErrors('email');
+        Livewire::test('pages::login')->set('email', $user->email)->set('password', 'secret-pass')->call('login')
+            ->assertHasErrors('email');
+
+        $this->assertGuest();
+    }
+
+    public function test_a_successful_login_does_not_wait(): void
+    {
+        $user = User::factory()->create(['password' => 'secret-pass']);
+
+        Livewire::test('pages::login')->set('email', $user->email)->set('password', 'secret-pass')->call('login');
+
+        Sleep::assertNeverSlept();
     }
 
     public function test_login_is_rate_limited(): void

@@ -303,7 +303,7 @@ new class extends Component
                                 <div class="flex items-start gap-2">
                                     <x-task-done-button :task="$task" :editable="in_array($task->project_id, $this->editableProjectIds, true)" />
                                     <div class="min-w-0">
-                                        <x-task-title-line :task="$task" :open="(string) $task->id === $openTaskId" :progress="$this->progress[$task->id] ?? null" />
+                                        <x-task-title-line :task="$task" :progress="$this->progress[$task->id] ?? null" />
                                         @if ($task->parent)
                                             <flux:text size="sm" class="block">{{ __('in :title', ['title' => $task->parent->title]) }}</flux:text>
                                         @endif
@@ -355,5 +355,4 @@ new class extends Component
         </flux:kanban>
     </div>
 
-    <x-task-panel :task="$this->panelTask" />
 </div>

@@ -82,13 +82,15 @@ class MyTasksTest extends TestCase
         $task = $this->mine(['title' => 'Im Flyout']);
         $hidden = Task::factory()->for(Project::factory())->create(['title' => 'Fremd']);
 
-        Livewire::test('pages::tasks.mine')
+        Livewire::test('pages::tasks.mine')->assertSeeHtml('$openTask($event, '.$task->id.')');
+
+        Livewire::test('task-flyout')
             ->call('openTask', $task->id)->assertSet('openTaskId', (string) $task->id)
             ->assertSeeHtml('data-modal="task-panel"')
             ->call('closeTask')
             ->call('openTask', $hidden->id)->assertSet('openTaskId', '');
 
-        Livewire::withQueryParams(['task' => $hidden->id])->test('pages::tasks.mine')->assertDontSeeHtml('data-modal="task-panel"');
+        Livewire::withQueryParams(['task' => $hidden->id])->test('task-flyout')->assertDontSeeHtml('data-modal="task-panel"');
     }
 
     public function test_more_tasks_and_projects_cost_no_more_queries(): void

@@ -252,8 +252,30 @@ class ReactionTest extends TestCase
 
         $html = $this->page($this->bernd)->html();
 
+        // A menu under the task and under each comment, but the menu's markup (quick picks, field, hint) is sent only once
         $this->assertSame(4, substr_count($html, '<template x-if="built">'));
-        $this->assertStringNotContainsString(__('Any other emoji …'), preg_replace('#<template x-if="built">.*?</template>#s', '', $html));
+        $this->assertSame(4, substr_count($html, 'x-html="menuHtml()"'));
+        $this->assertSame(1, substr_count($html, '<template data-reaction-menu>'));
+        $this->assertSame(1, substr_count($html, __('Any other emoji …').'" aria-label'));
+        $this->assertSame(1, substr_count($html, 'title="'.__('Thumbs up').'"'));
+    }
+
+    public function test_the_shared_menu_reacts_for_the_target_of_the_menu_it_is_opened_in(): void
+    {
+        $html = $this->page($this->bernd)->html();
+
+        // The quick picks call react() of emojiField, which knows the target and the id the menu was drawn for
+        $this->assertStringContainsString('x-data="emojiField(\'task\', '.$this->task->id.')"', $html);
+        $this->assertStringContainsString("x-on:click=\"react('👍')\"", $html);
+        $this->assertStringNotContainsString("wire:click=\"react('task', {$this->task->id}, '👍')\" x-on", $html);
+    }
+
+    public function test_people_who_cannot_react_get_no_menu(): void
+    {
+        $html = $this->page($this->viewer)->html();
+
+        $this->assertStringNotContainsString('data-reaction-menu', $html);
+        $this->assertStringNotContainsString('menuHtml()', $html);
     }
 
     public function test_the_emoji_field_keeps_only_an_emoji_and_sends_with_enter_instead_of_moving_on(): void

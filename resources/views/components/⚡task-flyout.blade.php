@@ -20,13 +20,20 @@ new class extends Component
     public string $openTaskId = '';
 
     /**
-     * Any task one may see opens, whatever page asks for it.
+     * Any task one may see opens, whatever page asks for it. The check is the query for the task the flyout is drawn
+     * from, so it is asked once and not twice.
      */
     #[On('open-task')]
     public function openTask(int|string $id): void
     {
-        if (Task::query()->visibleTo(auth()->user())->withoutSections()->whereKey($id)->exists()) {
-            $this->openTaskId = (string) $id;
+        $previous = $this->openTaskId;
+
+        $this->openTaskId = (string) $id;
+        unset($this->panelTask);
+
+        if ($this->panelTask === null) {
+            $this->openTaskId = $previous;
+            unset($this->panelTask);
         }
     }
 

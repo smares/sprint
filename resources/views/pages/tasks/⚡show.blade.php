@@ -44,7 +44,12 @@ new class extends Component
     /** How many comments and changes the activity feed shows at first and adds per "show earlier". */
     private const FEED_PAGE = 50;
 
-    /** How many tasks the @ suggestions offer at most. */
+    /** The columns of the people in the pickers: what the name, the avatar and the away note need. */
+    private const USER_COLUMNS = ['id', 'name', 'avatar_updated_at', 'timezone', 'deactivated_at', 'absent_from', 'absent_until'];
+
+    /** The pickers that load their choices on demand, see loadPicker. */
+    private const PICKERS = ['people', 'tags', 'parent', 'blockers', 'blocking'];
+
     public Task $task;
 
     /** Shown in a flyout over a list or board instead of as a page of its own. */
@@ -119,6 +124,15 @@ new class extends Component
     /** Somebody else saved this task while it is open here; the form keeps what was typed until it is reloaded. */
     public bool $changedElsewhere = false;
 
+    /**
+     * The pickers whose full list of choices is part of the page (see loadPicker). Until then a picker holds only what
+     * is chosen, so opening the flyout does not send the people, tags and tasks of the whole project.
+     *
+     * @var list<string>
+     */
+    #[Locked]
+    public array $loadedPickers = [];
+
     /** How many of the latest activity entries are shown. */
     #[Locked]
     public int $feedLimit = self::FEED_PAGE;
@@ -126,6 +140,26 @@ new class extends Component
     /** How many of the latest comments are shown. */
     #[Locked]
     public int $commentLimit = self::FEED_PAGE;
+
+    /**
+     * The choices of a picker: the first time somebody points at or focuses the field (see lazyPicker in app.js).
+     * Fields that share their choices (assignee and collaborators) share the name.
+     */
+    public function loadPicker(string $picker): void
+    {
+        if (! in_array($picker, self::PICKERS, true) || $this->pickerLoaded($picker)) {
+            $this->skipRender();
+
+            return;
+        }
+
+        $this->loadedPickers[] = $picker;
+    }
+
+    private function pickerLoaded(string $picker): bool
+    {
+        return in_array($picker, $this->loadedPickers, true);
+    }
 
     public function hydrate(): void
     {
@@ -315,21 +349,24 @@ new class extends Component
     {
         $tasks = new Collection;
         $frontier = [$this->task->getKey()];
+        $statuses = $this->task->project->statuses->keyBy('id');
 
         while ($frontier !== []) {
             $level = new Collection;
 
             foreach (array_chunk($frontier, 500) as $parents) {
                 $level = $level->concat(
-                    $this->task->project->tasks()->whereIn('parent_id', $parents)->with(['assignee', 'status'])->orderBy('position')->orderBy('id')->get()
+                    $this->task->project->tasks()->whereIn('parent_id', $parents)->orderBy('position')->orderBy('id')->get()
                 );
             }
 
+            // The statuses of the project are loaded anyway: no query per level for them
+            $level->each(fn (Task $subtask) => $subtask->setRelation('status', $statuses->get($subtask->status_id)));
             $tasks = $tasks->concat($level);
             $frontier = $level->pluck('id')->all();
         }
 
-        return $tasks;
+        return $tasks->load('assignee');
     }
 
     #[Computed]
@@ -409,28 +446,50 @@ new class extends Component
     }
 
     /**
-     * What the pickers for parent task and dependencies offer: what is already chosen plus the first matches of
-     * the search, so a project with thousands of tasks does not send them all to the browser.
+     * The tasks the pickers for parent task and dependencies hold at the start: the chosen ones, from one query.
+     *
+     * @return SupportCollection<int, Task>
+     */
+    #[Computed]
+    public function chosenTasks(): SupportCollection
+    {
+        $ids = array_values(array_unique([...($this->parentId === '' ? [] : [$this->parentId]), ...$this->blockerIds, ...$this->blockingIds]));
+
+        return $ids === [] ? collect() : $this->task->project->tasks()->whereKey($ids)->get(['id', 'title', 'is_section'])->keyBy('id');
+    }
+
+    /**
+     * What a picker for parent task or dependencies offers: what is already chosen and, once the picker is loaded, the
+     * first matches of the search, so a project with thousands of tasks does not send them all to the browser.
      *
      * @param  list<int|string>  $selectedIds
      * @param  list<int>  $excludedIds
      * @return Collection<int, Task>
      */
-    private function pickerTasks(string $search, array $selectedIds, array $excludedIds, bool $withoutHeadings = false): Collection
+    private function pickerTasks(string $picker, string $search, array $selectedIds, array $excludedIds, bool $withoutHeadings = false): Collection
     {
-        $tasks = fn () => $this->task->project->tasks()
-            ->whereNotIn('id', $excludedIds)
-            ->when($withoutHeadings, fn ($query) => $query->withoutSections());
+        $selectedIds = array_map(strval(...), $selectedIds);
+        $chosen = $this->chosenTasks
+            ->filter(fn (Task $task) => in_array((string) $task->id, $selectedIds, true)
+                && ! in_array($task->id, $excludedIds, true)
+                && ! ($withoutHeadings && $task->is_section))
+            ->values();
+
+        if (! $this->pickerLoaded($picker)) {
+            return new Collection($chosen->all());
+        }
+
         $search = trim($search);
 
-        $chosen = $selectedIds === [] ? new Collection : $tasks()->whereKey($selectedIds)->get(['id', 'title']);
-        $matches = $tasks()
+        $matches = $this->task->project->tasks()
+            ->whereNotIn('id', $excludedIds)
+            ->when($withoutHeadings, fn ($query) => $query->withoutSections())
             ->when($search !== '', fn ($query) => $query->whereLike('title', '%'.$search.'%'))
             ->orderBy('title')
             ->limit(self::PICKER_LIMIT)
             ->get(['id', 'title']);
 
-        return $chosen->concat($matches)->unique('id')->values();
+        return (new Collection($chosen->all()))->concat($matches)->unique('id')->values();
     }
 
     /**
@@ -446,19 +505,19 @@ new class extends Component
     #[Computed]
     public function parentOptions(): Collection
     {
-        return $this->pickerTasks($this->parentSearch, $this->parentId === '' ? [] : [$this->parentId], $this->parentExclusions(), withoutHeadings: true);
+        return $this->pickerTasks('parent', $this->parentSearch, $this->parentId === '' ? [] : [$this->parentId], $this->parentExclusions(), withoutHeadings: true);
     }
 
     #[Computed]
     public function blockerOptions(): Collection
     {
-        return $this->pickerTasks($this->blockerSearch, $this->blockerIds, [$this->task->getKey()]);
+        return $this->pickerTasks('blockers', $this->blockerSearch, $this->blockerIds, [$this->task->getKey()]);
     }
 
     #[Computed]
     public function blockingOptions(): Collection
     {
-        return $this->pickerTasks($this->blockingSearch, $this->blockingIds, [$this->task->getKey()]);
+        return $this->pickerTasks('blocking', $this->blockingSearch, $this->blockingIds, [$this->task->getKey()]);
     }
 
     /**
@@ -638,6 +697,21 @@ new class extends Component
         return $this->task->project->tags()->orderBy('name')->get();
     }
 
+    /**
+     * What the tag picker offers: all tags of the project once it is loaded, before that the tags of the task.
+     *
+     * @return Collection<int, Tag>
+     */
+    #[Computed]
+    public function tagOptions(): Collection
+    {
+        if ($this->pickerLoaded('tags')) {
+            return $this->projectTags;
+        }
+
+        return $this->task->tags->whereIn('id', array_map(intval(...), $this->tagIds))->sortBy('name')->values();
+    }
+
     public function createTag(): void
     {
         $this->authorizeEdit();
@@ -650,7 +724,8 @@ new class extends Component
 
         $this->tagIds = array_values(array_unique([...$this->tagIds, (string) $tag->id]));
         $this->reset('newTag');
-        unset($this->projectTags);
+        $this->loadedPickers = array_values(array_unique([...$this->loadedPickers, 'tags']));
+        unset($this->projectTags, $this->tagOptions);
     }
 
     #[Computed]
@@ -662,7 +737,38 @@ new class extends Component
             ->filter()
             ->unique();
 
-        return User::whereIn('id', $ids)->orderBy('name')->get(['id', 'name', 'avatar_updated_at', 'timezone', 'deactivated_at', 'absent_from', 'absent_until']);
+        return User::whereIn('id', $ids)->orderBy('name')->get(self::USER_COLUMNS);
+    }
+
+    /**
+     * The people the assignee and collaborator pickers hold at the start: the chosen ones.
+     *
+     * @return Collection<int, User>
+     */
+    #[Computed]
+    public function chosenUsers(): Collection
+    {
+        $ids = array_values(array_filter([$this->assigneeId, ...$this->collaboratorIds]));
+
+        return $ids === [] ? new Collection : User::whereIn('id', $ids)->orderBy('name')->get(self::USER_COLUMNS);
+    }
+
+    /**
+     * @return Collection<int, User>
+     */
+    #[Computed]
+    public function assigneeOptions(): Collection
+    {
+        return $this->pickerLoaded('people') ? $this->users : $this->chosenUsers->whereIn('id', [(int) $this->assigneeId])->values();
+    }
+
+    /**
+     * @return Collection<int, User>
+     */
+    #[Computed]
+    public function collaboratorOptions(): Collection
+    {
+        return $this->pickerLoaded('people') ? $this->users : $this->chosenUsers->whereIn('id', array_map(intval(...), $this->collaboratorIds))->values();
     }
 
     /**
@@ -793,6 +899,18 @@ new class extends Component
     }
 
     /**
+     * The latest comments, newest first, as many as the comments and the activity show, from one query.
+     *
+     * @return Collection<int, \App\Models\Comment>
+     */
+    #[Computed]
+    public function latestComments(): Collection
+    {
+        return $this->task->comments()->with('user', 'reactions.user')->latest()->latest('id')->limit(max($this->commentLimit, $this->feedLimit))->get()
+            ->each(fn ($comment) => $comment->setRelation('task', $this->task));
+    }
+
+    /**
      * The latest comments (commentLimit of them), oldest first, with the form below them.
      *
      * @return Collection<int, \App\Models\Comment>
@@ -800,21 +918,22 @@ new class extends Component
     #[Computed]
     public function shownComments(): Collection
     {
-        return $this->task->comments()->with('user', 'reactions.user')->latest()->latest('id')->limit($this->commentLimit)->get()
-            ->each(fn ($comment) => $comment->setRelation('task', $this->task))
-            ->reverse()->values();
+        return $this->latestComments->take($this->commentLimit)->reverse()->values();
     }
 
+    /**
+     * Whether there are older comments than the ones shown. Fewer comments fetched than asked for means there are no more.
+     */
     #[Computed]
     public function hasEarlierComments(): bool
     {
-        return $this->task->comments()->count() > $this->commentLimit;
+        return $this->latestComments->count() >= $this->commentLimit && $this->task->comments()->count() > $this->commentLimit;
     }
 
     public function showEarlierComments(): void
     {
         $this->commentLimit += self::FEED_PAGE;
-        unset($this->shownComments, $this->hasEarlierComments);
+        unset($this->latestComments, $this->shownComments, $this->hasEarlierComments);
     }
 
     /**
@@ -826,28 +945,44 @@ new class extends Component
     #[Computed]
     public function activityFeed(): SupportCollection
     {
-        $comments = $this->task->comments()->with('user')->latest()->latest('id')->limit($this->feedLimit)->get()
+        $comments = $this->latestComments->take($this->feedLimit)
             ->map(fn ($comment) => ['at' => $comment->created_at, 'comment' => $comment, 'activity' => null]);
 
-        $activities = $this->task->activities()->with('user')->latest()->latest('id')->limit($this->feedLimit)->get()
+        $activities = $this->latestActivities
             ->map(fn ($activity) => ['at' => $activity->created_at, 'comment' => null, 'activity' => $activity]);
 
         return $comments->concat($activities)->sortByDesc('at')->take($this->feedLimit)->reverse()->values();
     }
 
     /**
-     * Whether there are older entries than the ones shown.
+     * @return Collection<int, \App\Models\TaskActivity>
+     */
+    #[Computed]
+    public function latestActivities(): Collection
+    {
+        return $this->task->activities()->with('user')->latest()->latest('id')->limit($this->feedLimit)->get();
+    }
+
+    /**
+     * Whether there are older entries than the ones shown. Counting is only needed when a kind has filled its page.
      */
     #[Computed]
     public function hasEarlierFeed(): bool
     {
+        $comments = $this->latestComments->take($this->feedLimit)->count();
+        $activities = $this->latestActivities->count();
+
+        if ($comments < $this->feedLimit && $activities < $this->feedLimit) {
+            return $comments + $activities > $this->feedLimit;
+        }
+
         return $this->task->comments()->count() + $this->task->activities()->count() > $this->feedLimit;
     }
 
     public function showEarlierFeed(): void
     {
         $this->feedLimit += self::FEED_PAGE;
-        unset($this->activityFeed, $this->hasEarlierFeed);
+        unset($this->latestComments, $this->latestActivities, $this->activityFeed, $this->hasEarlierFeed, $this->shownComments, $this->hasEarlierComments);
     }
 
     /**
@@ -864,7 +999,7 @@ new class extends Component
 
         if ($newerOrSame > $this->commentLimit) {
             $this->commentLimit = (int) (ceil($newerOrSame / self::FEED_PAGE) * self::FEED_PAGE);
-            unset($this->shownComments, $this->hasEarlierComments);
+            unset($this->latestComments, $this->shownComments, $this->hasEarlierComments);
         }
 
         $this->js("window.showComment({$comment->id})");
@@ -875,7 +1010,7 @@ new class extends Component
      */
     private function forgetComments(): void
     {
-        unset($this->shownComments, $this->hasEarlierComments, $this->activityFeed, $this->hasEarlierFeed);
+        unset($this->latestComments, $this->latestActivities, $this->shownComments, $this->hasEarlierComments, $this->activityFeed, $this->hasEarlierFeed);
     }
 
     public function addComment(): void
@@ -1148,7 +1283,7 @@ new class extends Component
         <flux:textarea wire:model="title" :aria-label="__('Title')" rows="1" resize="none" class="task-title-input field-sizing-content"
             x-on:keydown.enter.prevent="$el.form.requestSubmit()" />
         {{-- A task with a description opens on the rendered text; "Edit" opens the field --}}
-        <x-markdown-editor wire:model="description" :label="__('Description')" grow :max="Task::MAX_DESCRIPTION_LENGTH" :preview="$this->descriptionPreview !== null" :preview-html="$this->descriptionPreview" :placeholder="__('Describe the task … (Markdown, @ for mentions)')" :rows="3" :mentions="$this->mentionOptions" :images="$this->canEdit ? $this->imageAttachments : null" />
+        <x-markdown-editor wire:model="description" :label="__('Description')" grow :max="Task::MAX_DESCRIPTION_LENGTH" :preview="$this->descriptionPreview !== null" :preview-html="$this->descriptionPreview" :placeholder="__('Describe the task … (Markdown, @ for mentions)')" :rows="3" mentions-on-demand :images="$this->canEdit ? $this->imageAttachments : null" />
 
         <x-reactions :reactable="$task" target="task" :can-react="$this->canEdit" />
 
@@ -1162,12 +1297,12 @@ new class extends Component
                 </flux:select>
             </x-task-field>
 
-            <x-task-field :label="__('Assignee')" icon="user">
+            <x-task-field :label="__('Assignee')" icon="user" lazy="people">
                 <flux:select size="sm" variant="listbox" wire:model="assigneeId" data-shortcut-assignee>
                     <x-slot name="trigger"><flux:select.button size="sm" :aria-label="__('Assignee')" :invalid="$errors->has('assigneeId')" /></x-slot>
                     <flux:select.option value="">{{ __('Nobody') }}</flux:select.option>
-                    @foreach ($this->users as $user)
-                        <flux:select.option value="{{ $user->id }}">{{ $user->labelledName() }}</flux:select.option>
+                    @foreach ($this->assigneeOptions as $user)
+                        <flux:select.option wire:key="assignee-{{ $user->id }}" value="{{ $user->id }}">{{ $user->labelledName() }}</flux:select.option>
                     @endforeach
                 </flux:select>
             </x-task-field>
@@ -1210,7 +1345,7 @@ new class extends Component
                 </x-task-field>
             @endforeach
 
-            <x-task-field :label="__('Parent task')" icon="arrow-turn-left-up">
+            <x-task-field :label="__('Parent task')" icon="arrow-turn-left-up" lazy="parent">
                 <flux:select size="sm" variant="listbox" wire:model="parentId" searchable>
                     <x-slot name="trigger"><flux:select.button size="sm" :aria-label="__('Parent task')" :invalid="$errors->has('parentId')" /></x-slot>
                     <x-slot name="search">
@@ -1218,21 +1353,21 @@ new class extends Component
                     </x-slot>
                     <flux:select.option value="">{{ __('None') }}</flux:select.option>
                     @foreach ($this->parentOptions as $candidate)
-                        <flux:select.option value="{{ $candidate->id }}">{{ $candidate->title }}</flux:select.option>
+                        <flux:select.option wire:key="parent-{{ $candidate->id }}" value="{{ $candidate->id }}">{{ $candidate->title }}</flux:select.option>
                     @endforeach
                 </flux:select>
             </x-task-field>
 
-            <x-task-field :label="__('Collaborators')" icon="users">
+            <x-task-field :label="__('Collaborators')" icon="users" lazy="people">
                 <flux:pillbox size="sm" wire:model="collaboratorIds" multiple searchable :placeholder="__('Choose more people …')">
                     <x-slot name="trigger"><flux:pillbox.trigger size="sm" :aria-label="__('Collaborators')" /></x-slot>
-                    @foreach ($this->users as $user)
+                    @foreach ($this->collaboratorOptions as $user)
                         <flux:pillbox.option wire:key="collaborator-{{ $user->id }}" value="{{ $user->id }}">{{ $user->labelledName() }}</flux:pillbox.option>
                     @endforeach
                 </flux:pillbox>
             </x-task-field>
 
-            <x-task-field :label="__('Tags')" icon="tag">
+            <x-task-field :label="__('Tags')" icon="tag" lazy="tags">
                 <flux:pillbox size="sm" variant="combobox" wire:model="tagIds" multiple :aria-label="__('Tags')" :placeholder="__('Select tags …')">
                     @if ($this->canEdit)
                         <x-slot name="input">
@@ -1240,7 +1375,7 @@ new class extends Component
                         </x-slot>
                     @endif
 
-                    @foreach ($this->projectTags as $tag)
+                    @foreach ($this->tagOptions as $tag)
                         <flux:pillbox.option wire:key="tag-{{ $tag->id }}" value="{{ $tag->id }}">{{ $tag->name }}</flux:pillbox.option>
                     @endforeach
 
@@ -1252,7 +1387,7 @@ new class extends Component
                 </flux:pillbox>
             </x-task-field>
 
-            <x-task-field :label="__('Blocked by')" icon="lock-closed">
+            <x-task-field :label="__('Blocked by')" icon="lock-closed" lazy="blockers">
                 <flux:pillbox size="sm" wire:model="blockerIds" multiple searchable :placeholder="__('Choose tasks …')">
                     <x-slot name="trigger"><flux:pillbox.trigger size="sm" :aria-label="__('Blocked by')" /></x-slot>
                     <x-slot name="search">
@@ -1264,7 +1399,7 @@ new class extends Component
                 </flux:pillbox>
             </x-task-field>
 
-            <x-task-field :label="__('Blocking')" icon="no-symbol">
+            <x-task-field :label="__('Blocking')" icon="no-symbol" lazy="blocking">
                 <flux:pillbox size="sm" wire:model="blockingIds" multiple searchable :placeholder="__('Choose tasks …')">
                     <x-slot name="trigger"><flux:pillbox.trigger size="sm" :aria-label="__('Blocking')" /></x-slot>
                     <x-slot name="search">
@@ -1406,7 +1541,7 @@ new class extends Component
 
                     @if ($editingCommentId === $comment->id)
                         <form wire:submit="saveComment" class="space-y-2">
-                            <x-markdown-editor wire:model="editingBody" :max="Comment::MAX_BODY_LENGTH" :rows="3" :mentions="$this->mentionOptions" :images="$this->canEdit ? $this->imageAttachments : null" />
+                            <x-markdown-editor wire:model="editingBody" :max="Comment::MAX_BODY_LENGTH" :rows="3" mentions-on-demand :images="$this->canEdit ? $this->imageAttachments : null" />
                             <flux:error name="editingBody" />
                             <div class="flex gap-2">
                                 <flux:button size="sm" type="submit" variant="primary">{{ __('Save') }}</flux:button>
@@ -1427,7 +1562,7 @@ new class extends Component
 
     @if ($this->canEdit)
         <form wire:submit="addComment" class="mt-6 space-y-3">
-            <x-markdown-editor wire:model="comment" :max="Comment::MAX_BODY_LENGTH" :placeholder="__('Write a comment … (Markdown, @ for mentions)')" :rows="3" :mentions="$this->mentionOptions" :images="$this->canEdit ? $this->imageAttachments : null" />
+            <x-markdown-editor wire:model="comment" :max="Comment::MAX_BODY_LENGTH" :placeholder="__('Write a comment … (Markdown, @ for mentions)')" :rows="3" mentions-on-demand :images="$this->canEdit ? $this->imageAttachments : null" />
             <flux:button type="submit">{{ __('Post comment') }}</flux:button>
         </form>
     @endif

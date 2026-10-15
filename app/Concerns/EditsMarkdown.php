@@ -31,10 +31,27 @@ trait EditsMarkdown
     #[Computed]
     public function mentionOptions(): array
     {
-        return [
-            'users' => $this->users->filter(fn (User $user) => $user->isActive())->map(fn (User $user) => ['id' => $user->id, 'name' => $user->name, 'note' => $user->absenceNote(), 'initials' => $user->initials(), 'avatar' => $user->avatarUrl(), 'color' => $user->avatarColor()])->values()->all(),
-            'searchTasks' => true,
-        ];
+        return ['users' => $this->mentionPeopleList(), 'searchTasks' => true];
+    }
+
+    /**
+     * The people offered after @, for an editor that does not have them with the page (x-markdown-editor with mentions-on-demand):
+     * it asks when it is focused or the first @ is typed.
+     *
+     * @return list<array{id: int, name: string, note: ?string, initials: string, avatar: ?string, color: string}>
+     */
+    #[Renderless]
+    public function mentionPeople(): array
+    {
+        return $this->mentionPeopleList();
+    }
+
+    /**
+     * @return list<array{id: int, name: string, note: ?string, initials: string, avatar: ?string, color: string}>
+     */
+    private function mentionPeopleList(): array
+    {
+        return $this->users->filter(fn (User $user) => $user->isActive())->map(fn (User $user) => ['id' => $user->id, 'name' => $user->name, 'note' => $user->absenceNote(), 'initials' => $user->initials(), 'avatar' => $user->avatarUrl(), 'color' => $user->avatarColor()])->values()->all();
     }
 
     /**

@@ -23,8 +23,8 @@ class Comment extends Model
 
     use HasReactions;
 
-    /** The longest comment, counted like {@see Task::MAX_DESCRIPTION_LENGTH}. */
-    public const int MAX_BODY_LENGTH = 65000;
+    /** The longest comment, the same as the longest description (counted in characters, see {@see Task::MAX_DESCRIPTION_LENGTH}). */
+    public const int MAX_BODY_LENGTH = Task::MAX_DESCRIPTION_LENGTH;
 
     protected static function booted(): void
     {

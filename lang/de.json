@@ -534,7 +534,6 @@
     "Pink": "Rosa",
     "Please choose a value.": "Bitte einen Wert auswählen.",
     "Please wait a moment before sending another test.": "Bitte warte einen Moment, bevor du noch einen Test sendest.",
-    "Plus :count subtasks, shown with their task.": "Dazu :count Unteraufgaben, sie stehen bei ihrer Aufgabe.",
     "Post comment": "Kommentieren",
     "Preview": "Vorschau",
     "Previous month": "Voriger Monat",
@@ -869,6 +868,7 @@
     "{1} One task deleted.|[0,*] :count tasks deleted.": "{1} Eine Aufgabe gelöscht.|[0,*] :count Aufgaben gelöscht.",
     "{1} One task imported|[0,*] :count tasks imported": "{1} Eine Aufgabe importiert|[0,*] :count Aufgaben importiert",
     "{1} One task ready to import|[0,*] :count tasks ready to import": "{1} Eine Aufgabe bereit zum Import|[0,*] :count Aufgaben bereit zum Import",
+    "{1} Plus one subtask, shown with its task.|[0,*] Plus :count subtasks, shown with their task.": "{1} Dazu eine Unteraufgabe, sie steht bei ihrer Aufgabe.|[0,*] Dazu :count Unteraufgaben, sie stehen bei ihrer Aufgabe.",
     "“:value” is not an active member of the project and is ignored": "„:value“ ist kein aktives Mitglied des Projekts und wird ignoriert",
     "… and :count more": "… und :count weitere"
 }

@@ -74,4 +74,14 @@ class AlignAsanaSubtasksTest extends TestCase
         $this->assertSame($open, $own->fresh()->status_id);
         $this->assertSame($working->status_id, $alreadyThere->fresh()->status_id);
     }
+
+    public function test_a_dry_run_counts_nested_subtasks_like_the_real_run(): void
+    {
+        $parent = $this->imported(Task::factory()->for($this->project)->inProgress()->create());
+        $subtask = $this->imported(Task::factory()->for($this->project)->create(['parent_id' => $parent->id, 'status_id' => $this->project->defaultStatus()->id]));
+        $this->imported(Task::factory()->for($this->project)->create(['parent_id' => $subtask->id, 'status_id' => $this->project->defaultStatus()->id]));
+
+        $this->artisan('asana:align-subtasks', ['--dry-run' => true])->expectsOutputToContain('2 subtasks would move')->assertSuccessful();
+        $this->artisan('asana:align-subtasks')->expectsOutputToContain('2 subtasks moved')->assertSuccessful();
+    }
 }

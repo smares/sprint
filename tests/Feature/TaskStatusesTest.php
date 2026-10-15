@@ -170,9 +170,23 @@ class TaskStatusesTest extends TestCase
         $statuses = Livewire::test('project-statuses', ['project' => $this->project])->assertSee('Dazu 2 Unteraufgaben')->instance()->statuses;
 
         // Board and list only show the top level: "Offen" has no tasks there, only the two subtasks
-        $this->assertSame(0, $statuses->firstWhere('id', $open->id)->tasks_count - $statuses->firstWhere('id', $open->id)->subtasks_count);
+        $this->assertSame(0, $statuses->firstWhere('id', $open->id)->top_level_count);
         $this->assertSame(2, $statuses->firstWhere('id', $open->id)->subtasks_count);
         $this->assertSame(1, $statuses->firstWhere('id', $parent->status_id)->tasks_count);
+    }
+
+    public function test_headings_are_neither_counted_as_tasks_nor_as_subtasks_and_one_subtask_reads_in_the_singular(): void
+    {
+        $open = $this->project->statuses[0];
+        $parent = Task::factory()->for($this->project)->create(['status_id' => $open->id]);
+        Task::factory()->for($this->project)->create(['parent_id' => $parent->id, 'status_id' => $open->id]);
+        Task::factory()->for($this->project)->create(['parent_id' => $parent->id, 'status_id' => $open->id, 'is_section' => true, 'title' => 'Überschrift']);
+        Task::factory()->for($this->project)->create(['status_id' => $open->id, 'is_section' => true, 'title' => 'Oberste Überschrift']);
+
+        $statuses = Livewire::test('project-statuses', ['project' => $this->project])->assertSee('Dazu eine Unteraufgabe')->assertDontSee('Dazu 2 Unteraufgaben')->instance()->statuses;
+
+        $this->assertSame(1, $statuses->firstWhere('id', $open->id)->top_level_count);
+        $this->assertSame(1, $statuses->firstWhere('id', $open->id)->subtasks_count);
     }
 
     public function test_status_without_tasks_can_be_deleted_without_replacement(): void

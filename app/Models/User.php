@@ -40,6 +40,22 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
     public const array AVATAR_COLORS = ['red', 'orange', 'amber', 'lime', 'green', 'emerald', 'teal', 'cyan', 'sky', 'blue', 'indigo', 'violet', 'purple', 'fuchsia', 'pink', 'rose'];
 
     /**
+     * Old names of time zones that browsers still report (Intl) and that PHP's list does not have, with the current name.
+     *
+     * @var array<string, string>
+     */
+    public const array LEGACY_TIMEZONES = [
+        'Asia/Calcutta' => 'Asia/Kolkata',
+        'Asia/Katmandu' => 'Asia/Kathmandu',
+        'Asia/Rangoon' => 'Asia/Yangon',
+        'Asia/Saigon' => 'Asia/Ho_Chi_Minh',
+        'America/Buenos_Aires' => 'America/Argentina/Buenos_Aires',
+        'Atlantic/Faeroe' => 'Atlantic/Faroe',
+        'Europe/Kiev' => 'Europe/Kyiv',
+        'Pacific/Truk' => 'Pacific/Chuuk',
+    ];
+
+    /**
      * @var array<string, mixed>
      */
     protected $attributes = ['digest_enabled' => true, 'reminders_enabled' => true, 'celebrations_enabled' => true];
@@ -155,6 +171,14 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
     public function hasPlannedAbsence(): bool
     {
         return $this->absent_until !== null && $this->absent_until->toDateString() >= $this->today()->toDateString();
+    }
+
+    /**
+     * The current name for a time zone, the same for one that is up to date.
+     */
+    public static function canonicalTimezone(string $zone): string
+    {
+        return self::LEGACY_TIMEZONES[$zone] ?? $zone;
     }
 
     /**

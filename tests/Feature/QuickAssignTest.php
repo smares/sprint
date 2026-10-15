@@ -160,4 +160,16 @@ class QuickAssignTest extends TestCase
 
         Livewire::test($view, ['project' => $this->project])->assertSeeHtml('data-unassigned');
     }
+
+    public function test_taking_over_a_task_from_the_collaborators_is_recorded_in_the_history(): void
+    {
+        $task = Task::factory()->for($this->project)->create(['assignee_id' => null]);
+        $task->collaborators()->attach($this->member);
+
+        Livewire::test('pages::projects.show', ['project' => $this->project])->call('assign', $task->id, $this->member->id);
+
+        $types = $task->activities()->pluck('type')->map->value->all();
+        $this->assertContains(ActivityType::AssigneeChanged->value, $types);
+        $this->assertContains(ActivityType::CollaboratorsRemoved->value, $types);
+    }
 }

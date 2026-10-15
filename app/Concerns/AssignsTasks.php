@@ -23,7 +23,7 @@ trait AssignsTasks
     #[Computed]
     public function assignableUsers(): Collection
     {
-        return $this->project->eligibleUsers()->orderBy('name')->get(['id', 'name', 'avatar_updated_at', 'absent_from', 'absent_until']);
+        return $this->project->eligibleUsers()->orderBy('name')->get(['id', 'name', 'avatar_updated_at', 'timezone', 'absent_from', 'absent_until']);
     }
 
     public function assign(int $taskId, ?int $userId): void
@@ -32,14 +32,11 @@ trait AssignsTasks
 
         $task = $this->project->tasks()->topLevel()->withoutSections()->findOrFail($taskId);
 
-        abort_unless($userId === null || $this->assignableUsers->contains('id', $userId), 422);
+        $user = $userId === null ? null : $this->assignableUsers->firstWhere('id', $userId);
 
-        $task->update(['assignee_id' => $userId]);
+        abort_unless($userId === null || $user instanceof User, 422);
 
-        // Somebody who is the assignee is not also a collaborator, as when saving the task
-        if ($userId !== null) {
-            $task->collaborators()->detach($userId);
-        }
+        $task->assignTo($user);
 
         $this->afterAssigning();
     }

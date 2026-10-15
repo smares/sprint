@@ -103,7 +103,7 @@ class AsanaImportService
     /** @var array<string, int> */
     private array $counts = [
         'projects' => 0, 'tasks' => 0, 'tasks_new' => 0, 'subtasks' => 0, 'comments_new' => 0, 'attachments_new' => 0,
-        'attachment_bytes' => 0, 'dependencies' => 0, 'tasks_elsewhere' => 0, 'comments_unknown_author' => 0, 'comments_empty' => 0,
+        'attachment_bytes' => 0, 'dependencies' => 0, 'tasks_elsewhere' => 0, 'comments_unknown_author' => 0, 'comments_empty' => 0, 'texts_shortened' => 0, 'attachments_failed' => 0,
     ];
 
     // State of the project being imported
@@ -942,10 +942,26 @@ class AsanaImportService
         $assignee = $node['assignee'] !== null && ! $this->user($node['assignee']) instanceof User ? ($this->people[$node['assignee']]['name'] ?? null) : null;
 
         if ($assignee !== null) {
-            $description .= "\n\n---\n\n**".__('Assignee in Asana').':** '.$assignee;
+            $description .= "\n\n---\n\n**".__('Assignee in Asana').':** '.$this->literalName($assignee);
         }
 
-        return trim($description) === '' ? null : trim($description);
+        return trim($description) === '' ? null : $this->shortened(trim($description), Task::MAX_DESCRIPTION_LENGTH, (string) $node['name']);
+    }
+
+    /**
+     * The text as far as the editor accepts it: Asana allows about as many characters, but the conversion to Markdown
+     * adds some, and a task that is over the limit could not be saved again.
+     */
+    private function shortened(string $text, int $limit, string $where): string
+    {
+        if (mb_strlen($text) <= $limit) {
+            return $text;
+        }
+
+        $this->counts['texts_shortened']++;
+        $this->warn("“{$where}”: a text has more than {$limit} characters and was shortened.");
+
+        return mb_substr($text, 0, $limit);
     }
 
     /**
@@ -1046,6 +1062,14 @@ class AsanaImportService
     // Comments and attachments
 
     /**
+     * A name from Asana inside our own Markdown: on one line and without anything that would be read as formatting or a mention.
+     */
+    private function literalName(string $name): string
+    {
+        return MarkdownService::escape(trim((string) preg_replace('/\s+/u', ' ', $name)));
+    }
+
+    /**
      * @param  Node  $node
      */
     private function importComments(Task $task, array $node): void
@@ -1064,10 +1088,11 @@ class AsanaImportService
 
             if (! $author instanceof User) {
                 $name = $this->people[$story['author'] ?? '']['name'] ?? __('someone');
-                $body = '**'.__('From :name in Asana', ['name' => $name])."**\n\n".$body;
+                $body = '**'.__('From :name in Asana', ['name' => $this->literalName($name)])."**\n\n".$body;
                 $this->counts['comments_unknown_author']++;
             }
 
+            $body = $this->shortened($body, Comment::MAX_BODY_LENGTH, $task->title);
             $comment = new Comment(['task_id' => $task->id, 'user_id' => ($author ?? $this->importer)->id, 'body' => $body]);
             $comment->forceFill(['created_at' => $story['created_at'] ?? now(), 'updated_at' => $story['created_at'] ?? now()]);
             Comment::withoutEvents(fn () => $comment->save());
@@ -1094,6 +1119,7 @@ class AsanaImportService
             try {
                 $this->storeAttachment($task, $attachment);
             } catch (Throwable $exception) {
+                $this->counts['attachments_failed']++;
                 $this->warn("“{$task->title}”: the file “{$attachment['name']}” was not taken over ({$exception->getMessage()}).");
             }
         }

@@ -73,4 +73,46 @@ class UserTimezoneTest extends TestCase
             ->assertHasNoErrors();
         $this->assertNull($user->fresh()->timezone);
     }
+
+    public function test_names_that_browsers_still_report_are_saved_under_their_current_name(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        // Chrome still says Asia/Calcutta for Asia/Kolkata, which the list of PHP does not have under that name
+        Livewire::test('pages::profile')
+            ->set('timezone', 'Asia/Calcutta')
+            ->assertHasNoErrors()
+            ->assertSet('timezone', 'Asia/Kolkata');
+
+        $this->assertSame('Asia/Kolkata', $user->fresh()->timezone);
+        $this->assertSame('Asia/Kolkata', User::canonicalTimezone('Asia/Calcutta'));
+        $this->assertSame('Europe/Berlin', User::canonicalTimezone('Europe/Berlin'));
+
+        foreach (User::LEGACY_TIMEZONES as $current) {
+            $this->assertContains($current, timezone_identifiers_list());
+        }
+    }
+
+    public function test_an_absence_may_end_today_by_the_persons_own_calendar(): void
+    {
+        // 03:00 on the 16th in Berlin is still the evening of the 15th in Los Angeles
+        $this->travelTo(Carbon::parse('2026-10-16 03:00', 'Europe/Berlin'));
+        $user = User::factory()->create(['timezone' => 'America/Los_Angeles']);
+        $this->actingAs($user);
+
+        Livewire::test('pages::profile')
+            ->set('absentFrom', '2026-10-15')
+            ->set('absentUntil', '2026-10-15')
+            ->call('saveAbsence')
+            ->assertHasNoErrors();
+
+        $this->assertSame('2026-10-15', $user->fresh()->absent_until->toDateString());
+
+        Livewire::test('pages::profile')
+            ->set('absentFrom', '2026-10-14')
+            ->set('absentUntil', '2026-10-14')
+            ->call('saveAbsence')
+            ->assertHasErrors('absentUntil');
+    }
 }

@@ -99,7 +99,6 @@ Der Probelauf stellt alle Anfragen an Asana, schreibt aber nichts. Er zeigt, wie
 - **Wiederholungen**, Reaktionen („Gefällt mir“), Genehmigungsaufgaben, Teilnahme an Portfolios, Ziele, Formulare, Automatisierungsregeln und Sichtweisen (Boards, Zeitleisten): Sprint hat eigene.
 - **Die Aktivitätsliste** einer Aufgabe (Zuweisungen, Datumsänderungen). Der Verlauf in Sprint beginnt mit dem Import.
 - **Unteraufgaben, die schon übernommen wurden:** Ein zweiter Lauf ändert keine vorhandene Aufgabe, also auch nicht ihren Status.
-- **Importe vor Version 1.5.9:** Dort steht im Verlauf die Person, die den Import gestartet hat, und der Tag des Imports als Anlegedatum. `php artisan asana:fix-created-history` setzt Datum und Ersteller dieser Einträge nach den Angaben der Aufgabe (ohne Verbindung zu Asana; `--dry-run` zeigt nur, was sich ändert).
 - **Änderungen nach dem Import:** Ein zweiter Lauf übernimmt neue Aufgaben, Unteraufgaben, Kommentare und Anhänge, ändert aber keine bereits übernommene Aufgabe (Titel, Status, Datum …). Links auf Asana-Aufgaben in früher übernommenen Texten werden in jedem Lauf nachgezogen, sobald die Aufgabe in Sprint existiert (auch nach einem Abbruch oder wenn sie erst jetzt dazukommt).
 - **Aufgaben aus anderen Projekten** (siehe oben), solange sie nicht im ersten angegebenen Projekt liegen.
 

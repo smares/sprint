@@ -231,8 +231,11 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
 
     /* A table inside: its scroll area takes the rounded corners of the wrapper, so header and rows do not cover them with
        square ones, and it is a container for what is centered in its visible width, however far the table scrolls sideways
-       (the "n of m tasks" row of the list). */
+       (the "n of m tasks" row of the list). It is positioned itself, so what is positioned absolutely inside the table (the
+       hidden date text of a due date) is cut off by its scrolling like the rest and does not widen the page beyond the
+       screen (and with it everything that is as wide as the window, such as the task flyout). */
     & > ui-table-scroll-area {
+        position: relative;
         border-radius: inherit;
         container-type: inline-size;
     }

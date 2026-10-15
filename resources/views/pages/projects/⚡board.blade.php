@@ -240,29 +240,25 @@ new class extends Component
 
     <div class="mb-4 flex flex-wrap items-center gap-2">
         <flux:dropdown align="start">
-            <flux:button icon="arrows-up-down" icon:trailing="chevron-down">
-                {{ __('Sort') }}: {{ $this->sortLabel }}
-                @if ($this->sortActive)
-                    <flux:icon :icon="$this->sortDirection === 'desc' ? 'arrow-down' : 'arrow-up'" variant="micro" class="ms-1" />
-                @endif
-            </flux:button>
+            <flux:button icon="arrows-up-down" icon:trailing="chevron-down">{{ __('Sort') }}: {{ $this->sortLabel }}</flux:button>
 
+            {{-- What to sort by; picking one orders the cards at once --}}
             <flux:menu>
-                <flux:menu.item wire:click="resetSort">
-                    <span @class(['font-semibold' => ! $this->sortActive])>{{ __('Manual order') }}</span>
-                </flux:menu.item>
-                <flux:menu.separator />
-                {{-- The same click again turns the direction, a third one is back to the manual order, as in the list --}}
-                @foreach ([['due', __('Due')], ['title', __('Title')], ...$this->customFields->map(fn ($field) => ['field:'.$field->id, $field->name])->all()] as [$column, $label])
-                    <flux:menu.item wire:key="sort-{{ $column }}" wire:click="sort('{{ $column }}')">
-                        <span @class(['font-semibold' => $sortBy === $column])>{{ $label }}</span>
-                        @if ($sortBy === $column)
-                            <flux:icon :icon="$sortDirection === 'desc' ? 'arrow-down' : 'arrow-up'" variant="micro" class="ms-auto" />
-                        @endif
-                    </flux:menu.item>
-                @endforeach
+                <flux:menu.radio.group wire:model.live="sortBy">
+                    <flux:menu.radio value="">{{ __('Manual order') }}</flux:menu.radio>
+                    <flux:menu.radio value="due">{{ __('Due') }}</flux:menu.radio>
+                    <flux:menu.radio value="title">{{ __('Title') }}</flux:menu.radio>
+                    @foreach ($this->customFields as $field)
+                        <flux:menu.radio wire:key="sort-field-{{ $field->id }}" value="field:{{ $field->id }}">{{ $field->name }}</flux:menu.radio>
+                    @endforeach
+                </flux:menu.radio.group>
             </flux:menu>
         </flux:dropdown>
+
+        {{-- The direction is one click on its own: the arrow shows the order in force and turns it --}}
+        @if ($this->sortActive)
+            <flux:button :icon="$sortDirection === 'desc' ? 'arrow-down' : 'arrow-up'" wire:click="reverseSort" aria-label="{{ __('Reverse order') }}" tooltip="{{ $sortDirection === 'desc' ? __('Descending') : __('Ascending') }}: {{ __('Reverse order') }}" />
+        @endif
 
         @if ($this->sortActive)
             <flux:button size="sm" variant="ghost" wire:click="resetSort">{{ __('Reset') }}</flux:button>

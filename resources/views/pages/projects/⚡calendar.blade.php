@@ -94,7 +94,7 @@ new class extends Component
         for ($day = $from->copy(); $day <= $to; $day->addDay()) {
             $date = $day->copy();
 
-            $weeks[intdiv($date->diffInDays($from), 7)][] = [
+            $weeks[intdiv((int) $from->diffInDays($date), 7)][] = [
                 'date' => $date,
                 'inMonth' => $date->month === $this->monthStart->month,
                 'tasks' => $tasks->filter(fn (Task $task) => $task->spanStart()->startOfDay() <= $date && $task->spanEnd()->startOfDay() >= $date)->values(),

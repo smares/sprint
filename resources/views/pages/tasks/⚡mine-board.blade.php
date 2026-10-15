@@ -166,7 +166,10 @@ new class extends Component
         if ((int) $group === self::UNSORTED) {
             PersonalPlacement::query()->where('user_id', auth()->id())->where('task_id', $task->getKey())->delete();
         } else {
-            auth()->user()->personalColumns()->findOrFail((int) $group)->place($task, $position);
+            $column = auth()->user()->personalColumns()->findOrFail((int) $group);
+            $visibleTaskIds = $this->mine()->whereIn('tasks.id', $column->placements()->select('task_id'))->pluck('tasks.id')->all();
+
+            $column->place($task, $position, $visibleTaskIds);
         }
 
         $this->forgetTasks();

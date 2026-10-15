@@ -245,6 +245,36 @@ class RecurringTasksTest extends TestCase
         }
     }
 
+    public function test_the_form_does_not_write_the_rule_back_after_finishing_on_the_task_page(): void
+    {
+        $task = $this->recurring();
+
+        Livewire::test('pages::tasks.show', ['task' => $task])
+            ->set('statusId', (string) $this->project->doneStatus()->id)->call('save')
+            ->assertSet('repeatUnit', '')
+            ->set('description', 'Nachgetragen')->call('save')->assertHasNoErrors();
+
+        $this->assertNull($task->fresh()->repeat_unit);
+        $this->assertSame(2, Task::where('title', 'Wochenbericht')->count());
+    }
+
+    public function test_the_form_does_not_write_the_rule_back_after_finishing_with_the_shortcut(): void
+    {
+        $task = $this->recurring();
+
+        Livewire::test('pages::tasks.show', ['task' => $task])
+            ->dispatch('shortcut-toggle-done')
+            ->assertSet('repeatUnit', '')
+            ->set('description', 'Nachgetragen')->call('save')->assertHasNoErrors();
+
+        $this->assertNull($task->fresh()->repeat_unit);
+
+        $task->fresh()->toggleDone();
+        $task->fresh()->toggleDone();
+
+        $this->assertSame(2, Task::where('title', 'Wochenbericht')->count());
+    }
+
     public function test_finishing_via_the_checkbox_notifies_with_the_right_statuses(): void
     {
         Notification::fake();

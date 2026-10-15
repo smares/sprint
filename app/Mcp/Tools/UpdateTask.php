@@ -36,7 +36,7 @@ class UpdateTask extends WriteTaskTool
         $this->requireEdit($user, $task->project);
 
         DB::transaction(function () use ($task, $given) {
-            $task->update($this->columns($task->project, $given, $task));
+            $task->updateAssigning($this->columns($task->project, $given, $task));
             $this->relations($task, $given);
         });
 

@@ -53,7 +53,8 @@ class ListTasks extends SprintTool
         }
 
         if ($search !== '') {
-            $tasks = app(TaskSearchService::class)->search($user, $search, ['project_id' => $validated['project_id'] ?? null, 'state' => $state]);
+            $tasks = app(TaskSearchService::class)->search($user, $search, ['project_id' => $validated['project_id'] ?? null, 'state' => $state])
+                ->when(($validated['include_subtasks'] ?? true) === false, fn ($query) => $query->topLevel());
         } else {
             $tasks = Task::query()
                 ->withoutSections()

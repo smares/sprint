@@ -1,19 +1,16 @@
 <?php
 
-use App\Concerns\OpensTaskPanel;
-use App\Models\Project;
+use App\Concerns\ListsMyTasks;
 use App\Models\Task;
 use Illuminate\Contracts\View\View;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 new class extends Component
 {
-    use OpensTaskPanel;
+    use ListsMyTasks;
 
     private const PAGE_SIZE = 50;
 
@@ -23,14 +20,6 @@ new class extends Component
     public function loadMore(): void
     {
         $this->limit += self::PAGE_SIZE;
-    }
-
-    private function mine(): Builder
-    {
-        return Task::query()
-            ->visibleTo(auth()->user())
-            ->involving(auth()->user())
-            ->open();
     }
 
     #[Computed]
@@ -70,32 +59,12 @@ new class extends Component
     #[Computed]
     public function editableProjectIds(): array
     {
-        $projects = new Collection($this->tasks->pluck('project')->unique('id')->values()->all());
-        Project::rememberRolesFor(auth()->user(), $projects);
-
-        return $projects
-            ->filter(fn (Project $project) => Gate::allows('edit', $project))
-            ->pluck('id')->values()->all();
+        return $this->editableProjectIdsOf($this->tasks);
     }
 
-    public function toggleDone(int $taskId): void
+    protected function forgetTasks(): void
     {
-        $task = Task::query()->visibleTo(auth()->user())->withoutSections()->findOrFail($taskId);
-        Gate::authorize('edit', $task->project);
-
-        $task->toggleDone();
-
         unset($this->tasks, $this->totalTasks, $this->progress);
-    }
-
-    /**
-     * The flyout opens any task one may see, whatever its project.
-     *
-     * @return Builder<Task>
-     */
-    protected function tasksForPanel(): Builder
-    {
-        return Task::query()->visibleTo(auth()->user());
     }
 
     public function rendering(View $view): void
@@ -106,7 +75,10 @@ new class extends Component
 ?>
 
 <div>
-    <flux:heading size="xl" class="mb-6">{{ __('My tasks') }}</flux:heading>
+    <div class="mb-6 flex items-center justify-between gap-3">
+        <flux:heading size="xl">{{ __('My tasks') }}</flux:heading>
+        <x-mine-views active="list" />
+    </div>
 
     @if ($this->tasks->isEmpty())
         <x-empty-state emoji="🎉" :heading="__('All done')" :text="__('You have no open tasks assigned or none you are involved in.')" />

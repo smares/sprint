@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -424,6 +425,16 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
         );
 
         return ! $wasMostRecent;
+    }
+
+    /**
+     * The columns of this person's own board in "My tasks", in their order.
+     *
+     * @return HasMany<PersonalColumn, $this>
+     */
+    public function personalColumns(): HasMany
+    {
+        return $this->hasMany(PersonalColumn::class)->orderBy('position')->orderBy('id');
     }
 
     /**

@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Symfony\Component\Mime\MimeTypes;
 use Throwable;
 
 /**
@@ -495,7 +496,8 @@ class AsanaImportService
 
         $user = $email !== '' ? $this->sprintUsers->first(fn (User $user) => mb_strtolower($user->email) === $email) : null;
 
-        if ($user === null && $name !== '') {
+        // The name only helps for people Asana gives no address for: a different address is a different person
+        if ($user === null && $email === '' && $name !== '') {
             $byName = $this->sprintUsers->filter(fn (User $user) => mb_strtolower($user->name) === $name);
             $user = $byName->count() === 1 ? $byName->first() : null;
         }
@@ -584,7 +586,13 @@ class AsanaImportService
         $fresh = $plan['project_id'] === null;
         $this->project = $fresh ? $this->createProject($plan) : Project::findOrFail($plan['project_id']);
         $this->remembered('project', $plan['gid'], $this->project->id);
-        $this->project->setRole($this->importer, ProjectRole::Admin);
+        // The importer runs the project they create; in an existing one their role stays as it is (or Editor, so they can write)
+        if ($fresh) {
+            $this->project->setRole($this->importer, ProjectRole::Admin);
+        } elseif (! $this->project->roleFor($this->importer) instanceof ProjectRole) {
+            $this->project->setRole($this->importer, ProjectRole::Editor);
+        }
+
         $this->memberIds = $this->project->members()->pluck('users.id')->mapWithKeys(fn (mixed $id) => [(int) $id => true])->all();
         $this->tags = $this->project->tags()->get()->keyBy(fn (Tag $tag) => mb_strtolower($tag->name));
         $this->childPosition = [];
@@ -1109,9 +1117,10 @@ class AsanaImportService
             throw_if($size > Attachment::MAX_KILOBYTES * 1024, AsanaException::class, 'it is larger than '.(Attachment::MAX_KILOBYTES / 1024).' MB');
 
             $name = mb_substr(preg_replace('/[\x00-\x1F\x7F\/\\\\]+/', '_', (string) $attachment['name']) ?? 'file', 0, 255);
-            $extension = strtolower(substr((string) preg_replace('/[^A-Za-z0-9]/', '', pathinfo($name, PATHINFO_EXTENSION)), 0, 8));
-            $path = "attachments/{$task->project_id}/{$task->id}/".Str::random(40).($extension !== '' ? ".{$extension}" : '');
             $mimeType = (new finfo(FILEINFO_MIME_TYPE))->file($temporary) ?: 'application/octet-stream';
+            // The extension follows the detected type, not the name Asana gives: "x.php" must not be stored as a script
+            $extension = MimeTypes::getDefault()->getExtensions($mimeType)[0] ?? '';
+            $path = "attachments/{$task->project_id}/{$task->id}/".Str::random(40).($extension !== '' ? ".{$extension}" : '');
 
             $stream = fopen($temporary, 'rb');
             Storage::disk()->writeStream($path, $stream);

@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Enums\CustomFieldType;
 use App\Enums\ProjectRole;
+use App\Models\CustomField;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
@@ -147,6 +149,44 @@ class DateDisplayTest extends TestCase
         $this->assertSame('Morgen', $this->label('2026-10-15'));
         $this->assertSame('In 7 Tagen', $this->label('2026-10-22', $auckland));
         $this->assertNull($this->label('2026-10-22', $this->viewer('Pacific/Pago_Pago')));
+    }
+
+    public function test_the_overdue_filter_and_the_cards_count_from_the_day_of_the_person(): void
+    {
+        config(['app.timezone' => 'UTC']);
+        date_default_timezone_set('UTC');
+
+        // 02:00 on the 16th in UTC is still the evening of the 15th in New York
+        $this->travelTo(Carbon::parse('2026-10-16 02:00', 'UTC'));
+        $project = Project::factory()->create();
+        Task::factory()->for($project)->create(['title' => 'Am Fünfzehnten fällig', 'due_date' => '2026-10-15']);
+
+        $this->actingAs(User::factory()->admin()->create(['timezone' => 'America/New_York']));
+        Livewire::test('pages::projects.show', ['project' => $project])->set('dateFilter', 'overdue')->assertDontSee('Am Fünfzehnten fällig');
+
+        $this->actingAs(User::factory()->admin()->create(['timezone' => null]));
+        Livewire::test('pages::projects.show', ['project' => $project])->set('dateFilter', 'overdue')->assertSee('Am Fünfzehnten fällig');
+    }
+
+    public function test_a_date_field_reads_in_the_format_of_the_language_in_the_history_and_the_automations(): void
+    {
+        $this->actingAs(User::factory()->admin()->create());
+        $project = Project::factory()->create();
+        $task = Task::factory()->for($project)->create();
+        $date = CustomField::factory()->for($project)->create(['name' => 'Abnahme', 'type' => CustomFieldType::Date]);
+        $text = CustomField::factory()->for($project)->create(['name' => 'Notiz']);
+
+        $task->setFieldValue($date, ['option_id' => null, 'value' => '2026-10-20']);
+        $task->setFieldValue($text, ['option_id' => null, 'value' => '2026-10-21']);
+
+        $sentences = $task->activities()->get()->map->sentence()->implode(' | ');
+        $this->assertStringContainsString('20.10.2026', $sentences);
+        $this->assertStringNotContainsString('2026-10-20', $sentences);
+        $this->assertStringContainsString('2026-10-21', $sentences, 'text that only looks like a date stays as typed');
+
+        $this->assertSame('20.10.2026', $date->displayText('2026-10-20'));
+        $this->assertSame('2026-10-20', $date->text('2026-10-20'), 'the stored form is untouched');
+        $this->assertSame('2026-10-21', $text->displayText('2026-10-21'));
     }
 
     public function test_the_words_for_a_date_field_cover_a_week_either_way(): void

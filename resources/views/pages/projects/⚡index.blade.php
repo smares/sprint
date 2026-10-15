@@ -2,6 +2,7 @@
 
 use App\Enums\ProjectRole;
 use App\Models\Project;
+use App\Services\DateService;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
@@ -17,18 +18,21 @@ new class extends Component
     #[Computed]
     public function projects(): Collection
     {
+        // The numbers on the cards count from the day of the person, like the due date chips
+        $today = DateService::today(auth()->user());
+
         return Project::query()
             ->visibleTo(auth()->user())
             ->whereNull('archived_at')
             ->withCount([
                 // All numbers on the card count like the list they open: top-level tasks, without section headings
                 'tasks as open_tasks_count' => fn ($query) => $query->topLevel()->withoutSections()->open(),
-                'tasks as overdue_tasks_count' => fn ($query) => $query->topLevel()->overdue(),
-                'tasks as due_soon_tasks_count' => fn ($query) => $query->topLevel()->dueSoon(),
+                'tasks as overdue_tasks_count' => fn ($query) => $query->topLevel()->overdue($today),
+                'tasks as due_soon_tasks_count' => fn ($query) => $query->topLevel()->dueSoon($today),
                 'tasks as progress_total_count' => fn ($query) => $query->topLevel()->withoutSections(),
                 'tasks as progress_done_count' => fn ($query) => $query->topLevel()->withoutSections()->done(),
             ])
-            ->withMin(['tasks as next_due_date' => fn ($query) => $query->open()->where('tasks.due_date', '>=', today()->toDateString())], 'due_date')
+            ->withMin(['tasks as next_due_date' => fn ($query) => $query->open()->where('tasks.due_date', '>=', $today->toDateString())], 'due_date')
             ->with('members')
             ->orderBy('name')
             ->get();

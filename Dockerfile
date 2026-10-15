@@ -5,7 +5,11 @@
 
 # Docker Hub images come through Google's mirror (mirror.gcr.io): Docker Hub limits anonymous pulls and has been
 # down during releases; the mirror serves the same images. Every image is pinned by digest, so a build uses exactly the
-# image that was tested; Dependabot proposes new digests (the tag says which line they follow).
+# image that was tested; Dependabot proposes new digests for the FROM lines (the tag says which line they follow). The digests of the
+# syntax frontend here and of BuildKit in .github/workflows/release.yml are updated by hand.
+
+# The Composer binary comes from its own pinned stage, so the vendor stage (which holds the Flux Pro credentials) runs nothing unpinned
+FROM mirror.gcr.io/library/composer:2@sha256:af98f42dfff7c68ba8d53c2164fd9fde1087b7d449514baa38c418b1f6bc4bac AS composer
 
 FROM mirror.gcr.io/dunglas/frankenphp:1-php8.4-bookworm@sha256:14007e6207a57651cb402970a44e5f2df15bfeffcbdeb5bbb322271949878b07 AS base
 
@@ -21,7 +25,7 @@ FROM base AS vendor
 
 COPY composer.json composer.lock ./
 
-RUN --mount=type=bind,from=mirror.gcr.io/library/composer:2,source=/usr/bin/composer,target=/usr/bin/composer \
+RUN --mount=type=bind,from=composer,source=/usr/bin/composer,target=/usr/bin/composer \
     --mount=type=secret,id=composer_auth,env=COMPOSER_AUTH,required=true \
     composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-interaction --no-progress
 
@@ -50,7 +54,7 @@ COPY --chown=$USER:$USER --from=vendor /app/vendor ./vendor
 COPY --chown=$USER:$USER . .
 COPY --chown=$USER:$USER --from=assets /app/public/build ./public/build
 
-RUN --mount=type=bind,from=mirror.gcr.io/library/composer:2,source=/usr/bin/composer,target=/usr/bin/composer \
+RUN --mount=type=bind,from=composer,source=/usr/bin/composer,target=/usr/bin/composer \
     mkdir -p bootstrap/cache storage/app/private storage/database storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs \
     && chown -R "$USER:$USER" bootstrap/cache storage \
     && su "$USER" -c "composer dump-autoload --optimize --no-dev --no-interaction"

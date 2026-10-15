@@ -9,6 +9,7 @@ use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Sleep;
+use Throwable;
 
 /**
  * The read-only part of the Asana REST API that the import needs: single objects, paginated lists and the download of
@@ -85,7 +86,12 @@ class AsanaClient
             return false;
         }
 
-        return $this->send($url, [], authorized: false, sink: $path)->successful();
+        try {
+            return $this->send($url, [], authorized: false, sink: $path)->successful();
+        } catch (Throwable) {
+            // The message of a failed connection names the whole address, including its signature
+            throw new AsanaException('the download failed');
+        }
     }
 
     /**
@@ -148,7 +154,8 @@ class AsanaClient
 
     private function request(bool $authorized): PendingRequest
     {
-        $request = Http::acceptJson()->timeout(60);
+        // Redirects stay on https: a signed address must not lead to a plain or internal one
+        $request = Http::acceptJson()->timeout(60)->withOptions(['allow_redirects' => ['max' => 3, 'protocols' => ['https']]]);
 
         return $authorized ? $request->withToken($this->token) : $request;
     }

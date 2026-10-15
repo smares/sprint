@@ -13,6 +13,8 @@
         ],
         __('Open task') => [
             ['e', __('Mark as done or reopen')],
+            ['a', __('Choose the assignee')],
+            ['m', __('Assign to me')],
         ],
     ];
 @endphp

@@ -451,4 +451,13 @@ class McpServerTest extends TestCase
         $this->assertNull($task->repeat_unit);
         $this->assertContains('hat die Wiederholung entfernt', $task->activities()->get()->map->sentence()->all());
     }
+
+    public function test_a_search_leaves_out_subtasks_when_asked_to(): void
+    {
+        $parent = Task::factory()->for($this->project)->create(['title' => 'Rechnung schreiben']);
+        Task::factory()->for($this->project)->create(['title' => 'Rechnung prüfen', 'parent_id' => $parent->id]);
+
+        $this->tool(ListTasks::class, ['query' => 'rechnung'])->assertSee(['Rechnung schreiben', 'Rechnung prüfen']);
+        $this->tool(ListTasks::class, ['query' => 'rechnung', 'include_subtasks' => false])->assertSee('Rechnung schreiben')->assertDontSee('Rechnung prüfen');
+    }
 }

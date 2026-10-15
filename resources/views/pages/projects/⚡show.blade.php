@@ -653,11 +653,13 @@ new class extends Component
                         <flux:table.column wire:key="column-{{ $field->id }}" sortable :sorted="$sortBy === 'field:'.$field->id" :direction="$sortDirection" wire:click="sort('field:{{ $field->id }}')">{{ $field->name }}</flux:table.column>
                     @endforeach
                 </flux:table.columns>
-                <flux:table.rows :wire:sort="$sortBy === '' && $this->canEdit && ! $selecting ? 'moveTask' : null" wire:sort:config="{{ \App\Sortable::CONFIG }}">
+                {{-- wire:sort is set up once per element: keyed by the mode, the rows are built anew and dragging really stops while sorted or selecting --}}
+                @php($draggable = $sortBy === '' && $this->canEdit && ! $selecting)
+                <flux:table.rows wire:key="rows-{{ $draggable ? 'draggable' : 'fixed' }}" :wire:sort="$draggable ? 'moveTask' : null" wire:sort:config="{{ \App\Sortable::CONFIG }}">
                     @php($number = 0)
                     @foreach ($this->tasks as $task)
                         @if ($task->is_section)
-                            <flux:table.row wire:key="task-{{ $task->id }}" :wire:sort:item="$sortBy === '' && $this->canEdit && ! $selecting ? $task->id : null">
+                            <flux:table.row wire:key="task-{{ $task->id }}" :wire:sort:item="$draggable ? $task->id : null">
                                 <flux:table.cell colspan="{{ $this::FIXED_COLUMNS + $this->listFields->count() }}" class="bg-zinc-50 dark:bg-zinc-900/40">
                                     <flux:heading size="sm">{{ $task->title }}</flux:heading>
                                 </flux:table.cell>
@@ -665,7 +667,7 @@ new class extends Component
                             @continue
                         @endif
                         @php($number++)
-                        <flux:table.row wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" class="cursor-pointer" :wire:sort:item="$sortBy === '' && $this->canEdit && ! $selecting ? $task->id : null">
+                        <flux:table.row wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" class="cursor-pointer" :wire:sort:item="$draggable ? $task->id : null">
                             <flux:table.cell :class="$pinnedDone">
                                 <div class="flex items-center gap-3">
                                     <x-task-done-button :task="$task" :editable="$this->canEdit" />

@@ -1,6 +1,6 @@
 <?php
 
-use App\Concerns\OpensTaskPanel;
+use App\Concerns\RefreshesOnTaskChanges;
 use App\Concerns\ShowsProject;
 use App\Models\Project;
 use App\Models\Task;
@@ -15,7 +15,7 @@ use Livewire\Component;
 
 new class extends Component
 {
-    use OpensTaskPanel, ShowsProject;
+    use RefreshesOnTaskChanges, ShowsProject;
 
     /** Days shown at once. */
     public const DAYS = 42;
@@ -224,5 +224,4 @@ new class extends Component
         </flux:text>
     @endif
 
-    <x-task-panel :task="$this->panelTask" />
 </div>

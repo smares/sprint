@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Enums\ProjectRole;
+use App\Enums\RepeatMode;
+use App\Enums\RepeatUnit;
 use App\Models\Project;
 use App\Models\Tag;
 use App\Models\Task;
@@ -285,21 +287,21 @@ class BulkTaskActionsTest extends TestCase
         $this->assertFalse($task->fresh()->isDone());
     }
 
-    public function test_selected_tasks_are_deleted_with_their_subtasks_and_the_open_panel_closes(): void
+    public function test_selected_tasks_are_deleted_with_their_subtasks_and_the_flyout_is_told(): void
     {
         $a = $this->task('Eins');
         $b = $this->task('Zwei');
         $keep = $this->task('Behalten');
         $child = $this->task('Kind', ['parent_id' => $a->id]);
 
-        $page = Livewire::test('pages::projects.show', ['project' => $this->project])->call('openTask', $a->id)->set('selecting', true)
-            ->set('selected', [(string) $a->id, (string) $b->id])->call('bulkDelete');
+        $page = Livewire::test('pages::projects.show', ['project' => $this->project])->set('selecting', true)
+            ->set('selected', [(string) $a->id, (string) $b->id])->call('bulkDelete')->assertDispatched('tasks-deleted');
 
         $this->assertNull(Task::find($a->id));
         $this->assertNull(Task::find($b->id));
         $this->assertNull(Task::find($child->id));
         $this->assertNotNull(Task::find($keep->id));
-        $page->assertSet('openTaskId', '')->assertSet('selecting', false);
+        $page->assertSet('selecting', false);
     }
 
     public function test_viewers_and_archived_projects_cannot_change_anything_in_bulk(): void
@@ -359,5 +361,30 @@ class BulkTaskActionsTest extends TestCase
 
         $html = Livewire::test('pages::projects.show', ['project' => $this->project])->call('selectTask', $a->id)->html();
         $this->assertStringContainsString('if ($wire.selected.length === 0) { $wire.stopSelecting() }', $html);
+    }
+
+    public function test_assigning_in_bulk_takes_the_new_assignee_off_the_collaborators(): void
+    {
+        $anna = User::factory()->create();
+        $this->project->setRole($anna, ProjectRole::Editor);
+        $task = $this->task('Eins');
+        $task->collaborators()->attach($anna);
+
+        $this->list([$task])->set('bulkAssignee', (string) $anna->id)->call('applyBulkChanges')->assertHasNoErrors();
+
+        $this->assertSame($anna->id, $task->fresh()->assignee_id);
+        $this->assertSame(0, $task->collaborators()->count());
+    }
+
+    public function test_clearing_the_due_date_in_bulk_ends_the_repetition_and_says_so(): void
+    {
+        $task = $this->task('Wöchentlich', ['due_date' => '2026-12-01', 'repeat_unit' => RepeatUnit::Week, 'repeat_interval' => 1, 'repeat_mode' => RepeatMode::Schedule]);
+
+        $this->list([$task])->set('bulkClearDueDate', true)->call('applyBulkChanges')->assertHasNoErrors();
+
+        $task->refresh();
+        $this->assertNull($task->due_date);
+        $this->assertNull($task->repeat_unit);
+        $this->assertContains('hat die Wiederholung entfernt', $task->activities()->get()->map->sentence()->all());
     }
 }

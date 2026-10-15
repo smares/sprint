@@ -1,11 +1,10 @@
 <?php
 
-use App\Concerns\OpensTaskPanel;
+use App\Concerns\RefreshesOnTaskChanges;
 use App\Models\Project;
 use App\Models\Task;
 use App\Services\TaskSearchService;
 use Illuminate\Contracts\View\View;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\Gate;
@@ -16,7 +15,7 @@ use Livewire\Component;
 
 new class extends Component
 {
-    use OpensTaskPanel;
+    use RefreshesOnTaskChanges;
 
     private const PAGE_SIZE = 50;
 
@@ -93,16 +92,6 @@ new class extends Component
         return app(TaskSearchService::class)->explain($task, $this->terms);
     }
 
-    /**
-     * The flyout opens any task one may see, whatever its project.
-     *
-     * @return Builder<Task>
-     */
-    protected function tasksForPanel(): Builder
-    {
-        return Task::query()->visibleTo(auth()->user());
-    }
-
     public function rendering(View $view): void
     {
         $view->title(__('Search'));
@@ -171,5 +160,4 @@ new class extends Component
         @endif
     </div>
 
-    <x-task-panel :task="$this->panelTask" />
 </div>

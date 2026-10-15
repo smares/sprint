@@ -7,6 +7,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
+use Laravel\Passkeys\Passkey;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -83,6 +84,19 @@ class ProfileTest extends TestCase
 
         $this->assertTrue(Hash::check('neues-passwort', $this->user->fresh()->password));
         $this->assertNotSame('alt', $this->user->fresh()->remember_token);
+    }
+
+    public function test_changing_the_password_keeps_the_passkeys(): void
+    {
+        $passkey = new Passkey(['name' => 'Laptop', 'credential_id' => 'cred-1', 'credential' => ['id' => 'x']]);
+        $passkey->user()->associate($this->user);
+        $passkey->save();
+
+        Livewire::test('pages::profile')
+            ->set('currentPassword', 'altes-passwort')->set('newPassword', 'neues-passwort')->set('newPasswordConfirmation', 'neues-passwort')
+            ->call('changePassword')->assertHasNoErrors();
+
+        $this->assertSame(1, $this->user->passkeys()->count());
     }
 
     public function test_changing_the_password_signs_out_other_sessions_and_api_tokens(): void

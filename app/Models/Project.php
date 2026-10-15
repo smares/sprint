@@ -455,16 +455,7 @@ class Project extends Model
                 ->all();
             $orderedIds = array_values(array_diff(array_keys($currentPositions), [$task->getKey()]));
 
-            $visibleIds = array_values(array_intersect($visibleIds, $orderedIds));
-            $position = max(0, min($position, count($visibleIds)));
-
-            $insertAt = match (true) {
-                $visibleIds === [] => count($orderedIds),
-                $position < count($visibleIds) => array_search($visibleIds[$position], $orderedIds, true),
-                default => array_search(end($visibleIds), $orderedIds, true) + 1,
-            };
-
-            array_splice($orderedIds, $insertAt, 0, [$task->getKey()]);
+            $orderedIds = Task::insertAmongVisible($orderedIds, $visibleIds, $position, $task->getKey());
 
             Task::writePositions($orderedIds, $currentPositions);
         });

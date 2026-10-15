@@ -1,6 +1,6 @@
 <?php
 
-use App\Concerns\OpensTaskPanel;
+use App\Concerns\RefreshesOnTaskChanges;
 use App\Concerns\ShowsProject;
 use App\Models\Project;
 use App\Models\Task;
@@ -14,7 +14,7 @@ use Livewire\Component;
 
 new class extends Component
 {
-    use OpensTaskPanel, ShowsProject;
+    use RefreshesOnTaskChanges, ShowsProject;
 
     /** How many tasks a day shows before "+ n more". */
     public const TASKS_PER_DAY = 3;
@@ -94,7 +94,7 @@ new class extends Component
         for ($day = $from->copy(); $day <= $to; $day->addDay()) {
             $date = $day->copy();
 
-            $weeks[intdiv($date->diffInDays($from), 7)][] = [
+            $weeks[intdiv((int) $from->diffInDays($date), 7)][] = [
                 'date' => $date,
                 'inMonth' => $date->month === $this->monthStart->month,
                 'tasks' => $tasks->filter(fn (Task $task) => $task->spanStart()->startOfDay() <= $date && $task->spanEnd()->startOfDay() >= $date)->values(),
@@ -222,5 +222,4 @@ new class extends Component
         </flux:text>
     @endif
 
-    <x-task-panel :task="$this->panelTask" />
 </div>

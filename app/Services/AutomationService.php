@@ -152,7 +152,7 @@ class AutomationService
     private function setAssignee(Task $task, ?User $user, bool $unassign): void
     {
         if ($user instanceof User || $unassign) {
-            $task->update(['assignee_id' => $user?->id]);
+            $task->assignTo($user);
         }
     }
 

@@ -1,7 +1,7 @@
 <?php
 
 use App\Concerns\AssignsTasks;
-use App\Concerns\OpensTaskPanel;
+use App\Concerns\RefreshesOnTaskChanges;
 use App\Concerns\QuickAddsTasks;
 use App\Concerns\ShowsProject;
 use App\Concerns\SortsTasks;
@@ -22,7 +22,7 @@ new class extends Component
 {
     use ShowsProject;
     use AssignsTasks;
-    use OpensTaskPanel;
+    use RefreshesOnTaskChanges;
     use QuickAddsTasks;
     use SortsTasks;
 
@@ -303,7 +303,7 @@ new class extends Component
                     >
                         @foreach ($this->columns[$status->id] as $task)
                             <flux:kanban.card wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" class="board-card cursor-pointer" :wire:sort:item="$this->canEdit ? $task->id : null">
-                                <x-task-title-link :task="$task" :open="(string) $task->id === $openTaskId" />
+                                <x-task-title-link :task="$task" />
 
                                 @if ($this->listFields->isNotEmpty())
                                     <div class="mt-2 flex flex-wrap gap-1">
@@ -370,5 +370,4 @@ new class extends Component
         <x-assignee-menu :users="$this->assignableUsers" />
     @endif
 
-    <x-task-panel :task="$this->panelTask" />
 </div>

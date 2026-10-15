@@ -166,7 +166,10 @@ new class extends Component
         if ((int) $group === self::UNSORTED) {
             PersonalPlacement::query()->where('user_id', auth()->id())->where('task_id', $task->getKey())->delete();
         } else {
-            auth()->user()->personalColumns()->findOrFail((int) $group)->place($task, $position);
+            $column = auth()->user()->personalColumns()->findOrFail((int) $group);
+            $visibleTaskIds = $this->mine()->whereIn('tasks.id', $column->placements()->select('task_id'))->pluck('tasks.id')->all();
+
+            $column->place($task, $position, $visibleTaskIds);
         }
 
         $this->forgetTasks();
@@ -300,7 +303,7 @@ new class extends Component
                                 <div class="flex items-start gap-2">
                                     <x-task-done-button :task="$task" :editable="in_array($task->project_id, $this->editableProjectIds, true)" />
                                     <div class="min-w-0">
-                                        <x-task-title-line :task="$task" :open="(string) $task->id === $openTaskId" :progress="$this->progress[$task->id] ?? null" />
+                                        <x-task-title-line :task="$task" :progress="$this->progress[$task->id] ?? null" />
                                         @if ($task->parent)
                                             <flux:text size="sm" class="block">{{ __('in :title', ['title' => $task->parent->title]) }}</flux:text>
                                         @endif
@@ -352,5 +355,4 @@ new class extends Component
         </flux:kanban>
     </div>
 
-    <x-task-panel :task="$this->panelTask" />
 </div>

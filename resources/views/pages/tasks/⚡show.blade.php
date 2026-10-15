@@ -144,6 +144,7 @@ new class extends Component
 
         $this->task->toggleDone();
         $this->statusId = (string) $this->task->status_id;
+        $this->fillRepeatRule();
         $this->announceChange();
     }
 
@@ -226,10 +227,7 @@ new class extends Component
         $this->assigneeId = (string) ($this->task->assignee_id ?? '');
         $this->dueDate = $this->task->due_date?->format('Y-m-d') ?? '';
         $this->startDate = $this->task->start_date?->format('Y-m-d') ?? '';
-        $this->repeatUnit = $this->task->repeat_unit?->value ?? '';
-        $this->repeatInterval = (string) ($this->task->repeat_interval ?? 1);
-        $this->repeatMode = $this->task->repeat_mode?->value ?? RepeatMode::Schedule->value;
-        $this->repeatUntil = $this->task->repeat_until?->format('Y-m-d') ?? '';
+        $this->fillRepeatRule();
         $this->fieldValues = $this->storedFieldValues();
         $this->notificationsOn = ! $this->task->isMutedBy(auth()->user());
         $this->parentId = (string) ($this->task->parent_id ?? '');
@@ -492,8 +490,21 @@ new class extends Component
         $this->assigneeId = (string) ($this->task->assignee_id ?? '');
         $this->dueDate = $this->task->due_date?->format('Y-m-d') ?? '';
         $this->startDate = $this->task->start_date?->format('Y-m-d') ?? '';
+        $this->fillRepeatRule();
         $this->tagIds = $this->task->tags->pluck('id')->map(fn ($id) => (string) $id)->all();
         $this->fieldValues = $this->storedFieldValues();
+    }
+
+    /**
+     * The repeat rule as stored. Finishing a recurring task hands the rule on to the next one, so the form must not
+     * keep the old rule or the next save would write it back.
+     */
+    private function fillRepeatRule(): void
+    {
+        $this->repeatUnit = $this->task->repeat_unit?->value ?? '';
+        $this->repeatInterval = (string) ($this->task->repeat_interval ?? 1);
+        $this->repeatMode = $this->task->repeat_mode?->value ?? RepeatMode::Schedule->value;
+        $this->repeatUntil = $this->task->repeat_until?->format('Y-m-d') ?? '';
     }
 
     /**

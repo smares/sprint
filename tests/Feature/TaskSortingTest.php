@@ -256,4 +256,18 @@ class TaskSortingTest extends TestCase
 
         $this->assertSame(5, Task::where('title', 'Neu')->value('position'));
     }
+
+    public function test_list_rows_are_only_draggable_in_manual_order(): void
+    {
+        $this->task();
+
+        Livewire::test('pages::projects.show', ['project' => $this->project])
+            ->assertSeeHtml('wire:key="rows-draggable"')
+            ->assertSeeHtml('wire:sort="moveTask"')
+            ->call('sort', 'title')
+            ->assertSeeHtml('wire:key="rows-fixed"')
+            ->assertDontSeeHtml('wire:sort="moveTask"')
+            ->call('resetSort')
+            ->assertSeeHtml('wire:key="rows-draggable"');
+    }
 }

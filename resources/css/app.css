@@ -603,3 +603,32 @@ tr[data-task-id] {
     border-color: rgb(255 255 255 / 0.1);
     background-color: rgb(255 255 255 / 0.08);
 }
+
+/* The task flyout slides in and out a little more calmly than Flux's default (0.15 s in, 0.075 s out, 50px): further, over
+   about a fifth of a second. Sliding out is started by taskFlyout in app.js (data-closing) before the flyout closes,
+   because the page removes it as soon as the close reaches the server. */
+[data-task-flyout] > dialog[data-flux-flyout] {
+    --flux-flyout-translate: translateX(3rem);
+}
+
+[data-task-flyout] > dialog[data-flux-flyout],
+[data-task-flyout] > dialog[data-flux-flyout]::backdrop {
+    transition-duration: 0.22s;
+    transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+[data-task-flyout] > dialog[data-flux-flyout][open][data-closing],
+[data-task-flyout] > dialog[data-flux-flyout][open][data-closing]::backdrop {
+    opacity: 0;
+}
+
+[data-task-flyout] > dialog[data-flux-flyout][open][data-closing] {
+    transform: scale(1) var(--flux-flyout-translate);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    [data-task-flyout] > dialog[data-flux-flyout],
+    [data-task-flyout] > dialog[data-flux-flyout]::backdrop {
+        transition-duration: 0s;
+    }
+}

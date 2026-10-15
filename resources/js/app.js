@@ -549,43 +549,74 @@ window.addEventListener('keydown', (event) => {
     }
 }, true)
 
+// What the menus that open at a button of the page have in common (the assignee menu and the move menu of the board
+// cards): one menu for the whole page, shown at the button that was clicked, so its entries are in the page once and
+// not once for every task.
+const anchoredMenu = () => ({
+    isOpen: false,
+    anchor: null,
+
+    // A second click on the same button closes it again (false then)
+    openAt(anchor) {
+        if (this.isOpen && this.anchor === anchor) {
+            this.close(true)
+
+            return false
+        }
+
+        this.anchor?.setAttribute('aria-expanded', 'false')
+        this.anchor = anchor
+        this.anchor?.setAttribute('aria-expanded', 'true')
+        this.isOpen = true
+        this.$nextTick(() => this.items()[0]?.focus())
+
+        return true
+    },
+
+    close(restoreFocus = false) {
+        if (! this.isOpen) {
+            return
+        }
+
+        this.isOpen = false
+        this.anchor?.setAttribute('aria-expanded', 'false')
+
+        if (restoreFocus) {
+            this.anchor?.focus()
+        }
+    },
+
+    items() {
+        return [...this.$refs.menu.querySelectorAll('[role^=menuitem]')].filter((item) => item.offsetParent !== null)
+    },
+
+    move(step) {
+        const items = this.items()
+
+        if (! items.length) {
+            return
+        }
+
+        items[(items.indexOf(document.activeElement) + step + items.length) % items.length].focus()
+    },
+})
+
 // The menu to hand a task to someone (components/assignee-menu.blade.php): one per page, opened at the faces of a task
 // (components/assignee-picker.blade.php, which tells which task and who is the assignee), so the people are in the page once.
 const registerAssigneeMenu = () => {
     window.Alpine.data('assigneeMenu', (meId) => ({
+        ...anchoredMenu(),
         meId,
-        isOpen: false,
-        anchor: null,
         taskId: null,
         assigneeId: null,
 
         show(detail) {
-            // A second click on the same faces closes it again
-            if (this.isOpen && this.anchor === detail.anchor) {
-                this.close(true)
-
+            if (! this.openAt(detail.anchor)) {
                 return
             }
 
-            this.anchor = detail.anchor
-            this.anchor?.setAttribute('aria-expanded', 'true')
             this.taskId = detail.task
             this.assigneeId = detail.assignee
-            this.isOpen = true
-            this.$nextTick(() => this.items()[0]?.focus())
-        },
-
-        close(restoreFocus = false) {
-            if (! this.isOpen) {
-                return
-            }
-
-            this.isOpen = false
-            this.anchor?.setAttribute('aria-expanded', 'false')
-
-            if (restoreFocus) {
-                this.anchor?.focus()
-            }
         },
 
         pick(userId) {
@@ -594,19 +625,58 @@ const registerAssigneeMenu = () => {
             this.close(true)
             this.$wire.assign(task, userId)
         },
+    }))
+}
 
-        items() {
-            return [...this.$refs.menu.querySelectorAll('[role^=menuitem]')].filter((item) => item.offsetParent !== null)
-        },
+// The menu of the cards of the board "My tasks" (components/card-move-menu.blade.php) that moves a card without dragging it.
+// The button of a card (data-card-menu) tells which card it is, in which column and at which place; the columns to move
+// to are read from the board when the menu opens (data-move-targets), so a renamed or new column is there without
+// the menu being rendered again.
+const registerCardMenu = () => {
+    window.Alpine.data('cardMenu', () => ({
+        ...anchoredMenu(),
+        taskId: null,
+        column: null,
+        index: 0,
+        isLast: false,
+        columns: [],
 
-        move(step) {
-            const items = this.items()
-
-            if (! items.length) {
+        show(anchor) {
+            if (! this.openAt(anchor)) {
                 return
             }
 
-            items[(items.indexOf(document.activeElement) + step + items.length) % items.length].focus()
+            this.taskId = Number(anchor.dataset.cardMenu)
+            this.column = Number(anchor.dataset.column)
+            this.index = Number(anchor.dataset.index)
+            this.isLast = anchor.dataset.last === '1'
+            this.columns = JSON.parse(anchor.closest('[data-move-targets]')?.dataset.moveTargets ?? '[]').filter((column) => column.id !== this.column)
+        },
+
+        // Cards of "Unsorted" follow the due dates, they only move to another column
+        get canMoveUp() {
+            return this.column !== 0 && this.index > 0
+        },
+
+        get canMoveDown() {
+            return this.column !== 0 && ! this.isLast
+        },
+
+        // To the end of another column, or one place up or down in the own
+        pick(column, index = 100000) {
+            const task = this.taskId
+
+            this.close()
+            this.$wire.moveTask(task, index, String(column)).then(() => this.$nextTick(() => this.focusCard(task, column)))
+        },
+
+        // The menu button of the card where it is now, so the keyboard continues from there (the card was rendered again,
+        // maybe in another column). Not shown (beyond "Load more"): the button of the column's first card.
+        focusCard(task, column) {
+            const button = document.querySelector(`[data-card-menu="${task}"]`)
+                ?? document.querySelector(`[data-column="${column}"][data-card-menu]`)
+
+            button?.focus()
         },
     }))
 }
@@ -614,6 +684,23 @@ const registerAssigneeMenu = () => {
 // The task flyout (components/task-panel.blade.php). Flux does not close it by itself: Esc, a click next to it,
 // the close button and switching to another task go through here and ask first if the task has unsaved input.
 const registerTaskFlyout = () => {
+    // The forms of the flyout in which somebody typed or picked something (see track). Kept here and not in the
+    // markup, which the server renders again after almost every request (a list that was loaded, a live update).
+    const edited = new WeakSet()
+
+    // The property a field is bound to (wire:model), looking from the field up to its form
+    const boundField = (field, form) => {
+        for (let element = field; element && element !== form; element = element.parentElement) {
+            const name = element.getAttributeNames().find((attribute) => attribute.startsWith('wire:model'))
+
+            if (name) {
+                return { name, property: element.getAttribute(name) }
+            }
+        }
+
+        return null
+    }
+
     window.Alpine.data('taskFlyout', (question, label) => ({
         init() {
             this.$nextTick(() => {
@@ -832,6 +919,7 @@ const registerAll = () => {
     registerPresence()
     registerAvatarPicker()
     registerAssigneeMenu()
+    registerCardMenu()
     registerEmojiField()
     registerPushToggle()
 }

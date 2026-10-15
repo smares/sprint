@@ -655,4 +655,20 @@ class AsanaImportTest extends TestCase
 
         $this->assertSame(ProjectRole::Admin, Project::where('name', 'Website')->firstOrFail()->roleFor($importer->fresh()));
     }
+
+    public function test_whoever_was_signed_in_is_signed_in_again_after_the_import(): void
+    {
+        $this->actingAs($this->ben);
+
+        $this->import()->assertSuccessful();
+
+        $this->assertSame($this->ben->id, auth()->id());
+    }
+
+    public function test_nobody_is_signed_in_after_an_import_that_started_without_a_user(): void
+    {
+        $this->import()->assertSuccessful();
+
+        $this->assertGuest();
+    }
 }

@@ -199,8 +199,6 @@ class AsanaImportService
         return ['counts' => $this->counts, 'warnings' => $this->warnings, 'missing' => $missing];
     }
 
-    // ----- Reading from Asana ------------------------------------------------------------------------------------
-
     /**
      * @return Plan
      */
@@ -463,8 +461,6 @@ class AsanaImportService
         return $attachments;
     }
 
-    // ----- People ------------------------------------------------------------------------------------------------
-
     /**
      * @param  array<string, mixed>  $person
      */
@@ -553,16 +549,29 @@ class AsanaImportService
         $this->users = [];
     }
 
-    // ----- Writing -----------------------------------------------------------------------------------------------
-
     /**
      * @param  list<Plan>  $plans
      * @param  list<array{gid: string, name: string, email: ?string, needed: int}>  $missing
      */
     private function apply(array $plans, array $missing): void
     {
+        // The import acts as the importing person (history, automations); whoever was signed in is signed in again afterwards
+        $previous = Auth::user();
         Auth::setUser($this->importer);
 
+        try {
+            $this->write($plans, $missing);
+        } finally {
+            $previous instanceof User ? Auth::setUser($previous) : Auth::logout();
+        }
+    }
+
+    /**
+     * @param  list<Plan>  $plans
+     * @param  list<array{gid: string, name: string, email: ?string, needed: int}>  $missing
+     */
+    private function write(array $plans, array $missing): void
+    {
         if ($missing !== [] && $this->options['create_users']) {
             $this->createUsers($missing);
         }
@@ -1263,8 +1272,6 @@ class AsanaImportService
             }
         }
     }
-
-    // ----- Helpers -----------------------------------------------------------------------------------------------
 
     /**
      * How a mention of an Asana person reads here: a mention of the person, or just the name.

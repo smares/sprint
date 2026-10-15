@@ -300,12 +300,6 @@ new class extends Component
         return $this->project->subtaskProgress($this->tasks->pluck('id')->all());
     }
 
-    #[Computed]
-    public function users(): Collection
-    {
-        return $this->assignableUsers;
-    }
-
     protected function afterAssigning(): void
     {
         unset($this->tasks);
@@ -323,7 +317,7 @@ new class extends Component
 
         if ($this->assigneeFilter === 'me') {
             $filters->push(['key' => 'assignee', 'label' => __('Only mine')]);
-        } elseif (ctype_digit($this->assigneeFilter) && ($user = $this->users->firstWhere('id', (int) $this->assigneeFilter))) {
+        } elseif (ctype_digit($this->assigneeFilter) && ($user = $this->assignableUsers->firstWhere('id', (int) $this->assigneeFilter))) {
             $filters->push(['key' => 'assignee', 'label' => $user->name]);
         }
 
@@ -424,7 +418,7 @@ new class extends Component
         $this->statusFilter = in_array($status, ['open', 'all'], true) || ($this->statuses->contains('id', (int) $status) && ctype_digit($status)) ? $status : 'open';
 
         $assignee = (string) ($filters['assignee'] ?? '');
-        $this->assigneeFilter = $assignee === 'me' || ($assignee !== '' && ctype_digit($assignee) && $this->users->contains('id', (int) $assignee)) ? $assignee : '';
+        $this->assigneeFilter = $assignee === 'me' || ($assignee !== '' && ctype_digit($assignee) && $this->assignableUsers->contains('id', (int) $assignee)) ? $assignee : '';
 
         $tag = (string) ($filters['tag'] ?? '');
         $this->tagFilter = $tag !== '' && ctype_digit($tag) && $this->tagOptions->contains('id', (int) $tag) ? $tag : '';
@@ -630,7 +624,7 @@ new class extends Component
             <flux:select variant="listbox" wire:model.live="assigneeFilter" :label="__('Person')">
                 <flux:select.option value="">{{ __('All people') }}</flux:select.option>
                 <flux:select.option value="me">{{ __('Only mine') }}</flux:select.option>
-                @foreach ($this->users as $user)
+                @foreach ($this->assignableUsers as $user)
                     <flux:select.option value="{{ $user->id }}">{{ $user->labelledName() }}</flux:select.option>
                 @endforeach
             </flux:select>
@@ -818,7 +812,7 @@ new class extends Component
                 <flux:select variant="listbox" wire:model="bulkAssignee" :label="__('Assignee')">
                     <flux:select.option value="">{{ __('Leave unchanged') }}</flux:select.option>
                     <flux:select.option value="none">{{ __('Nobody') }}</flux:select.option>
-                    @foreach ($this->users as $user)
+                    @foreach ($this->assignableUsers as $user)
                         <flux:select.option value="{{ $user->id }}">{{ $user->labelledName() }}</flux:select.option>
                     @endforeach
                 </flux:select>

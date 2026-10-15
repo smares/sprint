@@ -56,7 +56,7 @@ new class extends Component
     #[Computed]
     public function users(): Collection
     {
-        return $this->project->eligibleUsers()->orderBy('name')->get(['id', 'name', 'avatar_updated_at', 'timezone', 'absent_from', 'absent_until']);
+        return $this->project->assignableUsers();
     }
 
     protected function mentionProject(): Project

@@ -694,4 +694,122 @@ class AsanaImportTest extends TestCase
 
         Http::assertNothingSent();
     }
+
+    public function test_a_deleted_project_comes_back_with_its_comments_files_and_headings(): void
+    {
+        $arguments = ['projects' => ['100'], '--sections' => 'headings'];
+
+        $this->import($arguments)->assertSuccessful();
+        Project::where('name', 'Website')->firstOrFail()->delete();
+        $this->assertSame(0, Comment::count());
+
+        $this->import($arguments)->assertSuccessful();
+
+        $website = Project::where('name', 'Website')->firstOrFail();
+        $this->assertSame(2, Comment::count());
+        $this->assertSame(1, Attachment::count());
+        $this->assertSame(['Backlog', 'Doing'], $website->tasks()->where('is_section', true)->orderBy('position')->pluck('title')->all());
+    }
+
+    public function test_links_to_tasks_that_come_later_are_rewritten_and_their_dependencies_set_in_a_second_run(): void
+    {
+        $all = $this->routes['projects/100/tasks'];
+        $this->routes['projects/100/tasks'] = array_values(array_filter($all, fn (array $raw) => $raw['gid'] !== '1003'));
+
+        $this->import(['projects' => ['100']])->assertSuccessful();
+
+        $concept = Task::where('title', 'Konzept')->firstOrFail();
+        $this->assertStringContainsString('app.asana.com/0/100/1003', (string) $concept->description);
+        $this->assertSame(0, $concept->blockers()->count());
+
+        $this->routes['projects/100/tasks'] = $all;
+        $this->import(['projects' => ['100']])->assertSuccessful();
+
+        $implementation = Task::where('title', 'Umsetzung')->firstOrFail();
+        $this->assertStringContainsString("@[Umsetzung](task:{$implementation->id})", (string) $concept->fresh()->description);
+        $this->assertSame([$implementation->id], $concept->blockers()->pluck('tasks.id')->all());
+    }
+
+    public function test_a_dependency_removed_in_sprint_is_not_put_back_by_another_run(): void
+    {
+        $this->import()->assertSuccessful();
+
+        $concept = Task::where('title', 'Konzept')->firstOrFail();
+        $concept->blockers()->detach();
+
+        $this->import()->assertSuccessful();
+
+        $this->assertSame(0, $concept->blockers()->count());
+    }
+
+    public function test_fields_and_statuses_are_not_made_again_by_a_second_run(): void
+    {
+        // Two Asana fields of one name but another type: the second becomes "(Asana)", once
+        $this->routes['projects/100/custom_field_settings'][] = ['custom_field' => ['gid' => '5009', 'name' => 'Aufwand', 'resource_subtype' => 'text']];
+
+        $this->import(['projects' => ['100']])->assertSuccessful();
+
+        $website = Project::where('name', 'Website')->firstOrFail();
+        $this->assertContains('Aufwand (Asana)', $website->customFields()->pluck('name')->all());
+        $fields = $website->customFields()->count();
+
+        // Somebody renames a status the import made
+        $website->statuses()->where('name', 'Backlog')->firstOrFail()->update(['name' => 'Ideen']);
+        $statuses = $website->statuses()->count();
+
+        $this->import(['projects' => ['100']])->assertSuccessful();
+
+        $this->assertSame($fields, $website->customFields()->count());
+        $this->assertSame($statuses, $website->statuses()->count());
+        $this->assertNull($website->statuses()->where('name', 'Backlog')->first());
+    }
+
+    public function test_the_people_without_an_account_are_listed_when_that_stops_the_import(): void
+    {
+        $this->asana(['projects' => ['100'], '--token' => 'secret-token'])
+            ->expectsOutputToContain('People in Asana without an account here')
+            ->expectsOutputToContain('Cara')
+            ->doesntExpectOutputToContain('Run it again')
+            ->assertFailed();
+    }
+
+    public function test_a_person_only_needed_by_tasks_that_exist_already_does_not_stop_a_second_run(): void
+    {
+        $this->import(['projects' => ['100']])->assertSuccessful();
+
+        // Cara is no member any more; of the tasks only the old one "Fertig" is hers
+        $this->routes['projects/100']['members'] = array_values(array_filter($this->routes['projects/100']['members'], fn (array $member) => $member['gid'] !== '13'));
+
+        $this->asana(['projects' => ['100'], '--token' => 'secret-token'])->assertSuccessful();
+    }
+
+    public function test_names_from_asana_are_text_in_mentions_and_links_to_files(): void
+    {
+        $this->routes['users?workspace=900'][2]['name'] = '[Chef](user:1)';
+        $this->routes['projects/100/tasks'][1] = $this->task('1004', 'Fertig', [
+            'html_notes' => '<body>Danke <A data-asana-gid="13" data-asana-type="user"/></body>',
+            'assignee' => ['gid' => '13', 'name' => '[Chef](user:1)'],
+            'memberships' => [['project' => ['gid' => '100'], 'section' => ['gid' => '111']]],
+        ]);
+        $this->routes['attachments?parent=1001'][1] = ['gid' => '7002', 'name' => 'Entwurf [v2]', 'host' => 'dropbox', 'permanent_url' => 'https://dropbox.test/a (1).pdf'];
+
+        $this->import(['projects' => ['100']])->assertSuccessful();
+
+        $this->assertStringContainsString('@\\[Chef\\]\\(user:1\\)', (string) Task::where('title', 'Fertig')->firstOrFail()->description);
+        $this->assertStringContainsString('[Entwurf \\[v2\\]](https://dropbox.test/a%20%281%29.pdf)', (string) Task::where('title', 'Konzept')->firstOrFail()->description);
+    }
+
+    public function test_a_subtask_of_a_subtask_listed_in_the_project_stays_below_its_task(): void
+    {
+        // "Detail" is a member of the project and listed before the task it belongs to, two levels up (its own parent is not listed)
+        $listed = array_values(array_filter($this->routes['projects/100/tasks'], fn (array $raw) => $raw['gid'] !== '1002'));
+        $this->routes['projects/100/tasks'] = [$this->task('1010', 'Detail', ['parent' => ['gid' => '1002']]), ...$listed];
+        $this->routes['tasks/1001/subtasks'][0]['num_subtasks'] = 1;
+        $this->routes['tasks/1002/subtasks'] = [$this->task('1010', 'Detail')];
+
+        $this->import(['projects' => ['100']])->assertSuccessful();
+
+        $this->assertSame(1, Task::where('title', 'Detail')->count());
+        $this->assertSame(Task::where('title', 'Skizzen')->firstOrFail()->id, Task::where('title', 'Detail')->firstOrFail()->parent_id);
+    }
 }

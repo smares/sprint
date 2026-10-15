@@ -46,6 +46,9 @@ class AsanaImportService
 
     private const string PERSON_FIELDS = 'name,email';
 
+    /** @var array<string, string> The kinds of the mapping table whose model is a row of its own, with the table. */
+    private const array MODEL_TABLES = ['comment' => 'comments', 'attachment' => 'attachments', 'section' => 'tasks'];
+
     /** Statuses with which Asana says that a feature belongs to a plan the account does not have. */
     private const array NOT_IN_PLAN = [402, 403];
 
@@ -72,6 +75,8 @@ class AsanaImportService
     /** How many tasks have been written (or skipped as already imported) so far. */
     private int $written = 0;
 
+    private bool $startedWriting = false;
+
     private readonly AsanaTextService $text;
 
     /** @var array<string, array<string, int>> What has been taken over: kind => Asana id => id here. */
@@ -95,7 +100,7 @@ class AsanaImportService
     /** @var array<string, true> */
     private array $directories = [];
 
-    /** @var array<string, true> Asana ids of the tasks planned so far, so a task of two projects is planned once. */
+    /** @var array<string, string> Asana ids of the tasks planned so far with their project, so a task of two projects is planned once. */
     private array $planned = [];
 
     /** @var list<string> */
@@ -141,6 +146,9 @@ class AsanaImportService
     /** @var list<array{string, int}> Texts to look at once all tasks exist (table, id). */
     private array $linkTexts = [];
 
+    /** @var array<string, true> Asana ids of the tasks this run created. */
+    private array $created = [];
+
     public function __construct(private readonly AsanaClient $asana)
     {
         $this->text = new AsanaTextService;
@@ -176,7 +184,7 @@ class AsanaImportService
      *
      * @param  list<array{gid: string, project_id: ?int}>  $targets  Projects in the order of importing; a task of several goes to the first.
      * @param  array<string, bool|string>  $options
-     * @return array{counts: array<string, int>, warnings: list<string>, missing: list<array{gid: string, name: string, email: ?string, needed: int}>}
+     * @return array{counts: array<string, int>, warnings: list<string>, missing: list<array{gid: string, name: string, email: ?string, needed: int}>, stopped: ?string}
      */
     public function run(array $targets, User $importer, array $options = [], ?Closure $log = null, ?Closure $progress = null): array
     {
@@ -184,19 +192,34 @@ class AsanaImportService
         $this->log = $log;
         $this->progress = $progress;
         $this->written = 0;
+        $this->created = [];
+        $this->startedWriting = false;
         $this->importer = $importer;
         $this->loadMap();
 
         $plans = array_map(fn (array $target) => $this->plan($target['gid'], $target['project_id']), $targets);
         $missing = $this->missingPeople();
 
-        if (! $this->options['dry_run']) {
-            throw_if($missing !== [] && ! $this->options['create_users'] && ! $this->options['ignore_missing_users'], AsanaException::class, 'Some people in Asana have no account here (see the list). Create them, run with --create-users to have them created, or with --ignore-missing-users to leave their assignments out.');
+        $stopped = null;
 
-            $this->apply($plans, $missing);
+        if (! $this->options['dry_run']) {
+            if ($missing !== [] && ! $this->options['create_users'] && ! $this->options['ignore_missing_users']) {
+                // Nothing is written; the list of people comes with the report
+                $stopped = 'Some people in Asana have no account here (see the list). Create them, run with --create-users to have them created, or with --ignore-missing-users to leave their assignments out.';
+            } else {
+                $this->apply($plans, $missing);
+            }
         }
 
-        return ['counts' => $this->counts, 'warnings' => $this->warnings, 'missing' => $missing];
+        return ['counts' => $this->counts, 'warnings' => $this->warnings, 'missing' => $missing, 'stopped' => $stopped];
+    }
+
+    /**
+     * Whether the last run had begun to write, so that what it stopped on leaves something that a second run goes on from.
+     */
+    public function startedWriting(): bool
+    {
+        return $this->startedWriting;
     }
 
     /**
@@ -289,30 +312,32 @@ class AsanaImportService
         $raws = iterator_to_array($this->asana->paginate($path, ['opt_fields' => self::TASK_FIELDS]), false);
 
         if ($parentGid === null) {
-            // A subtask that is a member of the project itself is listed there too; it comes with its parent
-            $listed = array_flip(array_map(fn (array $raw) => (string) $raw['gid'], $raws));
-            $raws = array_values(array_filter($raws, fn (array $raw) => ! isset($listed[(string) ($raw['parent']['gid'] ?? '')])));
+            // A subtask that is a member of the project itself is listed there too. Those come last: they have been planned
+            // with their task by then (at any depth) and are skipped, and only one whose task is not here stays a task of its own
+            $raws = [...array_filter($raws, fn (array $raw) => ! isset($raw['parent']['gid'])), ...array_filter($raws, fn (array $raw) => isset($raw['parent']['gid']))];
         }
 
         foreach ($raws as $raw) {
             $gid = (string) $raw['gid'];
 
             if (isset($this->planned[$gid])) {
-                $this->counts['tasks_elsewhere']++;
+                $this->counts['tasks_elsewhere'] += $this->planned[$gid] === $projectGid ? 0 : 1;
 
                 continue;
             }
 
-            $this->planned[$gid] = true;
+            $this->planned[$gid] = $projectGid;
             $knownId = $this->map['task'][$gid] ?? null;
-            $node = $this->node($raw, $projectGid);
-            $node['id'] = $knownId;
 
             if ($knownId !== null && ($this->projectOfTask[$knownId] ?? null) !== $projectId) {
                 $this->counts['tasks_elsewhere']++;
 
                 continue;
             }
+
+            // What a task that exists already asks of this run (its people, its dependencies) is not counted: it is not touched
+            $node = $this->node($raw, $projectGid, $knownId === null);
+            $node['id'] = $knownId;
 
             $this->counts['tasks']++;
             $this->counts['tasks_new'] += $knownId === null ? 1 : 0;
@@ -330,9 +355,10 @@ class AsanaImportService
 
     /**
      * @param  array<string, mixed>  $raw
+     * @param  bool  $isNew  Whether the task is created by this run; one that exists is left as it is.
      * @return Node
      */
-    private function node(array $raw, string $projectGid): array
+    private function node(array $raw, string $projectGid, bool $isNew): array
     {
         foreach (array_merge([$raw['assignee'] ?? null, $raw['created_by'] ?? null], $raw['followers'] ?? []) as $person) {
             if (is_array($person)) {
@@ -342,7 +368,7 @@ class AsanaImportService
 
         $assignee = isset($raw['assignee']['gid']) ? (string) $raw['assignee']['gid'] : null;
 
-        if ($assignee !== null) {
+        if ($assignee !== null && $isNew) {
             $this->needed[$assignee] = ($this->needed[$assignee] ?? 0) + 1;
         }
 
@@ -365,7 +391,7 @@ class AsanaImportService
         }
 
         $dependencies = array_map(fn (array $dependency) => (string) $dependency['gid'], $raw['dependencies'] ?? []);
-        $this->counts['dependencies'] += count($dependencies);
+        $this->counts['dependencies'] += $isNew ? count($dependencies) : 0;
 
         return [
             'gid' => (string) $raw['gid'],
@@ -558,6 +584,7 @@ class AsanaImportService
         // The import acts as the importing person (history, automations); whoever was signed in is signed in again afterwards
         $previous = Auth::user();
         Auth::setUser($this->importer);
+        $this->startedWriting = true;
 
         try {
             $this->write($plans, $missing);
@@ -658,7 +685,7 @@ class AsanaImportService
 
         if ($this->options['sections'] === 'status') {
             foreach ($sections as $section) {
-                $this->statusBySection[$section['gid']] = $this->ensureStatus($section['name'])->id;
+                $this->statusBySection[$section['gid']] = $this->ensureStatus($section['name'], $section['gid'])->id;
             }
 
             if ($fresh && $sections !== []) {
@@ -676,13 +703,20 @@ class AsanaImportService
         return $name === '' || mb_strtolower($name) === self::DEFAULT_SECTION;
     }
 
-    private function ensureStatus(string $name): TaskStatus
+    /**
+     * The status of a section: the one made for it earlier (also when someone renamed it since), else one of that name.
+     */
+    private function ensureStatus(string $name, string $sectionGid): TaskStatus
     {
         $name = mb_substr($name, 0, 50);
         $statuses = $this->project->statuses()->get();
-        $found = $statuses->first(fn (TaskStatus $status) => mb_strtolower($status->name) === mb_strtolower($name));
+        $key = "{$this->project->id}:{$sectionGid}";
+        $found = $statuses->firstWhere('id', $this->map['status'][$key] ?? 0)
+            ?? $statuses->first(fn (TaskStatus $status) => mb_strtolower($status->name) === mb_strtolower($name));
 
         if ($found !== null) {
+            $this->remembered('status', $key, $found->id);
+
             return $found;
         }
 
@@ -692,6 +726,8 @@ class AsanaImportService
             'position' => TaskStatus::nextPositionIn($this->project->statuses()->reorder()),
             'is_done' => false,
         ]);
+
+        $this->remembered('status', $key, $status->id);
 
         // New statuses go before the done ones
         $order = $statuses->where('is_done', false)->pluck('id')->push($status->id)->merge($statuses->where('is_done', true)->pluck('id'))->all();
@@ -757,7 +793,7 @@ class AsanaImportService
                 continue;
             }
 
-            $field = $this->ensureField($setting['name'], $type);
+            $field = $this->ensureField($setting['name'], $type, (string) $setting['gid']);
 
             foreach ($type === CustomFieldType::Select ? $setting['options'] : [] as $option) {
                 $this->ensureOption($field, $option);
@@ -767,24 +803,32 @@ class AsanaImportService
         }
     }
 
-    private function ensureField(string $name, CustomFieldType $type): CustomField
+    /**
+     * The field made for an Asana field earlier, else one of that name and type, else a new one. A name that is taken by a
+     * field of another type gets " (Asana)"; the mapping keeps the next run from making that one again.
+     */
+    private function ensureField(string $name, CustomFieldType $type, string $gid): CustomField
     {
         $name = mb_substr($name, 0, 100);
         $fields = $this->project->customFields()->with('options')->get();
-        $found = $fields->first(fn (CustomField $field) => mb_strtolower($field->name) === mb_strtolower($name) && $field->type === $type);
+        $key = "{$this->project->id}:{$gid}";
+        $found = $fields->firstWhere('id', $this->map['field'][$key] ?? 0)
+            ?? $fields->first(fn (CustomField $field) => mb_strtolower($field->name) === mb_strtolower($name) && $field->type === $type);
 
-        if ($found !== null) {
-            return $found;
+        if ($found === null) {
+            $taken = $fields->contains(fn (CustomField $field) => mb_strtolower($field->name) === mb_strtolower($name));
+
+            $found = $this->project->customFields()->create([
+                'name' => $taken ? mb_substr($name, 0, 90).' (Asana)' : $name,
+                'type' => $type,
+                'position' => CustomField::nextPositionIn($this->project->customFields()),
+                'show_in_list' => false,
+            ])->load('options');
         }
 
-        $taken = $fields->contains(fn (CustomField $field) => mb_strtolower($field->name) === mb_strtolower($name));
+        $this->remembered('field', $key, $found->id);
 
-        return $this->project->customFields()->create([
-            'name' => $taken ? mb_substr($name, 0, 90).' (Asana)' : $name,
-            'type' => $type,
-            'position' => CustomField::nextPositionIn($this->project->customFields()),
-            'show_in_list' => false,
-        ])->load('options');
+        return $found;
     }
 
     private function ensureOption(CustomField $field, string $name): void
@@ -917,6 +961,7 @@ class AsanaImportService
             $task->forceFill(['created_at' => $node['created_at'] ?? now(), 'updated_at' => $node['modified_at'] ?? $node['created_at'] ?? now()])->save();
 
             $this->remembered('task', $node['gid'], $task->id);
+            $this->created[$node['gid']] = true;
             $this->projectOfTask[$task->id] = $this->project->id;
             $this->syncTags($task, $node);
             $task->collaborators()->sync($this->followers($node, $assignee));
@@ -940,7 +985,7 @@ class AsanaImportService
 
         foreach ($node['attachments'] as $attachment) {
             if (! $attachment['stored'] && $attachment['url'] !== null) {
-                $links[] = '- ['.str_replace(['[', ']'], '', $attachment['name']).']('.$attachment['url'].')';
+                $links[] = '- ['.$this->literalName($attachment['name']).']('.strtr($attachment['url'], [' ' => '%20', '(' => '%28', ')' => '%29', '<' => '%3C', '>' => '%3E', "\n" => '', "\r" => '']).')';
             }
         }
 
@@ -1105,8 +1150,10 @@ class AsanaImportService
             $body = $this->shortened($body, Comment::MAX_BODY_LENGTH, $task->title);
             $comment = new Comment(['task_id' => $task->id, 'user_id' => ($author ?? $this->importer)->id, 'body' => $body]);
             $comment->forceFill(['created_at' => $story['created_at'] ?? now(), 'updated_at' => $story['created_at'] ?? now()]);
-            Comment::withoutEvents(fn () => $comment->save());
-            $this->remembered('comment', $story['gid'], $comment->id);
+            DB::transaction(function () use ($comment, $story): void {
+                Comment::withoutEvents(fn () => $comment->save());
+                $this->remembered('comment', $story['gid'], $comment->id);
+            });
 
             if ($this->text->hasTaskLinks($body)) {
                 $this->linkTexts[] = ['comments', $comment->id];
@@ -1174,14 +1221,18 @@ class AsanaImportService
                 'mime_type' => $mimeType,
                 'size' => $size,
             ]);
-            $record->forceFill(['created_at' => $attachment['created_at'] ?? now(), 'updated_at' => $attachment['created_at'] ?? now()])->save();
+            $record->forceFill(['created_at' => $attachment['created_at'] ?? now(), 'updated_at' => $attachment['created_at'] ?? now()]);
+
+            // Saved and remembered together: a crash in between would store the file again in the next run
+            DB::transaction(function () use ($record, $attachment): void {
+                $record->save();
+                $this->remembered('attachment', (string) $attachment['gid'], $record->id);
+            });
         } catch (Throwable $exception) {
             Storage::disk()->delete($path);
 
             throw $exception;
         }
-
-        $this->remembered('attachment', (string) $attachment['gid'], $record->id);
     }
 
     // Once everything exists: dependencies and links between tasks
@@ -1197,7 +1248,7 @@ class AsanaImportService
             $pending += $this->dependenciesOf($plan['tasks']);
         }
 
-        foreach ($pending as $taskId => $gids) {
+        foreach ($pending as $taskId => [$taskGid, $gids]) {
             $ids = [];
 
             foreach ($gids as $gid) {
@@ -1213,14 +1264,18 @@ class AsanaImportService
             if ($ids !== []) {
                 Task::query()->find($taskId)?->blockers()->syncWithoutDetaching($ids);
             }
+
+            // Set once: what somebody removes from the task in Sprint later is not put back by another run
+            $this->remembered('dependencies', $taskGid, $taskId);
         }
     }
 
     /**
-     * The dependencies (Asana ids of the blockers) of all tasks of the plan that exist here, taken over now or earlier.
+     * The dependencies (Asana ids of the blockers) still to set. A task whose dependencies were not set yet (created now,
+     * or by a run that stopped before) gets all of them; for one that has them, only those on a task created now come.
      *
      * @param  list<Node>  $nodes
-     * @return array<int, list<string>> By the id of the task here.
+     * @return array<int, array{string, list<string>}> The Asana id of the task and its blockers, by the id of the task here.
      */
     private function dependenciesOf(array $nodes): array
     {
@@ -1228,9 +1283,12 @@ class AsanaImportService
 
         foreach ($nodes as $node) {
             $taskId = $this->map['task'][$node['gid']] ?? null;
+            $dependencies = isset($this->created[$node['gid']]) || ! isset($this->map['dependencies'][$node['gid']])
+                ? $node['dependencies']
+                : array_values(array_filter($node['dependencies'], fn (string $gid) => isset($this->created[$gid])));
 
-            if ($taskId !== null && $node['dependencies'] !== []) {
-                $found[$taskId] = $node['dependencies'];
+            if ($taskId !== null && $dependencies !== []) {
+                $found[$taskId] = [$node['gid'], $dependencies];
             }
 
             $found += $this->dependenciesOf($node['subtasks']);
@@ -1244,6 +1302,8 @@ class AsanaImportService
      */
     private function rewriteLinks(): void
     {
+        $this->collectLinkTexts();
+
         // A task is linked from many texts, so its title is looked up once
         $titles = [];
         $resolve = function (string $gid) use (&$titles): ?array {
@@ -1258,7 +1318,7 @@ class AsanaImportService
             return $titles[$id] === null ? null : ['id' => $id, 'title' => (string) $titles[$id]];
         };
 
-        foreach ($this->linkTexts as [$table, $id]) {
+        foreach (array_unique($this->linkTexts, SORT_REGULAR) as [$table, $id]) {
             $column = $table === 'tasks' ? 'description' : 'body';
             $current = (string) DB::table($table)->where('id', $id)->value($column);
             $linked = $this->text->linkTasks($current, $resolve);
@@ -1274,6 +1334,25 @@ class AsanaImportService
     }
 
     /**
+     * Texts taken over earlier (before a run that stopped, or before the task they point to was imported) that still
+     * hold an Asana link, so the links are rewritten whenever their target exists by now.
+     */
+    private function collectLinkTexts(): void
+    {
+        foreach (['tasks' => ['task', 'description'], 'comments' => ['comment', 'body']] as $table => [$kind, $column]) {
+            $ids = DB::table('asana_imports')
+                ->join($table, "{$table}.id", '=', 'asana_imports.model_id')
+                ->where('asana_imports.kind', $kind)
+                ->where("{$table}.{$column}", 'like', '%app.asana.com%')
+                ->pluck("{$table}.id");
+
+            foreach ($ids as $id) {
+                $this->linkTexts[] = [$table, (int) $id];
+            }
+        }
+    }
+
+    /**
      * How a mention of an Asana person reads here: a mention of the person, or just the name.
      */
     private function mentionText(string $gid): string
@@ -1284,15 +1363,27 @@ class AsanaImportService
             return '@['.str_replace(']', '', $user->name).'](user:'.$user->id.')';
         }
 
-        return '@'.($this->people[$gid]['name'] ?? __('someone'));
+        return '@'.$this->literalName($this->people[$gid]['name'] ?? __('someone'));
     }
 
     private function loadMap(): void
     {
         $this->map = [];
 
-        foreach (DB::table('asana_imports')->cursor() as $row) {
+        foreach (DB::table('asana_imports')->whereNotIn('kind', array_keys(self::MODEL_TABLES))->cursor() as $row) {
             $this->map[$row->kind][$row->gid] = (int) $row->model_id;
+        }
+
+        // A comment or file goes with its task, a heading is a task: if the model is gone, a new run takes it over again
+        foreach (self::MODEL_TABLES as $kind => $table) {
+            $rows = DB::table('asana_imports')
+                ->join($table, "{$table}.id", '=', 'asana_imports.model_id')
+                ->where('asana_imports.kind', $kind)
+                ->select('asana_imports.gid', 'asana_imports.model_id');
+
+            foreach ($rows->cursor() as $row) {
+                $this->map[$kind][$row->gid] = (int) $row->model_id;
+            }
         }
 
         // Rows whose task or project is gone are forgotten: it would not be created again otherwise. The mapping is joined

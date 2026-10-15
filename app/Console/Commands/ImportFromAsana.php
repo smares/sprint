@@ -114,7 +114,10 @@ class ImportFromAsana extends Command
         } catch (Throwable $exception) {
             // Whatever stopped it, what was written stays and a second run goes on from there
             $this->finishProgress();
-            $this->components->error('The import stopped. Run it again: what was written is kept and only the rest is added.');
+
+            if ($service->startedWriting()) {
+                $this->components->error('The import stopped. Run it again: what was written is kept and only the rest is added.');
+            }
 
             throw $exception;
         } finally {
@@ -122,6 +125,12 @@ class ImportFromAsana extends Command
         }
 
         $this->report($report, $dryRun);
+
+        if ($report['stopped'] !== null) {
+            $this->components->error($report['stopped']);
+
+            return self::FAILURE;
+        }
 
         // Files that could not be fetched are not a success for a script that runs this; a second run fetches them again
         if ($report['counts']['attachments_failed'] > 0) {
@@ -202,14 +211,18 @@ class ImportFromAsana extends Command
     }
 
     /**
-     * @param  array{counts: array<string, int>, warnings: list<string>, missing: list<array{gid: string, name: string, email: ?string, needed: int}>}  $report
+     * @param  array{counts: array<string, int>, warnings: list<string>, missing: list<array{gid: string, name: string, email: ?string, needed: int}>, stopped: ?string}  $report
      */
     private function report(array $report, bool $dryRun): void
     {
         $counts = $report['counts'];
 
         $this->newLine();
-        $this->components->info($dryRun ? 'Dry run: nothing was changed. This would be imported:' : 'Imported:');
+        $this->components->info(match (true) {
+            $dryRun => 'Dry run: nothing was changed. This would be imported:',
+            $report['stopped'] !== null => 'Stopped: nothing was changed. This would be imported:',
+            default => 'Imported:',
+        });
 
         foreach ([
             'Projects' => $counts['projects'],

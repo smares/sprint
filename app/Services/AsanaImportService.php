@@ -1106,7 +1106,7 @@ class AsanaImportService
         $links = array_values(array_filter($this->linkLines($node), fn (string $line) => ! str_contains((string) $task->description, $line)));
 
         if ($links !== []) {
-            $description = (string) $task->description.$this->linksBlock($links);
+            $description = $task->description.$this->linksBlock($links);
 
             if (mb_strlen($description) > Task::MAX_DESCRIPTION_LENGTH) {
                 $this->warn("“{$task->title}”: the links to new files do not fit into the description any more and are left out.");

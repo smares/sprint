@@ -4,18 +4,18 @@
     $people = collect([$task->assignee, ...$task->collaborators])->filter()->unique('id')->values();
 @endphp
 
-{{-- The people on a task (the assignee in front, see x-avatar-stack). Where the task can be edited this is also the
+{{-- The people on a task (the assignee in front, or an empty seat while there is none but there are collaborators, see x-avatar-stack). Where the task can be edited this is also the
      quickest way to hand it on: one click on the faces opens the team, one more picks the assignee (or yourself, or
      nobody). The page provides assign(taskId, userId). The list of people is only built once the menu is opened. --}}
 @if (! $editable)
-    <x-avatar-stack :users="$people" />
+    <x-avatar-stack :users="$people" :unassigned="$task->assignee_id === null" />
 @else
     <flux:dropdown position="bottom" align="start" x-data="{ built: false }">
         <button type="button" class="-m-1 flex cursor-pointer items-center rounded-full p-1 hover:bg-zinc-100 dark:hover:bg-zinc-700" x-on:click="built = true" aria-label="{{ __('Change assignee') }}" title="{{ __('Change assignee') }}">
             @if ($people->isNotEmpty())
-                <x-avatar-stack :users="$people" />
+                <x-avatar-stack :users="$people" :unassigned="$task->assignee_id === null" />
             @else
-                <span class="flex size-6 items-center justify-center rounded-full border border-dashed border-zinc-300 text-zinc-400 dark:border-zinc-600 dark:text-zinc-500"><flux:icon.user-plus variant="micro" /></span>
+                <x-unassigned-avatar icon="user-plus" />
             @endif
         </button>
 

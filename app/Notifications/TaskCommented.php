@@ -10,9 +10,9 @@ use App\Notifications\Concerns\PausesMail;
 use App\Services\MarkdownService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
-use Illuminate\Queue\Attributes\DeleteWhenMissingModels;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use Illuminate\Queue\Attributes\DeleteWhenMissingModels;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 

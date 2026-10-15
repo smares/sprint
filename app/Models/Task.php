@@ -137,8 +137,8 @@ class Task extends Model
         static::deleted(fn (self $task) => app(RealtimeService::class)->taskChanged($task->project_id, $task->id, 'task'));
 
         static::deleting(function (self $task): void {
-            app(TaskSearchService::class)->forget($task->id);
             $ids = [$task->getKey(), ...$task->descendantIds()];
+            app(TaskSearchService::class)->forgetMany($ids);
             $task->deleteAttachmentFiles($ids);
             Reaction::deleteForTasks($ids);
         });
@@ -445,8 +445,7 @@ class Task extends Model
 
     /**
      * Remove the stored files of this task and all its subtasks; the rows go with the task itself.
-     */
-    /**
+     *
      * @param  list<int>  $taskIds  This task and all its subtasks.
      */
     private function deleteAttachmentFiles(array $taskIds): void

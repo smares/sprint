@@ -6,9 +6,9 @@ use App\Models\Task;
 use App\Notifications\Concerns\BuildsLocalizedMail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
-use Illuminate\Queue\Attributes\DeleteWhenMissingModels;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use Illuminate\Queue\Attributes\DeleteWhenMissingModels;
 use Illuminate\Support\Collection;
 
 #[DeleteWhenMissingModels]

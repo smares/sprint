@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Color;
+use App\Enums\ActivityType;
 use App\Enums\CustomFieldType;
 use App\Enums\ProjectRole;
 use App\Models\Attachment;
@@ -1032,6 +1033,9 @@ class AsanaImportService
                 'position' => $position,
             ]);
             $task->forceFill(['created_at' => $node['created_at'] ?? now(), 'updated_at' => $node['modified_at'] ?? $node['created_at'] ?? now()])->save();
+
+            // The history starts with who created the task and when in Asana, not with the importer and the day of the import
+            $task->activities()->where('type', ActivityType::Created)->toBase()->update(['user_id' => $task->creator_id, 'created_at' => $task->created_at]);
 
             $this->remembered('task', $node['gid'], $task->id);
             $this->created[$node['gid']] = true;

@@ -8,6 +8,7 @@ use App\Services\HealthCheckService;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Mockery;
@@ -104,11 +105,47 @@ class BackupTest extends TestCase
         $event = collect(app(Schedule::class)->events())->first(fn ($event) => str_contains($event->command ?? '', 'sprint:backup'));
 
         $this->assertNotNull($event);
-        $this->assertSame('30 2 * * *', $event->expression);
+        $this->assertSame('30 3 * * *', $event->expression);
+        $this->assertStringContainsString('--if-needed', $event->command);
+
+        // The scheduler only asks at 03:30, and the clock is what lets it through
+        $this->travelTo('2026-10-08 03:30:00');
         $this->assertTrue($event->filtersPass($this->app));
 
         config(['sprint.backup.enabled' => false]);
         $this->assertFalse($event->filtersPass($this->app));
+    }
+
+    public function test_the_scheduled_run_skips_a_backup_that_was_just_written(): void
+    {
+        // The clocks go back on 2026-10-25: 03:30 happens once, but a run an hour later (a repeated hour, a second
+        // scheduler) must not write a second backup
+        config(['app.timezone' => 'Europe/Berlin']);
+        date_default_timezone_set('Europe/Berlin');
+        $this->travelTo(Carbon::parse('2026-10-25 03:30:00', 'Europe/Berlin'));
+
+        $this->artisan('sprint:backup', ['--if-needed' => true])->expectsOutputToContain('written to the "backups" disk')->assertSuccessful();
+
+        $this->travel(1)->hours();
+        $this->artisan('sprint:backup', ['--if-needed' => true])->expectsOutputToContain('already written')->assertSuccessful();
+        $this->assertCount(1, Storage::disk('backups')->files());
+
+        // 25 real hours later, the next night, it runs again
+        $this->travel(24)->hours();
+        $this->artisan('sprint:backup', ['--if-needed' => true])->expectsOutputToContain('written to the "backups" disk')->assertSuccessful();
+        $this->assertCount(2, Storage::disk('backups')->files());
+    }
+
+    public function test_a_manual_run_and_a_run_after_a_failure_are_never_skipped(): void
+    {
+        $this->artisan('sprint:backup')->assertSuccessful();
+        $this->travel(1)->hours();
+        $this->artisan('sprint:backup')->expectsOutputToContain('written to the "backups" disk')->assertSuccessful();
+        $this->assertCount(2, Storage::disk('backups')->files());
+
+        app(BackupService::class)->rememberFailure(new RuntimeException('disk full'));
+        $this->assertFalse(app(BackupService::class)->hasRecentBackup());
+        $this->artisan('sprint:backup', ['--if-needed' => true])->expectsOutputToContain('written to the "backups" disk')->assertSuccessful();
     }
 
     public function test_the_health_check_warns_about_failed_and_old_backups(): void

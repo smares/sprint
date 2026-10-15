@@ -9,12 +9,18 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Number;
 use Throwable;
 
-#[Signature('sprint:backup {--keep= : Days to keep backups (default: BACKUP_KEEP_DAYS)}')]
+#[Signature('sprint:backup {--keep= : Days to keep backups (default: BACKUP_KEEP_DAYS)} {--if-needed : Do nothing if a backup was already written in the last 20 hours (the scheduler uses this)}')]
 #[Description('Writes a backup of the database and the attachments and removes old backups')]
 class CreateBackup extends Command
 {
     public function handle(BackupService $backups): int
     {
+        if ($this->option('if-needed') && $backups->hasRecentBackup()) {
+            $this->components->info('A backup was already written in the last '.BackupService::RECENT_HOURS.' hours; skipped.');
+
+            return self::SUCCESS;
+        }
+
         try {
             $backup = $backups->create();
         } catch (Throwable $e) {

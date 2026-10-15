@@ -195,14 +195,14 @@ printf '%s\n' "$STAGING"/sprint-*.zip | sort -r | tail -n +$((KEEP_LOCAL + 1)) |
 echo "sprint-backup-pull: $latest ($(du -h "$STAGING/$latest" | cut -f1)) gesichert nach $DEST"
 ```
 
-Aufruf von Hand und per Cron, eine Stunde nach dem Backup (02:30 ist der Standard, siehe `BACKUP_TIME`). Achtung, zwei Uhren: `BACKUP_TIME` gilt in `APP_TIMEZONE` der Anwendung, die Cron-Zeit in der Zeitzone des Hosts (oder von `CRON_TZ=`, wenn dein Cron es kennt). Rechne um, sonst läuft das Skript vor dem Backup und holt, weil es noch durch die Altersprüfung kommt, das der Vornacht:
+Aufruf von Hand und per Cron, eine Stunde nach dem Backup (03:30 ist der Standard, siehe `BACKUP_TIME`). Achtung, zwei Uhren: `BACKUP_TIME` gilt in `APP_TIMEZONE` der Anwendung, die Cron-Zeit in der Zeitzone des Hosts (oder von `CRON_TZ=`, wenn dein Cron es kennt). Rechne um, sonst läuft das Skript vor dem Backup und holt, weil es noch durch die Altersprüfung kommt, das der Vornacht:
 
 ```bash
 sudo chmod +x /usr/local/bin/sprint-backup-pull
 sudo DEST=backup@nas.example.com:/srv/backups/sprint/ /usr/local/bin/sprint-backup-pull
 
 # /etc/cron.d/sprint-backup-pull
-30 3 * * * root DEST=backup@nas.example.com:/srv/backups/sprint/ /usr/local/bin/sprint-backup-pull 2>&1 | logger -t sprint-backup-pull
+30 4 * * * root DEST=backup@nas.example.com:/srv/backups/sprint/ /usr/local/bin/sprint-backup-pull 2>&1 | logger -t sprint-backup-pull
 ```
 
 Hinweise:

@@ -289,9 +289,14 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
 
 /* The views of tasks (list, board, calendar, timeline, in a project and in My tasks) use the whole width of the window: wide
    tables and columns gain from it. The other pages keep the width Flux's container gives them (max-w-7xl), where lines of text
-   and forms stay easy to read. */
-[data-flux-main]:has(> [data-wide]) {
-    max-width: none;
+   and forms stay easy to read, and sit against the sidebar rather than in the middle, so the title stays in the same place
+   when one goes from a board to a settings page. */
+[data-flux-main] {
+    margin-inline: 0;
+
+    &:has(> [data-wide]) {
+        max-width: none;
+    }
 }
 
 /* Project views (list, board, calendar, timeline) fill the window below the page header and scroll within it, so the column

@@ -244,9 +244,11 @@ new class extends Component
     </div>
 
     {{-- The columns are the person's own: "Unsorted" holds what they have not put anywhere (and cannot be reordered by hand, it
-         follows the due dates), every other column keeps the order the cards were dragged into. --}}
+         follows the due dates), every other column keeps the order the cards were dragged into. As on the project board, a column
+         can be collapsed to a narrow strip (data-collapsed, see app.css), remembered in the browser; a click on the strip opens it. --}}
     <div class="scroll-shadows" data-fills-height data-move-targets="{{ json_encode(collect([['id' => 0, 'name' => __('Unsorted')]])->concat($this->personalColumns->map(fn ($column) => ['id' => $column->id, 'name' => $column->name]))->values()->all()) }}">
-        <flux:kanban class="relative items-start overflow-x-auto pb-4 max-sm:snap-x max-sm:snap-mandatory" data-scroll-edges>
+        <flux:kanban class="relative items-start overflow-x-auto pb-4 max-sm:snap-x max-sm:snap-mandatory" data-scroll-edges
+            x-data="{ collapsed: $persist([]).as('mine-board-collapsed'), toggle(id) { this.collapsed = this.collapsed.includes(id) ? this.collapsed.filter((other) => other !== id) : [...this.collapsed, id] } }">
             @foreach ([0 => __('Unsorted')] + $this->personalColumns->pluck('name', 'id')->all() as $key => $name)
                 @php
                     $personal = $key !== 0;
@@ -266,7 +268,9 @@ new class extends Component
                             const value = this.$refs.name.value.trim()
                             if (save && value !== '' && value !== name) { this.$wire.renameColumn(key, value) } else { this.$refs.name.value = name }
                         },
-                    }">
+                    }"
+                    x-bind:data-collapsed="collapsed.includes({{ $key }})"
+                    x-on:click="collapsed.includes({{ $key }}) && toggle({{ $key }})">
                     <flux:kanban.column.header :count="$this->columnTotals[$key]">
                         @if ($personal)
                             <flux:heading x-show="! renaming">{{ $name }}</flux:heading>
@@ -283,9 +287,23 @@ new class extends Component
                             <flux:heading>{{ $name }}</flux:heading>
                         @endif
 
-                        @if ($personal)
-                            <x-slot name="actions">
-                                <flux:dropdown align="end">
+                        <x-slot name="actions">
+                            <flux:tooltip>
+                                <flux:button size="xs" variant="ghost" square class="max-sm:size-10!" x-on:click.stop="toggle({{ $key }})"
+                                    x-bind:aria-expanded="! collapsed.includes({{ $key }})"
+                                    x-bind:aria-label="collapsed.includes({{ $key }}) ? {{ \Illuminate\Support\Js::from(__('Expand column')) }} : {{ \Illuminate\Support\Js::from(__('Collapse column')) }}">
+                                    <flux:icon.chevron-double-left variant="micro" x-show="! collapsed.includes({{ $key }})" />
+                                    <flux:icon.chevron-double-right variant="micro" x-show="collapsed.includes({{ $key }})" x-cloak />
+                                </flux:button>
+                                <flux:tooltip.content>
+                                    <span x-show="! collapsed.includes({{ $key }})">{{ __('Collapse column') }}</span>
+                                    <span x-show="collapsed.includes({{ $key }})" x-cloak>{{ __('Expand column') }}</span>
+                                </flux:tooltip.content>
+                            </flux:tooltip>
+
+                            @if ($personal)
+                                {{-- Not on the narrow strip of a collapsed column, which only has room for the button that opens it --}}
+                                <flux:dropdown align="end" x-show="! collapsed.includes({{ $key }})">
                                     <flux:button x-ref="options" size="xs" variant="ghost" square class="max-sm:size-10!" icon="ellipsis-horizontal" aria-label="{{ __('Column options') }}" tooltip="{{ __('Column options') }}" />
 
                                     <flux:menu>
@@ -300,8 +318,8 @@ new class extends Component
                                         <flux:menu.item variant="danger" icon="trash" wire:click="deleteColumn({{ $key }})" wire:confirm="{{ __('Delete this column? Its tasks go back to Unsorted.') }}">{{ __('Delete column') }}</flux:menu.item>
                                     </flux:menu>
                                 </flux:dropdown>
-                            </x-slot>
-                        @endif
+                            @endif
+                        </x-slot>
                     </flux:kanban.column.header>
 
                     <flux:kanban.column.cards

@@ -243,6 +243,8 @@ new class extends Component
         <x-mine-views active="board" />
     </div>
 
+    <x-mine-collaborating-switch />
+
     {{-- The columns are the person's own: "Unsorted" holds what they have not put anywhere (and cannot be reordered by hand, it
          follows the due dates), every other column keeps the order the cards were dragged into. As on the project board, a column
          can be collapsed to a narrow strip (data-collapsed, see app.css), remembered in the browser; a click on the strip opens it. --}}

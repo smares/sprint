@@ -7,10 +7,11 @@ use App\Models\Task;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Gate;
+use Livewire\Attributes\Session;
 
 /**
  * What the list and the board of "My tasks" have in common: the open tasks assigned to one (in any project one
- * can see), ticking one off, and opening any of them in the flyout.
+ * can see; on request also those one collaborates on), ticking one off, and opening any of them in the flyout.
  */
 trait ListsMyTasks
 {
@@ -22,13 +23,28 @@ trait ListsMyTasks
     abstract protected function forgetTasks(): void;
 
     /**
+     * Whether the tasks one only collaborates on are listed too. Kept for the session, for the list and the board alike.
+     */
+    #[Session(key: 'my-tasks-include-collaborating')]
+    public bool $includeCollaborating = false;
+
+    public function updatedIncludeCollaborating(): void
+    {
+        $this->forgetTasks();
+    }
+
+    /**
      * @return Builder<Task>
      */
     protected function mine(): Builder
     {
         return Task::query()
             ->visibleTo(auth()->user())
-            ->assignedTo(auth()->user())
+            ->when(
+                $this->includeCollaborating,
+                fn (Builder $tasks) => $tasks->assignedToOrCollaboratingOn(auth()->user()),
+                fn (Builder $tasks) => $tasks->assignedTo(auth()->user()),
+            )
             ->open();
     }
 

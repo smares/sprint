@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * A named combination of list filters and sorting, private or shared with the whole project.
  *
- * @property array{status: string, assignee: string, tag: string, fields: array<int|string, string>, sort: string, direction: string} $filters
+ * @property array{status: string, assignee: string, collaborators?: list<string>, tag: string, fields: array<int|string, string>, sort: string, direction: string} $filters
  */
 #[Fillable(['project_id', 'user_id', 'name', 'filters'])]
 class SavedFilter extends Model

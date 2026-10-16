@@ -213,10 +213,9 @@ new class extends Component
         DB::transaction(function () use ($task, $status, $position) {
             $task->update(['status_id' => $status->id]);
 
-            // A sort order puts the card where it belongs; only the manual order has a place to drop it at
-            if ($this->isSorted()) {
-                return;
-            }
+            // A sort order puts the card where it belongs on the screen, so the place it was dropped at means nothing; in the
+            // manual order, which shows again when the sort is reset, it goes first in its column
+            $position = $this->isSorted() ? 0 : $position;
 
             $this->project->placeRootTask($task, $this->columnQuery($status->id)
                 ->whereKeyNot($task->getKey())
@@ -276,18 +275,7 @@ new class extends Component
                         <span class="size-2.5 shrink-0 rounded-full bg-(--badge)" aria-hidden="true"></span>
 
                         <x-slot name="actions">
-                            <flux:tooltip>
-                                <flux:button size="xs" variant="ghost" square class="max-sm:size-10!" x-on:click.stop="toggle({{ $status->id }})"
-                                    x-bind:aria-expanded="! collapsed.includes({{ $status->id }})"
-                                    x-bind:aria-label="collapsed.includes({{ $status->id }}) ? {{ \Illuminate\Support\Js::from(__('Expand column')) }} : {{ \Illuminate\Support\Js::from(__('Collapse column')) }}">
-                                    <flux:icon.chevron-double-left variant="micro" x-show="! collapsed.includes({{ $status->id }})" />
-                                    <flux:icon.chevron-double-right variant="micro" x-show="collapsed.includes({{ $status->id }})" x-cloak />
-                                </flux:button>
-                                <flux:tooltip.content>
-                                    <span x-show="! collapsed.includes({{ $status->id }})">{{ __('Collapse column') }}</span>
-                                    <span x-show="collapsed.includes({{ $status->id }})" x-cloak>{{ __('Expand column') }}</span>
-                                </flux:tooltip.content>
-                            </flux:tooltip>
+                            <x-column-collapse-button :column="$status->id" :name="$status->name" />
                         </x-slot>
                     </flux:kanban.column.header>
 

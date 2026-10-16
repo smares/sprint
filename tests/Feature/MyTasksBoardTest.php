@@ -388,6 +388,27 @@ class MyTasksBoardTest extends TestCase
         $this->assertSame(0, PersonalPlacement::count());
     }
 
+    public function test_every_column_can_be_collapsed_and_is_remembered_in_the_browser(): void
+    {
+        $own = $this->column('Heute');
+
+        $this->get(route('tasks.mine.board'))
+            ->assertOk()
+            ->assertSee("\$persist([]).as('mine-board-collapsed')", false)
+            // "Unsorted" (key 0) and the person's own columns alike
+            ->assertSee('x-bind:data-collapsed="collapsed.includes(0)"', false)
+            ->assertSee('x-bind:data-collapsed="collapsed.includes('.$own->id.')"', false)
+            ->assertSee('x-on:click.stop="toggle(0)"', false)
+            ->assertSee('x-on:click.stop="toggle('.$own->id.')"', false)
+            // the label names the column, there is one of these buttons for each of them
+            ->assertSee('Spalte Heute einklappen', false)
+            ->assertSee('Spalte Unsortiert ausklappen', false)
+            ->assertSee('Spalte einklappen')
+            ->assertSee('Spalte ausklappen')
+            // the menu of an own column is not on the strip of a collapsed one
+            ->assertSee('x-show="! collapsed.includes('.$own->id.')"', false);
+    }
+
     public function test_the_sidebar_marks_my_tasks_on_the_board_too(): void
     {
         $this->get(route('tasks.mine.board'))->assertOk()->assertSeeHtml('href="'.route('tasks.mine').'" data-current');

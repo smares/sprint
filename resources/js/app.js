@@ -671,12 +671,15 @@ const registerCardMenu = () => {
         },
 
         // The menu button of the card where it is now, so the keyboard continues from there (the card was rendered again,
-        // maybe in another column). Not shown (beyond "Load more"): the button of the column's first card.
+        // maybe in another column). Not shown (beyond "Load more"): the button of the column's first card. In a collapsed
+        // column the cards are out of sight and cannot take the focus: the button that opens the column gets it.
         focusCard(task, column) {
             const button = document.querySelector(`[data-card-menu="${task}"]`)
                 ?? document.querySelector(`[data-column="${column}"][data-card-menu]`)
 
-            button?.focus()
+            const hidden = button?.checkVisibility?.({ visibilityProperty: true }) === false
+
+            ;(hidden ? button.closest('[data-flux-kanban-column]')?.querySelector('[data-column-collapse]') : button)?.focus()
         },
     }))
 }

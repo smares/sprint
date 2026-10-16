@@ -1106,6 +1106,19 @@ class Task extends Model
     }
 
     /**
+     * Tasks the person is assigned to or collaborates on.
+     *
+     * @param  Builder<static>  $query
+     */
+    protected function scopeAssignedToOrCollaboratingOn(Builder $query, User $user): void
+    {
+        $query->where(fn (Builder $tasks) => $tasks
+            ->where('tasks.assignee_id', $user->getKey())
+            ->orWhereIn('tasks.id', DB::table('task_collaborators')->where('user_id', $user->getKey())->select('task_id'))
+        );
+    }
+
+    /**
      * Open and due before today. Pass the day of the person looking ($user->today()) where they live in another time
      * zone than the application; without it, today is the application's.
      */

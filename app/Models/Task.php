@@ -1096,16 +1096,13 @@ class Task extends Model
     }
 
     /**
-     * Tasks the person is assigned to or collaborates on.
+     * Tasks the person is assigned to (not those they only collaborate on).
      *
      * @param  Builder<static>  $query
      */
-    protected function scopeInvolving(Builder $query, User $user): void
+    protected function scopeAssignedTo(Builder $query, User $user): void
     {
-        $query->where(fn (Builder $tasks) => $tasks
-            ->where('tasks.assignee_id', $user->getKey())
-            ->orWhereIn('tasks.id', DB::table('task_collaborators')->where('user_id', $user->getKey())->select('task_id'))
-        );
+        $query->where('tasks.assignee_id', $user->getKey());
     }
 
     /**

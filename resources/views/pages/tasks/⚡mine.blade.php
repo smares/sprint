@@ -81,7 +81,7 @@ new class extends Component
     </div>
 
     @if ($this->tasks->isEmpty())
-        <x-empty-state emoji="🎉" :heading="__('All done')" :text="__('You have no open tasks assigned or none you are involved in.')" />
+        <x-empty-state emoji="🎉" :heading="__('All done')" :text="__('You have no open tasks assigned to you.')" />
     @else
         {{-- Every column shows on every screen and the table scrolls sideways under the title, which stays in place.
              The rows are built from the same pieces as the project list: done button, title with progress and tags, due date. --}}

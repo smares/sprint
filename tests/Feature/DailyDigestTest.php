@@ -62,13 +62,14 @@ class DailyDigestTest extends TestCase
         ], $this->digest());
     }
 
-    public function test_collaborators_are_included_and_strangers_are_not(): void
+    public function test_tasks_one_only_collaborates_on_and_strangers_tasks_are_left_out(): void
     {
         $this->task('Fremd', '2026-10-07', ['assignee_id' => User::factory()->create()->id]);
         $shared = $this->task('Gemeinsam', '2026-10-07', ['assignee_id' => null]);
         $shared->collaborators()->attach($this->user);
+        $this->task('Meine', '2026-10-07');
 
-        $this->assertSame(['Gemeinsam'], $this->digest()['today']);
+        $this->assertSame(['Meine'], $this->digest()['today']);
     }
 
     public function test_finished_tasks_headings_muted_tasks_and_archived_projects_are_left_out(): void

@@ -140,9 +140,9 @@ class MyTasksBoardTest extends TestCase
     {
         $task = $this->mine('Gemeinsam');
         $other = User::factory()->admin()->create();
-        $task->collaborators()->attach($other);
         $this->board()->call('moveTask', $task->id, 0, (string) $this->column()->id);
 
+        $task->update(['assignee_id' => $other->id]);
         $this->actingAs($other);
 
         $this->assertSame(['Gemeinsam'], $this->titles($this->board(), 0));
@@ -377,11 +377,11 @@ class MyTasksBoardTest extends TestCase
         $viewing = Project::factory()->create();
         $viewing->setRole($person, ProjectRole::Viewer);
 
-        $notInvolved = Task::factory()->for($viewing)->create();
+        $notAssigned = Task::factory()->for($viewing)->create();
         $done = Task::factory()->for($viewing)->done()->create(['assignee_id' => $person->id]);
         $hidden = Task::factory()->for(Project::factory()->create())->create(['assignee_id' => $person->id]);
 
-        foreach ([$notInvolved, $done, $hidden] as $task) {
+        foreach ([$notAssigned, $done, $hidden] as $task) {
             $this->board()->call('moveTask', $task->id, 0, (string) $heute->id)->assertStatus(404);
         }
 

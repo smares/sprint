@@ -9,8 +9,8 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Gate;
 
 /**
- * What the list and the board of "My tasks" have in common: the open tasks one is involved in (assigned or following,
- * in any project one can see), ticking one off, and opening any of them in the flyout.
+ * What the list and the board of "My tasks" have in common: the open tasks assigned to one (in any project one
+ * can see), ticking one off, and opening any of them in the flyout.
  */
 trait ListsMyTasks
 {
@@ -28,7 +28,7 @@ trait ListsMyTasks
     {
         return Task::query()
             ->visibleTo(auth()->user())
-            ->involving(auth()->user())
+            ->assignedTo(auth()->user())
             ->open();
     }
 

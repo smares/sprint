@@ -29,7 +29,7 @@ class DailyDigestService
             ->open()
             ->visibleTo($user)
             ->whereIn('project_id', Project::query()->whereNull('archived_at')->select('id'))
-            ->involving($user)
+            ->assignedTo($user)
             ->whereNotIn('id', DB::table('task_notification_mutes')->where('user_id', $user->getKey())->select('task_id'))
             ->with('project:id,name')
             ->orderBy('due_date')

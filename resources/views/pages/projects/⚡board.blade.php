@@ -213,10 +213,9 @@ new class extends Component
         DB::transaction(function () use ($task, $status, $position) {
             $task->update(['status_id' => $status->id]);
 
-            // A sort order puts the card where it belongs; only the manual order has a place to drop it at
-            if ($this->isSorted()) {
-                return;
-            }
+            // A sort order puts the card where it belongs on the screen, so the place it was dropped at means nothing; in the
+            // manual order, which shows again when the sort is reset, it goes first in its column
+            $position = $this->isSorted() ? 0 : $position;
 
             $this->project->placeRootTask($task, $this->columnQuery($status->id)
                 ->whereKeyNot($task->getKey())

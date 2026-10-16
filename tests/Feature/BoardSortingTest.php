@@ -166,19 +166,26 @@ class BoardSortingTest extends TestCase
         $this->assertSame('Aufgabe 06', $column[29]);
     }
 
-    public function test_a_card_moved_into_another_column_while_sorted_changes_its_status_only(): void
+    public function test_a_card_moved_into_another_column_while_sorted_goes_first_in_its_manual_order(): void
     {
         $other = $this->project->statuses()->where('is_done', false)->where('id', '!=', $this->statusId)->first()
             ?? $this->project->statuses()->create(['name' => 'Läuft', 'position' => 9]);
         $a = $this->task('Anton', ['position' => 0]);
-        $b = $this->task('Berta', ['position' => 1]);
+        $c = Task::factory()->for($this->project)->create(['title' => 'Cäsar', 'position' => 1, 'status_id' => $other->id]);
+        $d = Task::factory()->for($this->project)->create(['title' => 'Dora', 'position' => 2, 'status_id' => $other->id]);
+        $b = $this->task('Berta', ['position' => 3]);
 
-        Livewire::test('pages::projects.board', ['project' => $this->project])
+        $board = Livewire::test('pages::projects.board', ['project' => $this->project])
             ->call('sort', 'title')
-            ->call('moveTask', $b->id, 0, (string) $other->id);
+            // the place it is dropped at is not used while a sort is on
+            ->call('moveTask', $b->id, 2, (string) $other->id);
 
         $this->assertSame($other->id, $b->fresh()->status_id);
-        $this->assertSame([0, 1], [$a->fresh()->position, $b->fresh()->position]);
+        $this->assertSame([0, 1, 2, 3], collect([$a, $b, $c, $d])->map(fn (Task $task) => $task->fresh()->position)->sort()->values()->all());
+        $this->assertTrue($b->fresh()->position < $c->fresh()->position && $c->fresh()->position < $d->fresh()->position);
+        // the screen keeps the sort order; the manual one shows when the sort is reset
+        $this->assertSame(['Berta', 'Cäsar', 'Dora'], $board->instance()->columns[$other->id]->pluck('title')->all());
+        $this->assertSame(['Berta', 'Cäsar', 'Dora'], $board->call('resetSort')->instance()->columns[$other->id]->pluck('title')->all());
     }
 
     public function test_the_menu_sets_the_criterion_and_the_arrow_turns_the_direction(): void

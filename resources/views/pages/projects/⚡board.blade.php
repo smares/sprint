@@ -234,7 +234,7 @@ new class extends Component
 };
 ?>
 
-<div>
+<div data-wide>
     <x-project-header :project="$project" active="board" :presence="$this->presenceChannel()" />
 
     <div class="mb-4 flex items-center gap-2">

@@ -129,7 +129,7 @@ new class extends Component
 };
 ?>
 
-<div>
+<div data-wide>
     <x-project-header :project="$project" active="timeline" :presence="$this->presenceChannel()" />
 
     <div class="mb-4 flex flex-wrap items-center gap-2">

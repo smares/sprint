@@ -57,6 +57,24 @@ class LayoutTest extends TestCase
         $this->assertStringContainsString('aria-current="page"', $switcher);
     }
 
+    public function test_the_task_views_use_the_whole_width_and_other_pages_keep_the_container(): void
+    {
+        $project = Project::factory()->create();
+        $user = User::factory()->admin()->create();
+
+        foreach (['projects.show', 'projects.board', 'projects.calendar', 'projects.timeline'] as $route) {
+            $this->actingAs($user)->get(route($route, $project))->assertOk()->assertSee('data-wide', false);
+        }
+
+        foreach (['tasks.mine', 'tasks.mine.board'] as $route) {
+            $this->actingAs($user)->get(route($route))->assertOk()->assertSee('data-wide', false);
+        }
+
+        foreach ([route('projects.statistics', $project), route('projects.index'), route('profile')] as $url) {
+            $this->actingAs($user)->get($url)->assertOk()->assertDontSee('data-wide', false);
+        }
+    }
+
     public function test_guests_get_no_navigation(): void
     {
         $this->get(route('login'))->assertOk()->assertDontSee('data-flux-sidebar-toggle', false)->assertDontSee('Darstellung');

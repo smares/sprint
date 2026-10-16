@@ -147,6 +147,13 @@ class CollaboratorFilterTest extends TestCase
             ->assertSet('collaboratorFilter', []);
     }
 
+    public function test_the_chip_of_a_long_filter_wraps_instead_of_widening_the_page(): void
+    {
+        $this->list()
+            ->set('collaboratorFilter', [(string) $this->anna->id, (string) $this->ben->id])
+            ->assertSeeHtml('class="min-w-0 whitespace-normal [overflow-wrap:anywhere]"');
+    }
+
     public function test_the_filter_has_a_field_in_the_filter_dialog(): void
     {
         $this->list()->assertSeeHtml('wire:model.live="collaboratorFilter"');

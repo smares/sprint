@@ -543,9 +543,10 @@ new class extends Component
         <flux:badge size="sm" color="zinc">{{ $this->statusFilterLabel }}</flux:badge>
 
         @foreach ($this->activeFilters as $filter)
-            <flux:badge wire:key="active-{{ $filter['key'] }}" size="sm" color="orange" as="button" type="button" wire:click="clearFilter('{{ $filter['key'] }}')" title="{{ __('Remove filter') }}">
-                {{ $filter['label'] }}
-                <flux:icon.x-mark variant="micro" class="ms-1" />
+            {{-- A long label (the names of many collaborators) wraps inside the chip; on one line it would widen the page on a phone --}}
+            <flux:badge wire:key="active-{{ $filter['key'] }}" size="sm" color="orange" as="button" type="button" wire:click="clearFilter('{{ $filter['key'] }}')" title="{{ __('Remove filter') }}" class="max-w-full text-start">
+                <span class="min-w-0 whitespace-normal [overflow-wrap:anywhere]">{{ $filter['label'] }}</span>
+                <flux:icon.x-mark variant="micro" class="ms-1 shrink-0" />
             </flux:badge>
         @endforeach
 

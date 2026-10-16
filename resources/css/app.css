@@ -383,6 +383,12 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
         gap: 0.75rem;
     }
 
+    /* The buttons of an open column sit in a row that is at least 2rem high, centered in it; here they stand in a column, so the
+       button gets the same room and keeps the height of the buttons of the columns next to it. */
+    & [data-flux-kanban-column-header] > div:first-child > div:last-child {
+        min-height: 2rem;
+    }
+
     & [data-flux-kanban-column-header] > div:first-child > div:first-child {
         writing-mode: vertical-rl;
         padding-inline: 0;

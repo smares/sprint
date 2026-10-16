@@ -180,7 +180,7 @@ class SearchTest extends TestCase
         $this->assertCount(4, $this->titles('plan', ['project_id' => $this->project->id]));
         $this->assertNotContains('Plan fertig', $this->titles('plan', ['state' => 'open']));
         $this->assertSame(['Plan fertig'], $this->titles('plan', ['state' => 'done', 'project_id' => $this->project->id]));
-        $this->assertEqualsCanonicalizing(['Plan meins', 'Plan geteilt'], $this->titles('plan', ['mine' => true]));
+        $this->assertSame(['Plan meins'], $this->titles('plan', ['mine' => true]));
     }
 
     public function test_the_like_fallback_gives_the_same_answers(): void

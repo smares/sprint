@@ -70,16 +70,18 @@ class TaskCollaboratorsTest extends TestCase
         $this->assertSame([$other->id], $task->collaborators()->pluck('users.id')->all());
     }
 
-    public function test_my_tasks_includes_open_tasks_where_i_am_a_collaborator(): void
+    public function test_my_tasks_lists_only_open_tasks_assigned_to_me_not_those_where_i_only_collaborate(): void
     {
-        Task::factory()->create(['title' => 'Ich bin beteiligt'])->collaborators()->attach($this->user);
-        Task::factory()->done()->create(['title' => 'Beteiligt aber erledigt'])->collaborators()->attach($this->user);
+        Task::factory()->create(['title' => 'Mir zugewiesen', 'assignee_id' => $this->user->id]);
+        Task::factory()->done()->create(['title' => 'Zugewiesen aber erledigt', 'assignee_id' => $this->user->id]);
+        Task::factory()->create(['title' => 'Ich bin nur beteiligt'])->collaborators()->attach($this->user);
         Task::factory()->create(['title' => 'Nicht meine']);
 
         $this->get(route('tasks.mine'))
             ->assertOk()
-            ->assertSee('Ich bin beteiligt')
-            ->assertDontSee('Beteiligt aber erledigt')
+            ->assertSee('Mir zugewiesen')
+            ->assertDontSee('Zugewiesen aber erledigt')
+            ->assertDontSee('Ich bin nur beteiligt')
             ->assertDontSee('Nicht meine');
     }
 

@@ -18,5 +18,5 @@
 Meine Aufgaben öffnen
 </x-mail::button>
 
-Du bekommst diese Zusammenfassung werktags, wenn du zuständig oder beteiligt bist. Du kannst sie in deinem Profil abstellen.
+Du bekommst diese Zusammenfassung werktags, wenn dir Aufgaben zugewiesen sind. Du kannst sie in deinem Profil abstellen.
 </x-mail::message>

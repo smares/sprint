@@ -209,7 +209,7 @@ class TaskSearchService
         };
 
         if (! empty($filters['mine'])) {
-            $tasks->involving($user);
+            $tasks->assignedTo($user);
         }
 
         return $tasks->orderBy('tasks.id');

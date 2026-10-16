@@ -18,5 +18,5 @@
 Open my tasks
 </x-mail::button>
 
-You receive this summary on weekdays when you are assigned to or involved in tasks. You can turn it off in your profile.
+You receive this summary on weekdays when tasks are assigned to you. You can turn it off in your profile.
 </x-mail::message>

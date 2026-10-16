@@ -47,7 +47,7 @@ class PersonalColumn extends Model
 
     /**
      * Put the task in this column at the given place (0 = first) among the tasks the person sees there; wherever it
-     * stood before, it leaves that column. Placements of tasks that are hidden (done, not involved any more, project
+     * stood before, it leaves that column. Placements of tasks that are hidden (done, not assigned any more, project
      * not visible) keep their relative place.
      *
      * @param  list<int>  $visibleTaskIds  The tasks of this column the person sees, in any order (the placements give the order).

@@ -366,15 +366,36 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
 }
 
 /* A collapsed board column: a narrow strip as high as the board with the expand button on top and the dot, status and count
-   running upright below it, like a book spine; the cards, quick add and "load more" are hidden until it opens again. */
+   running upright below it, like a book spine; the cards, quick add and "load more" are hidden until it opens again.
+   A card can still be dragged onto the strip: the list of cards stays in place below the header, only its cards are out of
+   sight, so there is something to drop on. A card dropped there ends up at the end of the column. */
 [data-flux-kanban-column] > [data-collapsed] {
     width: 3rem;
     max-width: 3rem;
     height: 100%;
     cursor: pointer;
+    display: flex;
+    flex-direction: column;
 
     & > :not([data-flux-kanban-column-header]) {
         display: none;
+    }
+
+    & > [data-flux-kanban-column-cards] {
+        display: flex;
+        flex: 1;
+        min-height: 6rem;
+
+        & > * {
+            display: none;
+        }
+    }
+
+    /* While a card is dragged over the strip it is in its list (the placeholder of the card being dragged, .sortable-ghost):
+       the strip takes a light tint of the color of its column */
+    &:has(.sortable-ghost) {
+        --drop-tint: color-mix(in oklab, var(--badge, var(--color-accent)) 16%, transparent);
+        background-image: linear-gradient(var(--drop-tint), var(--drop-tint));
     }
 
     & [data-flux-kanban-column-header] > div:first-child {

@@ -255,7 +255,7 @@ new class extends Component
                     $tasks = $this->columns[$key];
                 @endphp
                 {{-- On phones a column leaves the next one in sight; the empty "Unsorted" one is narrower still --}}
-                <flux:kanban.column wire:key="column-{{ $key }}" class="shrink-0 border-t-3 {{ $personal ? 'border-t-accent' : 'border-t-zinc-400 dark:border-t-zinc-500' }} {{ ! $personal && $tasks->isEmpty() ? 'max-sm:w-48' : 'max-sm:w-[min(20rem,calc(100vw-6rem))]' }}"
+                <flux:kanban.column wire:key="column-{{ $key }}" class="shrink-0 border-t-3 {{ $personal ? 'border-t-accent [--badge:var(--color-accent)]' : 'border-t-zinc-400 [--badge:var(--color-zinc-400)] dark:border-t-zinc-500' }} {{ ! $personal && $tasks->isEmpty() ? 'max-sm:w-48' : 'max-sm:w-[min(20rem,calc(100vw-6rem))]' }}"
                     x-data="{
                         renaming: false,
                         settled: false,

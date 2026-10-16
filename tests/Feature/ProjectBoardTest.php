@@ -97,6 +97,7 @@ class ProjectBoardTest extends TestCase
             ->assertSee("\$persist([]).as('board-collapsed-{$project->id}')", false)
             ->assertSee('x-bind:data-collapsed="collapsed.includes('.$open->id.')"', false)
             ->assertSee('x-on:click.stop="toggle('.$open->id.')"', false)
+            ->assertSee('Spalte '.$open->name.' einklappen', false)
             ->assertSee('Spalte einklappen')
             ->assertSee('Spalte ausklappen');
     }

@@ -400,8 +400,13 @@ class MyTasksBoardTest extends TestCase
             ->assertSee('x-bind:data-collapsed="collapsed.includes('.$own->id.')"', false)
             ->assertSee('x-on:click.stop="toggle(0)"', false)
             ->assertSee('x-on:click.stop="toggle('.$own->id.')"', false)
+            // the label names the column, there is one of these buttons for each of them
+            ->assertSee('Spalte Heute einklappen', false)
+            ->assertSee('Spalte Unsortiert ausklappen', false)
             ->assertSee('Spalte einklappen')
-            ->assertSee('Spalte ausklappen');
+            ->assertSee('Spalte ausklappen')
+            // the menu of an own column is not on the strip of a collapsed one
+            ->assertSee('x-show="! collapsed.includes('.$own->id.')"', false);
     }
 
     public function test_the_sidebar_marks_my_tasks_on_the_board_too(): void

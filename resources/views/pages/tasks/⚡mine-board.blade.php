@@ -255,7 +255,7 @@ new class extends Component
                     $tasks = $this->columns[$key];
                 @endphp
                 {{-- On phones a column leaves the next one in sight; the empty "Unsorted" one is narrower still --}}
-                <flux:kanban.column wire:key="column-{{ $key }}" class="shrink-0 border-t-3 {{ $personal ? 'border-t-accent [--badge:var(--color-accent)]' : 'border-t-zinc-400 [--badge:var(--color-zinc-400)] dark:border-t-zinc-500' }} {{ ! $personal && $tasks->isEmpty() ? 'max-sm:w-48' : 'max-sm:w-[min(20rem,calc(100vw-6rem))]' }}"
+                <flux:kanban.column wire:key="column-{{ $key }}" class="shrink-0 border-t-3 border-(--badge) {{ $personal ? '[--badge:var(--color-accent)]' : '[--badge:var(--color-zinc-400)] dark:[--badge:var(--color-zinc-500)]' }} {{ ! $personal && $tasks->isEmpty() ? 'max-sm:w-48' : 'max-sm:w-[min(20rem,calc(100vw-6rem))]' }}"
                     x-data="{
                         renaming: false,
                         settled: false,
@@ -288,18 +288,7 @@ new class extends Component
                         @endif
 
                         <x-slot name="actions">
-                            <flux:tooltip>
-                                <flux:button size="xs" variant="ghost" square class="max-sm:size-10!" x-on:click.stop="toggle({{ $key }})"
-                                    x-bind:aria-expanded="! collapsed.includes({{ $key }})"
-                                    x-bind:aria-label="collapsed.includes({{ $key }}) ? {{ \Illuminate\Support\Js::from(__('Expand column')) }} : {{ \Illuminate\Support\Js::from(__('Collapse column')) }}">
-                                    <flux:icon.chevron-double-left variant="micro" x-show="! collapsed.includes({{ $key }})" />
-                                    <flux:icon.chevron-double-right variant="micro" x-show="collapsed.includes({{ $key }})" x-cloak />
-                                </flux:button>
-                                <flux:tooltip.content>
-                                    <span x-show="! collapsed.includes({{ $key }})">{{ __('Collapse column') }}</span>
-                                    <span x-show="collapsed.includes({{ $key }})" x-cloak>{{ __('Expand column') }}</span>
-                                </flux:tooltip.content>
-                            </flux:tooltip>
+                            <x-column-collapse-button :column="$key" :name="$name" />
 
                             @if ($personal)
                                 {{-- Not on the narrow strip of a collapsed column, which only has room for the button that opens it --}}

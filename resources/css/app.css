@@ -367,8 +367,8 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
 
 /* A collapsed board column: a narrow strip as high as the board with the expand button on top and the dot, status and count
    running upright below it, like a book spine; the cards, quick add and "load more" are hidden until it opens again.
-   A card can still be dragged onto the strip: the list of cards stays in place below the header, only its cards are out of
-   sight, so there is something to drop on. A card dropped there ends up at the end of the column. */
+   A card can still be dragged onto the strip and ends up first in the column (where the cards are loaded from, so the
+   place is certain however many cards the column has). */
 [data-flux-kanban-column] > [data-collapsed] {
     width: 3rem;
     max-width: 3rem;
@@ -376,26 +376,40 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
     cursor: pointer;
     display: flex;
     flex-direction: column;
+    position: relative;
 
     & > :not([data-flux-kanban-column-header]) {
         display: none;
     }
 
+    /* The list of cards stays below the header as the place to drop on. Its cards are out of sight and out of reach under it
+       (not display: none: the library that moves the cards would take the list for an empty one and put a card at its end,
+       again at every step of the drag), so a card dropped here lands before them, as the first one. */
     & > [data-flux-kanban-column-cards] {
         display: flex;
         flex: 1;
         min-height: 6rem;
+        position: relative;
+        overflow: hidden;
 
+        /* A little further than the edge: an element that only touches the edge of what is shown counts as in sight for an
+           IntersectionObserver, and "load more" in the list would start by itself */
         & > * {
-            display: none;
+            position: absolute;
+            inset-inline: 0;
+            top: calc(100% + 0.5rem);
+            visibility: hidden;
+            pointer-events: none;
         }
     }
 
     /* While a card is dragged over the strip it is in its list (the placeholder of the card being dragged, .sortable-ghost):
-       the strip takes a light tint of the color of its column */
+       the strip takes a light tint of the color of its column and a dashed edge, so it does not depend on the color alone */
     &:has(.sortable-ghost) {
         --drop-tint: color-mix(in oklab, var(--badge, var(--color-accent)) 16%, transparent);
         background-image: linear-gradient(var(--drop-tint), var(--drop-tint));
+        outline: 2px dashed color-mix(in oklab, var(--badge, var(--color-accent)) 70%, transparent);
+        outline-offset: -2px;
     }
 
     & [data-flux-kanban-column-header] > div:first-child {
@@ -415,6 +429,14 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
         padding-inline: 0;
         white-space: nowrap;
     }
+}
+
+/* While a card is dragged (the placeholder of the dragged card exists), the list of cards of a collapsed column covers the whole
+   strip, not only the part below the header: the library only accepts a card over the list itself. */
+:root:has(.sortable-ghost) [data-flux-kanban-column] > [data-collapsed] > [data-flux-kanban-column-cards] {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
 }
 
 [data-flux-kanban] > [data-flux-kanban-column]:has(> [data-collapsed]) {

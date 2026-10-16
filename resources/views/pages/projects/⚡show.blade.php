@@ -476,7 +476,7 @@ new class extends Component
 };
 ?>
 
-<div @class(['pb-28' => $selecting])>
+<div @class(['pb-28' => $selecting]) data-wide>
     <x-project-header :project="$project" active="list" :presence="$this->presenceChannel()" />
 
     <div class="mb-4 flex flex-wrap items-center gap-2">

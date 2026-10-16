@@ -51,6 +51,10 @@ new class extends Component
     #[Url(as: 'assignee')]
     public string $assigneeFilter = '';
 
+    /** Tasks on which at least one of these people collaborates: user ids, or 'me'. @var list<string> */
+    #[Url(as: 'with')]
+    public array $collaboratorFilter = [];
+
     #[Url(as: 'tag')]
     public string $tagFilter = '';
 
@@ -102,12 +106,46 @@ new class extends Component
             ->when(ctype_digit($this->statusFilter), fn ($q) => $q->where('status_id', (int) $this->statusFilter))
             ->when($this->assigneeFilter === 'me', fn ($q) => $q->where('assignee_id', auth()->id()))
             ->when(ctype_digit($this->assigneeFilter), fn ($q) => $q->where('assignee_id', (int) $this->assigneeFilter))
+            ->when($this->collaboratorFilterUsers !== [], fn ($q) => $q->whereHas('collaborators', fn ($people) => $people->whereKey(array_keys($this->collaboratorFilterUsers))))
             ->when(ctype_digit($this->tagFilter), fn ($q) => $q->whereHas('tags', fn ($tags) => $tags->whereKey((int) $this->tagFilter)))
             ->when($this->dateFilter === 'none', fn ($q) => $q->whereNull('start_date')->whereNull('due_date'))
             ->when($this->dateFilter === 'dated', fn ($q) => $q->where(fn ($dated) => $dated->whereNotNull('start_date')->orWhereNotNull('due_date')))
             ->when($this->dateFilter === 'overdue', fn ($q) => $q->overdue(DateService::today(auth()->user())))
             ->when($this->dateFilter === 'soon', fn ($q) => $q->dueSoon(DateService::today(auth()->user())))
             ->tap(fn ($q) => $this->applyFieldFilters($q));
+    }
+
+    /**
+     * What a collaborator filter can hold: 'me' and the ids of people one can choose in this project. Anything else, from an old
+     * link or a saved view of somebody who has left, is dropped, so that a filter nobody can see never hides tasks.
+     *
+     * @param  array<mixed>  $values
+     * @return list<string>
+     */
+    protected function validCollaboratorValues(array $values): array
+    {
+        return collect($values)
+            ->filter(fn ($value) => $value === 'me' || (is_scalar($value) && ctype_digit((string) $value) && $this->assignableUsers->contains('id', (int) $value)))
+            ->map(fn ($value) => (string) $value)
+            ->unique()->values()->all();
+    }
+
+    /**
+     * The people of the collaborator filter by user id, with their names.
+     *
+     * @return array<int, string>
+     */
+    #[Computed]
+    public function collaboratorFilterUsers(): array
+    {
+        $users = [];
+
+        foreach ($this->validCollaboratorValues($this->collaboratorFilter) as $value) {
+            $user = $value === 'me' ? auth()->user() : $this->assignableUsers->firstWhere('id', (int) $value);
+            $users[$user->id] = $user->name;
+        }
+
+        return $users;
     }
 
     /**
@@ -203,11 +241,11 @@ new class extends Component
      */
     public function updated(string $name): void
     {
-        if (in_array(explode('.', $name)[0], ['statusFilter', 'assigneeFilter', 'tagFilter', 'dateFilter', 'fieldFilters', 'sortBy', 'sortDirection'], true)) {
+        if (in_array(explode('.', $name)[0], ['statusFilter', 'assigneeFilter', 'collaboratorFilter', 'tagFilter', 'dateFilter', 'fieldFilters', 'sortBy', 'sortDirection'], true)) {
             $this->limit = self::PAGE_SIZE;
         }
 
-        if (in_array(explode('.', $name)[0], ['statusFilter', 'assigneeFilter', 'tagFilter', 'dateFilter', 'fieldFilters'], true)) {
+        if (in_array(explode('.', $name)[0], ['statusFilter', 'assigneeFilter', 'collaboratorFilter', 'tagFilter', 'dateFilter', 'fieldFilters'], true)) {
             $this->selected = [];
         }
     }
@@ -291,6 +329,10 @@ new class extends Component
             $filters->push(['key' => 'assignee', 'label' => $user->name]);
         }
 
+        if ($this->collaboratorFilterUsers !== []) {
+            $filters->push(['key' => 'collaborators', 'label' => __('Collaborators').': '.implode(', ', $this->collaboratorFilterUsers)]);
+        }
+
         foreach ($this->filterableFields as $field) {
             $option = $field->options->firstWhere('id', (int) ($this->fieldFilters[$field->id] ?? 0));
 
@@ -326,6 +368,7 @@ new class extends Component
 
         match (true) {
             $key === 'assignee' => $this->assigneeFilter = '',
+            $key === 'collaborators' => $this->collaboratorFilter = [],
             $key === 'tag' => $this->tagFilter = '',
             $key === 'dates' => $this->dateFilter = '',
             str_starts_with($key, 'field:') => $this->fieldFilters[(int) substr($key, 6)] = '',
@@ -344,13 +387,14 @@ new class extends Component
     }
 
     /**
-     * @return array{status: string, assignee: string, tag: string, dates: string, fields: array<int|string, string>, sort: string, direction: string}
+     * @return array{status: string, assignee: string, collaborators: list<string>, tag: string, dates: string, fields: array<int|string, string>, sort: string, direction: string}
      */
     private function currentFilters(): array
     {
         return [
             'status' => $this->statusFilter,
             'assignee' => $this->assigneeFilter,
+            'collaborators' => $this->validCollaboratorValues($this->collaboratorFilter),
             'tag' => $this->tagFilter,
             'dates' => $this->dateFilter,
             'fields' => array_filter($this->fieldFilters, fn ($option) => $option !== '' && $option !== null),
@@ -390,6 +434,8 @@ new class extends Component
         $assignee = (string) ($filters['assignee'] ?? '');
         $this->assigneeFilter = $assignee === 'me' || ($assignee !== '' && ctype_digit($assignee) && $this->assignableUsers->contains('id', (int) $assignee)) ? $assignee : '';
 
+        $this->collaboratorFilter = $this->validCollaboratorValues((array) ($filters['collaborators'] ?? []));
+
         $tag = (string) ($filters['tag'] ?? '');
         $this->tagFilter = $tag !== '' && ctype_digit($tag) && $this->tagOptions->contains('id', (int) $tag) ? $tag : '';
         $this->dateFilter = is_string($filters['dates'] ?? null) && array_key_exists($filters['dates'], $this->dateFilterLabels) ? $filters['dates'] : '';
@@ -409,7 +455,7 @@ new class extends Component
         $this->sortDirection = ($filters['direction'] ?? 'asc') === 'desc' ? 'desc' : 'asc';
 
         $this->limit = self::PAGE_SIZE;
-        unset($this->tasks, $this->totalTasks, $this->activeFilters);
+        unset($this->tasks, $this->totalTasks, $this->activeFilters, $this->collaboratorFilterUsers);
         Flux::modal('saved-filters')->close();
     }
 
@@ -428,6 +474,7 @@ new class extends Component
         $this->selected = [];
         $this->statusFilter = 'open';
         $this->assigneeFilter = '';
+        $this->collaboratorFilter = [];
         $this->tagFilter = '';
         $this->dateFilter = '';
         $this->fieldFilters = [];
@@ -580,6 +627,13 @@ new class extends Component
                     <flux:select.option value="{{ $user->id }}">{{ $user->labelledName() }}</flux:select.option>
                 @endforeach
             </flux:select>
+
+            <flux:pillbox wire:model.live="collaboratorFilter" multiple :label="__('Collaborators')" :placeholder="__('Anyone')">
+                <flux:pillbox.option value="me">{{ __('Me') }}</flux:pillbox.option>
+                @foreach ($this->assignableUsers as $user)
+                    <flux:pillbox.option wire:key="collaborator-filter-{{ $user->id }}" value="{{ $user->id }}">{{ $user->labelledName() }}</flux:pillbox.option>
+                @endforeach
+            </flux:pillbox>
 
             @foreach ($this->filterableFields as $field)
                 <flux:select wire:key="filter-{{ $field->id }}" variant="listbox" wire:model.live="fieldFilters.{{ $field->id }}" label="{{ $field->name }}">

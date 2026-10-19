@@ -314,8 +314,8 @@ new class extends Component
                                     @if ($selecting)
                                         <x-task-select-box :task="$task" :selected="in_array((string) $task->id, array_map('strval', $selected), true)" />
                                     @endif
-                                    <x-task-done-button :task="$task" :editable="$this->canEdit" />
-                                    <div class="min-w-0 flex-1">
+                                    <x-task-done-button :task="$task" :editable="$this->canEdit" compact />
+                                    <div class="min-w-0 flex-1 leading-6">
                                         <x-task-title-link :task="$task" />
                                     </div>
                                 </div>

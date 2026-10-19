@@ -143,7 +143,6 @@ new class extends Component
         @endif
     @endif
 
-
     @if ($selecting)
         <x-selection-bar :change="false" />
     @endif

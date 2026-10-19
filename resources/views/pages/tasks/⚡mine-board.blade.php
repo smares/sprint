@@ -241,9 +241,9 @@ new class extends Component
     <div class="mb-6 flex items-center justify-between gap-3">
         <flux:heading level="1" size="xl">{{ __('My tasks') }}</flux:heading>
         <div class="flex items-center gap-2">
-            @unless ($selecting)
+            @if (! $selecting && array_sum($this->columnTotals) > 0)
                 <x-selection-toggle />
-            @endunless
+            @endif
             <x-mine-views active="board" />
         </div>
     </div>

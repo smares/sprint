@@ -23,28 +23,24 @@
         aria-label="{{ __('Move task') }}"
         class="z-50 max-h-80 w-56 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-lg border border-zinc-200 bg-white p-1 shadow-lg dark:border-zinc-600 dark:bg-zinc-700"
     >
-        @php
-            $item = 'flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-start text-sm text-zinc-800 hover:bg-zinc-100 focus:bg-zinc-100 focus:outline-hidden dark:text-white dark:hover:bg-zinc-600 dark:focus:bg-zinc-600';
-        @endphp
-
         <div role="group" aria-labelledby="card-menu-heading">
             <div id="card-menu-heading" class="px-2 py-1 text-xs font-medium text-zinc-500 dark:text-zinc-400">{{ __('Move to column') }}</div>
             <template x-for="target in columns" x-bind:key="target.id">
-                <button type="button" role="menuitem" class="{{ $item }}" x-on:click="pick(target.id)">
+                <x-menu-button x-on:click="pick(target.id)">
                     <span class="min-w-0 flex-1 truncate" x-text="target.name"></span>
-                </button>
+                </x-menu-button>
             </template>
         </div>
 
-        <div x-show="canMoveUp || canMoveDown" class="my-1 border-t border-zinc-200 dark:border-zinc-600" role="separator"></div>
+        <x-menu-separator x-show="canMoveUp || canMoveDown" />
 
-        <button type="button" role="menuitem" class="{{ $item }}" x-show="canMoveUp" x-on:click="pick(column, index - 1)">
+        <x-menu-button x-show="canMoveUp" x-on:click="pick(column, index - 1)">
             <flux:icon.arrow-up variant="micro" class="text-zinc-400" />
             {{ __('Move up') }}
-        </button>
-        <button type="button" role="menuitem" class="{{ $item }}" x-show="canMoveDown" x-on:click="pick(column, index + 1)">
+        </x-menu-button>
+        <x-menu-button x-show="canMoveDown" x-on:click="pick(column, index + 1)">
             <flux:icon.arrow-down variant="micro" class="text-zinc-400" />
             {{ __('Move down') }}
-        </button>
+        </x-menu-button>
     </div>
 </div>

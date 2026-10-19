@@ -4,11 +4,8 @@ namespace App\Concerns;
 
 use App\Models\Project;
 use App\Models\Task;
-use App\Services\RealtimeService;
-use Flux\Flux;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Session;
@@ -21,6 +18,7 @@ use Livewire\Attributes\Session;
 trait ListsMyTasks
 {
     use RefreshesOnTaskChanges;
+    use SelectsTasks;
 
     /**
      * Drop the loaded tasks (and what is counted from them) after one of them changed.
@@ -32,13 +30,6 @@ trait ListsMyTasks
      */
     #[Session(key: 'my-tasks-include-collaborating')]
     public bool $includeCollaborating = false;
-
-    public const MAX_SELECTION = 500;
-
-    public bool $selecting = false;
-
-    /** @var list<int|string> */
-    public array $selected = [];
 
     public function updatedIncludeCollaborating(): void
     {
@@ -94,18 +85,12 @@ trait ListsMyTasks
         $this->selected = [];
     }
 
-    public function stopSelecting(): void
-    {
-        $this->reset('selecting', 'selected');
-        $this->resetErrorBag();
-    }
-
     /**
-     * The selected tasks that are among the listed ones and in projects one may edit, and how many were left out.
+     * The selected tasks that are among the listed ones and in projects one may edit.
      *
-     * @return array{0: Collection<int, Task>, 1: int}
+     * @return Collection<int, Task>
      */
-    private function selectedTasks(): array
+    protected function selectedTasks(): Collection
     {
         $ids = array_slice(array_map(intval(...), $this->selected), 0, self::MAX_SELECTION);
 
@@ -121,52 +106,13 @@ trait ListsMyTasks
             throw ValidationException::withMessages(['selected' => __('You may not change these tasks.')]);
         }
 
-        return [new Collection($allowed->all()), $tasks->count() - $allowed->count()];
+        $this->leftOut = $tasks->count() - $allowed->count();
+
+        return new Collection($allowed->all());
     }
 
-    private function finishBulk(string $message, int $skipped): void
+    protected function forgetTasksAfterBulk(): void
     {
-        $this->stopSelecting();
         $this->forgetTasks();
-        Flux::toast(variant: 'success', text: $message);
-
-        if ($skipped > 0) {
-            Flux::toast(variant: 'warning', text: trans_choice('{1} One task was left out: you may not change tasks of its project.|[2,*] :count tasks were left out: you may not change tasks of their projects.', $skipped));
-        }
-    }
-
-    public function bulkComplete(): void
-    {
-        [$tasks, $skipped] = $this->selectedTasks();
-
-        Task::bundlingStatusNotifications(function () use ($tasks) {
-            foreach ($tasks as $task) {
-                // From the statuses loaded with the project, not one query per task
-                $done = ($task->project->statuses->firstWhere('is_done', true) ?? $task->project->doneStatus())->id;
-
-                if ($task->status_id !== $done) {
-                    $task->update(['status_id' => $done]);
-                }
-            }
-        });
-
-        $this->finishBulk(trans_choice('{1} One task completed.|[0,*] :count tasks completed.', $tasks->count()), $skipped);
-    }
-
-    public function bulkDelete(): void
-    {
-        [$tasks, $skipped] = $this->selectedTasks();
-
-        // A loop and not $tasks->each->delete(): each() stops at the first closure that returns false, and delete() returns false when it is cancelled
-        app(RealtimeService::class)->bundling(fn () => DB::transaction(function () use ($tasks): void {
-            foreach ($tasks as $task) {
-                $task->delete();
-            }
-        }));
-
-        // The flyout closes when its task was one of them
-        $this->dispatch('tasks-deleted');
-
-        $this->finishBulk(trans_choice('{1} One task deleted.|[0,*] :count tasks deleted.', $tasks->count()), $skipped);
     }
 }

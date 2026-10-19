@@ -63,6 +63,8 @@ trait ShowsProject
     {
         Gate::authorize('edit', $this->project);
 
-        $this->project->tasks()->withoutSections()->findOrFail($taskId)->toggleDone();
+        $task = $this->project->tasks()->withoutSections()->findOrFail($taskId);
+        $task->setRelation('project', $this->project);
+        $task->toggleDone();
     }
 }

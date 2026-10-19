@@ -155,7 +155,7 @@ new class extends Component
         <flux:button wire:click="today">{{ __('Today') }}</flux:button>
         <flux:text class="ms-2 whitespace-nowrap">{{ $this->start->isoFormat('L') }} – {{ $this->end->isoFormat('L') }}</flux:text>
 
-        @if ($this->canEdit && ! $selecting)
+        @if ($this->canEdit && ! $selecting && $this->rows->isNotEmpty())
             <x-selection-toggle class="ms-auto" />
         @endif
     </div>
@@ -252,6 +252,6 @@ new class extends Component
     @if ($selecting)
         <x-selection-bar />
 
-        <x-bulk-edit-modal :project="$project" />
+        <x-bulk-edit-modal :choices="$this->bulkChoices" />
     @endif
 </div>

@@ -1,13 +1,7 @@
-@props(['project', 'statuses' => null, 'users' => null, 'tags' => null])
+@props(['choices'])
 
-{{-- The page hands over what it has computed anyway; without it the dialog asks for its choices itself --}}
-@php
-    $statuses ??= $project->statuses;
-    $users ??= $project->assignableUsers();
-    $tags ??= $project->tags()->orderBy('name')->get();
-@endphp
-
-{{-- The dialog of the selection bar: what to change on all selected tasks at once; only what is filled in is changed. --}}
+{{-- The dialog of the selection bar: what to change on all selected tasks at once; only what is filled in is changed. `choices` are the
+     statuses, people and tags the page offers (`bulkChoices` of EditsTasksInBulk), as id => name. --}}
 <flux:modal name="bulk-edit" class="w-full max-w-md">
     <form wire:submit="applyBulkChanges" class="space-y-5">
         <div>
@@ -17,16 +11,16 @@
 
         <flux:select variant="listbox" wire:model="bulkStatus" :label="__('Status')">
             <flux:select.option value="">{{ __('Leave unchanged') }}</flux:select.option>
-            @foreach ($statuses as $status)
-                <flux:select.option value="{{ $status->id }}">{{ $status->name }}</flux:select.option>
+            @foreach ($choices['statuses'] as $id => $name)
+                <flux:select.option value="{{ $id }}">{{ $name }}</flux:select.option>
             @endforeach
         </flux:select>
 
         <flux:select variant="listbox" wire:model="bulkAssignee" :label="__('Assignee')">
             <flux:select.option value="">{{ __('Leave unchanged') }}</flux:select.option>
             <flux:select.option value="none">{{ __('Nobody') }}</flux:select.option>
-            @foreach ($users as $user)
-                <flux:select.option value="{{ $user->id }}">{{ $user->labelledName() }}</flux:select.option>
+            @foreach ($choices['users'] as $id => $name)
+                <flux:select.option value="{{ $id }}">{{ $name }}</flux:select.option>
             @endforeach
         </flux:select>
 
@@ -35,16 +29,16 @@
             <flux:checkbox wire:model="bulkClearDueDate" :label="__('Remove due date')" />
         </div>
 
-        @if ($tags->isNotEmpty())
+        @if ($choices['tags'] !== [])
             <flux:pillbox wire:model="bulkAddTags" multiple :label="__('Add tags')" :placeholder="__('Select tags …')">
-                @foreach ($tags as $tag)
-                    <flux:pillbox.option wire:key="add-tag-{{ $tag->id }}" value="{{ $tag->id }}">{{ $tag->name }}</flux:pillbox.option>
+                @foreach ($choices['tags'] as $id => $name)
+                    <flux:pillbox.option wire:key="add-tag-{{ $id }}" value="{{ $id }}">{{ $name }}</flux:pillbox.option>
                 @endforeach
             </flux:pillbox>
 
             <flux:pillbox wire:model="bulkRemoveTags" multiple :label="__('Remove tags')" :placeholder="__('Select tags …')">
-                @foreach ($tags as $tag)
-                    <flux:pillbox.option wire:key="remove-tag-{{ $tag->id }}" value="{{ $tag->id }}">{{ $tag->name }}</flux:pillbox.option>
+                @foreach ($choices['tags'] as $id => $name)
+                    <flux:pillbox.option wire:key="remove-tag-{{ $id }}" value="{{ $id }}">{{ $name }}</flux:pillbox.option>
                 @endforeach
             </flux:pillbox>
         @endif

@@ -5,8 +5,7 @@ namespace App\Concerns;
 use App\Enums\ActivityType;
 use App\Models\Project;
 use App\Models\Task;
-use App\Services\RealtimeService;
-use Flux\Flux;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -26,12 +25,7 @@ use Livewire\Attributes\Computed;
  */
 trait EditsTasksInBulk
 {
-    public const MAX_SELECTION = 500;
-
-    public bool $selecting = false;
-
-    /** @var list<int|string> */
-    public array $selected = [];
+    use SelectsTasks;
 
     public string $bulkStatus = '';
 
@@ -53,11 +47,6 @@ trait EditsTasksInBulk
      * @return Builder<Task>|HasMany<Task, Project>
      */
     abstract protected function filteredTasks();
-
-    /**
-     * Forget what the page has loaded of the tasks, so it draws them as they are after the change.
-     */
-    abstract protected function forgetTasksAfterBulk(): void;
 
     /**
      * The button of the views without checkboxes in their rows (board, calendar, timeline): from here on the tasks show
@@ -84,10 +73,26 @@ trait EditsTasksInBulk
         unset($this->selectedIds);
     }
 
-    public function stopSelecting(): void
+    /**
+     * What the dialog offers: the statuses, the people who can be assigned and the tags of the project, as id => name. Kept for
+     * a minute and until the selection ends, not asked for with every render while tasks are selected.
+     *
+     * @return array{statuses: array<int, string>, users: array<int, string>, tags: array<int, string>}
+     */
+    #[Computed(persist: true, seconds: 60)]
+    public function bulkChoices(): array
     {
-        $this->reset('selecting', 'selected', 'bulkStatus', 'bulkAssignee', 'bulkDueDate', 'bulkClearDueDate', 'bulkAddTags', 'bulkRemoveTags');
-        $this->resetErrorBag();
+        return [
+            'statuses' => $this->project->statuses()->pluck('name', 'id')->all(),
+            'users' => $this->project->assignableUsers()->mapWithKeys(fn (User $user) => [$user->id => $user->labelledName()])->all(),
+            'tags' => $this->project->tags()->orderBy('name')->pluck('name', 'id')->all(),
+        ];
+    }
+
+    protected function selectionEnded(): void
+    {
+        unset($this->bulkChoices);
+        $this->reset('bulkStatus', 'bulkAssignee', 'bulkDueDate', 'bulkClearDueDate', 'bulkAddTags', 'bulkRemoveTags');
         unset($this->selectedIds);
     }
 
@@ -114,7 +119,7 @@ trait EditsTasksInBulk
     /**
      * @return EloquentCollection<int, Task>
      */
-    private function selectedTasks(): EloquentCollection
+    protected function selectedTasks(): EloquentCollection
     {
         Gate::authorize('edit', $this->project);
 
@@ -125,30 +130,6 @@ trait EditsTasksInBulk
         }
 
         return $this->project->tasks()->topLevel()->withoutSections()->whereKey($ids)->with(['project.statuses', 'status', 'assignee', 'collaborators', 'notificationMutes'])->get();
-    }
-
-    private function finishBulk(string $message): void
-    {
-        $this->stopSelecting();
-        $this->forgetTasksAfterBulk();
-        Flux::modal('bulk-edit')->close();
-        Flux::toast(variant: 'success', text: $message);
-    }
-
-    public function bulkComplete(): void
-    {
-        $tasks = $this->selectedTasks();
-        $done = $this->project->doneStatus()->id;
-
-        Task::bundlingStatusNotifications(function () use ($tasks, $done) {
-            foreach ($tasks as $task) {
-                if ($task->status_id !== $done) {
-                    $task->update(['status_id' => $done]);
-                }
-            }
-        });
-
-        $this->finishBulk(trans_choice('{1} One task completed.|[0,*] :count tasks completed.', $tasks->count()));
     }
 
     public function applyBulkChanges(): void
@@ -225,22 +206,5 @@ trait EditsTasksInBulk
         }
 
         $task->logSyncChanges(ActivityType::TagsAdded, ActivityType::TagsRemoved, $changes, fn (array $ids) => collect($ids)->map(fn (int $id) => $names[$id])->sort()->values()->all());
-    }
-
-    public function bulkDelete(): void
-    {
-        $tasks = $this->selectedTasks();
-
-        // A loop and not $tasks->each->delete(): each() stops at the first closure that returns false, and delete() returns false when it is cancelled
-        app(RealtimeService::class)->bundling(fn () => DB::transaction(function () use ($tasks): void {
-            foreach ($tasks as $task) {
-                $task->delete();
-            }
-        }));
-
-        // The flyout closes when its task was one of them
-        $this->dispatch('tasks-deleted');
-
-        $this->finishBulk(trans_choice('{1} One task deleted.|[0,*] :count tasks deleted.', $tasks->count()));
     }
 }

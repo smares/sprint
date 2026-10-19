@@ -661,7 +661,7 @@ new class extends Component
                 @endforeach
             </flux:select>
 
-            <flux:pillbox wire:model.live="collaboratorFilter" multiple :label="__('Collaborators')" :placeholder="__('Anyone')">
+            <flux:pillbox wire:model.live="collaboratorFilter" multiple :label="__('Collaborators')" :placeholder="__('All people')">
                 <flux:pillbox.option value="me">{{ __('Me') }}</flux:pillbox.option>
                 @foreach ($this->assignableUsers as $user)
                     <flux:pillbox.option wire:key="collaborator-filter-{{ $user->id }}" value="{{ $user->id }}">{{ $user->labelledName() }}</flux:pillbox.option>
@@ -824,7 +824,7 @@ new class extends Component
             </x-slot>
         </x-selection-bar>
 
-        <x-bulk-edit-modal :project="$project" :statuses="$this->statuses" :users="$this->assignableUsers" :tags="$this->tagOptions" />
+        <x-bulk-edit-modal :choices="$this->bulkChoices" />
     @endif
 
     @if ($this->canEdit)

@@ -326,7 +326,7 @@ class BulkTaskActionsTest extends TestCase
 
         $html = Livewire::test('pages::projects.show', ['project' => $this->project])->html();
 
-        $done = strpos($html, 'aria-label="Als erledigt markieren"');
+        $done = strpos($html, 'aria-label="Als erledigt markieren: ');
         $select = strpos($html, 'aria-label="Aufgabe auswählen: Eins"');
         $this->assertNotFalse($done);
         $this->assertNotFalse($select);

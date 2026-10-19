@@ -364,7 +364,8 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
             flex-shrink: 0;
         }
 
-        & [data-flux-kanban-column-cards] {
+        /* Not in a collapsed column: its cards wait out of sight below the list and would give it a scrollbar */
+        & > div:not([data-collapsed]) [data-flux-kanban-column-cards] {
             overflow-y: auto;
         }
     }

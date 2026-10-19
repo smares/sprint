@@ -674,6 +674,17 @@ class AsanaImportTest extends TestCase
         }
     }
 
+    public function test_a_download_has_no_time_limit_but_gives_up_on_a_stalled_transfer(): void
+    {
+        $request = fn (bool $download) => (new ReflectionMethod(AsanaClient::class, 'request'))->invoke(new AsanaClient('t'), false, $download)->getOptions();
+
+        // Answers of the API are small; a big file may take longer than a minute as long as it keeps arriving
+        $this->assertSame(60, $request(false)['timeout']);
+        $this->assertSame(0, $request(true)['timeout']);
+        $this->assertSame([CURLOPT_LOW_SPEED_LIMIT => 1024, CURLOPT_LOW_SPEED_TIME => 60], $request(true)['curl']);
+        $this->assertArrayNotHasKey('curl', $request(false));
+    }
+
     public function test_redirects_of_the_client_stay_on_https(): void
     {
         Http::fake(['*' => Http::response(['data' => []])]);

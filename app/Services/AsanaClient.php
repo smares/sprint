@@ -125,7 +125,7 @@ class AsanaClient
         for ($attempt = 1; ; $attempt++) {
             try {
                 // Without parameters the address is called as it is: an empty query would replace the signature in it
-                $request = $this->request($authorized);
+                $request = $this->request($authorized, download: $sink !== null);
                 $request = $sink === null ? $request : $request->sink($sink);
                 $response = $query === [] ? $request->get($url) : $request->get($url, $query);
             } catch (ConnectionException $exception) {
@@ -157,10 +157,16 @@ class AsanaClient
         Sleep::for($seconds)->seconds();
     }
 
-    private function request(bool $authorized): PendingRequest
+    private function request(bool $authorized, bool $download = false): PendingRequest
     {
         // Redirects stay on https: a signed address must not lead to a plain or internal one
-        $request = Http::acceptJson()->timeout(60)->withOptions(['allow_redirects' => ['max' => 3, 'protocols' => ['https']]]);
+        $request = Http::acceptJson()->withOptions(['allow_redirects' => ['max' => 3, 'protocols' => ['https']]]);
+
+        // A file may be as big as Asana allows, so a download has no time limit of its own, only a stalled one is given up on:
+        // below 1 KB/s for a minute (curl's low speed limit). Answers of the API are small and wait 60 seconds at most.
+        $request = $download
+            ? $request->timeout(0)->connectTimeout(30)->withOptions(['curl' => [CURLOPT_LOW_SPEED_LIMIT => 1024, CURLOPT_LOW_SPEED_TIME => 60]])
+            : $request->timeout(60);
 
         return $authorized ? $request->withToken($this->token) : $request;
     }

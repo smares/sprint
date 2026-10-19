@@ -535,16 +535,17 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
     animation: task-check-pop 0.3s ease-out;
 }
 
-/* New rows and cards (added, loaded or shown by a filter) fade in instead of popping up. */
-tr[data-task-id] {
-    transition: opacity 0.25s ease;
-}
-
-@starting-style {
-    tr[data-task-id],
-    .board-card {
+/* New rows and cards (added, loaded or shown by a filter) fade in instead of popping up. A keyframe animation rather than
+   @starting-style: Safari now and then left such a transition at its start and the card stayed invisible. */
+@keyframes task-fade-in {
+    from {
         opacity: 0;
     }
+}
+
+tr[data-task-id],
+.board-card {
+    animation: task-fade-in 0.25s ease;
 }
 
 [data-completing] [data-task-title] {
@@ -565,6 +566,11 @@ tr[data-task-id] {
     tr[data-task-id],
     [data-completing] {
         transition: none;
+    }
+
+    tr[data-task-id],
+    .board-card {
+        animation: none;
     }
 }
 

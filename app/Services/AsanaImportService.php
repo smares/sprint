@@ -1517,55 +1517,6 @@ class AsanaImportService
         return '@'.$this->literalName($this->people[$gid]['name'] ?? __('someone'));
     }
 
-    /**
-     * Credit the files taken over earlier to the people who uploaded them in Asana (before, the importer stood there for
-     * all). Files whose uploader has no account here, or whose answer Asana does not give any more, stay as they are.
-     *
-     * @return array{checked: int, changed: int, unknown: int}
-     */
-    public function fixAttachmentUploaders(bool $dryRun = false): array
-    {
-        $result = ['checked' => 0, 'changed' => 0, 'unknown' => 0];
-
-        $rows = DB::table('asana_imports')
-            ->join('attachments', 'attachments.id', '=', 'asana_imports.model_id')
-            ->where('asana_imports.kind', 'attachment')
-            ->orderBy('attachments.id')
-            ->select('asana_imports.gid', 'attachments.id', 'attachments.user_id');
-
-        // Read in one go: an open cursor keeps a read snapshot of the database for the whole run (minutes of requests to Asana),
-        // and a write after other writers (queue, scheduler, people) have saved meanwhile fails with "database is locked"
-        foreach ($rows->get() as $row) {
-            $result['checked']++;
-
-            try {
-                $found = $this->asana->get('attachments/'.$row->gid, ['opt_fields' => 'created_by.gid,created_by.name,created_by.email']);
-            } catch (AsanaException $exception) {
-                // A file Asana does not have any more stays as it is; anything else (token, limits) is no use to go on
-                throw_unless($exception->status === 404, $exception);
-
-                $result['unknown']++;
-
-                continue;
-            }
-
-            $this->remember($found['created_by'] ?? []);
-            $uploader = isset($found['created_by']['gid']) ? $this->user((string) $found['created_by']['gid']) : null;
-
-            if (! $uploader instanceof User) {
-                $result['unknown']++;
-            } elseif ($uploader->id !== (int) $row->user_id) {
-                $result['changed']++;
-
-                if (! $dryRun) {
-                    Attachment::query()->whereKey($row->id)->toBase()->update(['user_id' => $uploader->id]);
-                }
-            }
-        }
-
-        return $result;
-    }
-
     private function loadMap(): void
     {
         $this->map = [];

@@ -74,10 +74,15 @@ new class extends Component
 };
 ?>
 
-<div data-wide>
+<div @class(['pb-28' => $selecting]) data-wide>
     <div class="mb-6 flex items-center justify-between gap-3">
         <flux:heading level="1" size="xl">{{ __('My tasks') }}</flux:heading>
-        <x-mine-views active="list" />
+        <div class="flex items-center gap-2">
+            @if (! $selecting && $this->tasks->isNotEmpty())
+                <flux:button icon="clipboard-document-check" wire:click="startSelecting" class="max-sm:size-10!" aria-label="{{ __('Select') }}" tooltip="{{ __('Select') }}"><span class="max-sm:hidden">{{ __('Select') }}</span></flux:button>
+            @endif
+            <x-mine-views active="list" />
+        </div>
     </div>
 
     <x-mine-collaborating-switch />
@@ -100,6 +105,9 @@ new class extends Component
                         <flux:table.row wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" class="cursor-pointer">
                             <flux:table.cell class="pinned-column min-w-56 whitespace-normal max-sm:min-w-[45vw]">
                                 <div class="flex items-center gap-3">
+                                    @if ($selecting)
+                                        <x-task-select-box :task="$task" :selected="in_array((string) $task->id, array_map('strval', $selected), true)" />
+                                    @endif
                                     <x-task-done-button :task="$task" :editable="in_array($task->project_id, $this->editableProjectIds, true)" />
                                     <div class="min-w-0">
                                         <x-task-title-line :task="$task" :progress="$this->progress[$task->id] ?? null" />
@@ -135,4 +143,8 @@ new class extends Component
         @endif
     @endif
 
+
+    @if ($selecting)
+        <x-selection-bar :change="false" />
+    @endif
 </div>

@@ -1,6 +1,7 @@
 <?php
 
 use App\Concerns\AssignsTasks;
+use App\Concerns\EditsTasksInBulk;
 use App\Concerns\RefreshesOnTaskChanges;
 use App\Concerns\QuickAddsTasks;
 use App\Concerns\ShowsProject;
@@ -22,6 +23,7 @@ new class extends Component
 {
     use ShowsProject;
     use AssignsTasks;
+    use EditsTasksInBulk;
     use RefreshesOnTaskChanges;
     use QuickAddsTasks;
     use SortsTasks;
@@ -102,6 +104,19 @@ new class extends Component
     private function columnLimit(int $statusId): int
     {
         return $this->columnLimits[$statusId] ?? self::PAGE_SIZE;
+    }
+
+    /**
+     * The board has no filters: every top-level task of the project can be selected.
+     */
+    protected function filteredTasks(): HasMany
+    {
+        return $this->project->tasks()->topLevel();
+    }
+
+    protected function forgetTasksAfterBulk(): void
+    {
+        unset($this->columns, $this->columnTotals, $this->progress);
     }
 
     /**
@@ -234,7 +249,7 @@ new class extends Component
 };
 ?>
 
-<div data-wide>
+<div @class(['pb-28' => $selecting]) data-wide>
     <x-project-header :project="$project" active="board" :presence="$this->presenceChannel()" />
 
     <div class="mb-4 flex items-center gap-2">
@@ -259,6 +274,10 @@ new class extends Component
             <flux:button :icon="$sortDirection === 'desc' ? 'arrow-down' : 'arrow-up'" wire:click="reverseSort" class="max-sm:size-10!" aria-label="{{ $sortDirection === 'desc' ? __('Descending') : __('Ascending') }}, {{ __('Reverse order') }}" tooltip="{{ $sortDirection === 'desc' ? __('Descending') : __('Ascending') }}: {{ __('Reverse order') }}" />
             <flux:button icon="x-mark" wire:click="resetSort" class="max-sm:size-10!" aria-label="{{ __('Reset') }}" tooltip="{{ __('Reset') }}" />
         @endif
+
+        @if ($this->canEdit && ! $selecting)
+            <flux:button icon="clipboard-document-check" wire:click="startSelecting" class="ms-auto">{{ __('Select') }}</flux:button>
+        @endif
     </div>
 
     {{-- Columns can be collapsed to a narrow strip with the status upright (data-collapsed, see app.css), remembered per
@@ -282,16 +301,19 @@ new class extends Component
                     {{-- wire:sort is set up once per element: keyed by the mode, the list is built anew and dragging within a column
                          really stops while the cards are sorted --}}
                     <flux:kanban.column.cards
-                        wire:key="cards-{{ $status->id }}-{{ $this->sortActive ? 'sorted' : 'manual' }}"
+                        wire:key="cards-{{ $status->id }}-{{ $this->sortActive ? 'sorted' : 'manual' }}-{{ $selecting ? 'selecting' : 'idle' }}"
                         class="min-h-16"
-                        :wire:sort="$this->canEdit ? 'moveTask' : null"
-                        :wire:sort:group="$this->canEdit ? 'tasks' : null"
+                        :wire:sort="$this->canEdit && ! $selecting ? 'moveTask' : null"
+                        :wire:sort:group="$this->canEdit && ! $selecting ? 'tasks' : null"
                         wire:sort:group-id="{{ $status->id }}"
                         wire:sort:config="{{ $this->sortActive ? \App\Sortable::CONFIG_MOVE_ONLY : \App\Sortable::CONFIG }}"
                     >
                         @foreach ($this->columns[$status->id] as $task)
-                            <flux:kanban.card wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" class="board-card cursor-pointer" :wire:sort:item="$this->canEdit ? $task->id : null">
+                            <flux:kanban.card wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" class="board-card cursor-pointer" :wire:sort:item="$this->canEdit && ! $selecting ? $task->id : null">
                                 <div class="flex items-start gap-2">
+                                    @if ($selecting)
+                                        <x-task-select-box :task="$task" :selected="in_array((string) $task->id, array_map('strval', $selected), true)" />
+                                    @endif
                                     <x-task-done-button :task="$task" :editable="$this->canEdit" />
                                     <div class="min-w-0 flex-1">
                                         <x-task-title-link :task="$task" />
@@ -351,13 +373,19 @@ new class extends Component
                         @endif
                     </flux:kanban.column.cards>
 
-                    @if ($this->canEdit)
+                    @if ($this->canEdit && ! $selecting)
                         <x-quick-add :status-id="$status->id" class="mt-1 px-2 pb-2" />
                     @endif
                 </flux:kanban.column>
             @endforeach
         </flux:kanban>
     </div>
+
+    @if ($selecting)
+        <x-selection-bar />
+
+        <x-bulk-edit-modal :project="$project" />
+    @endif
 
     @if ($this->canEdit)
         <x-assignee-menu :users="$this->assignableUsers" />

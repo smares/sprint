@@ -237,10 +237,15 @@ new class extends Component
 };
 ?>
 
-<div data-wide>
+<div @class(['pb-28' => $selecting]) data-wide>
     <div class="mb-6 flex items-center justify-between gap-3">
         <flux:heading level="1" size="xl">{{ __('My tasks') }}</flux:heading>
-        <x-mine-views active="board" />
+        <div class="flex items-center gap-2">
+            @unless ($selecting)
+                <flux:button icon="clipboard-document-check" wire:click="startSelecting" class="max-sm:size-10!" aria-label="{{ __('Select') }}" tooltip="{{ __('Select') }}"><span class="max-sm:hidden">{{ __('Select') }}</span></flux:button>
+            @endunless
+            <x-mine-views active="board" />
+        </div>
     </div>
 
     <x-mine-collaborating-switch />
@@ -314,16 +319,19 @@ new class extends Component
                     </flux:kanban.column.header>
 
                     <flux:kanban.column.cards
-                        wire:key="cards-{{ $key }}"
+                        wire:key="cards-{{ $key }}-{{ $selecting ? 'selecting' : 'idle' }}"
                         class="min-h-16"
-                        wire:sort="moveTask"
-                        wire:sort:group="mine"
+                        :wire:sort="$selecting ? null : 'moveTask'"
+                        :wire:sort:group="$selecting ? null : 'mine'"
                         wire:sort:group-id="{{ $key }}"
                         wire:sort:config="{{ $personal ? \App\Sortable::CONFIG : \App\Sortable::CONFIG_MOVE_ONLY }}"
                     >
                         @foreach ($tasks as $task)
-                            <flux:kanban.card wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" class="board-card cursor-pointer" wire:sort:item="{{ $task->id }}">
+                            <flux:kanban.card wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" class="board-card cursor-pointer" :wire:sort:item="$selecting ? null : $task->id">
                                 <div class="flex items-start gap-2">
+                                    @if ($selecting)
+                                        <x-task-select-box :task="$task" :selected="in_array((string) $task->id, array_map('strval', $selected), true)" />
+                                    @endif
                                     <x-task-done-button :task="$task" :editable="in_array($task->project_id, $this->editableProjectIds, true)" />
                                     <div class="min-w-0 flex-1">
                                         <x-task-title-line :task="$task" :progress="$this->progress[$task->id] ?? null" />
@@ -392,4 +400,8 @@ new class extends Component
     </div>
 
     <x-card-move-menu />
+
+    @if ($selecting)
+        <x-selection-bar :change="false" />
+    @endif
 </div>

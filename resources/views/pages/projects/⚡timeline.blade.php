@@ -1,11 +1,13 @@
 <?php
 
+use App\Concerns\EditsTasksInBulk;
 use App\Concerns\RefreshesOnTaskChanges;
 use App\Concerns\ShowsProject;
 use App\Models\Project;
 use App\Models\Task;
 use App\Services\DateService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
@@ -15,7 +17,7 @@ use Livewire\Component;
 
 new class extends Component
 {
-    use RefreshesOnTaskChanges, ShowsProject;
+    use EditsTasksInBulk, RefreshesOnTaskChanges, ShowsProject;
 
     /** Days shown at once. */
     public const DAYS = 42;
@@ -122,6 +124,19 @@ new class extends Component
         return ['dated' => $dated - $this->rows->count(), 'undated' => $undated];
     }
 
+    /**
+     * The timeline has no filters: every top-level task of the project can be selected.
+     */
+    protected function filteredTasks(): HasMany
+    {
+        return $this->project->tasks()->topLevel();
+    }
+
+    protected function forgetTasksAfterBulk(): void
+    {
+        unset($this->rows, $this->outside);
+    }
+
     public function rendering(View $view): void
     {
         $view->title(__('Timeline – :project', ['project' => $this->project->name]));
@@ -129,7 +144,7 @@ new class extends Component
 };
 ?>
 
-<div data-wide>
+<div @class(['pb-28' => $selecting]) data-wide>
     <x-project-header :project="$project" active="timeline" :presence="$this->presenceChannel()" />
 
     <div class="mb-4 flex flex-wrap items-center gap-2">
@@ -137,6 +152,10 @@ new class extends Component
         <flux:button icon="chevron-right" wire:click="later" aria-label="{{ __('Later') }}" tooltip="{{ __('Later') }}" />
         <flux:button wire:click="today">{{ __('Today') }}</flux:button>
         <flux:text class="ms-2 whitespace-nowrap">{{ $this->start->isoFormat('L') }} – {{ $this->end->isoFormat('L') }}</flux:text>
+
+        @if ($this->canEdit && ! $selecting)
+            <flux:button icon="clipboard-document-check" wire:click="startSelecting" class="ms-auto">{{ __('Select') }}</flux:button>
+        @endif
     </div>
 
     @php($days = collect(range(0, $this::DAYS - 1))->map(fn ($offset) => $this->start->copy()->addDays($offset)))
@@ -172,6 +191,9 @@ new class extends Component
                         @php($task = $row['task'])
                         <div wire:key="row-{{ $task->id }}" class="flex border-b border-zinc-100 last:border-b-0 dark:border-zinc-800">
                             <div class="pinned-shadow sticky start-0 z-10 flex w-32 shrink-0 sm:w-56 items-center gap-1 border-e border-zinc-200 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-800">
+                                @if ($selecting)
+                                    <x-task-select-box :task="$task" :selected="in_array((string) $task->id, array_map('strval', $selected), true)" />
+                                @endif
                                 <x-task-done-button :task="$task" :editable="$this->canEdit" />
                                 <a href="{{ route('tasks.show', $task) }}" x-on:click="$openTask($event, {{ $task->id }})" @class(['truncate text-sm hover:underline', 'line-through text-zinc-400' => $task->isDone()])>{{ $task->title }}</a>
                                 @if ($task->isBlocked())
@@ -225,4 +247,9 @@ new class extends Component
         </flux:text>
     @endif
 
+    @if ($selecting)
+        <x-selection-bar />
+
+        <x-bulk-edit-modal :project="$project" />
+    @endif
 </div>

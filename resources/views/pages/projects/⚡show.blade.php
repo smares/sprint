@@ -94,6 +94,11 @@ new class extends Component
         unset($this->tasks, $this->totalTasks, $this->progress, $this->tagOptions);
     }
 
+    protected function forgetTasksAfterBulk(): void
+    {
+        unset($this->tasks, $this->totalTasks, $this->progress);
+    }
+
     /**
      * Top-level tasks matching the filters, without order and limit.
      */
@@ -777,79 +782,15 @@ new class extends Component
     @endif
 
     @if ($selecting)
-        <div class="pointer-events-none fixed inset-x-0 bottom-4 z-30 flex justify-center px-4">
-            <div class="pointer-events-auto flex w-full max-w-xl flex-col gap-2 rounded-xl border border-zinc-200 bg-white p-2 shadow-lg sm:w-auto sm:max-w-full sm:flex-row sm:items-center dark:border-zinc-700 dark:bg-zinc-800">
-                <div class="flex items-center gap-2">
-                    <flux:text class="px-2 font-medium">{!! __(':count selected', ['count' => '<span x-text="$wire.selected.length">0</span>']) !!}</flux:text>
-
-                    @if ($this->totalTasks > $this->tasks->count())
-                        <flux:button size="sm" variant="ghost" wire:click="selectAllMatching">{{ __('Select all :count', ['count' => min($this->totalTasks, $this::MAX_SELECTION)]) }}</flux:button>
-                    @endif
-
-                    <flux:button size="sm" variant="ghost" icon="x-mark" wire:click="stopSelecting" aria-label="{{ __('End selection') }}" tooltip="{{ __('End selection') }}" class="ms-auto sm:hidden" />
-                </div>
-
-                <div class="flex flex-wrap items-center gap-2">
-                    <flux:button size="sm" icon="check" wire:click="bulkComplete" x-bind:disabled="$wire.selected.length === 0">{{ __('Mark as done') }}</flux:button>
-
-                    <flux:modal.trigger name="bulk-edit">
-                        <flux:button size="sm" icon="pencil-square" x-bind:disabled="$wire.selected.length === 0">{{ __('Change') }}</flux:button>
-                    </flux:modal.trigger>
-
-                    <flux:button size="sm" variant="danger" icon="trash" wire:click="bulkDelete" wire:confirm="{{ __('Permanently delete the selected tasks including their subtasks?') }}" x-bind:disabled="$wire.selected.length === 0">{{ __('Delete') }}</flux:button>
-
-                    <flux:button size="sm" variant="ghost" icon="x-mark" wire:click="stopSelecting" aria-label="{{ __('End selection') }}" tooltip="{{ __('End selection') }}" class="max-sm:hidden" />
-                </div>
-            </div>
-        </div>
-
-        <flux:modal name="bulk-edit" class="w-full max-w-md">
-            <form wire:submit="applyBulkChanges" class="space-y-5">
-                <div>
-                    <flux:heading size="lg">{!! __('Change selected (:count)', ['count' => '<span x-text="$wire.selected.length">0</span>']) !!}</flux:heading>
-                    <flux:text class="mt-1">{{ __('Only what you fill in is changed; everything else stays as it is.') }}</flux:text>
-                </div>
-
-                <flux:select variant="listbox" wire:model="bulkStatus" :label="__('Status')">
-                    <flux:select.option value="">{{ __('Leave unchanged') }}</flux:select.option>
-                    @foreach ($this->statuses as $status)
-                        <flux:select.option value="{{ $status->id }}">{{ $status->name }}</flux:select.option>
-                    @endforeach
-                </flux:select>
-
-                <flux:select variant="listbox" wire:model="bulkAssignee" :label="__('Assignee')">
-                    <flux:select.option value="">{{ __('Leave unchanged') }}</flux:select.option>
-                    <flux:select.option value="none">{{ __('Nobody') }}</flux:select.option>
-                    @foreach ($this->assignableUsers as $user)
-                        <flux:select.option value="{{ $user->id }}">{{ $user->labelledName() }}</flux:select.option>
-                    @endforeach
-                </flux:select>
-
-                <div class="space-y-2">
-                    <flux:date-picker wire:model="bulkDueDate" :label="__('Due on')" locale="{{ app()->getLocale() }}" :placeholder="__('Leave unchanged')" clearable :description="__('If a task starts after that date, its start moves to this date.')" />
-                    <flux:checkbox wire:model="bulkClearDueDate" :label="__('Remove due date')" />
-                </div>
-
-                @if ($this->tagOptions->isNotEmpty())
-                    <flux:pillbox wire:model="bulkAddTags" multiple :label="__('Add tags')" :placeholder="__('Select tags …')">
-                        @foreach ($this->tagOptions as $tag)
-                            <flux:pillbox.option wire:key="add-tag-{{ $tag->id }}" value="{{ $tag->id }}">{{ $tag->name }}</flux:pillbox.option>
-                        @endforeach
-                    </flux:pillbox>
-
-                    <flux:pillbox wire:model="bulkRemoveTags" multiple :label="__('Remove tags')" :placeholder="__('Select tags …')">
-                        @foreach ($this->tagOptions as $tag)
-                            <flux:pillbox.option wire:key="remove-tag-{{ $tag->id }}" value="{{ $tag->id }}">{{ $tag->name }}</flux:pillbox.option>
-                        @endforeach
-                    </flux:pillbox>
+        <x-selection-bar>
+            <x-slot name="extra">
+                @if ($this->totalTasks > $this->tasks->count())
+                    <flux:button size="sm" variant="ghost" wire:click="selectAllMatching">{{ __('Select all :count', ['count' => min($this->totalTasks, $this::MAX_SELECTION)]) }}</flux:button>
                 @endif
+            </x-slot>
+        </x-selection-bar>
 
-                <div class="flex justify-end gap-2">
-                    <flux:modal.close><flux:button variant="ghost">{{ __('Cancel') }}</flux:button></flux:modal.close>
-                    <flux:button type="submit" variant="primary">{{ __('Apply') }}</flux:button>
-                </div>
-            </form>
-        </flux:modal>
+        <x-bulk-edit-modal :project="$project" />
     @endif
 
     @if ($this->canEdit)

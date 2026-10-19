@@ -1,12 +1,16 @@
 @props(['change' => true])
 
 {{-- The bar at the bottom while tasks are selected: how many, and what to do with them (mark as done, change, delete). The page
-     keeps the selection in `selected` (see EditsTasksInBulk); `change` offers the dialog x-bulk-edit-modal. A slot named `extra`
+     keeps the selection in `selected` (see EditsTasksInBulk and ListsMyTasks); `change` offers the dialog x-bulk-edit-modal. A slot named `extra`
      adds a button after the count. --}}
 <div class="pointer-events-none fixed inset-x-0 bottom-4 z-30 flex justify-center px-4">
     <div class="pointer-events-auto flex w-full max-w-xl flex-col gap-2 rounded-xl border border-zinc-200 bg-white p-2 shadow-lg sm:w-auto sm:max-w-full sm:flex-row sm:items-center dark:border-zinc-700 dark:bg-zinc-800">
         <div class="flex items-center gap-2">
-            <flux:text class="px-2 font-medium">{!! __(':count selected', ['count' => '<span x-text="$wire.selected.length">0</span>']) !!}</flux:text>
+            <flux:text class="px-2 font-medium" role="status">{!! __(':count selected', ['count' => '<span x-text="$wire.selected.length">0</span>']) !!}</flux:text>
+
+            @error('selected')
+                <flux:text class="text-red-600 dark:text-red-400" role="alert">{{ $message }}</flux:text>
+            @enderror
 
             {{ $extra ?? '' }}
 

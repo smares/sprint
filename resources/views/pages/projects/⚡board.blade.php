@@ -249,10 +249,10 @@ new class extends Component
 };
 ?>
 
-<div @class(['pb-28' => $selecting]) data-wide>
+<div @class(['pb-40' => $selecting]) data-wide>
     <x-project-header :project="$project" active="board" :presence="$this->presenceChannel()" />
 
-    <div class="mb-4 flex items-center gap-2">
+    <div class="mb-4 flex flex-wrap items-center gap-2">
         <flux:dropdown align="start">
             <flux:button icon="arrows-up-down">{{ $this->sortActive ? $this->sortLabel : __('Sort') }}</flux:button>
 
@@ -276,7 +276,7 @@ new class extends Component
         @endif
 
         @if ($this->canEdit && ! $selecting)
-            <flux:button icon="clipboard-document-check" wire:click="startSelecting" class="ms-auto">{{ __('Select') }}</flux:button>
+            <x-selection-toggle class="ms-auto" />
         @endif
     </div>
 
@@ -311,10 +311,10 @@ new class extends Component
                         @foreach ($this->columns[$status->id] as $task)
                             <flux:kanban.card wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" class="board-card cursor-pointer" :wire:sort:item="$this->canEdit && ! $selecting ? $task->id : null">
                                 <div class="flex items-start gap-2">
-                                    @if ($selecting)
-                                        <x-task-select-box :task="$task" :selected="in_array((string) $task->id, array_map('strval', $selected), true)" />
-                                    @endif
                                     <x-task-done-button :task="$task" :editable="$this->canEdit" compact />
+                                    @if ($selecting)
+                                        <x-task-select-box :task="$task" />
+                                    @endif
                                     <div class="min-w-0 flex-1 leading-6">
                                         <x-task-title-link :task="$task" />
                                     </div>
@@ -384,7 +384,7 @@ new class extends Component
     @if ($selecting)
         <x-selection-bar />
 
-        <x-bulk-edit-modal :project="$project" />
+        <x-bulk-edit-modal :project="$project" :statuses="$this->statuses" :users="$this->assignableUsers" />
     @endif
 
     @if ($this->canEdit)

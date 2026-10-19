@@ -66,6 +66,7 @@ new class extends Component
 
     private function moveBy(int $days): void
     {
+        $this->selected = [];
         $this->from = $this->start->copy()->addDays($days)->toDateString();
         unset($this->start, $this->end, $this->rows, $this->outside);
     }
@@ -82,6 +83,7 @@ new class extends Component
 
     public function today(): void
     {
+        $this->selected = [];
         $this->from = now()->startOfWeek()->toDateString();
         unset($this->start, $this->end, $this->rows, $this->outside);
     }
@@ -144,7 +146,7 @@ new class extends Component
 };
 ?>
 
-<div @class(['pb-28' => $selecting]) data-wide>
+<div @class(['pb-40' => $selecting]) data-wide>
     <x-project-header :project="$project" active="timeline" :presence="$this->presenceChannel()" />
 
     <div class="mb-4 flex flex-wrap items-center gap-2">
@@ -154,7 +156,7 @@ new class extends Component
         <flux:text class="ms-2 whitespace-nowrap">{{ $this->start->isoFormat('L') }} – {{ $this->end->isoFormat('L') }}</flux:text>
 
         @if ($this->canEdit && ! $selecting)
-            <flux:button icon="clipboard-document-check" wire:click="startSelecting" class="ms-auto">{{ __('Select') }}</flux:button>
+            <x-selection-toggle class="ms-auto" />
         @endif
     </div>
 
@@ -191,10 +193,10 @@ new class extends Component
                         @php($task = $row['task'])
                         <div wire:key="row-{{ $task->id }}" class="flex border-b border-zinc-100 last:border-b-0 dark:border-zinc-800">
                             <div class="pinned-shadow sticky start-0 z-10 flex w-32 shrink-0 sm:w-56 items-center gap-1 border-e border-zinc-200 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-800">
+                                <x-task-done-button :task="$task" :editable="$this->canEdit" compact />
                                 @if ($selecting)
-                                    <x-task-select-box :task="$task" :selected="in_array((string) $task->id, array_map('strval', $selected), true)" />
+                                    <x-task-select-box :task="$task" />
                                 @endif
-                                <x-task-done-button :task="$task" :editable="$this->canEdit" />
                                 <a href="{{ route('tasks.show', $task) }}" x-on:click="$openTask($event, {{ $task->id }})" @class(['truncate text-sm hover:underline', 'line-through text-zinc-400' => $task->isDone()])>{{ $task->title }}</a>
                                 @if ($task->isBlocked())
                                     <flux:icon.lock-closed variant="micro" class="shrink-0 text-amber-500" title="{{ __('Blocked') }}" />
@@ -207,7 +209,7 @@ new class extends Component
                                 @php($clippedStart = $task->spanStart()->startOfDay() < $this->start)
                                 @php($clippedEnd = $task->spanEnd()->startOfDay() > $this->end->copy()->startOfDay())
                                 <a href="{{ route('tasks.show', $task) }}" x-on:click="$openTask($event, {{ $task->id }})" title="{{ $task->title }}: {{ $task->spanStart()->isoFormat('L') }} – {{ $task->spanEnd()->isoFormat('L') }}"
-                                   @if ($this->canEdit)
+                                   @if ($this->canEdit && ! $selecting)
                                        draggable="false"
                                        x-data="timelineBar({{ $task->id }})"
                                        x-on:pointerdown="begin($event, 'move')"
@@ -216,9 +218,9 @@ new class extends Component
                                        x-on:pointercancel="cancel()"
                                        x-on:click.capture="suppressClick($event)"
                                    @endif
-                                   class="color-chip relative my-1.5 block h-5 truncate rounded px-1 text-xs leading-5 {{ $task->isDone() ? 'opacity-50' : '' }} {{ $this->canEdit ? 'cursor-grab touch-none select-none' : '' }}"
+                                   class="color-chip relative my-1.5 block h-5 truncate rounded px-1 text-xs leading-5 {{ $task->isDone() ? 'opacity-50' : '' }} {{ $this->canEdit && ! $selecting ? 'cursor-grab touch-none select-none' : '' }}"
                                    style="grid-column: {{ $row['first'] }} / {{ $row['last'] + 1 }}; grid-row: 1; --badge: {{ $task->status->color }}">{{ $row['last'] - $row['first'] >= 2 ? $task->title : '' }}
-                                    @if ($this->canEdit)
+                                    @if ($this->canEdit && ! $selecting)
                                         @unless ($clippedStart)
                                             <span class="absolute inset-y-0 start-0 w-1.5 cursor-ew-resize" aria-hidden="true" x-on:pointerdown.stop="begin($event, 'start')"></span>
                                         @endunless

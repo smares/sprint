@@ -1,6 +1,11 @@
-@props(['project'])
+@props(['project', 'statuses' => null, 'users' => null, 'tags' => null])
 
-@php($tags = $project->tags()->orderBy('name')->get())
+{{-- The page hands over what it has computed anyway; without it the dialog asks for its choices itself --}}
+@php
+    $statuses ??= $project->statuses;
+    $users ??= $project->assignableUsers();
+    $tags ??= $project->tags()->orderBy('name')->get();
+@endphp
 
 {{-- The dialog of the selection bar: what to change on all selected tasks at once; only what is filled in is changed. --}}
 <flux:modal name="bulk-edit" class="w-full max-w-md">
@@ -12,7 +17,7 @@
 
         <flux:select variant="listbox" wire:model="bulkStatus" :label="__('Status')">
             <flux:select.option value="">{{ __('Leave unchanged') }}</flux:select.option>
-            @foreach ($project->statuses as $status)
+            @foreach ($statuses as $status)
                 <flux:select.option value="{{ $status->id }}">{{ $status->name }}</flux:select.option>
             @endforeach
         </flux:select>
@@ -20,7 +25,7 @@
         <flux:select variant="listbox" wire:model="bulkAssignee" :label="__('Assignee')">
             <flux:select.option value="">{{ __('Leave unchanged') }}</flux:select.option>
             <flux:select.option value="none">{{ __('Nobody') }}</flux:select.option>
-            @foreach ($project->assignableUsers() as $user)
+            @foreach ($users as $user)
                 <flux:select.option value="{{ $user->id }}">{{ $user->labelledName() }}</flux:select.option>
             @endforeach
         </flux:select>

@@ -16,7 +16,7 @@
             ."setTimeout(() => \$wire.{$action}({$task->id}), window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : {$celebrationMs})";
 @endphp
 
-{{-- The round check before a task in the lists and subtasks: marks it done or opens it again (the component offers the
+{{-- The round check before a task in the lists, boards, calendar, timeline and subtasks: marks it done or opens it again (the component offers the
      action, toggleDone by default). --}}
 <flux:button
     size="xs"

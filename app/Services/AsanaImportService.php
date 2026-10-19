@@ -1613,6 +1613,7 @@ class AsanaImportService
      */
     private function linkedWork(): Collection
     {
+        /** @var Collection<int, object{row: ?int, gid: string, task: int, line: ?string}> $work */
         $work = DB::table('asana_imports')
             ->join('tasks', 'tasks.id', '=', 'asana_imports.model_id')
             ->where('asana_imports.kind', 'link')

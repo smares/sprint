@@ -1,11 +1,13 @@
 <?php
 
+use App\Concerns\EditsTasksInBulk;
 use App\Concerns\RefreshesOnTaskChanges;
 use App\Concerns\ShowsProject;
 use App\Models\Project;
 use App\Models\Task;
 use App\Services\DateService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
@@ -14,7 +16,7 @@ use Livewire\Component;
 
 new class extends Component
 {
-    use RefreshesOnTaskChanges, ShowsProject;
+    use EditsTasksInBulk, RefreshesOnTaskChanges, ShowsProject;
 
     /** How many tasks a day shows before "+ n more". */
     public const TASKS_PER_DAY = 3;
@@ -118,6 +120,19 @@ new class extends Component
             ->count();
     }
 
+    /**
+     * The calendar has no filters: every top-level task of the project can be selected.
+     */
+    protected function filteredTasks(): HasMany
+    {
+        return $this->project->tasks()->topLevel();
+    }
+
+    protected function forgetTasksAfterBulk(): void
+    {
+        unset($this->weeks, $this->undated);
+    }
+
     public function rendering(View $view): void
     {
         $view->title(__('Calendar – :project', ['project' => $this->project->name]));
@@ -125,7 +140,7 @@ new class extends Component
 };
 ?>
 
-<div data-wide>
+<div @class(['pb-28' => $selecting]) data-wide>
     <x-project-header :project="$project" active="calendar" :presence="$this->presenceChannel()" />
 
     <div class="mb-4 flex items-center gap-2">
@@ -133,6 +148,10 @@ new class extends Component
         <flux:button icon="chevron-right" wire:click="nextMonth" aria-label="{{ __('Next month') }}" tooltip="{{ __('Next month') }}" />
         <flux:button wire:click="today">{{ __('Today') }}</flux:button>
         <flux:heading size="lg" class="ms-2">{{ $this->monthStart->isoFormat('MMMM YYYY') }}</flux:heading>
+
+        @if ($this->canEdit && ! $selecting)
+            <flux:button icon="clipboard-document-check" wire:click="startSelecting" class="ms-auto">{{ __('Select') }}</flux:button>
+        @endif
     </div>
 
     {{-- On phones the month grid does not fit; the days with tasks are listed instead. --}}
@@ -144,6 +163,9 @@ new class extends Component
                 <div class="space-y-1">
                     @foreach ($day['tasks'] as $task)
                         <div wire:key="agenda-{{ $day['date']->toDateString() }}-{{ $task->id }}" class="flex items-center gap-1">
+                            @if ($selecting)
+                                <x-task-select-box :task="$task" :selected="in_array((string) $task->id, array_map('strval', $selected), true)" />
+                            @endif
                             <x-task-done-button :task="$task" :editable="$this->canEdit" />
                             <a href="{{ route('tasks.show', $task) }}" x-on:click="$openTask($event, {{ $task->id }})" style="--badge: {{ $task->status->color }}"
                                class="color-chip block min-w-0 flex-1 truncate rounded px-2 py-1 text-sm {{ $task->isDone() ? 'line-through opacity-60' : '' }}">{{ $task->title }}</a>
@@ -199,17 +221,26 @@ new class extends Component
                             </div>
 
                             @foreach ($day['tasks']->take($this::TASKS_PER_DAY) as $task)
-                                <div wire:key="chip-{{ $day['date']->toDateString() }}-{{ $task->id }}" class="group relative">
+                                <div wire:key="chip-{{ $day['date']->toDateString() }}-{{ $task->id }}" class="group/chip relative">
                                     <a href="{{ route('tasks.show', $task) }}" x-on:click="$openTask($event, {{ $task->id }})"
                                        style="--badge: {{ $task->status->color }}"
-                                       @if ($this->canEdit)
+                                       @if ($this->canEdit && ! $selecting)
                                            draggable="true"
                                            x-on:dragstart="$event.dataTransfer.setData('text/plain', JSON.stringify({ id: {{ $task->id }}, from: '{{ $day['date']->toDateString() }}' })); $event.dataTransfer.effectAllowed = 'move'"
                                        @endif
-                                       class="color-chip block truncate rounded px-1.5 py-0.5 text-xs hover:underline group-focus-within:pe-7 group-hover:pe-7 {{ $task->isDone() ? 'line-through opacity-60' : '' }}">{{ $task->title }}</a>
-                                    {{-- Shown while the chip is pointed at or focused: the cell is too narrow for a permanent check --}}
-                                    @if ($this->canEdit)
-                                        <span class="absolute inset-y-0 end-0 hidden items-center group-focus-within:flex group-hover:flex" x-on:click.stop>
+                                       @class([
+                                           'color-chip block truncate rounded px-1.5 py-0.5 text-xs hover:underline',
+                                           'ps-6' => $selecting,
+                                           'group-focus-within/chip:pe-7 group-hover/chip:pe-7' => $this->canEdit && ! $selecting,
+                                           'line-through opacity-60' => $task->isDone(),
+                                       ])>{{ $task->title }}</a>
+                                    @if ($selecting)
+                                        <span class="absolute inset-y-0 start-1 flex items-center" x-on:click.stop>
+                                            <x-task-select-box :task="$task" :selected="in_array((string) $task->id, array_map('strval', $selected), true)" />
+                                        </span>
+                                    @elseif ($this->canEdit)
+                                        {{-- Shown while the chip is pointed at or focused: the cell is too narrow for a permanent check --}}
+                                        <span class="absolute inset-y-0 end-0 hidden items-center group-focus-within/chip:flex group-hover/chip:flex" x-on:click.stop>
                                             <x-task-done-button :task="$task" />
                                         </span>
                                     @endif
@@ -233,4 +264,9 @@ new class extends Component
         </flux:text>
     @endif
 
+    @if ($selecting)
+        <x-selection-bar />
+
+        <x-bulk-edit-modal :project="$project" />
+    @endif
 </div>

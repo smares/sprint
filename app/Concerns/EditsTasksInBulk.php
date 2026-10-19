@@ -54,6 +54,24 @@ trait EditsTasksInBulk
     abstract protected function filteredTasks();
 
     /**
+     * Forget what the page has loaded of the tasks, so it draws them as they are after the change.
+     */
+    abstract protected function forgetTasksAfterBulk(): void;
+
+    /**
+     * The button of the views without checkboxes in their rows (board, calendar, timeline): from here on the tasks show
+     * a box to select them with, and the bar stays until the selection is ended, also while nothing is selected.
+     */
+    public function startSelecting(): void
+    {
+        Gate::authorize('edit', $this->project);
+
+        $this->selecting = true;
+        $this->selected = [];
+        unset($this->selectedIds);
+    }
+
+    /**
      * The first tick of a checkbox starts the selection with that task.
      */
     public function selectTask(int $taskId): void
@@ -146,7 +164,7 @@ trait EditsTasksInBulk
     private function finishBulk(string $message): void
     {
         $this->stopSelecting();
-        unset($this->tasks, $this->totalTasks, $this->progress);
+        $this->forgetTasksAfterBulk();
         Flux::modal('bulk-edit')->close();
         Flux::toast(variant: 'success', text: $message);
     }

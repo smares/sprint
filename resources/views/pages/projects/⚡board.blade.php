@@ -291,7 +291,12 @@ new class extends Component
                     >
                         @foreach ($this->columns[$status->id] as $task)
                             <flux:kanban.card wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" class="board-card cursor-pointer" :wire:sort:item="$this->canEdit ? $task->id : null">
-                                <x-task-title-link :task="$task" />
+                                <div class="flex items-start gap-2">
+                                    <x-task-done-button :task="$task" :editable="$this->canEdit" />
+                                    <div class="min-w-0 flex-1">
+                                        <x-task-title-link :task="$task" />
+                                    </div>
+                                </div>
 
                                 @if ($this->listFields->isNotEmpty())
                                     <div class="mt-2 flex flex-wrap gap-1">

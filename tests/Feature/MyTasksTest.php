@@ -46,7 +46,7 @@ class MyTasksTest extends TestCase
             ->assertSee('Angebot')
             ->assertSee('Kunde A')
             ->assertSee('1/2')
-            ->assertSeeHtml('aria-label="Als erledigt markieren"')
+            ->assertSeeHtml('aria-label="Als erledigt markieren: ')
             ->assertSeeHtml('data-opens-task="'.$task->id.'"')
             ->assertSeeHtml('data-due="red"');
     }

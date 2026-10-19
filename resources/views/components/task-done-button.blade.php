@@ -26,7 +26,7 @@
     :disabled="! $editable"
     x-data="{ completing: false }"
     x-on:click="{{ $onClick }}"
-    aria-label="{{ $task->isDone() ? __('Reopen task') : __('Mark as done') }}"
+    aria-label="{{ $task->isDone() ? __('Reopen task') : __('Mark as done') }}: {{ $task->title }}"
     tooltip="{{ $task->isDone() ? __('Reopen task') : __('Mark as done') }}"
 >
     @if ($task->isDone())

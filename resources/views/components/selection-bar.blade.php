@@ -14,7 +14,7 @@
 
             {{ $extra ?? '' }}
 
-            <flux:button size="sm" variant="ghost" icon="x-mark" wire:click="stopSelecting" aria-label="{{ __('End selection') }}" tooltip="{{ __('End selection') }}" class="ms-auto sm:hidden" />
+            <flux:button size="sm" variant="ghost" icon="x-mark" x-on:click="$wire.stopSelecting().then(() => $nextTick(() => [...document.querySelectorAll('[data-selection-toggle] button')].find((button) => button.offsetParent !== null)?.focus()))" aria-label="{{ __('End selection') }}" tooltip="{{ __('End selection') }}" class="ms-auto sm:hidden" />
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
@@ -28,7 +28,7 @@
 
             <flux:button size="sm" variant="danger" icon="trash" wire:click="bulkDelete" wire:confirm="{{ __('Permanently delete the selected tasks including their subtasks?') }}" x-bind:disabled="$wire.selected.length === 0">{{ __('Delete') }}</flux:button>
 
-            <flux:button size="sm" variant="ghost" icon="x-mark" wire:click="stopSelecting" aria-label="{{ __('End selection') }}" tooltip="{{ __('End selection') }}" class="max-sm:hidden" />
+            <flux:button size="sm" variant="ghost" icon="x-mark" x-on:click="$wire.stopSelecting().then(() => $nextTick(() => [...document.querySelectorAll('[data-selection-toggle] button')].find((button) => button.offsetParent !== null)?.focus()))" aria-label="{{ __('End selection') }}" tooltip="{{ __('End selection') }}" class="max-sm:hidden" />
         </div>
     </div>
 </div>

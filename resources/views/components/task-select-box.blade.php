@@ -5,8 +5,9 @@
      day it spans), so each one follows the selection instead of toggling it, also when it is ticked with the space bar (which sends
      no click). `endsWhenEmpty`: unticking the last one ends the selection (the list, where ticking a box started it).
      In a box as high as a line of text and as the done button (24px), so the two stand on one line with the title. --}}
-<span class="flex size-6 shrink-0 items-center justify-center">
+<span class="flex size-6 shrink-0 items-center justify-center" data-select-box>
     <flux:checkbox
+        class="touch-target"
         wire:key="select-{{ $task->id }}-on"
         x-effect="$el.checked = $wire.selected.map(String).includes('{{ $task->id }}')"
         x-on:change="

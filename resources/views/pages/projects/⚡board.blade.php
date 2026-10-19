@@ -275,7 +275,7 @@ new class extends Component
             <flux:button icon="x-mark" wire:click="resetSort" class="max-sm:size-10!" aria-label="{{ __('Reset') }}" tooltip="{{ __('Reset') }}" />
         @endif
 
-        @if ($this->canEdit && ! $selecting)
+        @if ($this->canEdit && ! $selecting && array_sum($this->columnTotals) > 0)
             <x-selection-toggle class="ms-auto" />
         @endif
     </div>
@@ -384,7 +384,7 @@ new class extends Component
     @if ($selecting)
         <x-selection-bar />
 
-        <x-bulk-edit-modal :project="$project" :statuses="$this->statuses" :users="$this->assignableUsers" />
+        <x-bulk-edit-modal :choices="$this->bulkChoices" />
     @endif
 
     @if ($this->canEdit)

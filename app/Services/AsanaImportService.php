@@ -1097,15 +1097,10 @@ class AsanaImportService
      */
     private function linkLines(array $node): array
     {
-        return array_map($this->linkLine(...), $this->linkedAttachments($node));
-    }
-
-    /**
-     * @param  array<string, mixed>  $attachment
-     */
-    private function linkLine(array $attachment): string
-    {
-        return '- ['.$this->literalName($attachment['name']).']('.strtr($attachment['url'], [' ' => '%20', '(' => '%28', ')' => '%29', '<' => '%3C', '>' => '%3E', "\n" => '', "\r" => '']).')';
+        return array_map(
+            fn (array $attachment) => '- ['.$this->literalName($attachment['name']).']('.strtr($attachment['url'], [' ' => '%20', '(' => '%28', ')' => '%29', '<' => '%3C', '>' => '%3E', "\n" => '', "\r" => '']).')',
+            $this->linkedAttachments($node),
+        );
     }
 
     /**
@@ -1340,7 +1335,8 @@ class AsanaImportService
     private function storeAttachment(Task $task, array $attachment): void
     {
         $details = $this->asana->get('attachments/'.$attachment['gid'], ['opt_fields' => 'download_url']);
-        $temporary = (string) tempnam(sys_get_temp_dir(), 'asana');
+        // Beside the stored files and not in the system's temporary directory, which may live in memory (tmpfs) and is small
+        $temporary = (string) tempnam(storage_path('app'), 'asana');
 
         try {
             $downloaded = isset($details['download_url']) && $this->asana->download((string) $details['download_url'], $temporary);

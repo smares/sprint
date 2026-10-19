@@ -40,7 +40,7 @@ class QuickDoneTest extends TestCase
         foreach ($this->views() as $view) {
             Livewire::test($view, ['project' => $this->project])
                 ->assertSee('Abhaken')
-                ->assertSeeHtml('aria-label="Als erledigt markieren"');
+                ->assertSeeHtml('aria-label="Als erledigt markieren: ');
         }
     }
 

@@ -26,6 +26,14 @@
     }
 }
 
+/* The header that stays at the top on phones (56px) must not cover what the browser scrolls to: a field that is focused, a task
+   the keys j and k move to, a form that opens further down. */
+@media (width < 64rem) {
+    html {
+        scroll-padding-top: 4.5rem;
+    }
+}
+
 /* The focus ring in the accent color instead of the browser's black one (Flux leaves focus to the browser). */
 :focus-visible {
     outline-color: var(--color-accent);

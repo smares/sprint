@@ -152,7 +152,7 @@ new class extends Component
         <flux:button wire:click="today">{{ __('Today') }}</flux:button>
         <flux:heading size="lg" class="ms-2">{{ $this->monthStart->isoFormat('MMMM YYYY') }}</flux:heading>
 
-        @if ($this->canEdit && ! $selecting)
+        @if ($this->canEdit && ! $selecting && collect($this->weeks)->flatten(1)->contains(fn ($day) => $day['tasks']->isNotEmpty()))
             <x-selection-toggle class="ms-auto" />
         @endif
     </div>
@@ -234,7 +234,7 @@ new class extends Component
                                        @class([
                                            'color-chip block truncate rounded px-1.5 py-0.5 text-xs hover:underline',
                                            'ps-6' => $selecting,
-                                           'group-focus-within/chip:pe-7 group-hover/chip:pe-7' => $this->canEdit && ! $selecting,
+                                           '[@media(hover:none)]:pe-7' => $this->canEdit && ! $selecting,
                                            'line-through opacity-60' => $task->isDone(),
                                        ])>{{ $task->title }}</a>
                                     @if ($selecting)
@@ -242,8 +242,9 @@ new class extends Component
                                             <x-task-select-box :task="$task" />
                                         </span>
                                     @elseif ($this->canEdit)
-                                        {{-- Shown while the chip is pointed at or focused: the cell is too narrow for a permanent check --}}
-                                        <span class="absolute inset-y-0 end-0 hidden items-center group-focus-within/chip:flex group-hover/chip:flex" x-on:click.stop>
+                                        {{-- Over the end of the title while the chip is pointed at or focused (the cell is too narrow for a permanent check, and
+                                             the title keeps its place); on screens without a pointer it is always there and the title leaves room --}}
+                                        <span class="absolute inset-y-0 end-0 hidden items-center rounded-e bg-white/90 group-focus-within/chip:flex group-hover/chip:flex dark:bg-zinc-800/90 [@media(hover:none)]:flex" x-on:click.stop>
                                             <x-task-done-button :task="$task" />
                                         </span>
                                     @endif
@@ -270,6 +271,6 @@ new class extends Component
     @if ($selecting)
         <x-selection-bar />
 
-        <x-bulk-edit-modal :project="$project" />
+        <x-bulk-edit-modal :choices="$this->bulkChoices" />
     @endif
 </div>

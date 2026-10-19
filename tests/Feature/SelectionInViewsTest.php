@@ -274,4 +274,38 @@ class SelectionInViewsTest extends TestCase
 
         $this->assertModelExists($task);
     }
+
+    public function test_the_choices_of_the_dialog_are_asked_for_once_and_not_with_every_render(): void
+    {
+        $this->project->tags()->create(['name' => 'Kunde', 'color' => 'blue']);
+        $this->task();
+
+        foreach (['pages::projects.calendar' => 'nextMonth', 'pages::projects.timeline' => 'later'] as $view => $action) {
+            $page = Livewire::test($view, ['project' => $this->project])->call('startSelecting')->assertSee('Kunde');
+
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            $page->call($action)->call($action);
+            DB::disableQueryLog();
+
+            $this->assertSame([], collect(DB::getQueryLog())->pluck('query')->filter(fn (string $query) => str_contains($query, 'from "tags"'))->all());
+        }
+    }
+
+    public function test_the_button_is_only_offered_where_there_is_something_to_select(): void
+    {
+        foreach ($this->views() as $view) {
+            Livewire::test($view, ['project' => $this->project])->assertDontSeeHtml('data-selection-toggle');
+        }
+
+        foreach (['pages::tasks.mine', 'pages::tasks.mine-board'] as $view) {
+            Livewire::test($view)->assertDontSeeHtml('data-selection-toggle');
+        }
+
+        $this->task(['assignee_id' => $this->user->id]);
+
+        foreach ([...$this->views(), 'pages::tasks.mine', 'pages::tasks.mine-board'] as $view) {
+            Livewire::test($view, str_contains($view, 'projects.') ? ['project' => $this->project] : [])->assertSeeHtml('data-selection-toggle');
+        }
+    }
 }

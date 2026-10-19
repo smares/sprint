@@ -1531,12 +1531,7 @@ class AsanaImportService
         $this->importer = $importer;
         $result = ['checked' => 0, 'imported' => 0, 'elsewhere' => 0, 'failed' => 0, 'bytes' => 0, 'warnings' => []];
 
-        $rows = DB::table('asana_imports')
-            ->join('tasks', 'tasks.id', '=', 'asana_imports.model_id')
-            ->where('asana_imports.kind', 'link')
-            ->orderBy('asana_imports.id')
-            ->select('asana_imports.id as row', 'asana_imports.gid', 'tasks.id as task')
-            ->get();
+        $rows = $this->linkedWork();
 
         foreach ($rows as $row) {
             $result['checked']++;
@@ -1582,6 +1577,13 @@ class AsanaImportService
 
             $task = Task::query()->find($row->task);
 
+            // Already taken over (an earlier run of this command stopped before the line left the description): only the line is left to remove
+            if ($row->line !== null && DB::table('asana_imports')->where('kind', 'attachment')->where('gid', $row->gid)->exists()) {
+                $this->removeLink($task, $row->line);
+
+                continue;
+            }
+
             try {
                 $this->storeAttachment($task, $attachment);
             } catch (Throwable $exception) {
@@ -1591,8 +1593,11 @@ class AsanaImportService
                 continue;
             }
 
-            DB::table('asana_imports')->where('id', $row->row)->delete();
-            $this->removeLink($task, $attachment);
+            if ($row->row !== null) {
+                DB::table('asana_imports')->where('id', $row->row)->delete();
+            }
+
+            $this->removeLink($task, $row->line ?? ($attachment['url'] !== null ? $this->linkLine($attachment) : ''));
             $result['imported']++;
             $result['bytes'] += $attachment['size'];
         }
@@ -1601,15 +1606,54 @@ class AsanaImportService
     }
 
     /**
+     * What there is to fetch: the files the import remembered as linked, and the links in the descriptions of imported tasks that
+     * an import before that memory left (their lines carry the id of the file in the address).
+     *
+     * @return Collection<int, object{row: ?int, gid: string, task: int, line: ?string}>
+     */
+    private function linkedWork(): Collection
+    {
+        $work = DB::table('asana_imports')
+            ->join('tasks', 'tasks.id', '=', 'asana_imports.model_id')
+            ->where('asana_imports.kind', 'link')
+            ->orderBy('asana_imports.id')
+            ->select('asana_imports.id as row', 'asana_imports.gid', 'tasks.id as task')
+            ->get()
+            ->map(fn (object $row) => (object) ['row' => (int) $row->row, 'gid' => (string) $row->gid, 'task' => (int) $row->task, 'line' => null]);
+
+        $known = $work->mapWithKeys(fn (object $row) => [$row->task.':'.$row->gid => true])->all();
+
+        $tasks = DB::table('tasks')
+            ->join('asana_imports', fn (JoinClause $join) => $join->on('asana_imports.model_id', '=', 'tasks.id')->where('asana_imports.kind', 'task'))
+            ->where('tasks.description', 'like', '%asset_id=%')
+            ->orderBy('tasks.id')
+            ->select('tasks.id', 'tasks.description')
+            ->get();
+
+        foreach ($tasks as $task) {
+            preg_match_all('/^(- \[.*\]\([^)\s]*asset_id=(\d+)[^)\s]*\))$/mu', (string) $task->description, $matches, PREG_SET_ORDER);
+
+            foreach ($matches as $match) {
+                if (! isset($known[$task->id.':'.$match[2]])) {
+                    $known[$task->id.':'.$match[2]] = true;
+                    $work->push((object) ['row' => null, 'gid' => $match[2], 'task' => (int) $task->id, 'line' => $match[1]]);
+                }
+            }
+        }
+
+        return $work->values();
+    }
+
+    /**
      * The link of a file that is an attachment now leaves the description, and with the last one the heading above the links.
      *
-     * @param  array<string, mixed>  $attachment
+     * @param  string  $line  The line of the link as it stands in the description.
      */
-    private function removeLink(Task $task, array $attachment): void
+    private function removeLink(Task $task, string $line): void
     {
         $description = (string) $task->description;
 
-        if ($attachment['url'] === null || ! str_contains($description, $line = $this->linkLine($attachment))) {
+        if (! str_contains($description, $line)) {
             app(TaskSearchService::class)->index($task->id);
 
             return;

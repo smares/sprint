@@ -658,6 +658,29 @@ class AsanaImportTest extends TestCase
         $this->assertStringContainsString('- [Anderer](https://dropbox.test/a)', $description);
     }
 
+    public function test_the_command_also_finds_links_that_only_stand_in_the_description(): void
+    {
+        $concept = $this->linkTheFileAgain();
+        // An import before the links were remembered left no row, only the line in the description
+        DB::table('asana_imports')->where('kind', 'link')->delete();
+        $this->routes['attachments/7001'] += ['name' => 'plan.pdf', 'host' => 'asana', 'size' => 9, 'permanent_url' => 'https://app.asana.com/app/asana/-/get_asset?asset_id=7001', 'created_by' => $this->person('11', 'Anna', 'anna@example.com')];
+        $this->serveAsana();
+
+        $this->artisan('asana:import-linked-attachments', ['--token' => 'secret-token', '--dry-run' => true])
+            ->expectsOutputToContain('Dry run: 1 links checked, 1 would be attached')
+            ->assertSuccessful();
+        $this->assertStringContainsString('plan\\.pdf', (string) $concept->fresh()->description);
+
+        $this->artisan('asana:import-linked-attachments', ['--token' => 'secret-token'])->assertSuccessful();
+
+        $this->assertSame($this->anna->id, Attachment::where('task_id', $concept->id)->where('name', 'plan.pdf')->firstOrFail()->user_id);
+        $this->assertStringNotContainsString('plan\\.pdf', (string) $concept->fresh()->description);
+        $this->assertStringNotContainsString('Attachments not copied', (string) $concept->fresh()->description);
+
+        // Nothing left to do for a second run
+        $this->artisan('asana:import-linked-attachments', ['--token' => 'secret-token'])->expectsOutputToContain('0 links checked')->assertSuccessful();
+    }
+
     public function test_the_command_stops_on_a_refused_token(): void
     {
         $this->linkTheFileAgain();

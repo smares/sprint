@@ -28,7 +28,7 @@ class QuickDoneTest extends TestCase
     /**
      * @return list<string>
      */
-    private static function views(): array
+    private function views(): array
     {
         return ['pages::projects.board', 'pages::projects.calendar', 'pages::projects.timeline'];
     }
@@ -37,7 +37,7 @@ class QuickDoneTest extends TestCase
     {
         Task::factory()->for($this->project)->create(['title' => 'Abhaken', 'start_date' => '2026-10-10', 'due_date' => '2026-10-12']);
 
-        foreach (self::views() as $view) {
+        foreach ($this->views() as $view) {
             Livewire::test($view, ['project' => $this->project])
                 ->assertSee('Abhaken')
                 ->assertSeeHtml('aria-label="Als erledigt markieren"');
@@ -48,7 +48,7 @@ class QuickDoneTest extends TestCase
     {
         $task = Task::factory()->for($this->project)->create(['start_date' => '2026-10-10', 'due_date' => '2026-10-12']);
 
-        foreach (self::views() as $view) {
+        foreach ($this->views() as $view) {
             $page = Livewire::test($view, ['project' => $this->project]);
 
             $page->call('toggleDone', $task->id);
@@ -65,7 +65,7 @@ class QuickDoneTest extends TestCase
         $viewer = User::factory()->create();
         $this->project->setRole($viewer, ProjectRole::Viewer);
 
-        foreach (self::views() as $view) {
+        foreach ($this->views() as $view) {
             Livewire::actingAs($viewer)->test($view, ['project' => $this->project])
                 ->call('toggleDone', $task->id)->assertForbidden();
         }

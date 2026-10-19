@@ -7,6 +7,7 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -49,14 +50,14 @@ class SelectionInViewsTest extends TestCase
         foreach ($this->views() as $view) {
             $page = Livewire::test($view, ['project' => $this->project])
                 ->assertSee('Auswählen')
-                ->assertDontSeeHtml('aria-label="Aufgabe auswählen"')
+                ->assertDontSeeHtml('aria-label="Aufgabe auswählen: ')
                 ->call('startSelecting')
                 ->assertSet('selecting', true)
                 ->assertSet('selected', [])
-                ->assertSeeHtml('aria-label="Aufgabe auswählen"')
+                ->assertSeeHtml('aria-label="Aufgabe auswählen: ')
                 ->assertSee('Auswahl beenden');
 
-            $page->call('stopSelecting')->assertSet('selecting', false)->assertDontSeeHtml('aria-label="Aufgabe auswählen"');
+            $page->call('stopSelecting')->assertSet('selecting', false)->assertDontSeeHtml('aria-label="Aufgabe auswählen: ');
         }
     }
 
@@ -146,7 +147,7 @@ class SelectionInViewsTest extends TestCase
             Livewire::test($view)
                 ->assertSee('Auswählen')
                 ->call('startSelecting')
-                ->assertSeeHtml('aria-label="Aufgabe auswählen"')
+                ->assertSeeHtml('aria-label="Aufgabe auswählen: ')
                 ->assertDontSee('Ändern')
                 ->set('selected', [(string) $mine->id, (string) $inViewed->id, (string) $notMine->id])
                 ->call('bulkComplete')
@@ -176,5 +177,101 @@ class SelectionInViewsTest extends TestCase
 
         $this->assertModelMissing($gone);
         $this->assertModelExists($kept);
+    }
+
+    public function test_paging_through_the_calendar_and_the_timeline_ends_the_selection_of_tasks_no_longer_shown(): void
+    {
+        $task = $this->task();
+
+        foreach ([['pages::projects.calendar', 'nextMonth'], ['pages::projects.calendar', 'today'], ['pages::projects.timeline', 'later'], ['pages::projects.timeline', 'today']] as [$view, $action]) {
+            Livewire::test($view, ['project' => $this->project])
+                ->call('startSelecting')
+                ->set('selected', [(string) $task->id])
+                ->call($action)
+                ->assertSet('selected', [])
+                ->assertSet('selecting', true);
+        }
+    }
+
+    public function test_the_calendar_and_the_timeline_stop_offering_other_things_to_do_with_a_click_while_selecting(): void
+    {
+        $this->task(['title' => 'Verschiebbar']);
+
+        $calendar = Livewire::test('pages::projects.calendar', ['project' => $this->project]);
+        $calendar->assertSeeHtml("\$wire.\$dispatch('new-task', { dueDate: '2026-10-15' })")->assertSeeHtml('draggable="true"');
+        $calendar->call('startSelecting')->assertDontSeeHtml("\$wire.\$dispatch('new-task'")->assertDontSeeHtml('draggable="true"');
+
+        $timeline = Livewire::test('pages::projects.timeline', ['project' => $this->project]);
+        $timeline->assertSeeHtml('x-data="timelineBar(');
+        $timeline->call('startSelecting')->assertDontSeeHtml('x-data="timelineBar(');
+    }
+
+    public function test_the_boxes_follow_the_selection_and_work_with_the_keyboard(): void
+    {
+        $this->task(['title' => 'Mit Tastatur']);
+
+        // The box sets its state from the selection and changes it on `change` (the space bar sends no click)
+        Livewire::test('pages::projects.board', ['project' => $this->project])
+            ->call('startSelecting')
+            ->assertSeeHtml('x-on:change=')
+            ->assertSeeHtml('$wire.selected.map(String).includes(')
+            ->assertDontSeeHtml('x-on:click="$wire.selected');
+    }
+
+    public function test_in_my_tasks_tasks_of_projects_one_may_not_edit_have_no_box_and_the_selection_ends_with_the_switch(): void
+    {
+        $readOnly = Project::factory()->create();
+        $readOnly->setRole($this->user, ProjectRole::Viewer);
+        $mine = $this->task(['assignee_id' => $this->user->id, 'title' => 'Eigene']);
+        $this->task(['assignee_id' => $this->user->id, 'title' => 'Nur lesbar'], $readOnly);
+
+        foreach (['pages::tasks.mine', 'pages::tasks.mine-board'] as $view) {
+            Livewire::test($view)
+                ->call('startSelecting')
+                ->assertSeeHtml('aria-label="Aufgabe auswählen: Eigene"')
+                ->assertDontSeeHtml('aria-label="Aufgabe auswählen: Nur lesbar"')
+                ->set('selected', [(string) $mine->id])
+                ->set('includeCollaborating', true)
+                ->assertSet('selected', [])
+                ->assertSet('selecting', true);
+        }
+    }
+
+    public function test_my_tasks_complete_selected_tasks_with_a_fixed_number_of_queries(): void
+    {
+        $queriesFor = function (int $count): int {
+            $page = Livewire::test('pages::tasks.mine')->call('startSelecting');
+            $ids = collect(range(1, $count))->map(fn () => (string) $this->task(['assignee_id' => $this->user->id])->id)->all();
+            $page->set('selected', $ids);
+
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            $page->call('bulkComplete');
+            DB::disableQueryLog();
+
+            return count(DB::getQueryLog());
+        };
+
+        $forThree = $queriesFor(3);
+        $forTwelve = $queriesFor(12);
+
+        // Three queries more per task (the update and what follows it), not a fourth to look up the done status of its project
+        $this->assertLessThanOrEqual(9 * 3, $forTwelve - $forThree);
+    }
+
+    public function test_my_tasks_tell_when_nothing_selected_can_be_changed(): void
+    {
+        $readOnly = Project::factory()->create();
+        $readOnly->setRole($this->user, ProjectRole::Viewer);
+        $task = $this->task(['assignee_id' => $this->user->id], $readOnly);
+
+        Livewire::test('pages::tasks.mine')
+            ->call('startSelecting')
+            ->set('selected', [(string) $task->id])
+            ->call('bulkDelete')
+            ->assertHasErrors('selected')
+            ->assertSee('Du darfst diese Aufgaben nicht ändern.');
+
+        $this->assertModelExists($task);
     }
 }

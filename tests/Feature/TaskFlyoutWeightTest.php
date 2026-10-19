@@ -105,7 +105,7 @@ class TaskFlyoutWeightTest extends TestCase
     }
 
     /**
-     * What the last request sent as the new choices of the pickers (island fragments), and whether the page was rendered whole.
+     * What the last request sent as the new choices of the pickers (island fragments).
      */
     private function choicesSent(Testable $page): string
     {

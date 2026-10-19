@@ -56,18 +56,21 @@ new class extends Component
     public function previousMonth(): void
     {
         $this->month = $this->monthStart->copy()->subMonth()->format('Y-m');
+        $this->selected = [];
         unset($this->monthStart, $this->weeks, $this->undated);
     }
 
     public function nextMonth(): void
     {
         $this->month = $this->monthStart->copy()->addMonth()->format('Y-m');
+        $this->selected = [];
         unset($this->monthStart, $this->weeks, $this->undated);
     }
 
     public function today(): void
     {
         $this->month = now()->format('Y-m');
+        $this->selected = [];
         unset($this->monthStart, $this->weeks, $this->undated);
     }
 
@@ -140,17 +143,17 @@ new class extends Component
 };
 ?>
 
-<div @class(['pb-28' => $selecting]) data-wide>
+<div @class(['pb-40' => $selecting]) data-wide>
     <x-project-header :project="$project" active="calendar" :presence="$this->presenceChannel()" />
 
-    <div class="mb-4 flex items-center gap-2">
+    <div class="mb-4 flex flex-wrap items-center gap-2">
         <flux:button icon="chevron-left" wire:click="previousMonth" aria-label="{{ __('Previous month') }}" tooltip="{{ __('Previous month') }}" />
         <flux:button icon="chevron-right" wire:click="nextMonth" aria-label="{{ __('Next month') }}" tooltip="{{ __('Next month') }}" />
         <flux:button wire:click="today">{{ __('Today') }}</flux:button>
         <flux:heading size="lg" class="ms-2">{{ $this->monthStart->isoFormat('MMMM YYYY') }}</flux:heading>
 
         @if ($this->canEdit && ! $selecting)
-            <flux:button icon="clipboard-document-check" wire:click="startSelecting" class="ms-auto">{{ __('Select') }}</flux:button>
+            <x-selection-toggle class="ms-auto" />
         @endif
     </div>
 
@@ -163,10 +166,10 @@ new class extends Component
                 <div class="space-y-1">
                     @foreach ($day['tasks'] as $task)
                         <div wire:key="agenda-{{ $day['date']->toDateString() }}-{{ $task->id }}" class="flex items-center gap-1">
+                            <x-task-done-button :task="$task" :editable="$this->canEdit" compact />
                             @if ($selecting)
-                                <x-task-select-box :task="$task" :selected="in_array((string) $task->id, array_map('strval', $selected), true)" />
+                                <x-task-select-box :task="$task" />
                             @endif
-                            <x-task-done-button :task="$task" :editable="$this->canEdit" />
                             <a href="{{ route('tasks.show', $task) }}" x-on:click="$openTask($event, {{ $task->id }})" style="--badge: {{ $task->status->color }}"
                                class="color-chip block min-w-0 flex-1 truncate rounded px-2 py-1 text-sm {{ $task->isDone() ? 'line-through opacity-60' : '' }}">{{ $task->title }}</a>
                         </div>
@@ -191,7 +194,7 @@ new class extends Component
                 @foreach ($this->weeks as $week)
                     @foreach ($week as $day)
                         <div wire:key="day-{{ $day['date']->toDateString() }}"
-                            @if ($this->canEdit)
+                            @if ($this->canEdit && ! $selecting)
                                 x-data="{ over: false }"
                                 x-on:dragover.prevent="over = true"
                                 x-on:dragleave="over = false"
@@ -203,7 +206,7 @@ new class extends Component
                             @class([
                             'group min-h-28 space-y-1 border-e border-b border-zinc-200 p-1.5 dark:border-zinc-700',
                             'bg-zinc-50/60 text-zinc-400 dark:bg-zinc-900/40' => ! $day['inMonth'],
-                            'cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-700/40' => $this->canEdit,
+                            'cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-700/40' => $this->canEdit && ! $selecting,
                         ])>
                             <div class="flex items-start justify-between">
                                 <div @class([
@@ -211,7 +214,7 @@ new class extends Component
                                     'inline-flex size-6 items-center justify-center rounded-full bg-accent font-semibold text-accent-foreground' => $day['date']->isToday(),
                                 ])>{{ $day['date']->day }}</div>
 
-                                @if ($this->canEdit)
+                                @if ($this->canEdit && ! $selecting)
                                     <button type="button" x-on:click.stop="$wire.$dispatch('new-task', { dueDate: '{{ $day['date']->toDateString() }}' })"
                                         class="rounded p-0.5 text-zinc-400 opacity-0 hover:bg-zinc-200 hover:text-zinc-700 focus:opacity-100 group-hover:opacity-100 dark:hover:bg-zinc-700 dark:hover:text-zinc-200"
                                         aria-label="{{ __('New task on :date', ['date' => $day['date']->isoFormat('L')]) }}" title="{{ __('New task on :date', ['date' => $day['date']->isoFormat('L')]) }}">
@@ -236,7 +239,7 @@ new class extends Component
                                        ])>{{ $task->title }}</a>
                                     @if ($selecting)
                                         <span class="absolute inset-y-0 start-1 flex items-center" x-on:click.stop>
-                                            <x-task-select-box :task="$task" :selected="in_array((string) $task->id, array_map('strval', $selected), true)" />
+                                            <x-task-select-box :task="$task" />
                                         </span>
                                     @elseif ($this->canEdit)
                                         {{-- Shown while the chip is pointed at or focused: the cell is too narrow for a permanent check --}}

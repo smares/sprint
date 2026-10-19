@@ -94,6 +94,44 @@ new class extends Component
         unset($this->tasks, $this->totalTasks, $this->progress, $this->tagOptions);
     }
 
+    /**
+     * The box in the header of the list: all tasks shown, or none of them.
+     */
+    public function togglePage(): void
+    {
+        Gate::authorize('edit', $this->project);
+
+        $this->selecting = true;
+
+        $page = $this->tasks->pluck('id')->map(fn ($id) => (string) $id)->all();
+        $current = array_map(strval(...), $this->selected);
+
+        $this->selected = array_diff($page, $current) === []
+            ? array_values(array_diff($current, $page))
+            : array_values(array_unique([...$current, ...$page]));
+
+        // Unticking the last ones ends the selection, as the bar has nothing left to act on
+        if ($this->selected === []) {
+            $this->stopSelecting();
+
+            return;
+        }
+
+        unset($this->selectedIds);
+    }
+
+    public function selectAllMatching(): void
+    {
+        Gate::authorize('edit', $this->project);
+
+        $this->selected = $this->filteredTasks()->limit(self::MAX_SELECTION)->pluck('id')->map(fn ($id) => (string) $id)->all();
+        unset($this->selectedIds);
+
+        if ($this->totalTasks > self::MAX_SELECTION) {
+            Flux::toast(variant: 'warning', text: __('At most :count tasks are selected at once.', ['count' => self::MAX_SELECTION]));
+        }
+    }
+
     protected function forgetTasksAfterBulk(): void
     {
         unset($this->tasks, $this->totalTasks, $this->progress);
@@ -517,7 +555,7 @@ new class extends Component
 };
 ?>
 
-<div @class(['pb-28' => $selecting]) data-wide>
+<div @class(['pb-40' => $selecting]) data-wide>
     <x-project-header :project="$project" active="list" :presence="$this->presenceChannel()" />
 
     <div class="mb-4 flex flex-wrap items-center gap-2">
@@ -721,18 +759,14 @@ new class extends Component
                             <flux:table.cell :class="$pinnedDone">
                                 <div class="flex items-center gap-3">
                                     <x-task-done-button :task="$task" :editable="$this->canEdit" />
-                                    {{-- Keyed by the selection mode: unticked again in the browser when the selection ends, the box would otherwise
-                                         keep its tick (the server draws it unticked before and after) and the next click would select the task anew --}}
                                     @if ($this->canEdit)
                                         @if ($selecting)
-                                            <flux:checkbox
-                                                wire:key="select-{{ $task->id }}-on"
-                                                :checked="in_array((string) $task->id, array_map('strval', $selected), true)"
-                                                x-on:click="$wire.selected = $wire.selected.includes('{{ $task->id }}') ? $wire.selected.filter((id) => id !== '{{ $task->id }}') : [...$wire.selected, '{{ $task->id }}']; if ($wire.selected.length === 0) { $wire.stopSelecting() }"
-                                                aria-label="{{ __('Select task') }}"
-                                            />
+                                            <x-task-select-box :task="$task" ends-when-empty />
                                         @else
-                                            <flux:checkbox wire:key="select-{{ $task->id }}-off" :checked="false" wire:click="selectTask({{ $task->id }})" aria-label="{{ __('Select task') }}" />
+                                            {{-- Keyed by the selection mode: the box of the selection is a different element --}}
+                                            <span class="flex size-6 shrink-0 items-center justify-center">
+                                                <flux:checkbox wire:key="select-{{ $task->id }}-off" :checked="false" wire:click="selectTask({{ $task->id }})" aria-label="{{ __('Select task') }}: {{ $task->title }}" />
+                                            </span>
                                         @endif
                                     @endif
                                 </div>
@@ -790,7 +824,7 @@ new class extends Component
             </x-slot>
         </x-selection-bar>
 
-        <x-bulk-edit-modal :project="$project" />
+        <x-bulk-edit-modal :project="$project" :statuses="$this->statuses" :users="$this->assignableUsers" :tags="$this->tagOptions" />
     @endif
 
     @if ($this->canEdit)

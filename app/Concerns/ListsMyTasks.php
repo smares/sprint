@@ -33,8 +33,17 @@ trait ListsMyTasks
     #[Session(key: 'my-tasks-include-collaborating')]
     public bool $includeCollaborating = false;
 
+    public const MAX_SELECTION = 500;
+
+    public bool $selecting = false;
+
+    /** @var list<int|string> */
+    public array $selected = [];
+
     public function updatedIncludeCollaborating(): void
     {
+        // The tasks one only collaborates on may be among the selected ones, and are not listed any more
+        $this->selected = [];
         $this->forgetTasks();
     }
 
@@ -79,13 +88,6 @@ trait ListsMyTasks
         $this->forgetTasks();
     }
 
-    public const MAX_SELECTION = 500;
-
-    public bool $selecting = false;
-
-    /** @var list<int|string> */
-    public array $selected = [];
-
     public function startSelecting(): void
     {
         $this->selecting = true;
@@ -95,6 +97,7 @@ trait ListsMyTasks
     public function stopSelecting(): void
     {
         $this->reset('selecting', 'selected');
+        $this->resetErrorBag();
     }
 
     /**
@@ -138,7 +141,8 @@ trait ListsMyTasks
 
         Task::bundlingStatusNotifications(function () use ($tasks) {
             foreach ($tasks as $task) {
-                $done = $task->project->doneStatus()->id;
+                // From the statuses loaded with the project, not one query per task
+                $done = ($task->project->statuses->firstWhere('is_done', true) ?? $task->project->doneStatus())->id;
 
                 if ($task->status_id !== $done) {
                     $task->update(['status_id' => $done]);

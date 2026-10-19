@@ -18,8 +18,9 @@ use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 
 /**
- * Select several top-level tasks of the list and change or delete them together.
- * Only tasks that match the current filters count as selected, so nothing hidden is touched by accident.
+ * Select several top-level tasks of a project view (the list, the board, the calendar, the timeline) and change or delete
+ * them together. Only tasks that `filteredTasks()` returns count as selected, so nothing the view does not offer is touched
+ * by accident; the list narrows that to its filters and clears the selection when they change.
  *
  * @property Project $project
  */
@@ -108,41 +109,6 @@ trait EditsTasksInBulk
             ->pluck('id')
             ->map(fn ($id) => (int) $id)
             ->all();
-    }
-
-    public function togglePage(): void
-    {
-        Gate::authorize('edit', $this->project);
-
-        $this->selecting = true;
-
-        $page = $this->tasks->pluck('id')->map(fn ($id) => (string) $id)->all();
-        $current = array_map(strval(...), $this->selected);
-
-        $this->selected = array_diff($page, $current) === []
-            ? array_values(array_diff($current, $page))
-            : array_values(array_unique([...$current, ...$page]));
-
-        // Unticking the last ones ends the selection, as the bar has nothing left to act on
-        if ($this->selected === []) {
-            $this->stopSelecting();
-
-            return;
-        }
-
-        unset($this->selectedIds);
-    }
-
-    public function selectAllMatching(): void
-    {
-        Gate::authorize('edit', $this->project);
-
-        $this->selected = $this->filteredTasks()->limit(self::MAX_SELECTION)->pluck('id')->map(fn ($id) => (string) $id)->all();
-        unset($this->selectedIds);
-
-        if ($this->totalTasks > self::MAX_SELECTION) {
-            Flux::toast(variant: 'warning', text: __('At most :count tasks are selected at once.', ['count' => self::MAX_SELECTION]));
-        }
     }
 
     /**

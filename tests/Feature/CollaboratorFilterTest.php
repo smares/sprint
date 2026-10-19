@@ -7,6 +7,7 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -38,7 +39,7 @@ class CollaboratorFilterTest extends TestCase
         $this->actingAs($this->editor);
     }
 
-    private function list()
+    private function list(): Testable
     {
         return Livewire::test('pages::projects.show', ['project' => $this->project]);
     }

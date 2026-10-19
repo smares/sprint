@@ -143,8 +143,11 @@ new class extends Component
                 <flux:heading size="sm" @class(['mb-1', 'text-accent-content' => $day['date']->isToday()])>{{ $day['date']->isoFormat('dd, L') }}</flux:heading>
                 <div class="space-y-1">
                     @foreach ($day['tasks'] as $task)
-                        <a wire:key="agenda-{{ $day['date']->toDateString() }}-{{ $task->id }}" href="{{ route('tasks.show', $task) }}" x-on:click="$openTask($event, {{ $task->id }})" style="--badge: {{ $task->status->color }}"
-                           class="color-chip block truncate rounded px-2 py-1 text-sm {{ $task->isDone() ? 'line-through opacity-60' : '' }}">{{ $task->title }}</a>
+                        <div wire:key="agenda-{{ $day['date']->toDateString() }}-{{ $task->id }}" class="flex items-center gap-1">
+                            <x-task-done-button :task="$task" :editable="$this->canEdit" />
+                            <a href="{{ route('tasks.show', $task) }}" x-on:click="$openTask($event, {{ $task->id }})" style="--badge: {{ $task->status->color }}"
+                               class="color-chip block min-w-0 flex-1 truncate rounded px-2 py-1 text-sm {{ $task->isDone() ? 'line-through opacity-60' : '' }}">{{ $task->title }}</a>
+                        </div>
                     @endforeach
                 </div>
             </div>
@@ -196,13 +199,21 @@ new class extends Component
                             </div>
 
                             @foreach ($day['tasks']->take($this::TASKS_PER_DAY) as $task)
-                                <a wire:key="chip-{{ $day['date']->toDateString() }}-{{ $task->id }}" href="{{ route('tasks.show', $task) }}" x-on:click="$openTask($event, {{ $task->id }})"
-                                   style="--badge: {{ $task->status->color }}"
-                                   @if ($this->canEdit)
-                                       draggable="true"
-                                       x-on:dragstart="$event.dataTransfer.setData('text/plain', JSON.stringify({ id: {{ $task->id }}, from: '{{ $day['date']->toDateString() }}' })); $event.dataTransfer.effectAllowed = 'move'"
-                                   @endif
-                                   class="color-chip block truncate rounded px-1.5 py-0.5 text-xs hover:underline {{ $task->isDone() ? 'line-through opacity-60' : '' }}">{{ $task->title }}</a>
+                                <div wire:key="chip-{{ $day['date']->toDateString() }}-{{ $task->id }}" class="group relative">
+                                    <a href="{{ route('tasks.show', $task) }}" x-on:click="$openTask($event, {{ $task->id }})"
+                                       style="--badge: {{ $task->status->color }}"
+                                       @if ($this->canEdit)
+                                           draggable="true"
+                                           x-on:dragstart="$event.dataTransfer.setData('text/plain', JSON.stringify({ id: {{ $task->id }}, from: '{{ $day['date']->toDateString() }}' })); $event.dataTransfer.effectAllowed = 'move'"
+                                       @endif
+                                       class="color-chip block truncate rounded px-1.5 py-0.5 text-xs hover:underline group-focus-within:pe-7 group-hover:pe-7 {{ $task->isDone() ? 'line-through opacity-60' : '' }}">{{ $task->title }}</a>
+                                    {{-- Shown while the chip is pointed at or focused: the cell is too narrow for a permanent check --}}
+                                    @if ($this->canEdit)
+                                        <span class="absolute inset-y-0 end-0 hidden items-center group-focus-within:flex group-hover:flex" x-on:click.stop>
+                                            <x-task-done-button :task="$task" />
+                                        </span>
+                                    @endif
+                                </div>
                             @endforeach
 
                             @if ($day['tasks']->count() > $this::TASKS_PER_DAY)

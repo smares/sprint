@@ -505,17 +505,6 @@ new class extends Component
         unset($this->tasks);
     }
 
-    public function toggleDone(int $taskId): void
-    {
-        Gate::authorize('edit', $this->project);
-
-        $task = $this->project->tasks()->topLevel()->findOrFail($taskId);
-
-        $task->toggleDone();
-
-        unset($this->tasks);
-    }
-
     public function rendering(View $view): void
     {
         $view->title($this->project->name);

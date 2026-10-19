@@ -576,6 +576,97 @@ class AsanaImportTest extends TestCase
         $this->assertSame($this->admin->id, Attachment::where('name', 'plan.pdf')->firstOrFail()->user_id);
     }
 
+    public function test_a_big_file_is_attached_like_any_other(): void
+    {
+        $this->routes['attachments?parent=1001'][0]['size'] = 300 * 1024 * 1024;
+        $this->routes['download.example.com/plan.pdf'] = '%PDF-fake';
+
+        $this->import()->assertSuccessful();
+
+        $concept = Task::where('title', 'Konzept')->firstOrFail();
+        $this->assertSame(1, Attachment::where('task_id', $concept->id)->where('name', 'plan.pdf')->count());
+        $this->assertStringNotContainsString('plan.pdf', (string) $concept->description);
+    }
+
+    /**
+     * What an import before the limit was lifted left: the file only as a link in the description and in asana_imports.
+     */
+    private function linkTheFileAgain(): Task
+    {
+        $this->import()->assertSuccessful();
+
+        $concept = Task::where('title', 'Konzept')->firstOrFail();
+        $attachment = Attachment::where('task_id', $concept->id)->where('name', 'plan.pdf')->firstOrFail();
+        $line = '- [plan\\.pdf](https://app.asana.com/app/asana/-/get_asset?asset_id=7001)';
+
+        DB::table('asana_imports')->where('kind', 'attachment')->where('gid', '7001')->delete();
+        $attachment->delete();
+        DB::table('asana_imports')->insert(['kind' => 'link', 'gid' => '7001', 'model_id' => $concept->id, 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('tasks')->where('id', $concept->id)->update(['description' => $concept->description."\n\n---\n\n**Attachments not copied**\n\n".$line]);
+
+        return $concept->fresh();
+    }
+
+    public function test_the_command_attaches_files_that_were_only_linked_and_removes_their_links(): void
+    {
+        $concept = $this->linkTheFileAgain();
+        $this->routes['attachments/7001'] += ['name' => 'plan.pdf', 'host' => 'asana', 'size' => 9, 'created_at' => '2026-09-03T10:00:00.000Z', 'permanent_url' => 'https://app.asana.com/app/asana/-/get_asset?asset_id=7001', 'created_by' => $this->person('11', 'Anna', 'anna@example.com')];
+        $this->routes['attachments/7002'] = ['gid' => '7002', 'name' => 'Entwurf in Dropbox', 'host' => 'dropbox', 'permanent_url' => 'https://dropbox.test/entwurf'];
+        $this->assertDatabaseHas('asana_imports', ['kind' => 'link', 'gid' => '7002']);
+        $this->serveAsana();
+
+        $this->artisan('asana:import-linked-attachments', ['--token' => 'secret-token', '--dry-run' => true])
+            ->expectsOutputToContain('Dry run: 2 links checked, 1 would be attached')
+            ->assertSuccessful();
+        $this->assertSame(0, Attachment::where('task_id', $concept->id)->where('name', 'plan.pdf')->count());
+
+        $this->artisan('asana:import-linked-attachments', ['--token' => 'secret-token'])
+            ->expectsOutputToContain('1 were attached')
+            ->assertSuccessful();
+
+        $attachment = Attachment::where('task_id', $concept->id)->where('name', 'plan.pdf')->firstOrFail();
+        $this->assertSame($this->anna->id, $attachment->user_id);
+        $this->assertSame('2026-09-03', $attachment->created_at->toDateString());
+        Storage::disk()->assertExists($attachment->path);
+        $this->assertDatabaseHas('asana_imports', ['kind' => 'attachment', 'gid' => '7001', 'model_id' => $attachment->id]);
+        $this->assertDatabaseMissing('asana_imports', ['kind' => 'link', 'gid' => '7001']);
+        $this->assertDatabaseHas('asana_imports', ['kind' => 'link', 'gid' => '7002']);
+
+        // The link is gone from the description, and the heading with it as no link is left
+        $description = (string) $concept->fresh()->description;
+        $this->assertStringNotContainsString('plan\\.pdf', $description);
+        $this->assertStringNotContainsString('Attachments not copied', $description);
+    }
+
+    public function test_the_command_keeps_the_heading_while_other_links_are_left_and_goes_on_after_a_missing_file(): void
+    {
+        $concept = $this->linkTheFileAgain();
+        DB::table('tasks')->where('id', $concept->id)->update(['description' => $concept->description."\n- [Anderer](https://dropbox.test/a)"]);
+        $this->routes['attachments/7001'] += ['host' => 'asana', 'size' => 9, 'name' => 'plan.pdf', 'permanent_url' => 'https://app.asana.com/app/asana/-/get_asset?asset_id=7001'];
+        DB::table('asana_imports')->insert(['kind' => 'link', 'gid' => '7009', 'model_id' => $concept->id, 'created_at' => now(), 'updated_at' => now()]);
+        $this->serveAsana();
+
+        $this->artisan('asana:import-linked-attachments', ['--token' => 'secret-token'])
+            ->expectsOutputToContain('Asana any more')
+            ->assertFailed();
+
+        $this->assertDatabaseHas('asana_imports', ['kind' => 'link', 'gid' => '7009']);
+
+        $description = (string) $concept->fresh()->description;
+        $this->assertStringNotContainsString('plan\\.pdf', $description);
+        $this->assertStringContainsString('Attachments not copied', $description);
+        $this->assertStringContainsString('- [Anderer](https://dropbox.test/a)', $description);
+    }
+
+    public function test_the_command_stops_on_a_refused_token(): void
+    {
+        $this->linkTheFileAgain();
+        $this->routes['attachments/7001'] = ['__error' => ['status' => 401, 'message' => 'not authorized']];
+        $this->serveAsana();
+
+        $this->artisan('asana:import-linked-attachments', ['--token' => 'secret-token'])->assertFailed();
+    }
+
     public function test_files_that_could_not_be_fetched_make_the_run_fail_and_a_second_run_fetches_them(): void
     {
         $this->routes['attachments/7001'] = ['__error' => ['status' => 403, 'message' => 'forbidden']];

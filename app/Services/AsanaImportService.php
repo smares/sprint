@@ -479,7 +479,8 @@ class AsanaImportService
             $this->remember($attachment['created_by'] ?? []);
 
             $size = (int) ($attachment['size'] ?? 0);
-            $stored = ($attachment['host'] ?? 'asana') === 'asana' && $size <= Attachment::MAX_KILOBYTES * 1024;
+            // Whatever size: the file is fetched by this server (no upload, so no limit of the browser or of PHP applies)
+            $stored = ($attachment['host'] ?? 'asana') === 'asana';
 
             $attachments[] = [
                 'gid' => (string) $attachment['gid'],
@@ -494,8 +495,6 @@ class AsanaImportService
             if ($stored) {
                 $this->counts['attachments_new']++;
                 $this->counts['attachment_bytes'] += $size;
-            } elseif (($attachment['host'] ?? 'asana') === 'asana') {
-                $this->warn('The file “'.($attachment['name'] ?? $attachment['gid']).'” is larger than '.(Attachment::MAX_KILOBYTES / 1024).' MB and only gets a link in the description.');
             }
         }
 
@@ -1082,7 +1081,7 @@ class AsanaImportService
     }
 
     /**
-     * The attachments that are not copied but only linked: other services, and files over the limit.
+     * The attachments that are not copied but only linked: those of other services.
      *
      * @param  Node  $node
      * @return list<array<string, mixed>>
@@ -1098,10 +1097,15 @@ class AsanaImportService
      */
     private function linkLines(array $node): array
     {
-        return array_map(
-            fn (array $attachment) => '- ['.$this->literalName($attachment['name']).']('.strtr($attachment['url'], [' ' => '%20', '(' => '%28', ')' => '%29', '<' => '%3C', '>' => '%3E', "\n" => '', "\r" => '']).')',
-            $this->linkedAttachments($node),
-        );
+        return array_map($this->linkLine(...), $this->linkedAttachments($node));
+    }
+
+    /**
+     * @param  array<string, mixed>  $attachment
+     */
+    private function linkLine(array $attachment): string
+    {
+        return '- ['.$this->literalName($attachment['name']).']('.strtr($attachment['url'], [' ' => '%20', '(' => '%28', ')' => '%29', '<' => '%3C', '>' => '%3E', "\n" => '', "\r" => '']).')';
     }
 
     /**
@@ -1345,8 +1349,6 @@ class AsanaImportService
 
             $size = (int) filesize($temporary);
 
-            throw_if($size > Attachment::MAX_KILOBYTES * 1024, AsanaException::class, 'it is larger than '.(Attachment::MAX_KILOBYTES / 1024).' MB');
-
             $name = mb_substr(preg_replace('/[\x00-\x1F\x7F\/\\\\]+/', '_', (string) $attachment['name']) ?? 'file', 0, 255);
             $mimeType = (new finfo(FILEINFO_MIME_TYPE))->file($temporary) ?: 'application/octet-stream';
             // The extension follows the detected type, not the name Asana gives: "x.php" must not be stored as a script
@@ -1515,6 +1517,113 @@ class AsanaImportService
         }
 
         return '@'.$this->literalName($this->people[$gid]['name'] ?? __('someone'));
+    }
+
+    /**
+     * Fetch the files that earlier runs only linked (they were over the former limit of 20 MB, or the download failed): each
+     * becomes an attachment of its task, credited to its uploader in Asana, and its link leaves the description. Files of
+     * other services stay links.
+     *
+     * @return array{checked: int, imported: int, elsewhere: int, failed: int, bytes: int, warnings: list<string>}
+     */
+    public function importLinkedAttachments(User $importer, bool $dryRun = false, ?Closure $progress = null): array
+    {
+        $this->importer = $importer;
+        $result = ['checked' => 0, 'imported' => 0, 'elsewhere' => 0, 'failed' => 0, 'bytes' => 0, 'warnings' => []];
+
+        $rows = DB::table('asana_imports')
+            ->join('tasks', 'tasks.id', '=', 'asana_imports.model_id')
+            ->where('asana_imports.kind', 'link')
+            ->orderBy('asana_imports.id')
+            ->select('asana_imports.id as row', 'asana_imports.gid', 'tasks.id as task')
+            ->get();
+
+        foreach ($rows as $row) {
+            $result['checked']++;
+
+            if ($progress instanceof Closure) {
+                $progress($result['checked'], $rows->count());
+            }
+
+            try {
+                $found = $this->asana->get('attachments/'.$row->gid, ['opt_fields' => 'name,host,size,created_at,permanent_url,view_url,created_by.gid,created_by.name,created_by.email']);
+            } catch (AsanaException $exception) {
+                // A file Asana does not have any more stays a link; anything else (token, limits) is no use to go on
+                throw_unless($exception->status === 404, $exception);
+
+                $result['failed']++;
+                $result['warnings'][] = "The file {$row->gid} is not in Asana any more and stays a link.";
+
+                continue;
+            }
+
+            if (($found['host'] ?? 'asana') !== 'asana') {
+                $result['elsewhere']++;
+
+                continue;
+            }
+
+            $this->remember($found['created_by'] ?? []);
+            $attachment = [
+                'gid' => (string) $row->gid,
+                'name' => trim((string) ($found['name'] ?? '')) ?: 'file',
+                'created_at' => $this->moment($found['created_at'] ?? null),
+                'uploader' => isset($found['created_by']['gid']) ? (string) $found['created_by']['gid'] : null,
+                'size' => (int) ($found['size'] ?? 0),
+                'url' => $found['permanent_url'] ?? $found['view_url'] ?? null,
+            ];
+
+            if ($dryRun) {
+                $result['imported']++;
+                $result['bytes'] += $attachment['size'];
+
+                continue;
+            }
+
+            $task = Task::query()->find($row->task);
+
+            try {
+                $this->storeAttachment($task, $attachment);
+            } catch (Throwable $exception) {
+                $result['failed']++;
+                $result['warnings'][] = "“{$task->title}”: the file “{$attachment['name']}” was not taken over ({$exception->getMessage()}).";
+
+                continue;
+            }
+
+            DB::table('asana_imports')->where('id', $row->row)->delete();
+            $this->removeLink($task, $attachment);
+            $result['imported']++;
+            $result['bytes'] += $attachment['size'];
+        }
+
+        return $result;
+    }
+
+    /**
+     * The link of a file that is an attachment now leaves the description, and with the last one the heading above the links.
+     *
+     * @param  array<string, mixed>  $attachment
+     */
+    private function removeLink(Task $task, array $attachment): void
+    {
+        $description = (string) $task->description;
+
+        if ($attachment['url'] === null || ! str_contains($description, $line = $this->linkLine($attachment))) {
+            app(TaskSearchService::class)->index($task->id);
+
+            return;
+        }
+
+        $description = Str::replaceFirst($line, '', $description);
+
+        // The heading was written in the language of the run that linked the file
+        foreach (['en', 'de'] as $locale) {
+            $description = preg_replace('/\n*---\n+\*\*'.preg_quote(__('Attachments not copied', [], $locale), '/').'\*\*\s*$/u', '', $description) ?? $description;
+        }
+
+        DB::table('tasks')->where('id', $task->id)->update(['description' => preg_replace('/\n{3,}/', "\n\n", rtrim($description))]);
+        app(TaskSearchService::class)->index($task->id);
     }
 
     private function loadMap(): void

@@ -729,7 +729,10 @@ new class extends Component
                         <div class="flex items-center gap-3">
                             <span class="w-6 shrink-0 max-sm:w-10"><span class="sr-only">{{ __('Done') }}</span></span>
                             @if ($this->canEdit)
-                                <flux:checkbox wire:key="select-page-{{ $selecting ? 'on' : 'off' }}" :checked="$selecting && $this->tasks->isNotEmpty() && $this->tasks->pluck('id')->diff($this->selectedIds)->isEmpty()" wire:click="togglePage" aria-label="{{ __('Select all visible tasks') }}" />
+                                {{-- In a box as high as a line, like the boxes of the rows (x-task-select-box), so both stand in one line --}}
+                                <span class="flex size-6 shrink-0 items-center justify-center">
+                                    <flux:checkbox wire:key="select-page-{{ $selecting ? 'on' : 'off' }}" :checked="$selecting && $this->tasks->isNotEmpty() && $this->tasks->pluck('id')->diff($this->selectedIds)->isEmpty()" wire:click="togglePage" aria-label="{{ __('Select all visible tasks') }}" />
+                                </span>
                             @endif
                         </div>
                     </flux:table.column>
@@ -819,7 +822,9 @@ new class extends Component
         <x-selection-bar>
             <x-slot name="extra">
                 @if ($this->totalTasks > $this->tasks->count())
-                    <flux:button size="sm" variant="ghost" wire:click="selectAllMatching">{{ __('Select all :count', ['count' => min($this->totalTasks, $this::MAX_SELECTION)]) }}</flux:button>
+                    @php($all = min($this->totalTasks, $this::MAX_SELECTION))
+                    {{-- Gone as soon as everything the filters match is selected (the browser counts, no request needed) --}}
+                    <flux:button size="sm" variant="ghost" wire:click="selectAllMatching" x-show="$wire.selected.length < {{ $all }}">{{ __('Select all :count', ['count' => $all]) }}</flux:button>
                 @endif
             </x-slot>
         </x-selection-bar>

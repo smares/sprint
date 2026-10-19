@@ -1533,7 +1533,9 @@ class AsanaImportService
             ->orderBy('attachments.id')
             ->select('asana_imports.gid', 'attachments.id', 'attachments.user_id');
 
-        foreach ($rows->cursor() as $row) {
+        // Read in one go: an open cursor keeps a read snapshot of the database for the whole run (minutes of requests to Asana),
+        // and a write after other writers (queue, scheduler, people) have saved meanwhile fails with "database is locked"
+        foreach ($rows->get() as $row) {
             $result['checked']++;
 
             try {

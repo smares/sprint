@@ -141,6 +141,20 @@ class BulkTaskActionsTest extends TestCase
         $page->assertSet('selected', fn ($ids) => count($ids) === 60);
     }
 
+    public function test_the_offer_to_select_everything_goes_when_everything_is_selected_and_the_boxes_stand_in_one_line(): void
+    {
+        Task::factory()->for($this->project)->count(60)->create();
+
+        $html = $this->list()->call('selectTask', $this->project->tasks()->first()->id)->html();
+
+        // The button counts the browser's selection, so it disappears without a request once all 60 are ticked
+        $this->assertMatchesRegularExpression('/x-show="\$wire\.selected\.length (<|&lt;) 60"/', $html);
+        $this->assertStringContainsString('Alle 60 auswählen', $html);
+
+        // The box of the header is in the same 24px box as the boxes of the rows
+        $this->assertMatchesRegularExpression('/size-6 shrink-0 items-center justify-center"[^>]*>\s*<ui-checkbox[^>]*aria-label="Alle sichtbaren Aufgaben auswählen"/', $html);
+    }
+
     public function test_changing_the_filters_forgets_the_selection(): void
     {
         $a = $this->task('Eins');

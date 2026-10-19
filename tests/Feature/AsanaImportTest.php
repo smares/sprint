@@ -558,6 +558,61 @@ class AsanaImportTest extends TestCase
         $this->assertSame(Comment::MAX_BODY_LENGTH, $concept->comments()->get()->max(fn (Comment $comment) => mb_strlen($comment->body)));
     }
 
+    public function test_a_file_belongs_to_the_person_who_uploaded_it_in_asana(): void
+    {
+        $this->routes['attachments?parent=1001'][0]['created_by'] = $this->person('11', 'Anna', 'anna@example.com');
+
+        $this->import(['--as' => $this->admin->email])->assertSuccessful();
+
+        $this->assertSame($this->anna->id, Attachment::where('name', 'plan.pdf')->firstOrFail()->user_id);
+    }
+
+    public function test_a_file_of_somebody_without_an_account_here_belongs_to_the_importer(): void
+    {
+        $this->routes['attachments?parent=1001'][0]['created_by'] = $this->person('13', 'Cara', 'cara@example.com');
+
+        $this->import(['--as' => $this->admin->email])->assertSuccessful();
+
+        $this->assertSame($this->admin->id, Attachment::where('name', 'plan.pdf')->firstOrFail()->user_id);
+    }
+
+    public function test_the_fix_command_credits_files_of_earlier_imports_to_their_uploader(): void
+    {
+        $this->import(['--as' => $this->admin->email])->assertSuccessful();
+
+        $attachment = Attachment::where('name', 'plan.pdf')->firstOrFail();
+        $this->assertSame($this->admin->id, $attachment->user_id);
+
+        $this->routes['attachments/7001']['created_by'] = $this->person('11', 'Anna', 'anna@example.com');
+
+        $this->artisan('asana:fix-attachment-uploaders', ['--token' => 'secret-token', '--dry-run' => true])
+            ->expectsOutputToContain('Dry run: 1 files checked, 1 would be credited')
+            ->assertSuccessful();
+        $this->assertSame($this->admin->id, $attachment->fresh()->user_id);
+
+        $this->artisan('asana:fix-attachment-uploaders', ['--token' => 'secret-token'])
+            ->expectsOutputToContain('1 files checked, 1 were credited')
+            ->assertSuccessful();
+        $this->assertSame($this->anna->id, $attachment->fresh()->user_id);
+
+        // An uploader without an account here, or a file Asana no longer has, stays as it is
+        Attachment::query()->whereKey($attachment->id)->toBase()->update(['user_id' => $this->admin->id]);
+        $this->routes['attachments/7001']['created_by'] = $this->person('13', 'Cara', 'cara@example.com');
+        $this->artisan('asana:fix-attachment-uploaders', ['--token' => 'secret-token'])->expectsOutputToContain('1 stay as they are')->assertSuccessful();
+        unset($this->routes['attachments/7001']);
+        $this->artisan('asana:fix-attachment-uploaders', ['--token' => 'secret-token'])->expectsOutputToContain('1 stay as they are')->assertSuccessful();
+        $this->assertSame($this->admin->id, $attachment->fresh()->user_id);
+    }
+
+    public function test_the_fix_command_stops_on_a_refused_token(): void
+    {
+        $this->import(['--as' => $this->admin->email])->assertSuccessful();
+
+        $this->routes['attachments/7001'] = ['__error' => ['status' => 401, 'message' => 'not authorized']];
+
+        $this->artisan('asana:fix-attachment-uploaders', ['--token' => 'secret-token'])->assertFailed();
+    }
+
     public function test_files_that_could_not_be_fetched_make_the_run_fail_and_a_second_run_fetches_them(): void
     {
         $this->routes['attachments/7001'] = ['__error' => ['status' => 403, 'message' => 'forbidden']];

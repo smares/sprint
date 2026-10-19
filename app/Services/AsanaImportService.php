@@ -471,10 +471,12 @@ class AsanaImportService
     {
         $attachments = [];
 
-        foreach ($this->asana->paginate('attachments', ['parent' => $taskGid, 'opt_fields' => 'name,host,size,created_at,permanent_url,view_url']) as $attachment) {
+        foreach ($this->asana->paginate('attachments', ['parent' => $taskGid, 'opt_fields' => 'name,host,size,created_at,permanent_url,view_url,created_by.gid,created_by.name,created_by.email']) as $attachment) {
             if (isset($this->map['attachment'][(string) $attachment['gid']]) || isset($this->map['link'][(string) $attachment['gid']])) {
                 continue;
             }
+
+            $this->remember($attachment['created_by'] ?? []);
 
             $size = (int) ($attachment['size'] ?? 0);
             $stored = ($attachment['host'] ?? 'asana') === 'asana' && $size <= Attachment::MAX_KILOBYTES * 1024;
@@ -483,6 +485,7 @@ class AsanaImportService
                 'gid' => (string) $attachment['gid'],
                 'name' => trim((string) ($attachment['name'] ?? '')) ?: 'file',
                 'created_at' => $this->moment($attachment['created_at'] ?? null),
+                'uploader' => isset($attachment['created_by']['gid']) ? (string) $attachment['created_by']['gid'] : null,
                 'size' => $size,
                 'stored' => $stored,
                 'url' => $attachment['permanent_url'] ?? $attachment['view_url'] ?? null,
@@ -1357,10 +1360,13 @@ class AsanaImportService
             @unlink($temporary);
         }
 
+        // Whoever uploaded the file in Asana; without a matching account the importer stands there, as for comments
+        $uploader = isset($attachment['uploader']) ? $this->user((string) $attachment['uploader']) : null;
+
         try {
             $record = new Attachment([
                 'task_id' => $task->id,
-                'user_id' => $this->importer->id,
+                'user_id' => ($uploader ?? $this->importer)->id,
                 'name' => $name,
                 'path' => $path,
                 'mime_type' => $mimeType,
@@ -1509,6 +1515,53 @@ class AsanaImportService
         }
 
         return '@'.$this->literalName($this->people[$gid]['name'] ?? __('someone'));
+    }
+
+    /**
+     * Credit the files taken over earlier to the people who uploaded them in Asana (before, the importer stood there for
+     * all). Files whose uploader has no account here, or whose answer Asana does not give any more, stay as they are.
+     *
+     * @return array{checked: int, changed: int, unknown: int}
+     */
+    public function fixAttachmentUploaders(bool $dryRun = false): array
+    {
+        $result = ['checked' => 0, 'changed' => 0, 'unknown' => 0];
+
+        $rows = DB::table('asana_imports')
+            ->join('attachments', 'attachments.id', '=', 'asana_imports.model_id')
+            ->where('asana_imports.kind', 'attachment')
+            ->orderBy('attachments.id')
+            ->select('asana_imports.gid', 'attachments.id', 'attachments.user_id');
+
+        foreach ($rows->cursor() as $row) {
+            $result['checked']++;
+
+            try {
+                $found = $this->asana->get('attachments/'.$row->gid, ['opt_fields' => 'created_by.gid,created_by.name,created_by.email']);
+            } catch (AsanaException $exception) {
+                // A file Asana does not have any more stays as it is; anything else (token, limits) is no use to go on
+                throw_unless($exception->status === 404, $exception);
+
+                $result['unknown']++;
+
+                continue;
+            }
+
+            $this->remember($found['created_by'] ?? []);
+            $uploader = isset($found['created_by']['gid']) ? $this->user((string) $found['created_by']['gid']) : null;
+
+            if (! $uploader instanceof User) {
+                $result['unknown']++;
+            } elseif ($uploader->id !== (int) $row->user_id) {
+                $result['changed']++;
+
+                if (! $dryRun) {
+                    Attachment::query()->whereKey($row->id)->toBase()->update(['user_id' => $uploader->id]);
+                }
+            }
+        }
+
+        return $result;
     }
 
     private function loadMap(): void

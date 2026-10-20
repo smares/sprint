@@ -30,7 +30,11 @@ trait ListsMyTasks
      */
     public function mountListsMyTasks(): void
     {
-        auth()->user()->rememberInterface(['mine_view' => request()->routeIs('tasks.mine.board') ? 'board' : 'list']);
+        $view = request()->routeIs('tasks.mine.board') ? 'board' : 'list';
+
+        if ((auth()->user()->interfaceState()['mine_view'] ?? null) !== $view) {
+            auth()->user()->rememberInterface(['mine_view' => $view]);
+        }
     }
 
     /**

@@ -31,11 +31,19 @@ use NotificationChannels\WebPush\HasPushSubscriptions;
 use SensitiveParameter;
 
 #[Fillable(['name', 'email', 'password', 'is_admin', 'locale', 'timezone', 'deactivated_at', 'digest_enabled', 'reminders_enabled', 'celebrations_enabled', 'absent_from', 'absent_until', 'quiet_from', 'quiet_until', 'quiet_days'])]
-#[Hidden(['password', 'remember_token', 'two_factor_secret', 'two_factor_recovery_codes'])]
+#[Hidden(['password', 'remember_token', 'two_factor_secret', 'two_factor_recovery_codes', 'interface'])]
 class User extends Authenticatable implements HasLocalePreference, PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, HasPushSubscriptions, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
+
+    /** How often a change of the interface state is tried again when another request wrote the row meanwhile. */
+    private const int INTERFACE_WRITE_ATTEMPTS = 10;
+
+    /** Boards with collapsed columns, and collapsed columns of one board, that are kept (the most recently changed ones). */
+    public const int INTERFACE_MAX_BOARDS = 200;
+
+    public const int INTERFACE_MAX_COLUMNS = 50;
 
     /** Flux's avatar colors that avatarColor() picks from. Appending keeps everyone's color; reordering changes it. */
     public const array AVATAR_COLORS = ['red', 'orange', 'amber', 'lime', 'green', 'emerald', 'teal', 'cyan', 'sky', 'blue', 'indigo', 'violet', 'purple', 'fuchsia', 'pink', 'rose'];
@@ -99,7 +107,130 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
             'absent_from' => 'date',
             'absent_until' => 'date',
             'quiet_days' => 'array',
+            'interface' => 'array',
         ];
+    }
+
+    /**
+     * What the person has arranged in the interface, which follows them from one device to the next: the appearance, the
+     * sidebar, the collapsed board columns and the view of "My tasks" they used last.
+     *
+     * @return array{rev?: int, appearance?: string, sidebar_collapsed?: bool, mine_view?: string, board_collapsed?: array<int|string, list<int>>, mine_board_collapsed?: list<int>}
+     */
+    public function interfaceState(): array
+    {
+        return $this->interface ?? [];
+    }
+
+    /**
+     * The columns of a board that are collapsed: those of a project, or (without one) those of "My tasks".
+     *
+     * @return list<int>
+     */
+    public function collapsedColumns(?int $projectId = null): array
+    {
+        $state = $this->interfaceState();
+
+        return $projectId === null ? ($state['mine_board_collapsed'] ?? []) : ($state['board_collapsed'][$projectId] ?? []);
+    }
+
+    /**
+     * Merges changes into the interface state. Only the given keys are replaced, and a collapsed column is added or removed
+     * on its own (`board_collapsed` by project, `mine_board_collapsed`: column id => collapsed), so a device that has not
+     * seen another one's change does not take it back. The row is written only if it is still what was read (and read
+     * again if not), so two requests of the same person at once lose nothing. The state stays small: boards without a
+     * collapsed column are dropped, and only the most recently changed boards and columns are kept. Every change raises
+     * `rev`, so a page can tell an older state from a newer one (a page that comes back from the browser's history).
+     *
+     * @param  array<string, mixed>  $changes  validated, see InterfaceController, or one of the known keys with a known value
+     * @return int the revision of the state
+     */
+    public function rememberInterface(array $changes): int
+    {
+        for ($attempt = 0; $attempt < self::INTERFACE_WRITE_ATTEMPTS; $attempt++) {
+            $stored = DB::table($this->getTable())->where($this->getKeyName(), $this->getKey())->value('interface');
+            $current = $stored === null ? [] : json_decode($stored, true);
+            $state = $this->mergeInterface($current, $changes);
+
+            if ($state === $current) {
+                break;
+            }
+
+            $state['rev'] = ($current['rev'] ?? 0) + 1;
+
+            $written = DB::table($this->getTable())
+                ->where($this->getKeyName(), $this->getKey())
+                ->where(fn (\Illuminate\Contracts\Database\Query\Builder $row) => $stored === null ? $row->whereNull('interface') : $row->where('interface', $stored))
+                ->update(['interface' => json_encode($state)]);
+
+            if ($written === 1) {
+                break;
+            }
+        }
+
+        $this->setAttribute('interface', $state);
+        $this->syncOriginalAttribute('interface');
+
+        return $state['rev'] ?? 0;
+    }
+
+    /**
+     * @param  array<string, mixed>  $state
+     * @param  array<string, mixed>  $changes
+     * @return array<string, mixed>
+     */
+    private function mergeInterface(array $state, array $changes): array
+    {
+        foreach ($changes as $key => $value) {
+            if ($key === 'board_collapsed') {
+                foreach ($value as $project => $columns) {
+                    $collapsed = $this->applyCollapsed($state[$key][$project] ?? [], $columns);
+
+                    // the board that was changed last goes to the end, where it is kept longest
+                    unset($state[$key][$project]);
+
+                    if ($collapsed !== []) {
+                        $state[$key][$project] = $collapsed;
+                    }
+                }
+
+                $state[$key] = array_slice($state[$key] ?? [], -self::INTERFACE_MAX_BOARDS, preserve_keys: true);
+
+                if ($state[$key] === []) {
+                    unset($state[$key]);
+                }
+            } elseif ($key === 'mine_board_collapsed') {
+                $state[$key] = $this->applyCollapsed($state[$key] ?? [], $value);
+            } else {
+                $state[$key] = $value;
+            }
+        }
+
+        return $state;
+    }
+
+    /**
+     * @param  list<int>  $collapsed
+     * @param  array<int|string, bool>  $changes  column id => whether it is collapsed now
+     * @return list<int>
+     */
+    private function applyCollapsed(array $collapsed, array $changes): array
+    {
+        foreach ($changes as $column => $isCollapsed) {
+            $collapsed = array_values(array_diff($collapsed, [(int) $column]));
+
+            if ($isCollapsed) {
+                $collapsed[] = (int) $column;
+            }
+        }
+
+        return array_slice($collapsed, -self::INTERFACE_MAX_COLUMNS);
+    }
+
+    /** The route of "My tasks" in the view they had open last. */
+    public function mineTasksRoute(): string
+    {
+        return ($this->interfaceState()['mine_view'] ?? 'list') === 'board' ? 'tasks.mine.board' : 'tasks.mine';
     }
 
     protected static function booted(): void

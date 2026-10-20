@@ -32,7 +32,7 @@ class TasksStatusChanged extends Notification implements ShouldQueueAfterCommit
             'count' => count($this->changes),
             'changes' => array_slice($this->changes, 0, self::LISTED),
             'more' => max(0, count($this->changes) - self::LISTED),
-            'url' => route('tasks.mine'),
+            'url' => route($notifiable->mineTasksRoute()),
         ]);
     }
 

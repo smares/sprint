@@ -113,6 +113,7 @@ class MyTasksTest extends TestCase
         };
 
         $addProject();
+        $queries(); // the first visit also keeps the view on the server
         $few = $queries();
 
         foreach (range(1, 6) as $number) {

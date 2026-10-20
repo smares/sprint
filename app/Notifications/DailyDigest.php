@@ -38,7 +38,7 @@ class DailyDigest extends Notification implements ShouldQueueAfterCommit
             'name' => $notifiable->name,
             'tasks' => $this->tasks,
             'limit' => self::PER_SECTION,
-            'url' => route('tasks.mine'),
+            'url' => route($notifiable->mineTasksRoute()),
         ]);
     }
 }

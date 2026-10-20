@@ -13,6 +13,11 @@
         <meta name="theme-color" content="{{ \App\Http\Controllers\ProgressiveWebAppController::THEME_COLOR }}" media="(prefers-color-scheme: light)">
         <meta name="theme-color" content="{{ \App\Http\Controllers\ProgressiveWebAppController::THEME_COLOR_DARK }}" media="(prefers-color-scheme: dark)">
         @auth
+            <meta name="sprint-interface" content="{{ route('interface.update', absolute: false) }}">
+            <script>
+                {{-- The appearance the person chose on any of their devices, before Flux reads it and the page is painted (on a full page load) --}}
+                (() => { try { const appearance = @js(auth()->user()->interfaceState()['appearance'] ?? null), adopted = localStorage.getItem('sprint.interface-adopted'); if (appearance === 'system' || (! appearance && adopted)) { localStorage.removeItem('flux.appearance') } else if (appearance) { localStorage.setItem('flux.appearance', appearance) } } catch {} })()
+            </script>
             <meta name="sprint-push-check" content="{{ route('push.forget-others', absolute: false) }}" data-user="{{ auth()->id() }}">
         @endauth
         @if ($realtime = app(\App\Services\RealtimeService::class)->clientConfig())
@@ -28,8 +33,17 @@
         <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:start-3 focus:top-3 focus:z-50 focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-zinc-900 focus:shadow-lg focus:outline-2 focus:outline-offset-2 dark:focus:bg-zinc-800 dark:focus:text-white">{{ __('Skip to content') }}</a>
 
         @auth
+            {{-- The state kept on the server, before the sidebar (Flux) reads whether it was collapsed; this runs again on every
+                 page change, so a change made on another device arrives with the next page --}}
+            <script>
+                {{-- A change of this device the server has not confirmed yet is newer than what this page was rendered with --}}
+                {{-- ... and so is a state older than the one this device has seen (a page that comes back from the history), or one of another person --}}
+                (() => { const served = @js((object) auth()->user()->interfaceState()), current = window.sprintInterface; if (! current || window.sprintInterfaceUser !== @js(auth()->id()) || (! window.sprintHasUnsentChanges?.() && (served.rev ?? 0) >= (current.rev ?? 0))) { window.sprintInterface = served; window.sprintInterfaceUser = @js(auth()->id()) } })();
+                try { window.sprintSeeding = true; if ('sidebar_collapsed' in window.sprintInterface) { localStorage.setItem('flux-sidebar-collapsed-desktop', JSON.stringify(window.sprintInterface.sidebar_collapsed)) } else if (localStorage.getItem('sprint.interface-adopted')) { localStorage.removeItem('flux-sidebar-collapsed-desktop') } } catch {} window.sprintSeeding = false
+            </script>
+
             {{-- The sidebar is the navigation on every screen: the main pages, the projects with the views of the current one
-                 and the person's menu. On large screens it can be collapsed to icons (remembered in the browser); on phones it
+                 and the person's menu. On large screens it can be collapsed to icons (remembered for the person); on phones it
                  slides in from the header's menu button. --}}
             <flux:sidebar sticky collapsible class="border-e border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900">
                 <flux:sidebar.header>
@@ -60,7 +74,7 @@
 
                 <flux:sidebar.nav>
                     <flux:sidebar.item icon="folder" :href="route('projects.index')" :current="request()->routeIs('projects.index')" wire:navigate>{{ __('Projects') }}</flux:sidebar.item>
-                    <flux:sidebar.item icon="check-circle" :href="route('tasks.mine')" :current="request()->routeIs('tasks.mine', 'tasks.mine.board')" wire:navigate>{{ __('My tasks') }}</flux:sidebar.item>
+                    <flux:sidebar.item icon="check-circle" :href="route(auth()->user()->mineTasksRoute())" :current="request()->routeIs('tasks.mine', 'tasks.mine.board')" wire:navigate>{{ __('My tasks') }}</flux:sidebar.item>
                     <livewire:notification-bell />
                     <flux:sidebar.item icon="calendar-date-range" :href="route('workload')" :current="request()->routeIs('workload')" wire:navigate>{{ __('Workload') }}</flux:sidebar.item>
                     @can('administer')

@@ -252,10 +252,10 @@ new class extends Component
 
     {{-- The columns are the person's own: "Unsorted" holds what they have not put anywhere (and cannot be reordered by hand, it
          follows the due dates), every other column keeps the order the cards were dragged into. As on the project board, a column
-         can be collapsed to a narrow strip (data-collapsed, see app.css), remembered in the browser; a click on the strip opens it. --}}
+         can be collapsed to a narrow strip (data-collapsed, see app.css), remembered for the person; a click on the strip opens it. --}}
     <div class="scroll-shadows" data-fills-height data-move-targets="{{ json_encode(collect([['id' => 0, 'name' => __('Unsorted')]])->concat($this->personalColumns->map(fn ($column) => ['id' => $column->id, 'name' => $column->name]))->values()->all()) }}">
         <flux:kanban class="relative items-start overflow-x-auto pb-4 max-sm:snap-x max-sm:snap-mandatory" data-scroll-edges
-            x-data="{ collapsed: $persist([]).as('mine-board-collapsed'), toggle(id) { this.collapsed = this.collapsed.includes(id) ? this.collapsed.filter((other) => other !== id) : [...this.collapsed, id] } }">
+            x-data="{ collapsed: window.sprintInterface?.mine_board_collapsed ?? {{ json_encode(auth()->user()->collapsedColumns()) }}, toggle(id) { this.collapsed = this.collapsed.includes(id) ? this.collapsed.filter((other) => other !== id) : [...this.collapsed, id]; saveInterface({ mine_board_collapsed: { [id]: this.collapsed.includes(id) } }) } }">
             @foreach ([0 => __('Unsorted')] + $this->personalColumns->pluck('name', 'id')->all() as $key => $name)
                 @php
                     $personal = $key !== 0;

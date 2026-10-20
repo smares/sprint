@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
+use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -12,33 +14,36 @@ use Illuminate\Validation\Rule;
  */
 class InterfaceController extends Controller
 {
-    /** Boards and columns a person can have collapsed at once; more is no use and only grows the row. */
-    private const int MAX_BOARDS = 200;
-
-    private const int MAX_COLUMNS = 50;
-
     public function __invoke(Request $request): JsonResponse
     {
         $changes = $request->validate([
             'appearance' => ['sometimes', Rule::in(['light', 'dark', 'system'])],
             'sidebar_collapsed' => ['sometimes', 'boolean'],
-            'board_collapsed' => ['sometimes', 'array', 'max:'.self::MAX_BOARDS],
-            'board_collapsed.*' => ['array', 'max:'.self::MAX_COLUMNS],
+            'board_collapsed' => ['sometimes', 'array', 'max:'.User::INTERFACE_MAX_BOARDS, $this->hasIdsAsKeys(allowZero: false)],
+            'board_collapsed.*' => ['array', 'max:'.User::INTERFACE_MAX_COLUMNS, $this->hasIdsAsKeys(allowZero: true)],
             'board_collapsed.*.*' => ['boolean'],
-            'mine_board_collapsed' => ['sometimes', 'array', 'max:'.self::MAX_COLUMNS],
+            'mine_board_collapsed' => ['sometimes', 'array', 'max:'.User::INTERFACE_MAX_COLUMNS, $this->hasIdsAsKeys(allowZero: true)],
             'mine_board_collapsed.*' => ['boolean'],
         ]);
 
-        foreach (array_keys($changes['board_collapsed'] ?? []) as $project) {
-            abort_unless(ctype_digit((string) $project), 422);
-        }
+        return response()->json(['rev' => $request->user()->rememberInterface($changes)]);
+    }
 
-        foreach (array_keys($changes['mine_board_collapsed'] ?? []) as $column) {
-            abort_unless(ctype_digit((string) $column), 422);
-        }
+    /**
+     * Projects and columns are named by their ids (column 0 is "Unsorted" in "My tasks", there is no project 0).
+     */
+    private function hasIdsAsKeys(bool $allowZero): Closure
+    {
+        $pattern = $allowZero ? '/^(0|[1-9]\d{0,17})$/' : '/^[1-9]\d{0,17}$/';
 
-        $request->user()->rememberInterface($changes);
+        return function (string $attribute, mixed $value, Closure $fail) use ($pattern): void {
+            foreach (array_keys($value) as $key) {
+                if (preg_match($pattern, (string) $key) !== 1) {
+                    $fail(__('validation.array'));
 
-        return response()->json(status: 204);
+                    return;
+                }
+            }
+        };
     }
 }

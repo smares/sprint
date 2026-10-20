@@ -15,8 +15,8 @@
         @auth
             <meta name="sprint-interface" content="{{ route('interface.update', absolute: false) }}">
             <script>
-                {{-- The appearance the person chose on any of their devices, before Flux reads it (and the page is painted) --}}
-                (() => { try { const appearance = @js(auth()->user()->interfaceState()['appearance'] ?? null); if (appearance === 'system') { localStorage.removeItem('flux.appearance') } else if (appearance) { localStorage.setItem('flux.appearance', appearance) } } catch {} })()
+                {{-- The appearance the person chose on any of their devices, before Flux reads it and the page is painted (on a full page load) --}}
+                (() => { try { const appearance = @js(auth()->user()->interfaceState()['appearance'] ?? null), adopted = localStorage.getItem('sprint.interface-adopted'); if (appearance === 'system' || (! appearance && adopted)) { localStorage.removeItem('flux.appearance') } else if (appearance) { localStorage.setItem('flux.appearance', appearance) } } catch {} })()
             </script>
             <meta name="sprint-push-check" content="{{ route('push.forget-others', absolute: false) }}" data-user="{{ auth()->id() }}">
         @endauth
@@ -37,8 +37,9 @@
                  page change, so a change made on another device arrives with the next page --}}
             <script>
                 {{-- A change of this device the server has not confirmed yet is newer than what this page was rendered with --}}
-                window.sprintInterface = window.sprintHasUnsentChanges?.() ? window.sprintInterface : @js((object) auth()->user()->interfaceState());
-                try { if ('sidebar_collapsed' in window.sprintInterface) { window.sprintSeeding = true; localStorage.setItem('flux-sidebar-collapsed-desktop', JSON.stringify(window.sprintInterface.sidebar_collapsed)); window.sprintSeeding = false } } catch { window.sprintSeeding = false }
+                {{-- ... and so is a state older than the one this device has seen (a page that comes back from the history), or one of another person --}}
+                (() => { const served = @js((object) auth()->user()->interfaceState()), current = window.sprintInterface; if (! current || window.sprintInterfaceUser !== @js(auth()->id()) || (! window.sprintHasUnsentChanges?.() && (served.rev ?? 0) >= (current.rev ?? 0))) { window.sprintInterface = served; window.sprintInterfaceUser = @js(auth()->id()) } })();
+                try { window.sprintSeeding = true; if ('sidebar_collapsed' in window.sprintInterface) { localStorage.setItem('flux-sidebar-collapsed-desktop', JSON.stringify(window.sprintInterface.sidebar_collapsed)) } else if (localStorage.getItem('sprint.interface-adopted')) { localStorage.removeItem('flux-sidebar-collapsed-desktop') } } catch {} window.sprintSeeding = false
             </script>
 
             {{-- The sidebar is the navigation on every screen: the main pages, the projects with the views of the current one

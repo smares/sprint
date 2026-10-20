@@ -395,7 +395,7 @@ class MyTasksBoardTest extends TestCase
 
         $this->get(route('tasks.mine.board'))
             ->assertOk()
-            ->assertSee('collapsed: ['.$own->id.']', false)
+            ->assertSee('?? ['.$own->id.']', false)
             // "Unsorted" (key 0) and the person's own columns alike
             ->assertSee('x-bind:data-collapsed="collapsed.includes(0)"', false)
             ->assertSee('x-bind:data-collapsed="collapsed.includes('.$own->id.')"', false)
@@ -412,6 +412,6 @@ class MyTasksBoardTest extends TestCase
 
     public function test_the_sidebar_marks_my_tasks_on_the_board_too(): void
     {
-        $this->get(route('tasks.mine.board'))->assertOk()->assertSeeHtml('href="'.route('tasks.mine.board').'" data-current');
+        $this->get(route('tasks.mine.board'), ['X-Livewire-Navigate' => '1'])->assertOk()->assertSeeHtml('href="'.route('tasks.mine.board').'" data-current');
     }
 }

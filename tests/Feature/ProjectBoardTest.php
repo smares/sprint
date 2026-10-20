@@ -95,7 +95,7 @@ class ProjectBoardTest extends TestCase
 
         $this->get(route('projects.board', $project))
             ->assertOk()
-            ->assertSee('collapsed: ['.$open->id.']', false)
+            ->assertSee('?? ['.$open->id.']', false)
             ->assertSee('x-bind:data-collapsed="collapsed.includes('.$open->id.')"', false)
             ->assertSee('x-on:click.stop="toggle('.$open->id.')"', false)
             ->assertSee('Spalte '.$open->name.' einklappen', false)

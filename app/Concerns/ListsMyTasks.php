@@ -26,13 +26,14 @@ trait ListsMyTasks
     abstract protected function forgetTasks(): void;
 
     /**
-     * "My tasks" opens in the view one used last, on every device.
+     * "My tasks" opens in the view one used last, on every device. Only a change of view inside the app counts: a link in
+     * an e-mail or a bookmark opens a view without making it the one used last.
      */
     public function mountListsMyTasks(): void
     {
         $view = request()->routeIs('tasks.mine.board') ? 'board' : 'list';
 
-        if ((auth()->user()->interfaceState()['mine_view'] ?? null) !== $view) {
+        if (request()->hasHeader('X-Livewire-Navigate') && (auth()->user()->interfaceState()['mine_view'] ?? null) !== $view) {
             auth()->user()->rememberInterface(['mine_view' => $view]);
         }
     }

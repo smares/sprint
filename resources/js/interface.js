@@ -37,23 +37,48 @@ const flush = () => {
 // device that has not seen another one's change must not take it back by repeating its own old value.
 const isNews = (key, value) => JSON.stringify(window.sprintInterface?.[key]) !== JSON.stringify(value)
 
-// Changes within a moment (toggling several columns) travel together; a board's columns are replaced as a whole per board
-export const saveInterface = (changes) => {
-    const { board_collapsed: boards = {}, ...others } = changes
-    const news = Object.fromEntries(Object.entries(others).filter(([key, value]) => isNews(key, value)))
-    const newBoards = Object.fromEntries(Object.entries(boards).filter(([project, ids]) => JSON.stringify(window.sprintInterface?.board_collapsed?.[project] ?? []) !== JSON.stringify(ids)))
+// Collapsed columns are sent one by one (column id => collapsed), only those that differ from what the page brought
+const newColumns = (known = [], columns = {}) => Object.fromEntries(Object.entries(columns).filter(([column, collapsed]) => known.includes(Number(column)) !== collapsed))
 
-    if (Object.keys(news).length === 0 && Object.keys(newBoards).length === 0) {
+const withColumn = (known = [], columns) => [...known.filter((column) => ! (String(column) in columns)), ...Object.keys(columns).filter((column) => columns[column]).map(Number)]
+
+// Changes within a moment (toggling several columns) travel together
+export const saveInterface = (changes) => {
+    const { board_collapsed: boards = {}, mine_board_collapsed: mine = {}, ...others } = changes
+    const known = window.sprintInterface ?? {}
+    const news = Object.fromEntries(Object.entries(others).filter(([key, value]) => isNews(key, value)))
+    const newBoards = Object.fromEntries(Object.entries(boards).map(([project, columns]) => [project, newColumns(known.board_collapsed?.[project], columns)]).filter(([, columns]) => Object.keys(columns).length > 0))
+    const newMine = newColumns(known.mine_board_collapsed, mine)
+
+    if (Object.keys(news).length + Object.keys(newBoards).length + Object.keys(newMine).length === 0) {
         return
     }
 
     pending = { ...pending, ...news }
 
     if (Object.keys(newBoards).length > 0) {
-        pending.board_collapsed = { ...pending.board_collapsed, ...newBoards }
+        pending.board_collapsed = { ...pending.board_collapsed }
+
+        for (const [project, columns] of Object.entries(newBoards)) {
+            pending.board_collapsed[project] = { ...pending.board_collapsed[project], ...columns }
+        }
     }
 
-    window.sprintInterface = { ...window.sprintInterface, ...news, ...(Object.keys(newBoards).length > 0 && { board_collapsed: { ...window.sprintInterface?.board_collapsed, ...newBoards } }) }
+    if (Object.keys(newMine).length > 0) {
+        pending.mine_board_collapsed = { ...pending.mine_board_collapsed, ...newMine }
+    }
+
+    const next = { ...known, ...news }
+
+    for (const [project, columns] of Object.entries(newBoards)) {
+        next.board_collapsed = { ...next.board_collapsed, [project]: withColumn(known.board_collapsed?.[project], columns) }
+    }
+
+    if (Object.keys(newMine).length > 0) {
+        next.mine_board_collapsed = withColumn(known.mine_board_collapsed, newMine)
+    }
+
+    window.sprintInterface = next
     timer ??= setTimeout(flush, 400)
 }
 
@@ -99,12 +124,12 @@ export const adoptLocalInterface = () => {
 
             if (Array.isArray(ids) && ids.length > 0) {
                 if (key === '_x_mine-board-collapsed') {
-                    changes.mine_board_collapsed ??= state.mine_board_collapsed ?? ids
+                    changes.mine_board_collapsed = Object.fromEntries(ids.map((id) => [id, true]))
                 } else {
                     const project = key.slice('_x_board-collapsed-'.length)
 
                     if (! state.board_collapsed || ! (project in state.board_collapsed)) {
-                        changes.board_collapsed = { ...changes.board_collapsed, [project]: ids }
+                        changes.board_collapsed = { ...changes.board_collapsed, [project]: Object.fromEntries(ids.map((id) => [id, true])) }
                     }
                 }
             }

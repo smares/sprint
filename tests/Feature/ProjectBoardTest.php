@@ -87,14 +87,15 @@ class ProjectBoardTest extends TestCase
         $this->assertSame($foreign->project->defaultStatus()->id, $foreign->refresh()->status_id);
     }
 
-    public function test_columns_can_be_collapsed_and_are_remembered_per_project(): void
+    public function test_columns_can_be_collapsed_and_are_remembered_per_project_on_the_server(): void
     {
         $project = Project::factory()->create();
         $open = $project->defaultStatus();
+        auth()->user()->rememberInterface(['board_collapsed' => [$project->id => [$open->id => true]]]);
 
         $this->get(route('projects.board', $project))
             ->assertOk()
-            ->assertSee("\$persist([]).as('board-collapsed-{$project->id}')", false)
+            ->assertSee('collapsed: ['.$open->id.']', false)
             ->assertSee('x-bind:data-collapsed="collapsed.includes('.$open->id.')"', false)
             ->assertSee('x-on:click.stop="toggle('.$open->id.')"', false)
             ->assertSee('Spalte '.$open->name.' einklappen', false)

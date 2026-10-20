@@ -21,25 +21,27 @@ class InterfaceStateTest extends TestCase
         $this->assertSame(['appearance' => 'light', 'sidebar_collapsed' => true], $user->fresh()->interfaceState());
     }
 
-    public function test_a_device_that_did_not_see_a_change_does_not_take_it_back(): void
+    public function test_a_column_is_added_or_removed_on_its_own(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create(['interface' => ['board_collapsed' => ['1' => [10, 11], '2' => [20]], 'mine_board_collapsed' => [5]]]);
 
-        $this->actingAs($user)->patchJson(route('interface.update'), ['board_collapsed' => [1 => [10, 11], 2 => [20]]]);
-        $this->actingAs($user)->patchJson(route('interface.update'), ['board_collapsed' => [2 => []], 'sidebar_collapsed' => false]);
+        // a device that saw an older state: it collapses 12 and opens 10, and knows nothing of 11 or of the other board
+        $this->actingAs($user)->patchJson(route('interface.update'), ['board_collapsed' => [1 => [12 => true, 10 => false]], 'mine_board_collapsed' => [6 => true], 'sidebar_collapsed' => false])->assertNoContent();
 
         $state = $user->fresh()->interfaceState();
 
-        $this->assertSame([10, 11], $state['board_collapsed']['1']);
-        $this->assertSame([], $state['board_collapsed']['2']);
+        $this->assertEqualsCanonicalizing([11, 12], $state['board_collapsed']['1']);
+        $this->assertSame([20], $state['board_collapsed']['2']);
+        $this->assertEqualsCanonicalizing([5, 6], $state['mine_board_collapsed']);
         $this->assertFalse($state['sidebar_collapsed']);
     }
 
-    public function test_columns_are_made_unique_and_whole_numbers(): void
+    public function test_a_column_collapsed_twice_is_kept_once(): void
     {
         $user = User::factory()->create();
 
-        $this->actingAs($user)->patchJson(route('interface.update'), ['mine_board_collapsed' => [3, 3, '4']])->assertNoContent();
+        $this->actingAs($user)->patchJson(route('interface.update'), ['mine_board_collapsed' => [3 => true]])->assertNoContent();
+        $this->actingAs($user)->patchJson(route('interface.update'), ['mine_board_collapsed' => [3 => true, 4 => true]])->assertNoContent();
 
         $this->assertSame([3, 4], $user->fresh()->interfaceState()['mine_board_collapsed']);
     }
@@ -49,7 +51,7 @@ class InterfaceStateTest extends TestCase
         $user = User::factory()->create();
 
         $this->actingAs($user)->patchJson(route('interface.update'), ['appearance' => 'purple'])->assertJsonValidationErrors('appearance');
-        $this->actingAs($user)->patchJson(route('interface.update'), ['board_collapsed' => [1 => ['x']]])->assertJsonValidationErrors('board_collapsed.1.0');
+        $this->actingAs($user)->patchJson(route('interface.update'), ['board_collapsed' => [1 => [5 => 'x']]])->assertJsonValidationErrors('board_collapsed.1.5');
         $this->actingAs($user)->patchJson(route('interface.update'), ['sidebar_collapsed' => 'maybe'])->assertJsonValidationErrors('sidebar_collapsed');
 
         $this->assertSame([], $user->fresh()->interfaceState());

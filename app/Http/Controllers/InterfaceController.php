@@ -8,7 +8,7 @@ use Illuminate\Validation\Rule;
 
 /**
  * Keeps what a person arranged in the interface (appearance, sidebar, collapsed columns) on the server, so that a second
- * device shows the same. A request carries only what changed on that device.
+ * device shows the same. A request carries only what changed on that device; a column is sent as its own change.
  */
 class InterfaceController extends Controller
 {
@@ -24,19 +24,17 @@ class InterfaceController extends Controller
             'sidebar_collapsed' => ['sometimes', 'boolean'],
             'board_collapsed' => ['sometimes', 'array', 'max:'.self::MAX_BOARDS],
             'board_collapsed.*' => ['array', 'max:'.self::MAX_COLUMNS],
-            'board_collapsed.*.*' => ['integer', 'min:1'],
+            'board_collapsed.*.*' => ['boolean'],
             'mine_board_collapsed' => ['sometimes', 'array', 'max:'.self::MAX_COLUMNS],
-            'mine_board_collapsed.*' => ['integer', 'min:1'],
+            'mine_board_collapsed.*' => ['boolean'],
         ]);
 
-        if (isset($changes['board_collapsed'])) {
-            $changes['board_collapsed'] = collect($changes['board_collapsed'])
-                ->mapWithKeys(fn (array $columns, $project) => [(string) (int) $project => array_values(array_unique(array_map(intval(...), $columns)))])
-                ->all();
+        foreach (array_keys($changes['board_collapsed'] ?? []) as $project) {
+            abort_unless(ctype_digit((string) $project), 422);
         }
 
-        if (isset($changes['mine_board_collapsed'])) {
-            $changes['mine_board_collapsed'] = array_values(array_unique(array_map(intval(...), $changes['mine_board_collapsed'])));
+        foreach (array_keys($changes['mine_board_collapsed'] ?? []) as $column) {
+            abort_unless(ctype_digit((string) $column), 422);
         }
 
         $request->user()->rememberInterface($changes);

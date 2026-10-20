@@ -115,8 +115,9 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
     }
 
     /**
-     * Merges changes into the interface state. Only the given keys (and for the columns of a board only the given boards)
-     * are replaced, so a device that has not seen another one's change does not take it back.
+     * Merges changes into the interface state. Only the given keys are replaced, and a collapsed column is added or removed
+     * on its own (`board_collapsed` by project, `mine_board_collapsed`: column id => collapsed), so a device that has not
+     * seen another one's change does not take it back.
      *
      * @param  array<string, mixed>  $changes  already validated, see InterfaceController
      */
@@ -125,12 +126,38 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
         $state = $this->interfaceState();
 
         foreach ($changes as $key => $value) {
-            $state[$key] = $key === 'board_collapsed' ? array_replace($state[$key] ?? [], $value) : $value;
+            if ($key === 'board_collapsed') {
+                foreach ($value as $project => $columns) {
+                    $state[$key][$project] = $this->applyCollapsed($state[$key][$project] ?? [], $columns);
+                }
+            } elseif ($key === 'mine_board_collapsed') {
+                $state[$key] = $this->applyCollapsed($state[$key] ?? [], $value);
+            } else {
+                $state[$key] = $value;
+            }
         }
 
         if ($state !== $this->interfaceState()) {
             $this->forceFill(['interface' => $state])->save();
         }
+    }
+
+    /**
+     * @param  list<int>  $collapsed
+     * @param  array<int|string, bool>  $changes  column id => whether it is collapsed now
+     * @return list<int>
+     */
+    private function applyCollapsed(array $collapsed, array $changes): array
+    {
+        foreach ($changes as $column => $isCollapsed) {
+            $collapsed = array_values(array_diff($collapsed, [(int) $column]));
+
+            if ($isCollapsed) {
+                $collapsed[] = (int) $column;
+            }
+        }
+
+        return $collapsed;
     }
 
     /** The route of "My tasks" in the view they had open last. */

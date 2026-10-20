@@ -36,6 +36,23 @@ class InterfaceStateTest extends TestCase
         $this->assertFalse($state['sidebar_collapsed']);
     }
 
+    public function test_a_change_is_merged_into_what_is_stored_now_not_into_what_was_loaded(): void
+    {
+        $user = User::factory()->create(['interface' => ['mine_board_collapsed' => [1]]]);
+
+        // this request loaded the user a moment ago; another request changed the row meanwhile
+        $loaded = User::find($user->id);
+        User::find($user->id)->rememberInterface(['mine_board_collapsed' => [2 => true], 'appearance' => 'dark']);
+
+        $loaded->rememberInterface(['mine_board_collapsed' => [3 => true]]);
+
+        $state = $user->fresh()->interfaceState();
+
+        $this->assertEqualsCanonicalizing([1, 2, 3], $state['mine_board_collapsed']);
+        $this->assertSame('dark', $state['appearance']);
+        $this->assertEqualsCanonicalizing([1, 2, 3], $loaded->interfaceState()['mine_board_collapsed']);
+    }
+
     public function test_a_column_collapsed_twice_is_kept_once(): void
     {
         $user = User::factory()->create();

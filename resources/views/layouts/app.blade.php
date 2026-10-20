@@ -36,7 +36,8 @@
             {{-- The state kept on the server, before the sidebar (Flux) reads whether it was collapsed; this runs again on every
                  page change, so a change made on another device arrives with the next page --}}
             <script>
-                window.sprintInterface = @js((object) auth()->user()->interfaceState());
+                {{-- A change of this device the server has not confirmed yet is newer than what this page was rendered with --}}
+                window.sprintInterface = window.sprintHasUnsentChanges?.() ? window.sprintInterface : @js((object) auth()->user()->interfaceState());
                 try { if ('sidebar_collapsed' in window.sprintInterface) { window.sprintSeeding = true; localStorage.setItem('flux-sidebar-collapsed-desktop', JSON.stringify(window.sprintInterface.sidebar_collapsed)); window.sprintSeeding = false } } catch { window.sprintSeeding = false }
             </script>
 

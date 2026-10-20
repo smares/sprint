@@ -21,6 +21,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Contracts\PasskeyUser;
@@ -123,23 +124,30 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
      */
     public function rememberInterface(array $changes): void
     {
-        $state = $this->interfaceState();
+        // Two requests of the same person (two devices, or a page and a change at once) read, merge and write one row: one at a time
+        Cache::lock('interface-state:'.$this->getKey(), 10)->block(5, function () use ($changes): void {
+            $stored = static::query()->whereKey($this->getKey())->first()?->interfaceState() ?? [];
+            $state = $stored;
 
-        foreach ($changes as $key => $value) {
-            if ($key === 'board_collapsed') {
-                foreach ($value as $project => $columns) {
-                    $state[$key][$project] = $this->applyCollapsed($state[$key][$project] ?? [], $columns);
+            foreach ($changes as $key => $value) {
+                if ($key === 'board_collapsed') {
+                    foreach ($value as $project => $columns) {
+                        $state[$key][$project] = self::applyCollapsed($state[$key][$project] ?? [], $columns);
+                    }
+                } elseif ($key === 'mine_board_collapsed') {
+                    $state[$key] = self::applyCollapsed($state[$key] ?? [], $value);
+                } else {
+                    $state[$key] = $value;
                 }
-            } elseif ($key === 'mine_board_collapsed') {
-                $state[$key] = $this->applyCollapsed($state[$key] ?? [], $value);
-            } else {
-                $state[$key] = $value;
             }
-        }
 
-        if ($state !== $this->interfaceState()) {
-            $this->forceFill(['interface' => $state])->save();
-        }
+            if ($state !== $stored) {
+                static::query()->whereKey($this->getKey())->update(['interface' => json_encode($state)]);
+            }
+
+            $this->setAttribute('interface', $state);
+            $this->syncOriginalAttribute('interface');
+        });
     }
 
     /**

@@ -6,6 +6,12 @@
 let pending = {}
 let timer = null
 let sending = 0
+let queue = Promise.resolve()
+
+// Whether this device has a change the server has not confirmed yet; a page that arrives meanwhile must not take it back
+export const hasUnsentChanges = () => timer !== null || sending > 0
+
+window.sprintHasUnsentChanges = hasUnsentChanges
 
 const flush = () => {
     clearTimeout(timer)
@@ -25,12 +31,15 @@ const flush = () => {
 
     sending++
 
-    fetch(url, {
+    const send = () => fetch(url, {
         method: 'PATCH',
         keepalive: true,
         headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('script[data-csrf]')?.dataset.csrf ?? '' },
         body: JSON.stringify(changes),
     }).catch(() => {}).finally(() => sending--)
+
+    // One at a time and in order, so a later change is not overtaken by an earlier one; a page that is closing sends at once
+    queue = document.visibilityState === 'hidden' ? (send(), queue) : queue.then(send)
 }
 
 // What the server already has (as of the last page) is not sent again; Flux also writes its keys when nothing changed, and a
@@ -148,7 +157,7 @@ export const followServerAppearance = () => {
     const appearance = window.sprintInterface?.appearance
 
     // A change of this device that has not reached the server yet is newer than what the page brought
-    if (timer || sending > 0) {
+    if (hasUnsentChanges()) {
         return
     }
 

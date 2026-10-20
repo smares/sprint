@@ -3,7 +3,7 @@
 <flux:menu class="min-w-60!">
     <div class="px-2 py-1.5">
         <flux:text size="sm" class="mb-1.5">{{ __('Appearance') }}</flux:text>
-        <flux:radio.group x-data variant="segmented" x-model="$flux.appearance" size="sm">
+        <flux:radio.group x-data x-init="$watch('$flux.appearance', (appearance) => saveInterface({ appearance }))" variant="segmented" x-model="$flux.appearance" size="sm">
             <flux:radio value="light" icon="sun" aria-label="{{ __('Light') }}" />
             <flux:radio value="dark" icon="moon" aria-label="{{ __('Dark') }}" />
             <flux:radio value="system" icon="computer-desktop" aria-label="{{ __('System') }}" />

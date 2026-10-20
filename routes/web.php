@@ -4,6 +4,7 @@ use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\AvatarController;
 use App\Http\Controllers\ConfirmEmailController;
 use App\Http\Controllers\HealthController;
+use App\Http\Controllers\InterfaceController;
 use App\Http\Controllers\ProgressiveWebAppController;
 use App\Http\Controllers\ProjectExportController;
 use App\Services\LocaleService;
@@ -92,6 +93,8 @@ Route::livewire('/tasks/{task}/notifications/{user}', 'pages::tasks.notification
 
 Route::middleware('auth')->group(function () {
     Route::redirect('/', '/projects');
+
+    Route::patch('/interface', InterfaceController::class)->middleware('throttle:120,1')->name('interface.update');
 
     Route::livewire('/profile', 'pages::profile')->name('profile');
     Route::livewire('/inbox', 'pages::inbox')->name('inbox');

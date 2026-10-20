@@ -1,3 +1,9 @@
+import { adoptLocalInterface, followServerAppearance, saveInterface } from './interface.js'
+
+window.saveInterface = saveInterface
+adoptLocalInterface()
+document.addEventListener('livewire:navigated', followServerAppearance)
+
 // Passkeys are only needed on the login page and in the profile; the library is loaded on first use.
 window.passkeys = () => import('@laravel/passkeys').then((module) => module.Passkeys)
 

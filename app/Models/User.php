@@ -99,7 +99,44 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
             'absent_from' => 'date',
             'absent_until' => 'date',
             'quiet_days' => 'array',
+            'interface' => 'array',
         ];
+    }
+
+    /**
+     * What the person has arranged in the interface, which follows them from one device to the next: the appearance, the
+     * sidebar, the collapsed board columns and the view of "My tasks" they used last.
+     *
+     * @return array{appearance?: string, sidebar_collapsed?: bool, mine_view?: string, board_collapsed?: array<string, list<int>>, mine_board_collapsed?: list<int>}
+     */
+    public function interfaceState(): array
+    {
+        return $this->interface ?? [];
+    }
+
+    /**
+     * Merges changes into the interface state. Only the given keys (and for the columns of a board only the given boards)
+     * are replaced, so a device that has not seen another one's change does not take it back.
+     *
+     * @param  array<string, mixed>  $changes  already validated, see InterfaceController
+     */
+    public function rememberInterface(array $changes): void
+    {
+        $state = $this->interfaceState();
+
+        foreach ($changes as $key => $value) {
+            $state[$key] = $key === 'board_collapsed' ? array_replace($state[$key] ?? [], $value) : $value;
+        }
+
+        if ($state !== $this->interfaceState()) {
+            $this->forceFill(['interface' => $state])->save();
+        }
+    }
+
+    /** The route of "My tasks" in the view they had open last. */
+    public function mineTasksRoute(): string
+    {
+        return ($this->interfaceState()['mine_view'] ?? 'list') === 'board' ? 'tasks.mine.board' : 'tasks.mine';
     }
 
     protected static function booted(): void

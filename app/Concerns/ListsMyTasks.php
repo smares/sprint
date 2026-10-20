@@ -26,6 +26,14 @@ trait ListsMyTasks
     abstract protected function forgetTasks(): void;
 
     /**
+     * "My tasks" opens in the view one used last, on every device.
+     */
+    public function mountListsMyTasks(): void
+    {
+        auth()->user()->rememberInterface(['mine_view' => request()->routeIs('tasks.mine.board') ? 'board' : 'list']);
+    }
+
+    /**
      * Whether the tasks one only collaborates on are listed too. Kept for the session, for the list and the board alike.
      */
     #[Session(key: 'my-tasks-include-collaborating')]

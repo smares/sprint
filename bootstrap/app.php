@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureUserIsActive;
+use App\Http\Middleware\MarkAppResponse;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetLocale;
 use Illuminate\Foundation\Application;
@@ -16,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withBroadcasting(__DIR__.'/../routes/channels.php')
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->append(MarkAppResponse::class);
         $middleware->web(append: [EnsureUserIsActive::class, SetLocale::class, SecurityHeaders::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

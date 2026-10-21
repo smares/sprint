@@ -1,7 +1,12 @@
 // Sprint's service worker, served by ProgressiveWebAppController with VERSION, PRECACHE and OFFLINE_URL in front.
 // Built assets (their names change with every build) come from the cache first; pages always go to the server
-// and only fall back to the offline page when there is no connection. Livewire requests and everything else are left alone.
+// and fall back to the offline page when there is no connection, or when the server cannot be reached: a proxy in front of
+// the app answers for it (404 from Traefik while the container is down, 502 to 504), which shows in the missing header
+// of the app (APP_HEADER). Livewire requests and everything else are left alone.
 // It also shows push notifications (InboxPush, TestPush) and opens their page when one is tapped.
+
+// What a proxy answers when the app behind it is down
+const UNREACHABLE_STATUSES = [404, 502, 503, 504]
 
 self.addEventListener('install', (event) => {
     event.waitUntil(caches.open(VERSION).then((cache) => cache.addAll(PRECACHE)).then(() => self.skipWaiting()))
@@ -24,7 +29,11 @@ self.addEventListener('fetch', (event) => {
     }
 
     if (request.mode === 'navigate') {
-        event.respondWith(fetch(request).catch(() => caches.match(OFFLINE_URL)))
+        event.respondWith(
+            fetch(request)
+                .then((response) => (UNREACHABLE_STATUSES.includes(response.status) && ! response.headers.has(APP_HEADER) ? caches.match(OFFLINE_URL) : response))
+                .catch(() => caches.match(OFFLINE_URL)),
+        )
 
         return
     }

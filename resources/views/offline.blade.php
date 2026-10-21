@@ -1,4 +1,4 @@
-{{-- What the service worker shows when a page cannot be loaded without a connection. It is cached once (often before logging in),
+{{-- What the service worker shows when a page cannot be loaded: without a connection, or while the server is down (restart, update). It is cached once (often before logging in),
      so nothing here is personal and it carries every language: the one last used in Sprint is shown (see app.js). --}}
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="min-h-screen">
@@ -18,8 +18,9 @@
 
             @foreach (\App\Services\LocaleService::codes() as $locale)
                 <div data-locale="{{ $locale }}" lang="{{ $locale }}" class="space-y-4" @if ($locale !== app()->getLocale()) hidden @endif>
-                    <flux:heading size="lg">{{ __('No connection', [], $locale) }}</flux:heading>
-                    <flux:text>{{ __(':app needs an internet connection. As soon as you are back online, the page loads again.', ['app' => config('app.name')], $locale) }}</flux:text>
+                    <flux:heading size="lg">{{ __('Sprint is not reachable', [], $locale) }}</flux:heading>
+                    <flux:text>{{ __('Check your internet connection. If it is fine, the server is probably restarting or being updated. :app loads again by itself as soon as it is reachable.', ['app' => config('app.name')], $locale) }}</flux:text>
+                    <flux:text data-stopped hidden>{{ __('Sprint is not checking any more. Try again when the server is running.', [], $locale) }}</flux:text>
                     <flux:button variant="primary" onclick="location.reload()">{{ __('Try again', [], $locale) }}</flux:button>
                 </div>
             @endforeach
@@ -41,7 +42,45 @@
                 }
 
                 document.title = document.querySelector('[data-locale]:not([hidden]) [data-flux-heading]').textContent + ' – ' + document.title
-                window.addEventListener('online', () => location.reload())
+
+                // Asks the app itself (/up, which only the app answers, with its header) and loads the page again once it does.
+                // Every 15 seconds for 5 minutes, then it stops (the server may have been shut down on purpose); coming back to the
+                // page or the network coming back asks once more.
+                const RETRY_EVERY = 15000
+                const GIVE_UP_AFTER = 5 * 60 * 1000
+                const startedAt = Date.now()
+                let checking = false
+
+                const check = async () => {
+                    if (checking || document.visibilityState === 'hidden') {
+                        return
+                    }
+
+                    checking = true
+
+                    try {
+                        const response = await fetch('/up', { cache: 'no-store' })
+
+                        if (response.ok && response.headers.has('{{ \App\Http\Middleware\MarkAppResponse::HEADER }}')) {
+                            location.reload()
+                        }
+                    } catch {}
+
+                    checking = false
+                }
+
+                const timer = setInterval(() => {
+                    if (Date.now() - startedAt >= GIVE_UP_AFTER) {
+                        clearInterval(timer)
+                        document.querySelectorAll('[data-locale]:not([hidden]) [data-stopped]').forEach((note) => note.hidden = false)
+
+                        return
+                    }
+
+                    check()
+                }, RETRY_EVERY)
+                window.addEventListener('online', check)
+                document.addEventListener('visibilitychange', check)
             })()
         </script>
     </body>

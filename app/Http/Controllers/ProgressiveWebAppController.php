@@ -2,13 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Middleware\MarkAppResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\File;
 use Illuminate\View\View;
 
 /**
- * Sprint as an app on the home screen: the web app manifest, the service worker and the page it shows without a connection.
+ * Sprint as an app on the home screen: the web app manifest, the service worker and the page it shows without a connection or while the server is not reachable.
  * The service worker keeps the built assets and the offline page; pages and Livewire requests always go to the server.
  */
 class ProgressiveWebAppController extends Controller
@@ -61,7 +62,8 @@ class ProgressiveWebAppController extends Controller
 
         $script = 'const VERSION = '.json_encode($this->version()).";\n"
             .'const PRECACHE = '.json_encode($precache, JSON_UNESCAPED_SLASHES).";\n"
-            .'const OFFLINE_URL = '.json_encode(route('offline', absolute: false), JSON_UNESCAPED_SLASHES).";\n\n"
+            .'const OFFLINE_URL = '.json_encode(route('offline', absolute: false), JSON_UNESCAPED_SLASHES).";\n"
+            .'const APP_HEADER = '.json_encode(MarkAppResponse::HEADER).";\n\n"
             .File::get(resource_path('js/service-worker.js'));
 
         return response($script, 200, [

@@ -45,6 +45,9 @@ class ProgressiveWebAppTest extends TestCase
         $this->assertStringContainsString('"/offline"', $script);
         $this->assertStringContainsString('"/icon-192.png"', $script);
         $this->assertStringContainsString("addEventListener('fetch'", $script);
+        // the header of the app tells its own answers from those of a proxy in front of it (404 from Traefik, 502 to 504)
+        $this->assertStringContainsString('const APP_HEADER = "X-Sprint-App";', $script);
+        $this->assertStringContainsString('const UNREACHABLE_STATUSES = [404, 502, 503, 504]', $script);
         $this->assertStringContainsString('no-cache', (string) $response->headers->get('Cache-Control'));
     }
 
@@ -52,8 +55,10 @@ class ProgressiveWebAppTest extends TestCase
     {
         $this->get(route('offline'))->assertOk()
             ->assertSee('data-locale="de"', false)->assertSee('data-locale="en"', false)
-            ->assertSee('Keine Verbindung')->assertSee('No connection')
-            ->assertSee(config('app.name').' braucht eine Internetverbindung.');
+            ->assertSee('Sprint ist nicht erreichbar')->assertSee('Sprint is not reachable')
+            ->assertSee('startet der Server wahrscheinlich gerade neu')
+            // it asks /up and loads the page again once the app answers (with its header)
+            ->assertSee("fetch('/up'", false)->assertSee("response.headers.has('X-Sprint-App')", false);
     }
 
     public function test_the_manifest_and_the_service_worker_start_no_session(): void
@@ -65,5 +70,16 @@ class ProgressiveWebAppTest extends TestCase
         }
 
         $this->get('/manifest.webmanifest')->assertHeader('Cache-Control', 'max-age=86400, public');
+    }
+
+    public function test_every_answer_of_the_app_carries_its_header(): void
+    {
+        $this->get('/up')->assertOk()->assertHeader('X-Sprint-App', '1');
+        $this->get('/login')->assertOk()->assertHeader('X-Sprint-App', '1');
+        $this->get('/offline')->assertHeader('X-Sprint-App', '1');
+        $this->get('/sw.js')->assertHeader('X-Sprint-App', '1');
+        // also the app's own "not found", which the service worker must show as it is
+        $this->get('/there-is-no-such-page')->assertNotFound()->assertHeader('X-Sprint-App', '1');
+        $this->actingAs(User::factory()->create())->get('/tasks/999999')->assertNotFound()->assertHeader('X-Sprint-App', '1');
     }
 }

@@ -20,6 +20,7 @@
                 <div data-locale="{{ $locale }}" lang="{{ $locale }}" class="space-y-4" @if ($locale !== app()->getLocale()) hidden @endif>
                     <flux:heading size="lg">{{ __('Sprint is not reachable', [], $locale) }}</flux:heading>
                     <flux:text>{{ __('Check your internet connection. If it is fine, the server is probably restarting or being updated. :app loads again by itself as soon as it is reachable.', ['app' => config('app.name')], $locale) }}</flux:text>
+                    <flux:text data-stopped hidden>{{ __('Sprint is not checking any more. Try again when the server is running.', [], $locale) }}</flux:text>
                     <flux:button variant="primary" onclick="location.reload()">{{ __('Try again', [], $locale) }}</flux:button>
                 </div>
             @endforeach
@@ -42,8 +43,12 @@
 
                 document.title = document.querySelector('[data-locale]:not([hidden]) [data-flux-heading]').textContent + ' – ' + document.title
 
-                // Asks the app itself (/up, which only the app answers, with its header) and loads the page again once it does
-                const RETRY_AFTER = 5000
+                // Asks the app itself (/up, which only the app answers, with its header) and loads the page again once it does.
+                // Every 15 seconds for 5 minutes, then it stops (the server may have been shut down on purpose); coming back to the
+                // page or the network coming back asks once more.
+                const RETRY_EVERY = 15000
+                const GIVE_UP_AFTER = 5 * 60 * 1000
+                const startedAt = Date.now()
                 let checking = false
 
                 const check = async () => {
@@ -64,7 +69,16 @@
                     checking = false
                 }
 
-                setInterval(check, RETRY_AFTER)
+                const timer = setInterval(() => {
+                    if (Date.now() - startedAt >= GIVE_UP_AFTER) {
+                        clearInterval(timer)
+                        document.querySelectorAll('[data-locale]:not([hidden]) [data-stopped]').forEach((note) => note.hidden = false)
+
+                        return
+                    }
+
+                    check()
+                }, RETRY_EVERY)
                 window.addEventListener('online', check)
                 document.addEventListener('visibilitychange', check)
             })()

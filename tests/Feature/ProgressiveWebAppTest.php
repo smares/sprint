@@ -58,7 +58,8 @@ class ProgressiveWebAppTest extends TestCase
             ->assertSee('Sprint ist nicht erreichbar')->assertSee('Sprint is not reachable')
             ->assertSee('startet der Server wahrscheinlich gerade neu')
             // it asks /up and loads the page again once the app answers (with its header)
-            ->assertSee("fetch('/up'", false)->assertSee("response.headers.has('X-Sprint-App')", false);
+            ->assertSee("fetch('/up'", false)->assertSee('const RETRY_EVERY = 15000', false)->assertSee('const GIVE_UP_AFTER = 5 * 60 * 1000', false)
+            ->assertSee('Sprint prüft nicht mehr von selbst.')->assertSee("response.headers.has('X-Sprint-App')", false);
     }
 
     public function test_the_manifest_and_the_service_worker_start_no_session(): void

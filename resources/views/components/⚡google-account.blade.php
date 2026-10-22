@@ -34,7 +34,7 @@ new class extends Component
 };
 ?>
 
-<div>
+<div @class(['space-y-8', 'hidden' => ! ($this->account || $this->available)])>
     @if ($this->account || $this->available)
         <div class="space-y-3">
             <div>

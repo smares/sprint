@@ -259,6 +259,17 @@ class GoogleSignInTest extends TestCase
         $this->get(route('auth.google.callback'))->assertRedirect(route('projects.index'))->assertCookieMissing(Auth::guard()->getRecallerName());
     }
 
+    public function test_connecting_from_the_profile_hints_the_address_of_the_account(): void
+    {
+        $user = User::factory()->create(['email' => 'Anna@Example.com']);
+        $provider = Mockery::mock(GoogleProvider::class);
+        $provider->shouldReceive('with')->once()->with(['login_hint' => 'anna@example.com', 'hl' => app()->getLocale()])->andReturnSelf();
+        $provider->shouldReceive('redirect')->once()->andReturn(redirect('https://accounts.google.com/o/oauth2/auth'));
+        Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
+
+        $this->actingAs($user)->get(route('auth.google.link'))->assertRedirect('https://accounts.google.com/o/oauth2/auth');
+    }
+
     public function test_the_domain_hint_gives_way_to_an_address_of_another_domain(): void
     {
         $provider = Mockery::mock(GoogleProvider::class);

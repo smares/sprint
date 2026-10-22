@@ -35,10 +35,10 @@
                             <flux:badge size="sm">{{ __('Shared') }}</flux:badge>
                         @endif
                         @if ($saved->id === $defaults['project'])
-                            <flux:badge size="sm" color="orange">{{ __('Default for everyone') }}</flux:badge>
+                            <flux:badge size="sm" color="orange">{{ __('Set for everyone') }}</flux:badge>
                         @endif
                         @if ($saved->id === $defaults['opens'])
-                            <flux:badge size="sm" color="amber" icon="check">{{ __('Opens for you') }}</flux:badge>
+                            <flux:badge size="sm" color="amber" icon="check">{{ __('Applied for you') }}</flux:badge>
                         @endif
                     </div>
                 @endif
@@ -51,17 +51,17 @@
             <flux:separator />
 
             {{-- What opens when the page is opened without settings in its address --}}
-            <flux:select variant="listbox" wire:model.live="defaultChoice" :label="__('View when opening')">
-                <flux:select.option value="">{{ $projectDefault ? __('As set for the project: “:name”', ['name' => $projectDefault->name]) : __('As set for the project: no view') }}</flux:select.option>
-                <flux:select.option value="none">{{ __('No view') }}</flux:select.option>
+            <flux:select variant="listbox" wire:model.live="defaultChoice" :label="__('Apply when opening')">
+                <flux:select.option value="">{{ $projectDefault ? __('As the project sets it: “:name”', ['name' => $projectDefault->name]) : __('As the project sets it: nothing') }}</flux:select.option>
+                <flux:select.option value="none">{{ __('Apply nothing') }}</flux:select.option>
                 @foreach ($views as $saved)
                     <flux:select.option wire:key="choice-{{ $saved->id }}" value="{{ $saved->id }}">{{ $saved->name }}</flux:select.option>
                 @endforeach
             </flux:select>
 
             @if ($canManage)
-                <flux:select variant="listbox" wire:model.live="projectChoice" :label="__('View when opening, for everyone in the project')">
-                    <flux:select.option value="none">{{ __('No view') }}</flux:select.option>
+                <flux:select variant="listbox" wire:model.live="projectChoice" :label="__('Apply when opening, for everyone in the project')">
+                    <flux:select.option value="none">{{ __('Apply nothing') }}</flux:select.option>
                     @foreach ($shared as $saved)
                         <flux:select.option wire:key="project-choice-{{ $saved->id }}" value="{{ $saved->id }}">{{ $saved->name }}</flux:select.option>
                     @endforeach

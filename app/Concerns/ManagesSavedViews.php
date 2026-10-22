@@ -220,7 +220,7 @@ trait ManagesSavedViews
         auth()->user()->rememberDefaultSavedView($this->project->id, $this->savedViewKind(), $savedViewId);
 
         $this->forgetSavedViews();
-        Flux::toast(variant: 'success', text: __('Default saved.'));
+        Flux::toast(variant: 'success', text: __('Setting saved.'));
     }
 
     /**
@@ -242,7 +242,7 @@ trait ManagesSavedViews
         });
 
         $this->forgetSavedViews();
-        Flux::toast(variant: 'success', text: __('Default saved.'));
+        Flux::toast(variant: 'success', text: __('Setting saved.'));
     }
 
     public function clearProjectDefault(): void
@@ -252,7 +252,7 @@ trait ManagesSavedViews
         $this->savedViewsQuery()->where('is_default', true)->update(['is_default' => false]);
 
         $this->forgetSavedViews();
-        Flux::toast(variant: 'success', text: __('Default removed.'));
+        Flux::toast(variant: 'success', text: __('Setting removed.'));
     }
 
     private function visibleView(int $filterId): SavedFilter

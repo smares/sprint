@@ -2,11 +2,13 @@
 
 use App\Concerns\AssignsTasks;
 use App\Concerns\EditsTasksInBulk;
+use App\Concerns\ManagesSavedViews;
 use App\Concerns\RefreshesOnTaskChanges;
 use App\Concerns\QuickAddsTasks;
 use App\Concerns\ShowsProject;
 use App\Concerns\SortsTasks;
 use App\Models\Project;
+use App\Models\SavedFilter;
 use App\Models\Task;
 use App\Models\TaskStatus;
 use Illuminate\Contracts\View\View;
@@ -25,6 +27,7 @@ new class extends Component
     use AssignsTasks;
     use EditsTasksInBulk;
     use RefreshesOnTaskChanges;
+    use ManagesSavedViews;
     use QuickAddsTasks;
     use SortsTasks;
 
@@ -187,6 +190,42 @@ new class extends Component
         unset($this->columns, $this->columnTotals);
     }
 
+    protected function savedViewKind(): string
+    {
+        return SavedFilter::BOARD;
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function savedViewQueryKeys(): array
+    {
+        return ['sort', 'dir'];
+    }
+
+    /**
+     * The board has no filters: a saved view is a sort order.
+     *
+     * @return array{sort: string, direction: string}
+     */
+    protected function currentViewSettings(): array
+    {
+        return ['sort' => $this->sortBy, 'direction' => $this->sortDirection];
+    }
+
+    /**
+     * @param  array<string, mixed>  $settings
+     */
+    protected function applyViewSettings(array $settings): void
+    {
+        $sort = (string) ($settings['sort'] ?? '');
+
+        $this->sortBy = $this->isSortable($sort) ? $sort : '';
+        $this->sortDirection = ($settings['direction'] ?? 'asc') === 'desc' ? 'desc' : 'asc';
+
+        $this->sorted();
+    }
+
     /**
      * What the sort menu shows for the order in force.
      */
@@ -275,10 +314,17 @@ new class extends Component
             <flux:button icon="x-mark" wire:click="resetSort" class="max-sm:size-10!" aria-label="{{ __('Reset') }}" tooltip="{{ __('Reset') }}" />
         @endif
 
+        <flux:modal.trigger name="saved-filters">
+            <flux:button icon="bookmark">{{ __('Views') }} @if ($this->savedFilters->isNotEmpty()) <flux:badge size="sm" inset="top bottom">{{ $this->savedFilters->count() }}</flux:badge> @endif</flux:button>
+        </flux:modal.trigger>
+
         @if ($this->canEdit && ! $selecting && array_sum($this->columnTotals) > 0)
             <x-selection-toggle class="ms-auto" />
         @endif
     </div>
+
+    <x-saved-views-modal :views="$this->savedFilters" :defaults="$this->savedViewDefaults" :can-manage="$this->canManage"
+        :description="__('A view remembers the sorting of the board.')" :save-label="__('Save current sorting as')" :placeholder="__('e.g. By due date')" />
 
     {{-- Columns can be collapsed to a narrow strip with the status upright (data-collapsed, see app.css), remembered per
          project for the person; a click on the strip opens the column again. --}}

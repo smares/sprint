@@ -115,7 +115,7 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
      * What the person has arranged in the interface, which follows them from one device to the next: the appearance, the
      * sidebar, the collapsed board columns and the view of "My tasks" they used last.
      *
-     * @return array{rev?: int, appearance?: string, sidebar_collapsed?: bool, mine_view?: string, board_collapsed?: array<int|string, list<int>>, mine_board_collapsed?: list<int>}
+     * @return array{rev?: int, appearance?: string, sidebar_collapsed?: bool, mine_view?: string, board_collapsed?: array<int|string, list<int>>, mine_board_collapsed?: list<int>, default_views?: array<int|string, array<string, int>>}
      */
     public function interfaceState(): array
     {
@@ -132,6 +132,25 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
         $state = $this->interfaceState();
 
         return $projectId === null ? ($state['mine_board_collapsed'] ?? []) : ($state['board_collapsed'][$projectId] ?? []);
+    }
+
+    /**
+     * The saved view of the list or of the board that this person opens by default in a project: its id, 0 for none (even if
+     * the project has a default), or null to follow the project's default.
+     *
+     * @param  string  $view  SavedFilter::LIST or SavedFilter::BOARD
+     */
+    public function defaultSavedView(int $projectId, string $view): ?int
+    {
+        return $this->interfaceState()['default_views'][$projectId][$view] ?? null;
+    }
+
+    /**
+     * @param  int|null  $savedViewId  the id, 0 for none, null to follow the project's default
+     */
+    public function rememberDefaultSavedView(int $projectId, string $view, ?int $savedViewId): void
+    {
+        $this->rememberInterface(['default_views' => [$projectId => [$view => $savedViewId]]]);
     }
 
     /**
@@ -191,6 +210,22 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
 
                     if ($collapsed !== []) {
                         $state[$key][$project] = $collapsed;
+                    }
+                }
+
+                $state[$key] = array_slice($state[$key] ?? [], -self::INTERFACE_MAX_BOARDS, preserve_keys: true);
+
+                if ($state[$key] === []) {
+                    unset($state[$key]);
+                }
+            } elseif ($key === 'default_views') {
+                foreach ($value as $project => $views) {
+                    $chosen = array_filter([...($state[$key][$project] ?? []), ...$views], fn (?int $id) => $id !== null);
+
+                    unset($state[$key][$project]);
+
+                    if ($chosen !== []) {
+                        $state[$key][$project] = $chosen;
                     }
                 }
 

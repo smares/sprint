@@ -284,7 +284,7 @@ new class extends Component
 };
 ?>
 
-<div @class(['pb-40' => $selecting]) data-wide>
+<div @class(['pb-40' => $selecting]) x-bind:class="{ 'pb-40': $wire.selecting }" data-wide>
     <x-project-header :project="$project" active="board" :presence="$this->presenceChannel()" />
 
     <div class="mb-4 flex flex-wrap items-center gap-2">
@@ -315,7 +315,7 @@ new class extends Component
         </flux:modal.trigger>
 
         @if ($this->canEdit && ! $selecting && array_sum($this->columnTotals) > 0)
-            <x-selection-toggle class="ms-auto" />
+            <x-selection-toggle instant class="ms-auto" x-show="! $wire.selecting" />
         @endif
     </div>
 
@@ -343,19 +343,20 @@ new class extends Component
                     {{-- wire:sort is set up once per element: keyed by the mode, the list is built anew and dragging within a column
                          really stops while the cards are sorted --}}
                     <flux:kanban.column.cards
-                        wire:key="cards-{{ $status->id }}-{{ $this->sortActive ? 'sorted' : 'manual' }}-{{ $selecting ? 'selecting' : 'idle' }}"
+                        wire:key="cards-{{ $status->id }}-{{ $this->sortActive ? 'sorted' : 'manual' }}"
                         class="min-h-16"
-                        :wire:sort="$this->canEdit && ! $selecting ? 'moveTask' : null"
-                        :wire:sort:group="$this->canEdit && ! $selecting ? 'tasks' : null"
+                        :wire:sort="$this->canEdit ? 'moveTask' : null"
+                        :wire:sort:group="$this->canEdit ? 'tasks' : null"
                         wire:sort:group-id="{{ $status->id }}"
-                        wire:sort:config="{{ $this->sortActive ? \App\Sortable::CONFIG_MOVE_ONLY : \App\Sortable::CONFIG }}"
+                        wire:sort:config="{{ \App\Sortable::unlessSelecting($this->sortActive ? \App\Sortable::CONFIG_MOVE_ONLY : \App\Sortable::CONFIG) }}"
                     >
                         @foreach ($this->columns[$status->id] as $task)
-                            <flux:kanban.card wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" class="board-card cursor-pointer" :wire:sort:item="$this->canEdit && ! $selecting ? $task->id : null">
+                            <flux:kanban.card wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" class="board-card cursor-pointer" :wire:sort:item="$this->canEdit ? $task->id : null">
                                 <div class="flex items-start gap-2">
                                     <x-task-done-button :task="$task" :editable="$this->canEdit" compact />
-                                    @if ($selecting)
-                                        <x-task-select-box :task="$task" />
+                                    {{-- Drawn for every card but made only while selecting (in the browser, at once, before the server answers) --}}
+                                    @if ($this->canEdit)
+                                        <template x-if="$wire.selecting"><x-task-select-box :task="$task" /></template>
                                     @endif
                                     <div class="min-w-0 flex-1 leading-6">
                                         <x-task-title-link :task="$task" />
@@ -416,7 +417,7 @@ new class extends Component
                     </flux:kanban.column.cards>
 
                     @if ($this->canEdit && ! $selecting)
-                        <x-quick-add :status-id="$status->id" class="mt-1 px-2 pb-2" />
+                        <x-quick-add :status-id="$status->id" class="mt-1 px-2 pb-2" x-show="! $wire.selecting" />
                     @endif
                 </flux:kanban.column>
             @endforeach

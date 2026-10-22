@@ -18,4 +18,14 @@ class Sortable
      * sorted by a criterion: the status can still be changed by dropping, the place follows from the sort order).
      */
     public const string CONFIG_MOVE_ONLY = '{ sort: false, delay: 250, delayOnTouchOnly: true, touchStartThreshold: 12 }';
+
+    /**
+     * A configuration whose list stands still while the page is selecting tasks (`$wire.selecting` is set in the browser at
+     * once, before the server draws the page again). The filter replaces the one of wire:sort, which only lets drags start on
+     * the items, so that rule is kept in it.
+     */
+    public static function unlessSelecting(string $config): string
+    {
+        return rtrim($config, ' }').", filter(event) { return \$wire.selecting || ! event.target.closest('[wire\\\\:sort\\\\:item]') } }";
+    }
 }

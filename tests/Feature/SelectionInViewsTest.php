@@ -48,17 +48,38 @@ class SelectionInViewsTest extends TestCase
         $this->task(['title' => 'Auswahl']);
 
         foreach ($this->views() as $view) {
-            $page = Livewire::test($view, ['project' => $this->project])
-                ->assertSee('Auswählen')
-                ->assertDontSeeHtml('aria-label="Aufgabe auswählen: ')
-                ->call('startSelecting')
+            // The board draws the boxes for every card in advance, the browser makes them at once (see testTheBoardHasTheBoxesReady)
+            $drawnInAdvance = $view === 'pages::projects.board';
+            $page = Livewire::test($view, ['project' => $this->project])->assertSee('Auswählen');
+
+            if (! $drawnInAdvance) {
+                $page->assertDontSeeHtml('aria-label="Aufgabe auswählen: ');
+            }
+
+            $page->call('startSelecting')
                 ->assertSet('selecting', true)
                 ->assertSet('selected', [])
                 ->assertSeeHtml('aria-label="Aufgabe auswählen: ')
                 ->assertSee('Auswahl beenden');
 
-            $page->call('stopSelecting')->assertSet('selecting', false)->assertDontSeeHtml('aria-label="Aufgabe auswählen: ');
+            $page->call('stopSelecting')->assertSet('selecting', false);
+
+            if (! $drawnInAdvance) {
+                $page->assertDontSeeHtml('aria-label="Aufgabe auswählen: ');
+            }
         }
+    }
+
+    public function test_the_board_has_the_boxes_ready_and_stands_still_while_selecting(): void
+    {
+        $this->task(['title' => 'Auswahl']);
+
+        Livewire::test('pages::projects.board', ['project' => $this->project])
+            ->assertSeeHtml('x-if="$wire.selecting"')
+            ->assertSeeHtml('data-select-box')
+            ->assertSeeHtml('$wire.selecting = true; $wire.$refresh()')
+            ->assertSeeHtml('filter(event) { return $wire.selecting')
+            ->assertDontSeeHtml('cards-1-manual-selecting');
     }
 
     public function test_the_selected_tasks_are_completed_in_every_view(): void

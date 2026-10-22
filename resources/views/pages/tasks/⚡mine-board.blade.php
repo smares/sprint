@@ -237,12 +237,12 @@ new class extends Component
 };
 ?>
 
-<div @class(['pb-40' => $selecting]) data-wide>
+<div @class(['pb-40' => $selecting]) x-bind:class="{ 'pb-40': $wire.selecting }" data-wide>
     <div class="mb-6 flex items-center justify-between gap-3">
         <flux:heading level="1" size="xl">{{ __('My tasks') }}</flux:heading>
         <div class="flex items-center gap-2">
             @if (! $selecting && array_sum($this->columnTotals) > 0)
-                <x-selection-toggle />
+                <x-selection-toggle instant x-show="! $wire.selecting" />
             @endif
             <x-mine-views active="board" />
         </div>
@@ -319,19 +319,20 @@ new class extends Component
                     </flux:kanban.column.header>
 
                     <flux:kanban.column.cards
-                        wire:key="cards-{{ $key }}-{{ $selecting ? 'selecting' : 'idle' }}"
+                        wire:key="cards-{{ $key }}"
                         class="min-h-16"
-                        :wire:sort="$selecting ? null : 'moveTask'"
-                        :wire:sort:group="$selecting ? null : 'mine'"
+                        wire:sort="moveTask"
+                        wire:sort:group="mine"
                         wire:sort:group-id="{{ $key }}"
-                        wire:sort:config="{{ $personal ? \App\Sortable::CONFIG : \App\Sortable::CONFIG_MOVE_ONLY }}"
+                        wire:sort:config="{{ \App\Sortable::unlessSelecting($personal ? \App\Sortable::CONFIG : \App\Sortable::CONFIG_MOVE_ONLY) }}"
                     >
                         @foreach ($tasks as $task)
-                            <flux:kanban.card wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" class="board-card cursor-pointer" :wire:sort:item="$selecting ? null : $task->id">
+                            <flux:kanban.card wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" class="board-card cursor-pointer" :wire:sort:item="$task->id">
                                 <div class="flex items-start gap-2">
                                     <x-task-done-button :task="$task" :editable="in_array($task->project_id, $this->editableProjectIds, true)" compact />
-                                    @if ($selecting && in_array($task->project_id, $this->editableProjectIds, true))
-                                        <x-task-select-box :task="$task" />
+                                    {{-- Drawn for every card but made only while selecting (in the browser, at once, before the server answers) --}}
+                                    @if (in_array($task->project_id, $this->editableProjectIds, true))
+                                        <template x-if="$wire.selecting"><x-task-select-box :task="$task" /></template>
                                     @endif
                                     <div class="min-w-0 flex-1 leading-6">
                                         <x-task-title-line :task="$task" :progress="$this->progress[$task->id] ?? null" />
@@ -401,7 +402,6 @@ new class extends Component
 
     <x-card-move-menu />
 
-    @if ($selecting)
-        <x-selection-bar :change="false" />
-    @endif
+    {{-- Always there, shown as soon as the browser selects --}}
+    <x-selection-bar :change="false" x-show="$wire.selecting" x-cloak />
 </div>

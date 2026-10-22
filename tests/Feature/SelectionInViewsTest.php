@@ -48,17 +48,54 @@ class SelectionInViewsTest extends TestCase
         $this->task(['title' => 'Auswahl']);
 
         foreach ($this->views() as $view) {
-            $page = Livewire::test($view, ['project' => $this->project])
-                ->assertSee('Auswählen')
-                ->assertDontSeeHtml('aria-label="Aufgabe auswählen: ')
-                ->call('startSelecting')
+            // The board draws the boxes for every card in advance, the browser makes them at once (see testTheBoardHasTheBoxesReady)
+            $drawnInAdvance = $view === 'pages::projects.board';
+            $page = Livewire::test($view, ['project' => $this->project])->assertSee('Auswählen');
+
+            if (! $drawnInAdvance) {
+                $page->assertDontSeeHtml('aria-label="Aufgabe auswählen: ');
+            }
+
+            $page->call('startSelecting')
                 ->assertSet('selecting', true)
                 ->assertSet('selected', [])
                 ->assertSeeHtml('aria-label="Aufgabe auswählen: ')
                 ->assertSee('Auswahl beenden');
 
-            $page->call('stopSelecting')->assertSet('selecting', false)->assertDontSeeHtml('aria-label="Aufgabe auswählen: ');
+            $page->call('stopSelecting')->assertSet('selecting', false);
+
+            if (! $drawnInAdvance) {
+                $page->assertDontSeeHtml('aria-label="Aufgabe auswählen: ');
+            }
         }
+    }
+
+    public function test_the_boards_have_the_boxes_and_the_bar_ready_and_stand_still_while_selecting(): void
+    {
+        $this->task(['title' => 'Auswahl', 'assignee_id' => $this->user->id]);
+
+        foreach (['pages::projects.board' => ['project' => $this->project], 'pages::tasks.mine-board' => []] as $view => $parameters) {
+            Livewire::test($view, $parameters)
+                ->assertSeeHtml('x-if="$wire.selecting"')
+                ->assertSeeHtml('aria-label="Aufgabe auswählen: Auswahl"')
+                ->assertSeeHtml('$wire.selecting = true; $wire.$refresh()')
+                ->assertSeeHtml('x-show="$wire.selecting"')
+                ->assertSeeHtml('filter(event) { return $wire.selecting || event.target.closest(')
+                ->assertSeeHtml('Auswahl beenden');
+        }
+    }
+
+    public function test_the_board_leaves_the_bar_and_the_boxes_out_for_those_who_may_not_edit(): void
+    {
+        $readOnly = Project::factory()->create();
+        $readOnly->setRole($this->user, ProjectRole::Viewer);
+        $this->task(['title' => 'Nur lesen'], $readOnly);
+
+        Livewire::test('pages::projects.board', ['project' => $readOnly])
+            ->assertDontSeeHtml('x-if="$wire.selecting"')
+            ->assertDontSeeHtml('Auswahl beenden')
+            ->set('selecting', true)
+            ->assertDontSeeHtml('Auswahl beenden');
     }
 
     public function test_the_selected_tasks_are_completed_in_every_view(): void
@@ -295,17 +332,17 @@ class SelectionInViewsTest extends TestCase
     public function test_the_button_is_only_offered_where_there_is_something_to_select(): void
     {
         foreach ($this->views() as $view) {
-            Livewire::test($view, ['project' => $this->project])->assertDontSeeHtml('data-selection-toggle');
+            Livewire::test($view, ['project' => $this->project])->assertDontSeeHtml('data-selection-toggle>');
         }
 
         foreach (['pages::tasks.mine', 'pages::tasks.mine-board'] as $view) {
-            Livewire::test($view)->assertDontSeeHtml('data-selection-toggle');
+            Livewire::test($view)->assertDontSeeHtml('data-selection-toggle>');
         }
 
         $this->task(['assignee_id' => $this->user->id]);
 
         foreach ([...$this->views(), 'pages::tasks.mine', 'pages::tasks.mine-board'] as $view) {
-            Livewire::test($view, str_contains($view, 'projects.') ? ['project' => $this->project] : [])->assertSeeHtml('data-selection-toggle');
+            Livewire::test($view, str_contains($view, 'projects.') ? ['project' => $this->project] : [])->assertSeeHtml('data-selection-toggle>');
         }
     }
 }

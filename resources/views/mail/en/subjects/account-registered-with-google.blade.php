@@ -1,0 +1,1 @@
+New registration with Google in {{ config('app.name') }}

@@ -147,7 +147,7 @@ class DefaultViewsTest extends TestCase
         $this->savedView(SavedFilter::BOARD, 'Für alle', 'title', shared: true, default: true);
         $mine = $this->savedView(SavedFilter::BOARD, 'Meine', 'due');
 
-        $this->board()->call('useAsMyDefault', $mine->id)->assertHasNoErrors();
+        $this->board()->set('defaultChoice', (string) $mine->id)->call('saveDefaults')->assertHasNoErrors();
         $this->assertSame($mine->id, $this->editor->fresh()->defaultSavedView($this->project->id, SavedFilter::BOARD));
 
         $this->board()->assertSet('sortBy', 'due');
@@ -159,10 +159,10 @@ class DefaultViewsTest extends TestCase
     {
         $this->savedView(SavedFilter::BOARD, 'Für alle', 'title', shared: true, default: true);
 
-        $this->board()->call('useNoDefaultForMe');
+        $this->board()->set('defaultChoice', 'none')->call('saveDefaults');
         $this->board()->assertSet('sortBy', '');
 
-        $this->board()->call('followProjectDefault');
+        $this->board()->set('defaultChoice', '')->call('saveDefaults');
         $this->assertNull($this->editor->fresh()->defaultSavedView($this->project->id, SavedFilter::BOARD));
         $this->board()->assertSet('sortBy', 'title');
     }
@@ -172,7 +172,7 @@ class DefaultViewsTest extends TestCase
         $this->savedView(SavedFilter::BOARD, 'Für alle', 'title', shared: true, default: true);
         $mine = $this->savedView(SavedFilter::BOARD, 'Meine', 'due');
 
-        $this->board()->call('useAsMyDefault', $mine->id);
+        $this->board()->set('defaultChoice', (string) $mine->id)->call('saveDefaults');
         $this->board()->call('deleteFilter', $mine->id);
 
         $this->board()->assertSet('sortBy', 'title');
@@ -185,10 +185,10 @@ class DefaultViewsTest extends TestCase
         $list = $this->savedView(SavedFilter::LIST, 'Liste', 'due', shared: true, default: true);
         $private = $this->savedView(SavedFilter::BOARD, 'Privat', 'due');
 
-        $this->board()->call('makeProjectDefault', $first->id)->assertForbidden();
+        $this->board()->set('projectChoice', (string) $first->id)->call('saveDefaults')->assertForbidden();
 
-        $this->board($this->manager)->call('makeProjectDefault', $first->id)->assertHasNoErrors();
-        $this->board($this->manager)->call('makeProjectDefault', $second->id);
+        $this->board($this->manager)->set('projectChoice', (string) $first->id)->call('saveDefaults')->assertHasNoErrors();
+        $this->board($this->manager)->set('projectChoice', (string) $second->id)->call('saveDefaults');
 
         $this->assertFalse($first->fresh()->is_default);
         $this->assertTrue($second->fresh()->is_default);
@@ -196,11 +196,11 @@ class DefaultViewsTest extends TestCase
         $this->assertTrue($list->fresh()->is_default);
 
         // a private view cannot be made the default for everybody, nor one of the other kind
-        $this->board($this->manager)->call('makeProjectDefault', $private->id)->assertNotFound();
-        $this->board($this->manager)->call('makeProjectDefault', $list->id)->assertNotFound();
+        $this->board($this->manager)->set('projectChoice', (string) $private->id)->call('saveDefaults')->assertNotFound();
+        $this->board($this->manager)->set('projectChoice', (string) $list->id)->call('saveDefaults')->assertNotFound();
 
-        $this->board()->call('clearProjectDefault')->assertForbidden();
-        $this->board($this->manager)->call('clearProjectDefault');
+        $this->board()->set('projectChoice', 'none')->call('saveDefaults')->assertForbidden();
+        $this->board($this->manager)->set('projectChoice', 'none')->call('saveDefaults');
         $this->assertFalse($second->fresh()->is_default);
     }
 
@@ -209,8 +209,8 @@ class DefaultViewsTest extends TestCase
         $theirs = SavedFilter::factory()->for($this->project)->create(['user_id' => $this->manager->id, 'view' => SavedFilter::BOARD]);
         $list = $this->savedView(SavedFilter::LIST, 'Liste', 'due');
 
-        $this->board()->call('useAsMyDefault', $theirs->id)->assertNotFound();
-        $this->board()->call('useAsMyDefault', $list->id)->assertNotFound();
+        $this->board()->set('defaultChoice', (string) $theirs->id)->call('saveDefaults')->assertNotFound();
+        $this->board()->set('defaultChoice', (string) $list->id)->call('saveDefaults')->assertNotFound();
 
         $this->assertNull($this->editor->fresh()->defaultSavedView($this->project->id, SavedFilter::BOARD));
     }
@@ -252,33 +252,37 @@ class DefaultViewsTest extends TestCase
         $this->assertCount(User::INTERFACE_MAX_BOARDS, $user->fresh()->interfaceState()['default_views']);
     }
 
-    public function test_the_menus_of_the_dialog_choose_what_opens_by_default(): void
+    public function test_the_menus_of_the_dialog_are_saved_with_their_own_button(): void
     {
         $shared = $this->savedView(SavedFilter::BOARD, 'Gemeinsam', 'title', shared: true);
         $mine = $this->savedView(SavedFilter::BOARD, 'Meine', 'due');
 
         // a person who does not manage the project has the menu for themselves only
-        $this->board()->assertSee('Beim Öffnen anwenden')->assertSee('Wie im Projekt vorgegeben: nichts')->assertDontSee('Beim Öffnen anwenden, für alle im Projekt')
+        $this->board()->assertSee('Beim Öffnen anwenden')->assertSee('Wie im Projekt vorgegeben: nichts')->assertDontSee('Für alle im Projekt')
             ->assertSet('defaultChoice', '')
-            ->set('defaultChoice', (string) $mine->id)->assertHasNoErrors();
+            ->set('defaultChoice', (string) $mine->id);
+        // choosing is not saving
+        $this->assertNull($this->editor->fresh()->defaultSavedView($this->project->id, SavedFilter::BOARD));
+
+        $this->board()->set('defaultChoice', (string) $mine->id)->call('saveDefaults')->assertHasNoErrors();
         $this->assertSame($mine->id, $this->editor->fresh()->defaultSavedView($this->project->id, SavedFilter::BOARD));
         $this->board()->assertSet('defaultChoice', (string) $mine->id)->assertSet('sortBy', 'due')->assertSee('Für dich angewendet');
 
-        $this->board()->set('defaultChoice', 'none');
+        $this->board()->set('defaultChoice', 'none')->call('saveDefaults');
         $this->assertSame(0, $this->editor->fresh()->defaultSavedView($this->project->id, SavedFilter::BOARD));
         $this->board()->assertSet('defaultChoice', 'none')->assertSet('sortBy', '');
 
-        $this->board()->set('defaultChoice', '');
+        $this->board()->set('defaultChoice', '')->call('saveDefaults');
         $this->assertNull($this->editor->fresh()->defaultSavedView($this->project->id, SavedFilter::BOARD));
 
-        // a manager also chooses what opens for everybody, among the shared views
-        $this->board($this->manager)->assertSee('Beim Öffnen anwenden, für alle im Projekt')->assertSet('projectChoice', 'none')
-            ->set('projectChoice', (string) $shared->id);
+        // a manager also chooses what is applied for everybody, among the shared views
+        $this->board($this->manager)->assertSee('Für alle im Projekt')->assertSet('projectChoice', 'none')
+            ->set('projectChoice', (string) $shared->id)->call('saveDefaults');
         $this->assertTrue($shared->fresh()->is_default);
 
         $this->board()->assertSee('Wie im Projekt vorgegeben: „Gemeinsam“')->assertSee('Vorgabe für alle')->assertSet('sortBy', 'title');
 
-        $this->board($this->manager)->set('projectChoice', 'none');
+        $this->board($this->manager)->set('projectChoice', 'none')->call('saveDefaults');
         $this->assertFalse($shared->fresh()->is_default);
     }
 
@@ -286,21 +290,35 @@ class DefaultViewsTest extends TestCase
     {
         $shared = $this->savedView(SavedFilter::BOARD, 'Gemeinsam', 'title', shared: true);
 
-        $this->board()->set('projectChoice', (string) $shared->id)->assertForbidden();
-        $this->board()->set('projectChoice', 'none')->assertForbidden();
-
+        $this->board()->set('projectChoice', (string) $shared->id)->call('saveDefaults')->assertForbidden();
         $this->assertFalse($shared->fresh()->is_default);
+
+        $default = $this->savedView(SavedFilter::BOARD, 'Vorgabe', 'due', shared: true, default: true);
+
+        $this->board()->set('projectChoice', 'none')->call('saveDefaults')->assertForbidden();
+        $this->assertTrue($default->fresh()->is_default);
+
+        // without a change of that menu, saving one's own choice is fine
+        $this->board()->set('defaultChoice', 'none')->call('saveDefaults')->assertHasNoErrors();
     }
 
     public function test_choices_that_are_not_valid_are_ignored(): void
     {
         $theirs = SavedFilter::factory()->for($this->project)->create(['user_id' => $this->manager->id, 'view' => SavedFilter::BOARD]);
+        $default = $this->savedView(SavedFilter::BOARD, 'Vorgabe', 'due', shared: true, default: true);
 
-        $this->board()->set('defaultChoice', 'banana')->assertSet('defaultChoice', '');
-        $this->board()->set('defaultChoice', (string) $theirs->id)->assertNotFound();
-        $this->board($this->manager)->set('projectChoice', 'banana')->assertSet('projectChoice', 'none');
-
+        $this->board()->set('defaultChoice', 'banana')->call('saveDefaults');
         $this->assertNull($this->editor->fresh()->defaultSavedView($this->project->id, SavedFilter::BOARD));
+
+        $this->board()->set('defaultChoice', (string) $theirs->id)->call('saveDefaults')->assertNotFound();
+        $this->board($this->manager)->set('projectChoice', 'banana')->call('saveDefaults');
+        $this->assertTrue($default->fresh()->is_default);
+    }
+
+    public function test_the_error_of_a_missing_name_goes_when_the_dialog_is_closed(): void
+    {
+        $this->board()->set('saveName', '')->call('saveCurrentFilter')->assertHasErrors('saveName')
+            ->call('clearSavedViewMessages')->assertHasNoErrors();
     }
 
     public function test_a_default_of_the_person_that_was_deleted_leaves_the_project_default_to_switch_off(): void
@@ -308,13 +326,13 @@ class DefaultViewsTest extends TestCase
         $this->savedView(SavedFilter::BOARD, 'Für alle', 'title', shared: true, default: true);
         $mine = $this->savedView(SavedFilter::BOARD, 'Meine', 'due');
 
-        $this->board()->call('useAsMyDefault', $mine->id)->call('deleteFilter', $mine->id)
+        $this->board()->set('defaultChoice', (string) $mine->id)->call('saveDefaults')->call('deleteFilter', $mine->id)
             ->assertSet('defaultChoice', '')->assertSee('Wie im Projekt vorgegeben: „Für alle“');
     }
 
     public function test_switching_the_default_off_for_oneself_can_be_taken_back_without_a_project_default(): void
     {
-        $this->board()->call('useNoDefaultForMe')->assertSet('defaultChoice', 'none')->call('followProjectDefault')->assertSet('defaultChoice', '');
+        $this->board()->set('defaultChoice', 'none')->call('saveDefaults')->assertSet('defaultChoice', 'none')->set('defaultChoice', '')->call('saveDefaults')->assertSet('defaultChoice', '');
 
         $this->assertNull($this->editor->fresh()->defaultSavedView($this->project->id, SavedFilter::BOARD));
     }
@@ -335,7 +353,7 @@ class DefaultViewsTest extends TestCase
         $this->project->setRole($viewer, ProjectRole::Viewer);
         $shared = $this->savedView(SavedFilter::BOARD, 'Gemeinsam', 'title', shared: true);
 
-        $this->board($viewer)->call('useAsMyDefault', $shared->id)->assertHasNoErrors();
+        $this->board($viewer)->set('defaultChoice', (string) $shared->id)->call('saveDefaults')->assertHasNoErrors();
         $this->board($viewer)->assertSet('sortBy', 'title');
     }
 
@@ -370,8 +388,8 @@ class DefaultViewsTest extends TestCase
 
         // the second manager's page was loaded before the first one made it the default
         $stale = $this->board($this->manager);
-        $this->board($this->manager)->call('makeProjectDefault', $saved->id);
-        $stale->call('makeProjectDefault', $saved->id)->call('makeProjectDefault', $saved->id);
+        $this->board($this->manager)->set('projectChoice', (string) $saved->id)->call('saveDefaults');
+        $stale->set('projectChoice', (string) $saved->id)->call('saveDefaults')->set('projectChoice', (string) $saved->id)->call('saveDefaults');
 
         $this->assertTrue($saved->fresh()->is_default);
     }

@@ -10,7 +10,8 @@
     $shared = $views->filter->isShared();
 @endphp
 
-<flux:modal name="saved-filters" class="w-full max-w-md">
+{{-- A missing name shown after a failed save is gone when the dialog is closed --}}
+<flux:modal name="saved-filters" class="w-full max-w-md" x-on:close="$el.querySelector('[data-invalid]') && $wire.clearSavedViewMessages()">
     <div class="space-y-5">
         <div>
             <flux:heading size="lg">{{ __('Saved views') }}</flux:heading>
@@ -50,28 +51,40 @@
         @if ($views->isNotEmpty())
             <flux:separator />
 
-            {{-- What opens when the page is opened without settings in its address --}}
-            <flux:select variant="listbox" wire:model.live="defaultChoice" :label="__('Apply when opening')">
-                <flux:select.option value="">{{ $projectDefault ? __('As the project sets it: “:name”', ['name' => $projectDefault->name]) : __('As the project sets it: nothing') }}</flux:select.option>
-                <flux:select.option value="none">{{ __('Apply nothing') }}</flux:select.option>
-                @foreach ($views as $saved)
-                    <flux:select.option wire:key="choice-{{ $saved->id }}" value="{{ $saved->id }}">{{ $saved->name }}</flux:select.option>
-                @endforeach
-            </flux:select>
+            {{-- What is applied when the page is opened without settings in its address; saved with its own button --}}
+            <form wire:submit="saveDefaults" class="space-y-3">
+                <div>
+                    <flux:heading>{{ __('Apply when opening') }}</flux:heading>
+                    <flux:text size="sm" class="mt-1">{{ __('What is applied when the page is opened without settings in its address.') }}</flux:text>
+                </div>
 
-            @if ($canManage)
-                <flux:select variant="listbox" wire:model.live="projectChoice" :label="__('Apply when opening, for everyone in the project')">
+                <flux:select variant="listbox" wire:model="defaultChoice" :label="__('For you')">
+                    <flux:select.option value="">{{ $projectDefault ? __('As the project sets it: “:name”', ['name' => $projectDefault->name]) : __('As the project sets it: nothing') }}</flux:select.option>
                     <flux:select.option value="none">{{ __('Apply nothing') }}</flux:select.option>
-                    @foreach ($shared as $saved)
-                        <flux:select.option wire:key="project-choice-{{ $saved->id }}" value="{{ $saved->id }}">{{ $saved->name }}</flux:select.option>
+                    @foreach ($views as $saved)
+                        <flux:select.option wire:key="choice-{{ $saved->id }}" value="{{ $saved->id }}">{{ $saved->name }}</flux:select.option>
                     @endforeach
                 </flux:select>
-            @endif
+
+                @if ($canManage)
+                    <flux:select variant="listbox" wire:model="projectChoice" :label="__('For everyone in the project')">
+                        <flux:select.option value="none">{{ __('Apply nothing') }}</flux:select.option>
+                        @foreach ($shared as $saved)
+                            <flux:select.option wire:key="project-choice-{{ $saved->id }}" value="{{ $saved->id }}">{{ $saved->name }}</flux:select.option>
+                        @endforeach
+                    </flux:select>
+                @endif
+
+                <div class="flex justify-end">
+                    <flux:button type="submit" variant="primary">{{ __('Save') }}</flux:button>
+                </div>
+            </form>
         @endif
 
         <flux:separator />
 
         <form wire:submit="saveCurrentFilter" class="space-y-3">
+            <flux:heading>{{ __('New view') }}</flux:heading>
             <flux:input wire:model="saveName" :label="$saveLabel" :placeholder="$placeholder" />
             @if ($canManage)
                 <flux:checkbox wire:model="saveShared" :label="__('Visible to everyone in the project')" />

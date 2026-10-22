@@ -147,7 +147,16 @@ new class extends Component
 ?>
 
 <div @class(['pb-40' => $selecting]) x-bind:class="{ 'pb-40': $wire.selecting }" data-wide>
-    <x-project-header :project="$project" active="timeline" :presence="$this->presenceChannel()" />
+    @php
+        $offersSelecting = $this->canEdit && $this->rows->isNotEmpty();
+    @endphp
+    <x-project-header :project="$project" active="timeline" :presence="$this->presenceChannel()">
+        <x-slot name="selection">
+            @if ($offersSelecting)
+                <x-selection-toggle instant class="sm:hidden" x-show="! $wire.selecting" />
+            @endif
+        </x-slot>
+    </x-project-header>
 
     <div class="mb-4 flex flex-wrap items-center gap-2">
         <flux:button icon="chevron-left" wire:click="earlier" aria-label="{{ __('Earlier') }}" tooltip="{{ __('Earlier') }}" />
@@ -155,8 +164,8 @@ new class extends Component
         <flux:button wire:click="today">{{ __('Today') }}</flux:button>
         <flux:text class="ms-2 whitespace-nowrap">{{ $this->start->isoFormat('L') }} – {{ $this->end->isoFormat('L') }}</flux:text>
 
-        @if ($this->canEdit && $this->rows->isNotEmpty())
-            <x-selection-toggle instant class="ms-auto" x-show="! $wire.selecting" />
+        @if ($offersSelecting)
+            <x-selection-toggle instant class="ms-auto max-sm:hidden" x-show="! $wire.selecting" />
         @endif
     </div>
 

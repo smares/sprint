@@ -63,6 +63,20 @@ class SelectionInViewsTest extends TestCase
         }
     }
 
+    public function test_on_phones_the_button_stands_in_the_row_of_the_views_and_otherwise_in_the_toolbar(): void
+    {
+        $this->task(['title' => 'Auswahl']);
+
+        foreach ($this->views() as $view) {
+            $html = Livewire::test($view, ['project' => $this->project])->html();
+
+            // Two buttons: the one in the row of the views (below sm) and the one in the toolbar of the page (from sm)
+            $this->assertSame(2, substr_count($html, 'data-selection-toggle>'), $view);
+            $this->assertMatchesRegularExpression('/data-view-switcher>.*?class="[^"]*sm:hidden[^"]*"[^>]*data-selection-toggle>/s', $html, $view);
+            $this->assertStringContainsString('ms-auto max-sm:hidden', $html, $view);
+        }
+    }
+
     public function test_the_boards_have_the_boxes_and_the_bar_ready_and_stand_still_while_selecting(): void
     {
         $this->task(['title' => 'Auswahl', 'assignee_id' => $this->user->id]);

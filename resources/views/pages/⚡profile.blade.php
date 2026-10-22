@@ -88,6 +88,13 @@ new class extends Component
             $this->tab = 'profile';
         }
 
+        // What a redirect to this page has to tell (a confirmed address, a connected Google account) comes as a toast
+        foreach (['status' => 'success', 'warning' => 'warning'] as $key => $variant) {
+            if (session($key)) {
+                Flux::toast(variant: $variant, text: session($key));
+            }
+        }
+
         $this->name = auth()->user()->name;
         $this->email = auth()->user()->email;
         $this->digest = auth()->user()->digest_enabled;
@@ -424,13 +431,6 @@ new class extends Component
         <flux:heading level="1" size="xl">{{ __('Profile') }}</flux:heading>
         <flux:text class="mt-1">{{ __('Your account, its security and access for AI agents.') }}</flux:text>
     </div>
-
-    @if (session('status'))
-        <flux:callout variant="success" icon="check-circle" :heading="session('status')" />
-    @endif
-    @if (session('warning'))
-        <flux:callout variant="warning" icon="exclamation-triangle" :heading="session('warning')" />
-    @endif
 
     <flux:tab.group>
         <flux:tabs wire:model="tab" scrollable>

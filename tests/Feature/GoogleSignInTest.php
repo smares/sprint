@@ -335,6 +335,19 @@ class GoogleSignInTest extends TestCase
         $this->assertSame(0, $user->socialAccounts()->count());
     }
 
+    public function test_what_a_redirect_tells_the_profile_comes_as_a_toast(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user);
+        session()->flash('status', 'Your Google account is connected.');
+        session()->flash('warning', 'Something is off.');
+
+        Livewire::test('pages::profile')
+            ->assertDispatched('toast-show', fn (string $event, array $params) => ($params['slots']['text'] ?? null) === 'Your Google account is connected.')
+            ->assertDispatched('toast-show', fn (string $event, array $params) => ($params['slots']['text'] ?? null) === 'Something is off.');
+    }
+
     public function test_the_profile_connects_and_disconnects(): void
     {
         $user = User::factory()->create();

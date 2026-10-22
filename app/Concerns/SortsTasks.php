@@ -54,6 +54,19 @@ trait SortsTasks
     }
 
     /**
+     * The sort order of a saved view; a criterion this page cannot sort by any more (a deleted field) is the manual order.
+     *
+     * @param  array<string, mixed>  $settings
+     */
+    protected function applySavedSort(array $settings): void
+    {
+        $sort = (string) ($settings['sort'] ?? '');
+
+        $this->sortBy = $this->isSortable($sort) ? $sort : '';
+        $this->sortDirection = ($settings['direction'] ?? 'asc') === 'desc' ? 'desc' : 'asc';
+    }
+
+    /**
      * Click on a criterion: ascending, then descending, then back to the manual order.
      */
     public function sort(string $column): void

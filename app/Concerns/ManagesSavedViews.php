@@ -6,6 +6,7 @@ use App\Models\Project;
 use App\Models\SavedFilter;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
@@ -43,24 +44,37 @@ trait ManagesSavedViews
     abstract protected function applyViewSettings(array $settings): void;
 
     /**
-     * The settings that a page carries in its address: with any of them there, no default is applied.
+     * The settings that a page carries in its address, by their name there: the property of the page that holds each.
      *
-     * @return list<string>
+     * @return array<string, string>
      */
-    abstract protected function savedViewQueryKeys(): array;
+    abstract protected function savedViewQueryProperties(): array;
 
+    /**
+     * Opens the default view, if there is one. What the address says comes before it, setting by setting: a link with a
+     * filter keeps that filter and still has the rest of the default, and a page that was changed after it opened (Livewire
+     * writes only the changes to the address) comes back the same way.
+     */
     public function mountManagesSavedViews(): void
     {
-        foreach ($this->savedViewQueryKeys() as $key) {
+        $default = $this->viewToOpen();
+
+        if (! $default instanceof SavedFilter) {
+            return;
+        }
+
+        $fromAddress = [];
+
+        foreach ($this->savedViewQueryProperties() as $key => $property) {
             if (request()->query->has($key)) {
-                return;
+                $fromAddress[$property] = $this->{$property};
             }
         }
 
-        $default = $this->viewToOpen();
+        $this->applyViewSettings($default->filters);
 
-        if ($default instanceof SavedFilter) {
-            $this->applyViewSettings($default->filters);
+        foreach ($fromAddress as $property => $value) {
+            $this->{$property} = $value;
         }
     }
 
@@ -72,34 +86,31 @@ trait ManagesSavedViews
     #[Computed]
     public function savedFilters(): Collection
     {
-        return $this->project->savedFilters()->forView($this->savedViewKind())->visibleTo(auth()->user())->orderBy('name')->get()
+        return $this->savedViewsQuery()->visibleTo(auth()->user())->orderBy('name')->get()
             ->each(fn (SavedFilter $saved) => $saved->setRelation('project', $this->project));
     }
 
     /**
-     * Which view opens by default: what the person picked (0: none), else what the project made the default for everybody.
+     * Which view opens by default: `mine` is what the person picked (0: none) if that view still exists, `project` what the
+     * project made the default for everybody, `opens` the one that opens for this person (their own pick comes first).
      *
-     * @return array{mine: ?int, project: ?int}
+     * @return array{mine: ?int, project: ?int, opens: ?int}
      */
     #[Computed]
     public function savedViewDefaults(): array
     {
-        return [
-            'mine' => auth()->user()->defaultSavedView($this->project->id, $this->savedViewKind()),
-            'project' => $this->savedFilters->firstWhere('is_default', true)?->id,
-        ];
+        $picked = auth()->user()->defaultSavedView($this->project->id, $this->savedViewKind());
+
+        // A view that was deleted since the person picked it is as good as none picked
+        $mine = $picked === 0 || $this->savedFilters->contains('id', $picked) ? $picked : null;
+        $project = $this->savedFilters->firstWhere('is_default', true)?->id;
+
+        return ['mine' => $mine, 'project' => $project, 'opens' => $mine === 0 ? null : ($mine ?? $project)];
     }
 
     private function viewToOpen(): ?SavedFilter
     {
-        ['mine' => $mine, 'project' => $project] = $this->savedViewDefaults;
-
-        if ($mine === 0) {
-            return null;
-        }
-
-        // A view that was deleted since the person picked it is as good as none picked
-        return $this->savedFilters->firstWhere('id', $mine) ?? $this->savedFilters->firstWhere('id', $project);
+        return $this->savedFilters->firstWhere('id', $this->savedViewDefaults['opens']);
     }
 
     public function saveCurrentFilter(): void
@@ -160,15 +171,15 @@ trait ManagesSavedViews
      */
     public function followProjectDefault(): void
     {
-        $this->rememberMyDefault(null);
+        $this->rememberMyDefault(null, __('Default removed.'));
     }
 
-    private function rememberMyDefault(?int $savedViewId): void
+    private function rememberMyDefault(?int $savedViewId, ?string $message = null): void
     {
         auth()->user()->rememberDefaultSavedView($this->project->id, $this->savedViewKind(), $savedViewId);
 
         unset($this->savedViewDefaults);
-        Flux::toast(variant: 'success', text: __('Default saved.'));
+        Flux::toast(variant: 'success', text: $message ?? __('Default saved.'));
     }
 
     /**
@@ -179,11 +190,14 @@ trait ManagesSavedViews
     {
         Gate::authorize('manage', $this->project);
 
-        $saved = $this->project->savedFilters()->forView($this->savedViewKind())->whereNull('user_id')->findOrFail($filterId);
+        $saved = $this->savedViewsQuery()->whereNull('user_id')->findOrFail($filterId);
 
+        // The project row is locked meanwhile, so two managers at once leave one default, not two
         DB::transaction(function () use ($saved): void {
-            $this->project->savedFilters()->forView($this->savedViewKind())->where('is_default', true)->update(['is_default' => false]);
-            $saved->update(['is_default' => true]);
+            Project::query()->whereKey($this->project->getKey())->lockForUpdate()->first();
+
+            $this->savedViewsQuery()->whereKeyNot($saved->getKey())->where('is_default', true)->update(['is_default' => false]);
+            $this->savedViewsQuery()->whereKey($saved->getKey())->update(['is_default' => true]);
         });
 
         $this->forgetSavedViews();
@@ -194,15 +208,23 @@ trait ManagesSavedViews
     {
         Gate::authorize('manage', $this->project);
 
-        $this->project->savedFilters()->forView($this->savedViewKind())->where('is_default', true)->update(['is_default' => false]);
+        $this->savedViewsQuery()->where('is_default', true)->update(['is_default' => false]);
 
         $this->forgetSavedViews();
-        Flux::toast(variant: 'success', text: __('Default saved.'));
+        Flux::toast(variant: 'success', text: __('Default removed.'));
     }
 
     private function visibleView(int $filterId): SavedFilter
     {
-        return $this->project->savedFilters()->forView($this->savedViewKind())->visibleTo(auth()->user())->findOrFail($filterId);
+        return $this->savedViewsQuery()->visibleTo(auth()->user())->findOrFail($filterId);
+    }
+
+    /**
+     * @return HasMany<SavedFilter, Project>
+     */
+    private function savedViewsQuery(): HasMany
+    {
+        return $this->project->savedFilters()->forView($this->savedViewKind());
     }
 
     private function forgetSavedViews(): void

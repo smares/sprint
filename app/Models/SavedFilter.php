@@ -16,9 +16,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * @property string $view
  * @property bool $is_default
- * @property array{status: string, assignee: string, collaborators?: list<string>, tag: string, fields: array<int|string, string>, sort: string, direction: string} $filters
+ * @property array{status?: string, assignee?: string, collaborators?: list<string>, tag?: string, dates?: string, fields?: array<int|string, string>, sort?: string, direction?: string} $filters
  */
-#[Fillable(['project_id', 'user_id', 'name', 'filters', 'view', 'is_default'])]
+#[Fillable(['project_id', 'user_id', 'name', 'filters', 'view'])]
 class SavedFilter extends Model
 {
     /** @use HasFactory<SavedFilterFactory> */
@@ -27,6 +27,11 @@ class SavedFilter extends Model
     public const string LIST = 'list';
 
     public const string BOARD = 'board';
+
+    /**
+     * @var array<string, mixed>
+     */
+    protected $attributes = ['view' => self::LIST, 'is_default' => false];
 
     protected function casts(): array
     {

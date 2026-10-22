@@ -196,11 +196,11 @@ new class extends Component
     }
 
     /**
-     * @return list<string>
+     * @return array<string, string>
      */
-    protected function savedViewQueryKeys(): array
+    protected function savedViewQueryProperties(): array
     {
-        return ['sort', 'dir'];
+        return ['sort' => 'sortBy', 'dir' => 'sortDirection'];
     }
 
     /**
@@ -210,7 +210,7 @@ new class extends Component
      */
     protected function currentViewSettings(): array
     {
-        return ['sort' => $this->sortBy, 'direction' => $this->sortDirection];
+        return ['sort' => $this->isSorted() ? $this->sortBy : '', 'direction' => $this->direction()];
     }
 
     /**
@@ -218,11 +218,7 @@ new class extends Component
      */
     protected function applyViewSettings(array $settings): void
     {
-        $sort = (string) ($settings['sort'] ?? '');
-
-        $this->sortBy = $this->isSortable($sort) ? $sort : '';
-        $this->sortDirection = ($settings['direction'] ?? 'asc') === 'desc' ? 'desc' : 'asc';
-
+        $this->applySavedSort($settings);
         $this->sorted();
     }
 

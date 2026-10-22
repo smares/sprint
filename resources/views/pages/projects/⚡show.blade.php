@@ -424,11 +424,14 @@ new class extends Component
     }
 
     /**
-     * @return list<string>
+     * @return array<string, string>
      */
-    protected function savedViewQueryKeys(): array
+    protected function savedViewQueryProperties(): array
     {
-        return ['status', 'assignee', 'with', 'tag', 'dates', 'f', 'sort', 'dir'];
+        return [
+            'status' => 'statusFilter', 'assignee' => 'assigneeFilter', 'with' => 'collaboratorFilter', 'tag' => 'tagFilter',
+            'dates' => 'dateFilter', 'f' => 'fieldFilters', 'sort' => 'sortBy', 'dir' => 'sortDirection',
+        ];
     }
 
     /**
@@ -442,9 +445,9 @@ new class extends Component
             'collaborators' => $this->validCollaboratorValues($this->collaboratorFilter),
             'tag' => $this->tagFilter,
             'dates' => $this->dateFilter,
-            'fields' => array_filter($this->fieldFilters, fn ($option) => $option !== '' && $option !== null),
-            'sort' => $this->sortBy,
-            'direction' => $this->sortDirection,
+            'fields' => array_filter($this->fieldFilters, fn ($option) => is_scalar($option) && $option !== ''),
+            'sort' => $this->isSorted() ? $this->sortBy : '',
+            'direction' => $this->direction(),
         ];
     }
 
@@ -456,33 +459,30 @@ new class extends Component
     protected function applyViewSettings(array $settings): void
     {
         $this->selected = [];
-        $filters = $settings;
 
-        $status = (string) ($filters['status'] ?? 'open');
+        $status = (string) ($settings['status'] ?? 'open');
         $this->statusFilter = in_array($status, ['open', 'all'], true) || ($this->statuses->contains('id', (int) $status) && ctype_digit($status)) ? $status : 'open';
 
-        $assignee = (string) ($filters['assignee'] ?? '');
+        $assignee = (string) ($settings['assignee'] ?? '');
         $this->assigneeFilter = $assignee === 'me' || ($assignee !== '' && ctype_digit($assignee) && $this->assignableUsers->contains('id', (int) $assignee)) ? $assignee : '';
 
-        $this->collaboratorFilter = $this->validCollaboratorValues((array) ($filters['collaborators'] ?? []));
+        $this->collaboratorFilter = $this->validCollaboratorValues((array) ($settings['collaborators'] ?? []));
 
-        $tag = (string) ($filters['tag'] ?? '');
+        $tag = (string) ($settings['tag'] ?? '');
         $this->tagFilter = $tag !== '' && ctype_digit($tag) && $this->tagOptions->contains('id', (int) $tag) ? $tag : '';
-        $this->dateFilter = is_string($filters['dates'] ?? null) && array_key_exists($filters['dates'], $this->dateFilterLabels) ? $filters['dates'] : '';
+        $this->dateFilter = is_string($settings['dates'] ?? null) && array_key_exists($settings['dates'], $this->dateFilterLabels) ? $settings['dates'] : '';
 
         $this->fieldFilters = [];
 
-        foreach ((array) ($filters['fields'] ?? []) as $fieldId => $optionId) {
+        foreach ((array) ($settings['fields'] ?? []) as $fieldId => $optionId) {
             $field = $this->filterableFields->firstWhere('id', (int) $fieldId);
 
-            if ($field !== null && $field->options->contains('id', (int) $optionId)) {
+            if ($field !== null && is_scalar($optionId) && $field->options->contains('id', (int) $optionId)) {
                 $this->fieldFilters[$field->id] = (string) $optionId;
             }
         }
 
-        $sort = (string) ($filters['sort'] ?? '');
-        $this->sortBy = $this->isSortable($sort) ? $sort : '';
-        $this->sortDirection = ($filters['direction'] ?? 'asc') === 'desc' ? 'desc' : 'asc';
+        $this->applySavedSort($settings);
 
         $this->limit = self::PAGE_SIZE;
         unset($this->tasks, $this->totalTasks, $this->activeFilters, $this->collaboratorFilterUsers);

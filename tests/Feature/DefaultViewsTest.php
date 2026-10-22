@@ -7,7 +7,9 @@ use App\Models\Project;
 use App\Models\SavedFilter;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class DefaultViewsTest extends TestCase
@@ -31,12 +33,12 @@ class DefaultViewsTest extends TestCase
         $this->project->setRole($this->manager, ProjectRole::Admin);
     }
 
-    private function board(?User $as = null, array $query = [])
+    private function board(?User $as = null, array $query = []): Testable
     {
         return Livewire::withQueryParams($query)->actingAs($as ?? $this->editor)->test('pages::projects.board', ['project' => $this->project]);
     }
 
-    private function list(?User $as = null, array $query = [])
+    private function list(?User $as = null, array $query = []): Testable
     {
         return Livewire::withQueryParams($query)->actingAs($as ?? $this->editor)->test('pages::projects.show', ['project' => $this->project]);
     }
@@ -94,9 +96,50 @@ class DefaultViewsTest extends TestCase
         $this->board()->assertSet('sortBy', 'title');
         $this->list()->assertSet('sortBy', 'due')->assertSet('statusFilter', 'all');
 
-        // with a setting in the address, the person asked for something else
-        $this->board(query: ['sort' => 'due'])->assertSet('sortBy', 'due');
-        $this->list(query: ['status' => 'open'])->assertSet('sortBy', '');
+        // what the address says comes before the default, setting by setting; the rest of the default stays
+        $this->board(query: ['sort' => 'due'])->assertSet('sortBy', 'due')->assertSet('sortDirection', 'desc');
+        $this->board(query: ['dir' => 'asc'])->assertSet('sortBy', 'title')->assertSet('sortDirection', 'asc');
+        $this->board(query: ['sort' => ''])->assertSet('sortBy', '');
+        $this->list(query: ['status' => 'open'])->assertSet('statusFilter', 'open')->assertSet('sortBy', 'due');
+    }
+
+    /**
+     * @return array<string, array{string, string}>
+     */
+    public static function listAddressKeys(): array
+    {
+        return [
+            'status' => ['status', 'statusFilter'], 'assignee' => ['assignee', 'assigneeFilter'], 'tag' => ['tag', 'tagFilter'],
+            'dates' => ['dates', 'dateFilter'], 'sort' => ['sort', 'sortBy'], 'dir' => ['dir', 'sortDirection'],
+        ];
+    }
+
+    #[DataProvider('listAddressKeys')]
+    public function test_every_setting_of_the_address_of_the_list_comes_before_the_default(string $key, string $property): void
+    {
+        $this->savedView(SavedFilter::LIST, 'Für alle', 'due', shared: true, default: true);
+        $value = ['status' => 'open', 'assignee' => 'me', 'tag' => '', 'dates' => 'overdue', 'sort' => 'title', 'dir' => 'asc'][$key];
+
+        $this->list(query: [$key => $value])->assertSet($property, $value);
+    }
+
+    public function test_a_default_of_the_list_leaves_out_what_no_longer_exists(): void
+    {
+        $this->savedView(SavedFilter::LIST, 'Alt', 'field:99999', shared: true, default: true)->update(['filters' => [
+            'status' => '99999', 'assignee' => '99999', 'tag' => '99999', 'fields' => ['99999' => '1', '7' => ['x']], 'sort' => 'field:99999', 'direction' => 'desc',
+        ]]);
+
+        $this->list()->assertSet('statusFilter', 'open')->assertSet('assigneeFilter', '')->assertSet('tagFilter', '')
+            ->assertSet('fieldFilters', [])->assertSet('sortBy', '');
+    }
+
+    public function test_only_a_sort_order_that_is_in_force_is_saved_and_fields_must_be_single_values(): void
+    {
+        $this->list()->set('sortDirection', 'desc')->set('saveName', 'Ohne Sortierung')->call('saveCurrentFilter');
+        $this->list()->set('fieldFilters.3', ['x'])->set('saveName', 'Feld')->call('saveCurrentFilter');
+
+        $this->assertSame('', SavedFilter::where('name', 'Ohne Sortierung')->firstOrFail()->filters['sort']);
+        $this->assertSame([], SavedFilter::where('name', 'Feld')->firstOrFail()->filters['fields']);
     }
 
     public function test_the_own_default_comes_before_the_one_of_the_project(): void
@@ -216,6 +259,80 @@ class DefaultViewsTest extends TestCase
         $this->board()->assertSee('Gemeinsam')->assertSee('Standardmäßig für mich öffnen')->assertDontSee('Standardmäßig für alle öffnen');
         $this->board($this->manager)->assertSee('Standardmäßig für alle öffnen')
             ->call('makeProjectDefault', $saved->id)->assertSee('Standard für alle')->assertSee('Standard für alle entfernen');
-        $this->board()->assertSee('Wird standardmäßig geöffnet: „Gemeinsam“')->assertSee('Nicht für mich');
+        $this->board()->assertSee('Standard des Projekts: „Gemeinsam“')->assertSee('Nicht für mich');
+    }
+
+    public function test_a_default_of_the_person_that_was_deleted_leaves_the_project_default_to_switch_off(): void
+    {
+        $this->savedView(SavedFilter::BOARD, 'Für alle', 'title', shared: true, default: true);
+        $mine = $this->savedView(SavedFilter::BOARD, 'Meine', 'due');
+
+        $this->board()->call('useAsMyDefault', $mine->id)->call('deleteFilter', $mine->id)
+            ->assertSee('Standard des Projekts: „Für alle“')->assertSee('Nicht für mich');
+    }
+
+    public function test_switching_the_default_off_for_oneself_can_be_taken_back_without_a_project_default(): void
+    {
+        $this->board()->call('useNoDefaultForMe')->assertSee('Für dich wird keine Ansicht standardmäßig geöffnet.')->assertSee('Standard des Projekts verwenden')
+            ->call('followProjectDefault');
+
+        $this->assertNull($this->editor->fresh()->defaultSavedView($this->project->id, SavedFilter::BOARD));
+    }
+
+    public function test_deleting_the_default_of_the_project_leaves_none(): void
+    {
+        $default = SavedFilter::factory()->for($this->project)->board()->projectDefault()->create(['name' => 'Weg']);
+
+        $this->board($this->manager)->call('deleteFilter', $default->id);
+
+        $this->board()->assertSet('sortBy', '');
+        $this->assertNull($this->board()->instance()->savedViewDefaults['project']);
+    }
+
+    public function test_a_viewer_can_pick_a_shared_view_as_their_default(): void
+    {
+        $viewer = User::factory()->create();
+        $this->project->setRole($viewer, ProjectRole::Viewer);
+        $shared = $this->savedView(SavedFilter::BOARD, 'Gemeinsam', 'title', shared: true);
+
+        $this->board($viewer)->call('useAsMyDefault', $shared->id)->assertHasNoErrors();
+        $this->board($viewer)->assertSet('sortBy', 'title');
+    }
+
+    public function test_views_of_another_project_or_kind_cannot_be_applied_or_deleted(): void
+    {
+        $other = SavedFilter::factory()->for(Project::factory()->create())->shared()->create();
+        $list = $this->savedView(SavedFilter::LIST, 'Liste', 'due');
+
+        $this->board()->call('applyFilter', $other->id)->assertNotFound();
+        $this->board()->call('deleteFilter', $list->id)->assertNotFound();
+        $this->list()->call('deleteFilter', $other->id)->assertNotFound();
+    }
+
+    public function test_the_factory_states_and_the_old_rows_count_as_list_views(): void
+    {
+        $this->assertSame(SavedFilter::LIST, SavedFilter::factory()->for($this->project)->create()->view);
+        $this->assertFalse(SavedFilter::factory()->for($this->project)->create()->is_default);
+        $this->assertTrue(SavedFilter::factory()->for($this->project)->projectDefault()->create()->is_default);
+    }
+
+    public function test_a_board_that_opens_with_a_default_sort_only_moves_cards_between_columns(): void
+    {
+        $this->savedView(SavedFilter::BOARD, 'Für alle', 'title', shared: true, default: true);
+        $board = $this->board()->assertSet('sortBy', 'title');
+
+        $this->assertTrue($board->instance()->sortActive);
+    }
+
+    public function test_making_the_view_that_is_the_default_the_default_again_keeps_it(): void
+    {
+        $saved = $this->savedView(SavedFilter::BOARD, 'Für alle', 'title', shared: true);
+
+        // the second manager's page was loaded before the first one made it the default
+        $stale = $this->board($this->manager);
+        $this->board($this->manager)->call('makeProjectDefault', $saved->id);
+        $stale->call('makeProjectDefault', $saved->id)->call('makeProjectDefault', $saved->id);
+
+        $this->assertTrue($saved->fresh()->is_default);
     }
 }

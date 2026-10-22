@@ -73,7 +73,7 @@ class BulkTaskActionsTest extends TestCase
 
     public function test_the_list_offers_selecting_to_editors_only(): void
     {
-        $task = $this->task('Eins');
+        $this->task('Eins');
 
         Livewire::test('pages::projects.show', ['project' => $this->project])->assertSee('Aufgabe auswählen')->assertSet('selecting', false);
 
@@ -101,7 +101,7 @@ class BulkTaskActionsTest extends TestCase
 
     public function test_the_checkbox_of_a_viewer_cannot_start_a_selection(): void
     {
-        $task = $this->task('Eins');
+        $this->task('Eins');
         $viewer = User::factory()->create();
         $this->project->setRole($viewer, ProjectRole::Viewer);
 
@@ -366,7 +366,7 @@ class BulkTaskActionsTest extends TestCase
 
     public function test_unticking_everything_ends_the_selection(): void
     {
-        $a = $this->task('Eins');
+        $this->task('Eins');
         $this->task('Zwei');
 
         Livewire::test('pages::projects.show', ['project' => $this->project])

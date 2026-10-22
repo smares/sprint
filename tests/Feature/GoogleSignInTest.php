@@ -21,6 +21,10 @@ class GoogleSignInTest extends TestCase
 {
     use RefreshDatabase;
 
+    private ?GoogleUser $googleUser = null;
+
+    private ?GoogleProvider $googleProvider = null;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -36,14 +40,17 @@ class GoogleSignInTest extends TestCase
      */
     private function googleSays(string $email = 'anna@example.com', string $id = 'g-1', array $raw = [], string $name = 'Anna Beispiel'): void
     {
-        $user = (new GoogleUser)->map(['id' => $id, 'name' => $name, 'email' => $email]);
-        $user->user = ['email_verified' => true, 'hd' => Str::afterLast($email, '@')] + $raw;
+        $this->googleUser = (new GoogleUser)->map(['id' => $id, 'name' => $name, 'email' => $email]);
+        $this->googleUser->user = $raw + ['email_verified' => true, 'hd' => Str::afterLast($email, '@')];
 
-        $provider = Mockery::mock(GoogleProvider::class);
-        $provider->shouldReceive('user')->andReturn($user);
-        $provider->shouldReceive('with')->andReturnSelf();
-        $provider->shouldReceive('redirect')->andReturn(redirect('https://accounts.google.com/o/oauth2/auth'));
-        Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
+        // The mock of the manager is made once; calling this again only changes who comes back
+        if (! $this->googleProvider instanceof GoogleProvider) {
+            $this->googleProvider = Mockery::mock(GoogleProvider::class);
+            $this->googleProvider->shouldReceive('user')->andReturnUsing(fn () => $this->googleUser);
+            $this->googleProvider->shouldReceive('with')->andReturnSelf();
+            $this->googleProvider->shouldReceive('redirect')->andReturn(redirect('https://accounts.google.com/o/oauth2/auth'));
+            Socialite::shouldReceive('driver')->with('google')->andReturn($this->googleProvider);
+        }
     }
 
     public function test_the_login_page_offers_google_only_while_it_is_on_and_set_up(): void
@@ -135,17 +142,64 @@ class GoogleSignInTest extends TestCase
         $this->assertSame(1, User::count());
     }
 
-    public function test_an_existing_account_is_connected_by_the_confirmed_address_even_off_the_list(): void
+    public function test_an_existing_account_is_connected_by_the_address_when_google_owns_it_even_off_the_list(): void
     {
         Notification::fake();
         $user = User::factory()->create(['email' => 'Anna@Elsewhere.org']);
-        $this->googleSays('anna@elsewhere.org', 'g-5', ['hd' => null]);
+        $this->googleSays('anna@elsewhere.org', 'g-5', ['hd' => 'elsewhere.org']);
 
         $this->get(route('auth.google.callback'))->assertRedirect(route('projects.index'));
 
         $this->assertAuthenticatedAs($user);
         $this->assertSame('g-5', $user->socialAccounts()->firstOrFail()->provider_id);
         Notification::assertNothingSent();
+    }
+
+    public function test_the_address_alone_connects_nothing_at_a_domain_google_does_not_manage(): void
+    {
+        $user = User::factory()->create(['email' => 'anna@elsewhere.org']);
+        $this->googleSays('anna@elsewhere.org', 'g-5', ['hd' => null]);
+
+        $this->get(route('auth.google.callback'))->assertRedirect(route('login'))->assertSessionHas('warning');
+
+        $this->assertGuest();
+        $this->assertSame(0, $user->socialAccounts()->count());
+    }
+
+    public function test_another_google_account_with_the_same_address_does_not_take_over_a_connection(): void
+    {
+        $user = User::factory()->create(['email' => 'anna@example.com']);
+        SocialAccount::create(['user_id' => $user->id, 'provider' => 'google', 'provider_id' => 'g-old', 'email' => 'anna@example.com']);
+        $this->googleSays('anna@example.com', 'g-new');
+
+        $this->get(route('auth.google.callback'))->assertRedirect(route('login'))->assertSessionHas('warning');
+
+        $this->assertGuest();
+        $this->assertSame('g-old', $user->socialAccounts()->firstOrFail()->provider_id);
+    }
+
+    public function test_addresses_that_differ_only_in_case_are_not_guessed(): void
+    {
+        User::factory()->create(['email' => 'anna@example.com']);
+        User::factory()->create(['email' => 'Anna@example.com']);
+        $this->googleSays();
+
+        $this->get(route('auth.google.callback'))->assertRedirect(route('login'))->assertSessionHas('warning');
+
+        $this->assertGuest();
+    }
+
+    public function test_resetting_the_password_or_the_second_factors_removes_the_connection(): void
+    {
+        $user = User::factory()->create();
+        SocialAccount::create(['user_id' => $user->id, 'provider' => 'google', 'provider_id' => 'g-1', 'email' => 'anna@example.com']);
+
+        $user->resetSecondFactors();
+        $this->assertSame(0, $user->socialAccounts()->count());
+
+        SocialAccount::create(['user_id' => $user->id, 'provider' => 'google', 'provider_id' => 'g-1', 'email' => 'anna@example.com']);
+        $user->signOutEverywhere(withPasskeys: true);
+        $this->assertSame(0, $user->socialAccounts()->count());
     }
 
     public function test_a_connected_person_is_found_by_the_google_id_even_with_another_address(): void
@@ -180,6 +234,49 @@ class GoogleSignInTest extends TestCase
         $this->get(route('auth.google.callback'))->assertRedirect(route('projects.index'));
 
         $this->assertAuthenticatedAs($user);
+    }
+
+    public function test_stay_signed_in_and_the_language_of_the_visit_carry_through_google(): void
+    {
+        $this->googleSays();
+
+        $this->get(route('auth.google.redirect', ['remember' => 1]));
+        $this->withSession(['locale' => 'en'])->get(route('auth.google.callback'));
+
+        $this->assertAuthenticated();
+        $this->assertNotNull(User::firstOrFail()->getRememberToken());
+        $this->assertSame(app()->getLocale(), User::firstOrFail()->locale);
+    }
+
+    public function test_cancelling_at_google_says_so(): void
+    {
+        $this->googleSays();
+
+        $this->get(route('auth.google.callback', ['error' => 'access_denied']))->assertRedirect(route('login'))->assertSessionHas('warning', 'Die Anmeldung mit Google wurde abgebrochen.');
+        $this->assertGuest();
+    }
+
+    public function test_somebody_signed_in_is_not_switched_to_another_account_by_a_return_from_google(): void
+    {
+        $signedIn = User::factory()->create();
+        User::factory()->create(['email' => 'anna@example.com']);
+        $this->googleSays();
+
+        $this->actingAs($signedIn)->get(route('auth.google.callback'))->assertRedirect(route('profile', ['tab' => 'security']));
+
+        $this->assertAuthenticatedAs($signedIn);
+    }
+
+    public function test_connecting_another_google_account_needs_the_first_one_disconnected(): void
+    {
+        $user = User::factory()->create();
+        SocialAccount::create(['user_id' => $user->id, 'provider' => 'google', 'provider_id' => 'g-old', 'email' => 'x@example.com']);
+        $this->googleSays('anna@gmail.com', 'g-new', ['hd' => null]);
+
+        $this->actingAs($user)->get(route('auth.google.link'));
+        $this->actingAs($user)->get(route('auth.google.callback'))->assertSessionHas('warning');
+
+        $this->assertSame('g-old', $user->socialAccounts()->firstOrFail()->provider_id);
     }
 
     public function test_a_failed_return_from_google_leads_back_to_the_login_page(): void

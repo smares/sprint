@@ -37,7 +37,7 @@ class SsoSettings
      */
     public function isAvailable(): bool
     {
-        return $this->isEnabled() && $this->hasCredentials();
+        return $this->hasCredentials() && $this->isEnabled();
     }
 
     /**
@@ -63,6 +63,17 @@ class SsoSettings
         if (! str_contains($email, '@') || Str::startsWith($email, '@') || ! in_array($domain, $this->domains(), true)) {
             return false;
         }
+
+        return $this->isAuthoritativeFor($email, $workspaceDomain);
+    }
+
+    /**
+     * Whether Google decides who owns this address: the account belongs to the Workspace of its domain, or the domain is one
+     * of the personal accounts (gmail.com). Only then "verified" by Google says the person really controls the address.
+     */
+    public function isAuthoritativeFor(string $email, ?string $workspaceDomain): bool
+    {
+        $domain = Str::lower(Str::afterLast($email, '@'));
 
         return $workspaceDomain !== null
             ? Str::lower($workspaceDomain) === $domain

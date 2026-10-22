@@ -6,6 +6,6 @@
 The new account is not an administrator and sees no project yet. Please have a look and give them the rights and projects they need.
 
 <x-mail::button :url="$url">
-Open the users
+Open users
 </x-mail::button>
 </x-mail::message>

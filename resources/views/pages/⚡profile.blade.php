@@ -460,12 +460,6 @@ new class extends Component
                 </div>
             </div>
 
-            @if (session('status'))
-                <flux:callout variant="success" icon="check-circle" :heading="session('status')" />
-            @endif
-            @if (session('warning'))
-                <flux:callout variant="warning" icon="exclamation-triangle" :heading="session('warning')" />
-            @endif
             @if (auth()->user()->pending_email)
                 <flux:callout icon="envelope" :heading="__('Waiting for confirmation of :email', ['email' => auth()->user()->pending_email])" :text="__('Open the link we sent to that address. Until then, :email stays in use.', ['email' => auth()->user()->email])">
                     <x-slot name="actions">
@@ -602,8 +596,6 @@ new class extends Component
             <flux:separator />
 
             <livewire:google-account />
-
-            <flux:separator />
 
             <livewire:security />
         </flux:tab.panel>

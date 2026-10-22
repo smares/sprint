@@ -159,28 +159,35 @@ trait ManagesSavedViews
     }
 
     /**
-     * The menu of what opens for this person was used.
+     * The two menus of what is applied when the page opens: for this person (their own pick comes first), and for everybody in
+     * the project (only its managers, and only among the shared views).
      */
-    public function updatedDefaultChoice(string $choice): void
+    public function saveDefaults(): void
     {
-        match (true) {
-            $choice === '' => $this->followProjectDefault(),
-            $choice === 'none' => $this->useNoDefaultForMe(),
-            ctype_digit($choice) => $this->useAsMyDefault((int) $choice),
-            default => $this->syncDefaultChoices(),
-        };
-    }
+        ['mine' => $mine, 'project' => $project] = $this->savedViewDefaults;
 
-    /**
-     * The menu of what opens for everybody in the project was used.
-     */
-    public function updatedProjectChoice(string $choice): void
-    {
-        match (true) {
-            $choice === '' || $choice === 'none' => $this->clearProjectDefault(),
-            ctype_digit($choice) => $this->makeProjectDefault((int) $choice),
-            default => $this->syncDefaultChoices(),
+        // Anything else than what the menus offer leaves the setting as it is
+        $this->rememberMyDefault(match (true) {
+            $this->defaultChoice === '' => null,
+            $this->defaultChoice === 'none' => 0,
+            ctype_digit($this->defaultChoice) => $this->visibleView((int) $this->defaultChoice)->id,
+            default => $mine,
+        });
+
+        $chosen = match (true) {
+            $this->projectChoice === '' || $this->projectChoice === 'none' => null,
+            ctype_digit($this->projectChoice) => (int) $this->projectChoice,
+            default => $project,
         };
+
+        if ($chosen !== $project) {
+            Gate::authorize('manage', $this->project);
+
+            $chosen === null ? $this->clearProjectDefault() : $this->makeProjectDefault($chosen);
+        }
+
+        $this->forgetSavedViews();
+        Flux::toast(variant: 'success', text: __('Setting saved.'));
     }
 
     private function syncDefaultChoices(): void
@@ -192,45 +199,21 @@ trait ManagesSavedViews
     }
 
     /**
-     * The saved view opens by default for this person, whatever the project's default is.
+     * @param  int|null  $savedViewId  a view of this page, 0 for none, null to follow the project's default
      */
-    public function useAsMyDefault(int $filterId): void
-    {
-        $this->rememberMyDefault($this->visibleView($filterId)->id);
-    }
-
-    /**
-     * This person opens no saved view by default, even if the project has a default.
-     */
-    public function useNoDefaultForMe(): void
-    {
-        $this->rememberMyDefault(0);
-    }
-
-    /**
-     * Back to the project's default (if it has one).
-     */
-    public function followProjectDefault(): void
-    {
-        $this->rememberMyDefault(null);
-    }
-
     private function rememberMyDefault(?int $savedViewId): void
     {
         auth()->user()->rememberDefaultSavedView($this->project->id, $this->savedViewKind(), $savedViewId);
 
-        $this->forgetSavedViews();
-        Flux::toast(variant: 'success', text: __('Setting saved.'));
+        unset($this->savedViewDefaults);
     }
 
     /**
-     * The shared view opens by default for everybody in the project (a person's own default still comes first). The default
-     * before it is no default any more: there is one per project and kind.
+     * The shared view is applied by default for everybody in the project (a person's own choice still comes first). The one
+     * before it is not any more: there is one per project and kind.
      */
-    public function makeProjectDefault(int $filterId): void
+    private function makeProjectDefault(int $filterId): void
     {
-        Gate::authorize('manage', $this->project);
-
         $saved = $this->savedViewsQuery()->whereNull('user_id')->findOrFail($filterId);
 
         // The project row is locked meanwhile, so two managers at once leave one default, not two
@@ -241,18 +224,22 @@ trait ManagesSavedViews
             $this->savedViewsQuery()->whereKey($saved->getKey())->update(['is_default' => true]);
         });
 
-        $this->forgetSavedViews();
-        Flux::toast(variant: 'success', text: __('Setting saved.'));
+        unset($this->savedFilters, $this->savedViewDefaults);
     }
 
-    public function clearProjectDefault(): void
+    private function clearProjectDefault(): void
     {
-        Gate::authorize('manage', $this->project);
-
         $this->savedViewsQuery()->where('is_default', true)->update(['is_default' => false]);
 
-        $this->forgetSavedViews();
-        Flux::toast(variant: 'success', text: __('Setting removed.'));
+        unset($this->savedFilters, $this->savedViewDefaults);
+    }
+
+    /**
+     * What the dialog shows of a failed save (the missing name) goes when it is closed.
+     */
+    public function clearSavedViewMessages(): void
+    {
+        $this->resetValidation();
     }
 
     private function visibleView(int $filterId): SavedFilter

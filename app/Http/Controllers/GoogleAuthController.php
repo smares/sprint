@@ -202,9 +202,10 @@ class GoogleAuthController extends Controller
         $domains = $this->sso->domains();
         $onlyDomain = count($domains) === 1 && $hintDomain && ! $this->sso->isAuthoritativeFor('x@'.$domains[0], null) ? $domains[0] : null;
 
-        // Only a hint for Google's own page (the address is checked on our side), and the choice of the account every time
+        // The domain is only a hint for Google's own page (the address is checked on our side); the account is chosen every time
         return $this->provider()->with(array_filter([
             'prompt' => 'select_account',
+            'hl' => app()->getLocale(),
             'hd' => $onlyDomain,
         ]))->redirect();
     }

@@ -76,7 +76,7 @@ class GoogleSignInTest extends TestCase
     public function test_the_way_to_google_asks_for_the_account_and_hints_the_only_domain(): void
     {
         $provider = Mockery::mock(GoogleProvider::class);
-        $provider->shouldReceive('with')->once()->with(['prompt' => 'select_account', 'hd' => 'example.com'])->andReturnSelf();
+        $provider->shouldReceive('with')->once()->with(['prompt' => 'select_account', 'hl' => app()->getLocale(), 'hd' => 'example.com'])->andReturnSelf();
         $provider->shouldReceive('redirect')->once()->andReturn(redirect('https://accounts.google.com/o/oauth2/auth'));
         Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
 

@@ -53,7 +53,7 @@ class GoogleAuthController extends Controller
         $this->ensureAvailable();
         $request->session()->put(self::LINK_SESSION_KEY, $request->user()->id);
 
-        return $this->toGoogle(hintDomain: false, hintEmail: '');
+        return $this->toGoogle(hintDomain: false, hintEmail: Str::lower((string) $request->user()->email));
     }
 
     public function callback(Request $request): RedirectResponse

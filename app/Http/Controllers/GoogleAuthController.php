@@ -40,9 +40,9 @@ class GoogleAuthController extends Controller
     {
         $this->ensureAvailable();
         $request->session()->forget(self::LINK_SESSION_KEY);
-        $request->session()->put(self::REMEMBER_SESSION_KEY, $request->boolean('remember'));
+        $request->session()->put(self::REMEMBER_SESSION_KEY, $request->query('remember') === '1');
 
-        return $this->toGoogle(hintDomain: true, hintEmail: $request->string('email')->trim()->lower()->toString());
+        return $this->toGoogle(hintDomain: true, hintEmail: Str::lower(trim(is_string($request->query('email')) ? $request->query('email') : '')));
     }
 
     /**
@@ -210,7 +210,7 @@ class GoogleAuthController extends Controller
             'prompt' => $loginHint === null ? 'select_account' : null,
             'login_hint' => $loginHint,
             'hl' => app()->getLocale(),
-            'hd' => $onlyDomain,
+            'hd' => $loginHint === null || Str::lower(Str::afterLast($loginHint, '@')) === $onlyDomain ? $onlyDomain : null,
         ]))->redirect();
     }
 

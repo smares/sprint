@@ -182,7 +182,8 @@ const registerTimelineBar = () => {
         moved: false,
 
         begin(event, mode) {
-            if (event.button !== 0) {
+            // The bar stands still while tasks are selected (the page sets `selecting` in the browser at once)
+            if (event.button !== 0 || this.$wire.selecting) {
                 return
             }
 

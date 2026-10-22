@@ -43,30 +43,23 @@ class SelectionInViewsTest extends TestCase
         return Task::factory()->for($project ?? $this->project)->create(['start_date' => '2026-10-10', 'due_date' => '2026-10-12'] + $attributes);
     }
 
-    public function test_the_button_starts_the_selection_with_a_box_before_every_task_and_the_bar_stays_while_nothing_is_selected(): void
+    public function test_the_button_starts_the_selection_in_the_browser_with_a_box_ready_before_every_task_and_the_bar_stays_while_nothing_is_selected(): void
     {
         $this->task(['title' => 'Auswahl']);
 
         foreach ($this->views() as $view) {
-            // The board draws the boxes for every card in advance, the browser makes them at once (see testTheBoardHasTheBoxesReady)
-            $drawnInAdvance = $view === 'pages::projects.board';
-            $page = Livewire::test($view, ['project' => $this->project])->assertSee('Auswählen');
-
-            if (! $drawnInAdvance) {
-                $page->assertDontSeeHtml('aria-label="Aufgabe auswählen: ');
-            }
-
-            $page->call('startSelecting')
+            // The boxes are drawn for every task in advance (in a template), the browser makes them at once; the server follows
+            Livewire::test($view, ['project' => $this->project])
+                ->assertSee('Auswählen')
+                ->assertSeeHtml('x-if="$wire.selecting"')
+                ->assertSeeHtml('aria-label="Aufgabe auswählen: ')
+                ->assertSeeHtml('$wire.selecting = true; $wire.$refresh()')
+                ->call('startSelecting')
                 ->assertSet('selecting', true)
                 ->assertSet('selected', [])
-                ->assertSeeHtml('aria-label="Aufgabe auswählen: ')
-                ->assertSee('Auswahl beenden');
-
-            $page->call('stopSelecting')->assertSet('selecting', false);
-
-            if (! $drawnInAdvance) {
-                $page->assertDontSeeHtml('aria-label="Aufgabe auswählen: ');
-            }
+                ->assertSee('Auswahl beenden')
+                ->call('stopSelecting')
+                ->assertSet('selecting', false);
         }
     }
 
@@ -234,13 +227,17 @@ class SelectionInViewsTest extends TestCase
     {
         $this->task(['title' => 'Verschiebbar']);
 
+        // The browser selects at once, so the pages carry the rule themselves: nothing is drawn differently by the server
         $calendar = Livewire::test('pages::projects.calendar', ['project' => $this->project]);
-        $calendar->assertSeeHtml("\$wire.\$dispatch('new-task', { dueDate: '2026-10-15' })")->assertSeeHtml('draggable="true"');
-        $calendar->call('startSelecting')->assertDontSeeHtml("\$wire.\$dispatch('new-task'")->assertDontSeeHtml('draggable="true"');
+        $calendar->assertSeeHtml("if (! \$wire.selecting && ! \$event.target.closest('a, button'))")
+            ->assertSeeHtml('x-on:drop.prevent="over = false; if ($wire.selecting) { return }')
+            ->assertSeeHtml('x-on:dragstart="if ($wire.selecting) { return }')
+            ->assertSeeHtml("'cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-700/40': ! \$wire.selecting");
 
+        // The bar of the timeline does not start moving while tasks are selected (timelineBar, resources/js/app.js)
         $timeline = Livewire::test('pages::projects.timeline', ['project' => $this->project]);
-        $timeline->assertSeeHtml('x-data="timelineBar(');
-        $timeline->call('startSelecting')->assertDontSeeHtml('x-data="timelineBar(');
+        $timeline->assertSeeHtml('x-data="timelineBar(')->assertSeeHtml("\$wire.selecting ? '' : 'cursor-grab touch-none select-none'");
+        $this->assertStringContainsString('this.$wire.selecting', file_get_contents(base_path('resources/js/app.js')));
     }
 
     public function test_the_boxes_follow_the_selection_and_work_with_the_keyboard(): void

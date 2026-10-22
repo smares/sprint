@@ -22,10 +22,10 @@ class Sortable
     /**
      * A configuration whose list stands still while the page is selecting tasks (`$wire.selecting` is set in the browser at
      * once, before the server draws the page again). The filter replaces the one of wire:sort, which only lets drags start on
-     * the items, so that rule is kept in it.
+     * the items and leaves out what is marked wire:sort:ignore, so those rules are kept in it.
      */
     public static function unlessSelecting(string $config): string
     {
-        return rtrim($config, ' }').", filter(event) { return \$wire.selecting || ! event.target.closest('[wire\\\\:sort\\\\:item]') } }";
+        return rtrim($config, ' }').", filter(event) { return \$wire.selecting || event.target.closest('[wire\\\\:sort\\\\:ignore], [x-sort\\\\:ignore]') || ! event.target.closest('[wire\\\\:sort\\\\:item]') } }";
     }
 }

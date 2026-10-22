@@ -402,7 +402,6 @@ new class extends Component
 
     <x-card-move-menu />
 
-    @if ($selecting)
-        <x-selection-bar :change="false" />
-    @endif
+    {{-- Always there, shown as soon as the browser selects --}}
+    <x-selection-bar :change="false" x-show="$wire.selecting" x-cloak />
 </div>

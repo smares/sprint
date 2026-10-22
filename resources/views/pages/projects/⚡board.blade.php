@@ -424,9 +424,12 @@ new class extends Component
         </flux:kanban>
     </div>
 
-    @if ($selecting)
-        <x-selection-bar />
+    {{-- The bar is always there for who may edit, shown as soon as the browser selects; the dialog needs what the server knows --}}
+    @if ($this->canEdit)
+        <x-selection-bar x-show="$wire.selecting" x-cloak />
+    @endif
 
+    @if ($selecting && $this->canEdit)
         <x-bulk-edit-modal :choices="$this->bulkChoices" />
     @endif
 

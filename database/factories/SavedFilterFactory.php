@@ -32,4 +32,20 @@ class SavedFilterFactory extends Factory
     {
         return $this->state(fn (array $attributes) => ['user_id' => null]);
     }
+
+    /**
+     * A view of the board, which has only a sort order.
+     */
+    public function board(): static
+    {
+        return $this->state(fn (array $attributes) => ['view' => SavedFilter::BOARD, 'filters' => ['sort' => '', 'direction' => 'asc']]);
+    }
+
+    /**
+     * The default for everybody in the project (a shared view).
+     */
+    public function projectDefault(): static
+    {
+        return $this->shared()->state(fn (array $attributes) => ['is_default' => true]);
+    }
 }

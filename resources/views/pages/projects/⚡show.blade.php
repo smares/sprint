@@ -2,6 +2,7 @@
 
 use App\Concerns\AssignsTasks;
 use App\Concerns\EditsTasksInBulk;
+use App\Concerns\ManagesSavedViews;
 use App\Concerns\RefreshesOnTaskChanges;
 use App\Concerns\QuickAddsTasks;
 use App\Concerns\ShowsProject;
@@ -9,6 +10,7 @@ use App\Concerns\SortsTasks;
 use App\Enums\CustomFieldType;
 use App\Models\CustomFieldValue;
 use App\Models\Project;
+use App\Models\SavedFilter;
 use App\Models\Task;
 use App\Models\TaskStatus;
 use App\Services\DateService;
@@ -32,6 +34,7 @@ new class extends Component
     use AssignsTasks;
     use EditsTasksInBulk;
     use RefreshesOnTaskChanges;
+    use ManagesSavedViews;
     use QuickAddsTasks;
     use SortsTasks;
 
@@ -65,10 +68,6 @@ new class extends Component
     /** @var array<int|string, string> */
     #[Url(as: 'f')]
     public array $fieldFilters = [];
-
-    public string $saveName = '';
-
-    public bool $saveShared = false;
 
     /**
      * Statuses and tags are edited in modals; the list re-renders itself, and a filter on a deleted tag is dropped.
@@ -419,20 +418,26 @@ new class extends Component
         };
     }
 
-    /**
-     * Saved views: the shared ones and the person's own.
-     */
-    #[Computed]
-    public function savedFilters(): Collection
+    protected function savedViewKind(): string
     {
-        return $this->project->savedFilters()->visibleTo(auth()->user())->orderBy('name')->get()
-            ->each(fn ($saved) => $saved->setRelation('project', $this->project));
+        return SavedFilter::LIST;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function savedViewQueryProperties(): array
+    {
+        return [
+            'status' => 'statusFilter', 'assignee' => 'assigneeFilter', 'with' => 'collaboratorFilter', 'tag' => 'tagFilter',
+            'dates' => 'dateFilter', 'f' => 'fieldFilters', 'sort' => 'sortBy', 'dir' => 'sortDirection',
+        ];
     }
 
     /**
      * @return array{status: string, assignee: string, collaborators: list<string>, tag: string, dates: string, fields: array<int|string, string>, sort: string, direction: string}
      */
-    private function currentFilters(): array
+    protected function currentViewSettings(): array
     {
         return [
             'status' => $this->statusFilter,
@@ -440,76 +445,47 @@ new class extends Component
             'collaborators' => $this->validCollaboratorValues($this->collaboratorFilter),
             'tag' => $this->tagFilter,
             'dates' => $this->dateFilter,
-            'fields' => array_filter($this->fieldFilters, fn ($option) => $option !== '' && $option !== null),
-            'sort' => $this->sortBy,
-            'direction' => $this->sortDirection,
+            'fields' => array_filter($this->fieldFilters, fn ($option) => is_scalar($option) && $option !== ''),
+            'sort' => $this->isSorted() ? $this->sortBy : '',
+            'direction' => $this->direction(),
         ];
     }
 
-    public function saveCurrentFilter(): void
-    {
-        $validated = $this->validate(['saveName' => ['required', 'string', 'max:80']], attributes: ['saveName' => __('Name')]);
-
-        $shared = $this->saveShared && Gate::allows('manage', $this->project);
-
-        $this->project->savedFilters()->updateOrCreate(
-            ['user_id' => $shared ? null : auth()->id(), 'name' => trim($validated['saveName'])],
-            ['filters' => $this->currentFilters()],
-        );
-
-        $this->reset('saveName', 'saveShared');
-        unset($this->savedFilters);
-        Flux::toast(variant: 'success', text: __('View saved.'));
-    }
-
     /**
-     * Apply a saved view; entries that no longer exist (deleted tags, statuses, people) are skipped.
+     * Entries that no longer exist (deleted tags, statuses, people) are skipped.
+     *
+     * @param  array<string, mixed>  $settings
      */
-    public function applyFilter(int $filterId): void
+    protected function applyViewSettings(array $settings): void
     {
-        $saved = $this->project->savedFilters()->visibleTo(auth()->user())->findOrFail($filterId);
         $this->selected = [];
-        $filters = $saved->filters;
 
-        $status = (string) ($filters['status'] ?? 'open');
+        $status = (string) ($settings['status'] ?? 'open');
         $this->statusFilter = in_array($status, ['open', 'all'], true) || ($this->statuses->contains('id', (int) $status) && ctype_digit($status)) ? $status : 'open';
 
-        $assignee = (string) ($filters['assignee'] ?? '');
+        $assignee = (string) ($settings['assignee'] ?? '');
         $this->assigneeFilter = $assignee === 'me' || ($assignee !== '' && ctype_digit($assignee) && $this->assignableUsers->contains('id', (int) $assignee)) ? $assignee : '';
 
-        $this->collaboratorFilter = $this->validCollaboratorValues((array) ($filters['collaborators'] ?? []));
+        $this->collaboratorFilter = $this->validCollaboratorValues((array) ($settings['collaborators'] ?? []));
 
-        $tag = (string) ($filters['tag'] ?? '');
+        $tag = (string) ($settings['tag'] ?? '');
         $this->tagFilter = $tag !== '' && ctype_digit($tag) && $this->tagOptions->contains('id', (int) $tag) ? $tag : '';
-        $this->dateFilter = is_string($filters['dates'] ?? null) && array_key_exists($filters['dates'], $this->dateFilterLabels) ? $filters['dates'] : '';
+        $this->dateFilter = is_string($settings['dates'] ?? null) && array_key_exists($settings['dates'], $this->dateFilterLabels) ? $settings['dates'] : '';
 
         $this->fieldFilters = [];
 
-        foreach ((array) ($filters['fields'] ?? []) as $fieldId => $optionId) {
+        foreach ((array) ($settings['fields'] ?? []) as $fieldId => $optionId) {
             $field = $this->filterableFields->firstWhere('id', (int) $fieldId);
 
-            if ($field !== null && $field->options->contains('id', (int) $optionId)) {
+            if ($field !== null && is_scalar($optionId) && $field->options->contains('id', (int) $optionId)) {
                 $this->fieldFilters[$field->id] = (string) $optionId;
             }
         }
 
-        $sort = (string) ($filters['sort'] ?? '');
-        $this->sortBy = $this->isSortable($sort) ? $sort : '';
-        $this->sortDirection = ($filters['direction'] ?? 'asc') === 'desc' ? 'desc' : 'asc';
+        $this->applySavedSort($settings);
 
         $this->limit = self::PAGE_SIZE;
         unset($this->tasks, $this->totalTasks, $this->activeFilters, $this->collaboratorFilterUsers);
-        Flux::modal('saved-filters')->close();
-    }
-
-    public function deleteFilter(int $filterId): void
-    {
-        $saved = $this->project->savedFilters()->visibleTo(auth()->user())->findOrFail($filterId)->setRelation('project', $this->project);
-
-        Gate::authorize('delete', $saved);
-
-        $saved->delete();
-        unset($this->savedFilters);
     }
 
     public function resetFilters(): void
@@ -604,42 +580,8 @@ new class extends Component
         <livewire:project-import :project="$project" defer.bundle />
     @endif
 
-    <flux:modal name="saved-filters" class="w-full max-w-md">
-        <div class="space-y-5">
-            <div>
-                <flux:heading size="lg">{{ __('Saved views') }}</flux:heading>
-                <flux:text class="mt-1">{{ __('A view remembers the filters and sorting of the list.') }}</flux:text>
-            </div>
-
-            @forelse ($this->savedFilters as $saved)
-                <div wire:key="saved-{{ $saved->id }}" class="flex items-center gap-2">
-                    <flux:button variant="subtle" class="min-w-0 flex-1 justify-start" wire:click="applyFilter({{ $saved->id }})">
-                        <span class="truncate">{{ $saved->name }}</span>
-                    </flux:button>
-                    @if ($saved->isShared())
-                        <flux:badge size="sm">{{ __('Shared') }}</flux:badge>
-                    @endif
-                    @can('delete', $saved)
-                        <flux:button size="xs" variant="ghost" icon="trash" wire:click="deleteFilter({{ $saved->id }})" wire:confirm="{{ __('Delete view “:name”?', ['name' => $saved->name]) }}" aria-label="{{ __('Delete view') }}" tooltip="{{ __('Delete view') }}" />
-                    @endcan
-                </div>
-            @empty
-                <flux:text>{{ __('No views saved yet.') }}</flux:text>
-            @endforelse
-
-            <flux:separator />
-
-            <form wire:submit="saveCurrentFilter" class="space-y-3">
-                <flux:input wire:model="saveName" :label="__('Save current filters as')" :placeholder="__('e.g. My open tasks')" />
-                @if ($this->canManage)
-                    <flux:checkbox wire:model="saveShared" :label="__('Visible to everyone in the project')" />
-                @endif
-                <div class="flex justify-end">
-                    <flux:button type="submit" variant="primary" icon="bookmark">{{ __('Save') }}</flux:button>
-                </div>
-            </form>
-        </div>
-    </flux:modal>
+    <x-saved-views-modal :views="$this->savedFilters" :defaults="$this->savedViewDefaults" :can-manage="$this->canManage"
+        :description="__('A view remembers the filters and sorting of the list.')" :save-label="__('Save current filters as')" :placeholder="__('e.g. My open tasks')" />
 
     <flux:modal name="filters" class="w-full max-w-md">
         <div class="space-y-5">

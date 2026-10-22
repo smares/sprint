@@ -252,14 +252,55 @@ class DefaultViewsTest extends TestCase
         $this->assertCount(User::INTERFACE_MAX_BOARDS, $user->fresh()->interfaceState()['default_views']);
     }
 
-    public function test_the_menu_of_a_view_offers_the_defaults(): void
+    public function test_the_menus_of_the_dialog_choose_what_opens_by_default(): void
     {
-        $saved = $this->savedView(SavedFilter::BOARD, 'Gemeinsam', 'title', shared: true);
+        $shared = $this->savedView(SavedFilter::BOARD, 'Gemeinsam', 'title', shared: true);
+        $mine = $this->savedView(SavedFilter::BOARD, 'Meine', 'due');
 
-        $this->board()->assertSee('Gemeinsam')->assertSee('Standardmäßig für mich öffnen')->assertDontSee('Standardmäßig für alle öffnen');
-        $this->board($this->manager)->assertSee('Standardmäßig für alle öffnen')
-            ->call('makeProjectDefault', $saved->id)->assertSee('Standard für alle')->assertSee('Standard für alle entfernen');
-        $this->board()->assertSee('Standard des Projekts: „Gemeinsam“')->assertSee('Nicht für mich');
+        // a person who does not manage the project has the menu for themselves only
+        $this->board()->assertSee('Ansicht beim Öffnen')->assertSee('Wie im Projekt festgelegt: keine Ansicht')->assertDontSee('Ansicht beim Öffnen, für alle im Projekt')
+            ->assertSet('defaultChoice', '')
+            ->set('defaultChoice', (string) $mine->id)->assertHasNoErrors();
+        $this->assertSame($mine->id, $this->editor->fresh()->defaultSavedView($this->project->id, SavedFilter::BOARD));
+        $this->board()->assertSet('defaultChoice', (string) $mine->id)->assertSet('sortBy', 'due')->assertSee('Wird für dich geöffnet');
+
+        $this->board()->set('defaultChoice', 'none');
+        $this->assertSame(0, $this->editor->fresh()->defaultSavedView($this->project->id, SavedFilter::BOARD));
+        $this->board()->assertSet('defaultChoice', 'none')->assertSet('sortBy', '');
+
+        $this->board()->set('defaultChoice', '');
+        $this->assertNull($this->editor->fresh()->defaultSavedView($this->project->id, SavedFilter::BOARD));
+
+        // a manager also chooses what opens for everybody, among the shared views
+        $this->board($this->manager)->assertSee('Ansicht beim Öffnen, für alle im Projekt')->assertSet('projectChoice', 'none')
+            ->set('projectChoice', (string) $shared->id);
+        $this->assertTrue($shared->fresh()->is_default);
+
+        $this->board()->assertSee('Wie im Projekt festgelegt: „Gemeinsam“')->assertSee('Standard für alle')->assertSet('sortBy', 'title');
+
+        $this->board($this->manager)->set('projectChoice', 'none');
+        $this->assertFalse($shared->fresh()->is_default);
+    }
+
+    public function test_a_person_who_does_not_manage_the_project_cannot_set_the_default_for_everybody(): void
+    {
+        $shared = $this->savedView(SavedFilter::BOARD, 'Gemeinsam', 'title', shared: true);
+
+        $this->board()->set('projectChoice', (string) $shared->id)->assertForbidden();
+        $this->board()->set('projectChoice', 'none')->assertForbidden();
+
+        $this->assertFalse($shared->fresh()->is_default);
+    }
+
+    public function test_choices_that_are_not_valid_are_ignored(): void
+    {
+        $theirs = SavedFilter::factory()->for($this->project)->create(['user_id' => $this->manager->id, 'view' => SavedFilter::BOARD]);
+
+        $this->board()->set('defaultChoice', 'banana')->assertSet('defaultChoice', '');
+        $this->board()->set('defaultChoice', (string) $theirs->id)->assertNotFound();
+        $this->board($this->manager)->set('projectChoice', 'banana')->assertSet('projectChoice', 'none');
+
+        $this->assertNull($this->editor->fresh()->defaultSavedView($this->project->id, SavedFilter::BOARD));
     }
 
     public function test_a_default_of_the_person_that_was_deleted_leaves_the_project_default_to_switch_off(): void
@@ -268,13 +309,12 @@ class DefaultViewsTest extends TestCase
         $mine = $this->savedView(SavedFilter::BOARD, 'Meine', 'due');
 
         $this->board()->call('useAsMyDefault', $mine->id)->call('deleteFilter', $mine->id)
-            ->assertSee('Standard des Projekts: „Für alle“')->assertSee('Nicht für mich');
+            ->assertSet('defaultChoice', '')->assertSee('Wie im Projekt festgelegt: „Für alle“');
     }
 
     public function test_switching_the_default_off_for_oneself_can_be_taken_back_without_a_project_default(): void
     {
-        $this->board()->call('useNoDefaultForMe')->assertSee('Für dich wird keine Ansicht standardmäßig geöffnet.')->assertSee('Standard des Projekts verwenden')
-            ->call('followProjectDefault');
+        $this->board()->call('useNoDefaultForMe')->assertSet('defaultChoice', 'none')->call('followProjectDefault')->assertSet('defaultChoice', '');
 
         $this->assertNull($this->editor->fresh()->defaultSavedView($this->project->id, SavedFilter::BOARD));
     }

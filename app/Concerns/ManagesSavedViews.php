@@ -24,6 +24,12 @@ trait ManagesSavedViews
 
     public bool $saveShared = false;
 
+    /** What opens for this person: '' as the project has set it, 'none', or the id of a view. */
+    public string $defaultChoice = '';
+
+    /** What opens for everybody in the project (managers): '' or 'none' for no view, or the id of a shared view. */
+    public string $projectChoice = '';
+
     /**
      * Whether the saved views belong to the list or to the board (SavedFilter::LIST, SavedFilter::BOARD).
      */
@@ -57,6 +63,8 @@ trait ManagesSavedViews
      */
     public function mountManagesSavedViews(): void
     {
+        $this->syncDefaultChoices();
+
         $default = $this->viewToOpen();
 
         if (! $default instanceof SavedFilter) {
@@ -151,6 +159,39 @@ trait ManagesSavedViews
     }
 
     /**
+     * The menu of what opens for this person was used.
+     */
+    public function updatedDefaultChoice(string $choice): void
+    {
+        match (true) {
+            $choice === '' => $this->followProjectDefault(),
+            $choice === 'none' => $this->useNoDefaultForMe(),
+            ctype_digit($choice) => $this->useAsMyDefault((int) $choice),
+            default => $this->syncDefaultChoices(),
+        };
+    }
+
+    /**
+     * The menu of what opens for everybody in the project was used.
+     */
+    public function updatedProjectChoice(string $choice): void
+    {
+        match (true) {
+            $choice === '' || $choice === 'none' => $this->clearProjectDefault(),
+            ctype_digit($choice) => $this->makeProjectDefault((int) $choice),
+            default => $this->syncDefaultChoices(),
+        };
+    }
+
+    private function syncDefaultChoices(): void
+    {
+        ['mine' => $mine, 'project' => $project] = $this->savedViewDefaults;
+
+        $this->defaultChoice = $mine === null ? '' : ($mine === 0 ? 'none' : (string) $mine);
+        $this->projectChoice = $project === null ? 'none' : (string) $project;
+    }
+
+    /**
      * The saved view opens by default for this person, whatever the project's default is.
      */
     public function useAsMyDefault(int $filterId): void
@@ -171,15 +212,15 @@ trait ManagesSavedViews
      */
     public function followProjectDefault(): void
     {
-        $this->rememberMyDefault(null, __('Default removed.'));
+        $this->rememberMyDefault(null);
     }
 
-    private function rememberMyDefault(?int $savedViewId, ?string $message = null): void
+    private function rememberMyDefault(?int $savedViewId): void
     {
         auth()->user()->rememberDefaultSavedView($this->project->id, $this->savedViewKind(), $savedViewId);
 
-        unset($this->savedViewDefaults);
-        Flux::toast(variant: 'success', text: $message ?? __('Default saved.'));
+        $this->forgetSavedViews();
+        Flux::toast(variant: 'success', text: __('Default saved.'));
     }
 
     /**
@@ -230,5 +271,7 @@ trait ManagesSavedViews
     private function forgetSavedViews(): void
     {
         unset($this->savedFilters, $this->savedViewDefaults);
+
+        $this->syncDefaultChoices();
     }
 }

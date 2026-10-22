@@ -2,14 +2,12 @@
 
 {{-- views: Collection<SavedFilter>, defaults: the page's savedViewDefaults (mine, project, opens) --}}
 
-{{-- The saved views of the list or of the board in a modal: open one, delete it, say which one opens by default (for oneself, and
-     for everybody in the project if one manages it) and save the current settings as a new one. The actions are those of the
-     ManagesSavedViews concern of the page. --}}
+{{-- The saved views of the list or of the board in a modal: open one, delete it, choose which one opens by default (for oneself,
+     and for everybody in the project if one manages it) and save the current settings as a new one. The actions are those of
+     the ManagesSavedViews concern of the page. --}}
 @php
-    // What this person has chosen (0: none, null: follow the project), the view that opens for them, the project's default
-    $mine = $defaults['mine'];
-    $opens = $defaults['opens'];
     $projectDefault = $views->firstWhere('id', $defaults['project']);
+    $shared = $views->filter->isShared();
 @endphp
 
 <flux:modal name="saved-filters" class="w-full max-w-md">
@@ -19,19 +17,6 @@
             <flux:text class="mt-1">{{ $description }}</flux:text>
         </div>
 
-        {{-- What the project opens by default can be switched off for oneself, and on again --}}
-        @if ($mine === 0)
-            <div class="flex flex-wrap items-center justify-between gap-2">
-                <flux:text size="sm">{{ __('No view opens by default for you.') }}</flux:text>
-                <flux:button size="xs" variant="ghost" wire:click="followProjectDefault">{{ __('Use the default of the project') }}</flux:button>
-            </div>
-        @elseif ($mine === null && $projectDefault)
-            <div class="flex flex-wrap items-center justify-between gap-2">
-                <flux:text size="sm">{{ __('Default of the project: “:name”', ['name' => $projectDefault->name]) }}</flux:text>
-                <flux:button size="xs" variant="ghost" wire:click="useNoDefaultForMe">{{ __('Not for me') }}</flux:button>
-            </div>
-        @endif
-
         @forelse ($views as $saved)
             <div wire:key="saved-{{ $saved->id }}" class="space-y-1">
                 <div class="flex items-center gap-2">
@@ -39,33 +24,12 @@
                         <span class="truncate">{{ $saved->name }}</span>
                     </flux:button>
 
-                    <flux:dropdown align="end">
-                        <flux:button size="xs" variant="ghost" icon="ellipsis-horizontal" class="max-sm:size-10!" aria-label="{{ __('More actions for “:name”', ['name' => $saved->name]) }}" tooltip="{{ __('More actions') }}" />
-
-                        <flux:menu>
-                            @if ($mine === $saved->id)
-                                <flux:menu.item icon="check" wire:click="followProjectDefault">{{ __('Remove my default') }}</flux:menu.item>
-                            @else
-                                <flux:menu.item icon="check" wire:click="useAsMyDefault({{ $saved->id }})">{{ __('Open this by default for me') }}</flux:menu.item>
-                            @endif
-
-                            @if ($canManage && $saved->isShared())
-                                @if ($saved->is_default)
-                                    <flux:menu.item icon="user-group" wire:click="clearProjectDefault">{{ __('Remove default for everyone') }}</flux:menu.item>
-                                @else
-                                    <flux:menu.item icon="user-group" wire:click="makeProjectDefault({{ $saved->id }})">{{ __('Open this by default for everyone') }}</flux:menu.item>
-                                @endif
-                            @endif
-
-                            @can('delete', $saved)
-                                <flux:menu.separator />
-                                <flux:menu.item icon="trash" variant="danger" wire:click="deleteFilter({{ $saved->id }})" wire:confirm="{{ __('Delete view “:name”?', ['name' => $saved->name]) }}">{{ __('Delete view') }}</flux:menu.item>
-                            @endcan
-                        </flux:menu>
-                    </flux:dropdown>
+                    @can('delete', $saved)
+                        <flux:button size="xs" variant="ghost" icon="trash" class="max-sm:size-10!" wire:click="deleteFilter({{ $saved->id }})" wire:confirm="{{ __('Delete view “:name”?', ['name' => $saved->name]) }}" aria-label="{{ __('Delete view “:name”', ['name' => $saved->name]) }}" tooltip="{{ __('Delete view') }}" />
+                    @endcan
                 </div>
 
-                @if ($saved->isShared() || $saved->id === $opens)
+                @if ($saved->isShared() || $saved->id === $defaults['opens'])
                     <div class="flex flex-wrap gap-1 ps-3">
                         @if ($saved->isShared())
                             <flux:badge size="sm">{{ __('Shared') }}</flux:badge>
@@ -73,7 +37,7 @@
                         @if ($saved->id === $defaults['project'])
                             <flux:badge size="sm" color="orange">{{ __('Default for everyone') }}</flux:badge>
                         @endif
-                        @if ($saved->id === $opens)
+                        @if ($saved->id === $defaults['opens'])
                             <flux:badge size="sm" color="amber" icon="check">{{ __('Opens for you') }}</flux:badge>
                         @endif
                     </div>
@@ -82,6 +46,28 @@
         @empty
             <flux:text>{{ __('No views saved yet.') }}</flux:text>
         @endforelse
+
+        @if ($views->isNotEmpty())
+            <flux:separator />
+
+            {{-- What opens when the page is opened without settings in its address --}}
+            <flux:select variant="listbox" wire:model.live="defaultChoice" :label="__('View when opening')">
+                <flux:select.option value="">{{ $projectDefault ? __('As set for the project: “:name”', ['name' => $projectDefault->name]) : __('As set for the project: no view') }}</flux:select.option>
+                <flux:select.option value="none">{{ __('No view') }}</flux:select.option>
+                @foreach ($views as $saved)
+                    <flux:select.option wire:key="choice-{{ $saved->id }}" value="{{ $saved->id }}">{{ $saved->name }}</flux:select.option>
+                @endforeach
+            </flux:select>
+
+            @if ($canManage)
+                <flux:select variant="listbox" wire:model.live="projectChoice" :label="__('View when opening, for everyone in the project')">
+                    <flux:select.option value="none">{{ __('No view') }}</flux:select.option>
+                    @foreach ($shared as $saved)
+                        <flux:select.option wire:key="project-choice-{{ $saved->id }}" value="{{ $saved->id }}">{{ $saved->name }}</flux:select.option>
+                    @endforeach
+                </flux:select>
+            @endif
+        @endif
 
         <flux:separator />
 

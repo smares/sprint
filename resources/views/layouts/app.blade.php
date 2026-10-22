@@ -80,6 +80,7 @@
                     @can('administer')
                         <flux:sidebar.item icon="user-group" :href="route('admin.teams')" :current="request()->routeIs('admin.teams')" wire:navigate>{{ __('Teams') }}</flux:sidebar.item>
                         <flux:sidebar.item icon="users" :href="route('admin.users')" :current="request()->routeIs('admin.users')" wire:navigate>{{ __('Users') }}</flux:sidebar.item>
+                        <flux:sidebar.item icon="key" :href="route('admin.sso')" :current="request()->routeIs('admin.sso')" wire:navigate>{{ __('Single sign-on') }}</flux:sidebar.item>
                     @endcan
                 </flux:sidebar.nav>
 

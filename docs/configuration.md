@@ -69,6 +69,20 @@ Wenn der Reverb-Server nicht erreichbar ist, laufen die Seiten normal weiter, si
 
 - Anhänge liegen privat auf der Standard-Disk von Laravel (`FILESYSTEM_DISK`): lokal `storage/app/private`, mit `FILESYSTEM_DISK=s3` in einem Bucket (Zugangsdaten über `AWS_*`; der S3-Adapter ist installiert). Sie müssen mit gesichert werden. Für große Dateien müssen `upload_max_filesize` und `post_max_size` in der PHP-Konfiguration (und ggf. das Limit des Webservers) mindestens 20 MB erlauben
 
+## Anmeldung mit Google
+
+Mit Google lassen sich Konten anmelden, registrieren und nachträglich verbinden. Die Zugangsdaten gehören in die Umgebung des Servers (`.env`, bei Dokploy die Umgebungsvariablen), ob es an ist und welche Domains sich registrieren dürfen, stellen Administratoren in der App unter **Single Sign-on** ein.
+
+**In der Google Cloud Console** ([console.cloud.google.com](https://console.cloud.google.com)):
+
+1. Oben ein Projekt wählen oder anlegen (Auswahl neben dem Google-Cloud-Logo → „Neues Projekt“).
+2. **APIs & Dienste → OAuth-Zustimmungsbildschirm** (in der neuen Oberfläche „Google Auth Platform“): App-Name, E-Mail für Support und Entwicklerkontakt eintragen. Als Nutzertyp bei einem Google Workspace **Intern** wählen (dann kommen nur Konten der eigenen Organisation durch), sonst **Extern** und die App später **in Produktion veröffentlichen** (im Testmodus dürfen nur eingetragene Testnutzer). Die Berechtigungen `openid`, `email` und `profile` genügen, es ist nichts Sensibles dabei.
+3. **APIs & Dienste → Anmeldedaten → Anmeldedaten erstellen → OAuth-Client-ID**: Anwendungstyp **Webanwendung**, einen Namen geben und unter **Autorisierte Weiterleitungs-URIs** die Adresse eintragen, die die Seite Single Sign-on in Sprint anzeigt, also `https://<deine-domain>/auth/google/callback` (genau so, mit https und ohne Schrägstrich am Ende; sie muss zu `APP_URL` passen). „Autorisierte JavaScript-Quellen“ bleibt leer.
+4. **Client-ID** und **Clientschlüssel** kopieren und im Server als `GOOGLE_CLIENT_ID` und `GOOGLE_CLIENT_SECRET` eintragen, dann den Container neu starten. Änderungen bei Google brauchen manchmal ein paar Minuten.
+5. In Sprint als Administrator **Single Sign-on** öffnen, den Schalter einschalten und unter **Erlaubte Domains** eintragen, wessen Google-Konto sich selbst registrieren darf (zum Beispiel `jaimo-solutions.com`).
+
+Wer schon ein Konto hat, meldet sich mit Google an, wenn die bestätigte Google-Adresse die seines Kontos ist (das Konto wird dabei verbunden); andere können es im Profil unter Sicherheit verbinden. Google ersetzt den Code der Authenticator-App. Wer sich neu registriert, bekommt ein Konto ohne Administratorrechte, das kein Projekt sieht; alle Administratoren erhalten eine E-Mail, um Rechte und Projekte zu vergeben. Für die Registrierung muss die Adresse bei Google bestätigt sein, ihre Domain auf der Liste stehen und das Konto bei einer Workspace-Domain auch zu diesem Workspace gehören (ein persönliches Google-Konto mit einer Firmenadresse zählt nicht). Ohne Domain auf der Liste kann sich niemand selbst registrieren.
+
 ## MCP-Server und Passkeys
 
 - **Sicherheits-Header** setzt die App selbst (`App\Http\Middleware\SecurityHeaders`): Einbetten nur von der eigenen Seite, Bilder nur vom eigenen Server (Bilder fremder Adressen in Markdown werden nicht geladen, damit Dritte nicht sehen, wer eine Aufgabe liest), HSTS sobald die Seite über HTTPS läuft. Hochgeladene Dateien werden in einer Sandbox ausgeliefert

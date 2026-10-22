@@ -112,6 +112,14 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
     }
 
     /**
+     * @return HasMany<SocialAccount, $this>
+     */
+    public function socialAccounts(): HasMany
+    {
+        return $this->hasMany(SocialAccount::class);
+    }
+
+    /**
      * What the person has arranged in the interface, which follows them from one device to the next: the appearance, the
      * sidebar, the collapsed board columns, the view of "My tasks" they used last and the saved view of a project that opens by default (default_views).
      *

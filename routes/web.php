@@ -3,6 +3,7 @@
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\AvatarController;
 use App\Http\Controllers\ConfirmEmailController;
+use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\InterfaceController;
 use App\Http\Controllers\ProgressiveWebAppController;
@@ -45,6 +46,10 @@ Route::controller(ProgressiveWebAppController::class)->group(function () {
 });
 
 Route::livewire('/login', 'pages::login')->name('login')->middleware('guest');
+
+// Sign in with Google: only found while administrators have switched it on (the controller answers 404 otherwise)
+Route::get('/auth/google/redirect', [GoogleAuthController::class, 'redirect'])->middleware(['guest', 'throttle:20,1'])->name('auth.google.redirect');
+Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->middleware('throttle:20,1')->name('auth.google.callback');
 Route::livewire('/forgot-password', 'pages::forgot-password')->name('password.request')->middleware('guest');
 Route::livewire('/reset-password/{token}', 'pages::reset-password')->name('password.reset')->middleware('guest');
 
@@ -94,6 +99,8 @@ Route::livewire('/tasks/{task}/notifications/{user}', 'pages::tasks.notification
 Route::middleware('auth')->group(function () {
     Route::redirect('/', '/projects');
 
+    Route::get('/auth/google/link', [GoogleAuthController::class, 'link'])->middleware('throttle:20,1')->name('auth.google.link');
+
     Route::patch('/interface', InterfaceController::class)->middleware('throttle:120,1')->name('interface.update');
 
     Route::livewire('/profile', 'pages::profile')->name('profile');
@@ -111,6 +118,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware('can:administer')->prefix('admin')->group(function () {
         Route::livewire('/users', 'pages::admin.users')->name('admin.users');
         Route::livewire('/teams', 'pages::admin.teams')->name('admin.teams');
+        Route::livewire('/sso', 'pages::admin.sso')->name('admin.sso');
     });
 
     Route::get('/projects/{project}/export', ProjectExportController::class)->name('projects.export');

@@ -425,6 +425,13 @@ new class extends Component
         <flux:text class="mt-1">{{ __('Your account, its security and access for AI agents.') }}</flux:text>
     </div>
 
+    @if (session('status'))
+        <flux:callout variant="success" icon="check-circle" :heading="session('status')" />
+    @endif
+    @if (session('warning'))
+        <flux:callout variant="warning" icon="exclamation-triangle" :heading="session('warning')" />
+    @endif
+
     <flux:tab.group>
         <flux:tabs wire:model="tab" scrollable>
             <flux:tab name="profile" icon="user">{{ __('Profile') }}</flux:tab>
@@ -591,6 +598,10 @@ new class extends Component
                 <flux:input wire:model="newPasswordConfirmation" type="password" :label="__('Repeat new password')" autocomplete="new-password" />
                 <flux:button type="submit">{{ __('Change password') }}</flux:button>
             </form>
+
+            <flux:separator />
+
+            <livewire:google-account />
 
             <flux:separator />
 

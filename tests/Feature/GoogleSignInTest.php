@@ -73,6 +73,16 @@ class GoogleSignInTest extends TestCase
         $this->get(route('auth.google.callback'))->assertNotFound();
     }
 
+    public function test_an_address_typed_on_the_login_page_is_handed_to_google_as_a_hint(): void
+    {
+        $provider = Mockery::mock(GoogleProvider::class);
+        $provider->shouldReceive('with')->once()->with(['login_hint' => 'anna@example.com', 'hl' => app()->getLocale(), 'hd' => 'example.com'])->andReturnSelf();
+        $provider->shouldReceive('redirect')->once()->andReturn(redirect('https://accounts.google.com/o/oauth2/auth'));
+        Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
+
+        $this->get(route('auth.google.redirect', ['email' => ' Anna@Example.com ']))->assertRedirect('https://accounts.google.com/o/oauth2/auth');
+    }
+
     public function test_the_way_to_google_asks_for_the_account_and_hints_the_only_domain(): void
     {
         $provider = Mockery::mock(GoogleProvider::class);

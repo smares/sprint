@@ -42,7 +42,7 @@ class GoogleAuthController extends Controller
         $request->session()->forget(self::LINK_SESSION_KEY);
         $request->session()->put(self::REMEMBER_SESSION_KEY, $request->boolean('remember'));
 
-        return $this->toGoogle(hintDomain: true);
+        return $this->toGoogle(hintDomain: true, hintEmail: $request->string('email')->trim()->lower()->toString());
     }
 
     /**
@@ -53,7 +53,7 @@ class GoogleAuthController extends Controller
         $this->ensureAvailable();
         $request->session()->put(self::LINK_SESSION_KEY, $request->user()->id);
 
-        return $this->toGoogle(hintDomain: false);
+        return $this->toGoogle(hintDomain: false, hintEmail: '');
     }
 
     public function callback(Request $request): RedirectResponse
@@ -197,14 +197,18 @@ class GoogleAuthController extends Controller
         )->update(['email' => Str::lower((string) $google->getEmail())]);
     }
 
-    private function toGoogle(bool $hintDomain): RedirectResponse
+    private function toGoogle(bool $hintDomain, string $hintEmail): RedirectResponse
     {
         $domains = $this->sso->domains();
         $onlyDomain = count($domains) === 1 && $hintDomain && ! $this->sso->isAuthoritativeFor('x@'.$domains[0], null) ? $domains[0] : null;
 
-        // The domain is only a hint for Google's own page (the address is checked on our side); the account is chosen every time
+        // The domain and the address typed on the login page are only hints for Google's own page (the address is checked on
+        // our side). With an address Google picks the matching account of the browser; without, the account is chosen every time.
+        $loginHint = filter_var($hintEmail, FILTER_VALIDATE_EMAIL) !== false ? $hintEmail : null;
+
         return $this->provider()->with(array_filter([
-            'prompt' => 'select_account',
+            'prompt' => $loginHint === null ? 'select_account' : null,
+            'login_hint' => $loginHint,
             'hl' => app()->getLocale(),
             'hd' => $onlyDomain,
         ]))->redirect();

@@ -62,18 +62,6 @@ trait EditsTasksInBulk
     }
 
     /**
-     * The first tick of a checkbox starts the selection with that task.
-     */
-    public function selectTask(int $taskId): void
-    {
-        Gate::authorize('edit', $this->project);
-
-        $this->selecting = true;
-        $this->selected = [(string) $taskId];
-        unset($this->selectedIds);
-    }
-
-    /**
      * What the dialog offers: the statuses, the people who can be assigned and the tags of the project, as id => name. Kept for
      * a minute and until the selection ends, not asked for with every render while tasks are selected.
      *

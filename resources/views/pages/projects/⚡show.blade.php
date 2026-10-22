@@ -531,7 +531,7 @@ new class extends Component
 };
 ?>
 
-<div @class(['pb-40' => $selecting]) data-wide>
+<div @class(['pb-40' => $selecting]) x-bind:class="{ 'pb-40': $wire.selecting }" data-wide>
     <x-project-header :project="$project" active="list" :presence="$this->presenceChannel()" />
 
     <div class="mb-4 flex flex-wrap items-center gap-2">
@@ -686,9 +686,10 @@ new class extends Component
                         <flux:table.column wire:key="column-{{ $field->id }}" sortable :sorted="$sortBy === 'field:'.$field->id" :direction="$sortDirection" wire:click="sort('field:{{ $field->id }}')">{{ $field->name }}</flux:table.column>
                     @endforeach
                 </flux:table.columns>
-                {{-- wire:sort is set up once per element: keyed by the mode, the rows are built anew and dragging really stops while sorted or selecting --}}
-                @php($draggable = ! $this->sortActive && $this->canEdit && ! $selecting)
-                <flux:table.rows wire:key="rows-{{ $draggable ? 'draggable' : 'fixed' }}" :wire:sort="$draggable ? 'moveTask' : null" wire:sort:config="{{ \App\Sortable::CONFIG }}">
+                {{-- wire:sort is set up once per element: keyed by the mode, the rows are built anew and dragging really stops while sorted; while
+                     tasks are selected the list stands still without that (the filter, see Sortable::unlessSelecting) --}}
+                @php($draggable = ! $this->sortActive && $this->canEdit)
+                <flux:table.rows wire:key="rows-{{ $draggable ? 'draggable' : 'fixed' }}" :wire:sort="$draggable ? 'moveTask' : null" wire:sort:config="{{ \App\Sortable::unlessSelecting(\App\Sortable::CONFIG) }}">
                     @php($number = 0)
                     @foreach ($this->tasks as $task)
                         @if ($task->is_section)
@@ -705,14 +706,7 @@ new class extends Component
                                 <div class="flex items-center gap-3">
                                     <x-task-done-button :task="$task" :editable="$this->canEdit" />
                                     @if ($this->canEdit)
-                                        @if ($selecting)
-                                            <x-task-select-box :task="$task" ends-when-empty />
-                                        @else
-                                            {{-- Keyed by the selection mode: the box of the selection is a different element --}}
-                                            <span class="flex size-6 shrink-0 items-center justify-center">
-                                                <flux:checkbox wire:key="select-{{ $task->id }}-off" :checked="false" wire:click="selectTask({{ $task->id }})" aria-label="{{ __('Select task') }}: {{ $task->title }}" />
-                                            </span>
-                                        @endif
+                                        <x-task-select-box :task="$task" ends-when-empty instant />
                                     @endif
                                 </div>
                             </flux:table.cell>
@@ -756,12 +750,13 @@ new class extends Component
         </div>
     @endif
 
-    @if ($this->canEdit && ! $selecting)
-        <x-quick-add class="mt-2" />
+    @if ($this->canEdit)
+        <x-quick-add class="mt-2" x-show="! $wire.selecting" />
     @endif
 
-    @if ($selecting)
-        <x-selection-bar>
+    {{-- The bar is always there for who may edit, shown as soon as the browser selects; the dialog needs what the server knows --}}
+    @if ($this->canEdit)
+        <x-selection-bar x-show="$wire.selecting" x-cloak>
             <x-slot name="extra">
                 @if ($this->totalTasks > $this->tasks->count())
                     @php($all = min($this->totalTasks, $this::MAX_SELECTION))
@@ -770,7 +765,9 @@ new class extends Component
                 @endif
             </x-slot>
         </x-selection-bar>
+    @endif
 
+    @if ($selecting && $this->canEdit)
         <x-bulk-edit-modal :choices="$this->bulkChoices" />
     @endif
 

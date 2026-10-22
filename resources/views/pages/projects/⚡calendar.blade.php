@@ -143,7 +143,7 @@ new class extends Component
 };
 ?>
 
-<div @class(['pb-40' => $selecting]) data-wide>
+<div @class(['pb-40' => $selecting]) x-bind:class="{ 'pb-40': $wire.selecting }" data-wide>
     <x-project-header :project="$project" active="calendar" :presence="$this->presenceChannel()" />
 
     <div class="mb-4 flex flex-wrap items-center gap-2">
@@ -152,8 +152,8 @@ new class extends Component
         <flux:button wire:click="today">{{ __('Today') }}</flux:button>
         <flux:heading size="lg" class="ms-2">{{ $this->monthStart->isoFormat('MMMM YYYY') }}</flux:heading>
 
-        @if ($this->canEdit && ! $selecting && collect($this->weeks)->flatten(1)->contains(fn ($day) => $day['tasks']->isNotEmpty()))
-            <x-selection-toggle class="ms-auto" />
+        @if ($this->canEdit && collect($this->weeks)->flatten(1)->contains(fn ($day) => $day['tasks']->isNotEmpty()))
+            <x-selection-toggle instant class="ms-auto" x-show="! $wire.selecting" />
         @endif
     </div>
 
@@ -167,8 +167,8 @@ new class extends Component
                     @foreach ($day['tasks'] as $task)
                         <div wire:key="agenda-{{ $day['date']->toDateString() }}-{{ $task->id }}" class="flex items-center gap-1">
                             <x-task-done-button :task="$task" :editable="$this->canEdit" compact />
-                            @if ($selecting)
-                                <x-task-select-box :task="$task" />
+                            @if ($this->canEdit)
+                                <template x-if="$wire.selecting"><x-task-select-box :task="$task" /></template>
                             @endif
                             <a href="{{ route('tasks.show', $task) }}" x-on:click="$openTask($event, {{ $task->id }})" style="--badge: {{ $task->status->color }}"
                                class="color-chip block min-w-0 flex-1 truncate rounded px-2 py-1 text-sm {{ $task->isDone() ? 'line-through opacity-60' : '' }}">{{ $task->title }}</a>
@@ -194,19 +194,19 @@ new class extends Component
                 @foreach ($this->weeks as $week)
                     @foreach ($week as $day)
                         <div wire:key="day-{{ $day['date']->toDateString() }}"
-                            @if ($this->canEdit && ! $selecting)
+                            {{-- The browser selects at once (`$wire.selecting`), so the day stands still then without the server drawing it anew --}}
+                            @if ($this->canEdit)
                                 x-data="{ over: false }"
-                                x-on:dragover.prevent="over = true"
+                                x-on:dragover="if (! $wire.selecting) { $event.preventDefault(); over = true }"
                                 x-on:dragleave="over = false"
-                                x-on:drop.prevent="over = false; const task = JSON.parse($event.dataTransfer.getData('text/plain') || '{}'); if (task.id) { $wire.moveToDay(task.id, task.from, '{{ $day['date']->toDateString() }}') }"
-                                x-bind:class="over && 'ring-2 ring-inset ring-accent'"
+                                x-on:drop.prevent="over = false; if ($wire.selecting) { return }; const task = JSON.parse($event.dataTransfer.getData('text/plain') || '{}'); if (task.id) { $wire.moveToDay(task.id, task.from, '{{ $day['date']->toDateString() }}') }"
+                                x-bind:class="{ 'ring-2 ring-inset ring-accent': over, 'cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-700/40': ! $wire.selecting }"
                                 {{-- A click on the day itself (not on a task) opens the dialog with that day as the due date --}}
-                                x-on:click="if (! $event.target.closest('a, button')) { $wire.$dispatch('new-task', { dueDate: '{{ $day['date']->toDateString() }}' }) }"
+                                x-on:click="if (! $wire.selecting && ! $event.target.closest('a, button')) { $wire.$dispatch('new-task', { dueDate: '{{ $day['date']->toDateString() }}' }) }"
                             @endif
                             @class([
                             'group min-h-28 space-y-1 border-e border-b border-zinc-200 p-1.5 dark:border-zinc-700',
                             'bg-zinc-50/60 text-zinc-400 dark:bg-zinc-900/40' => ! $day['inMonth'],
-                            'cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-700/40' => $this->canEdit && ! $selecting,
                         ])>
                             <div class="flex items-start justify-between">
                                 <div @class([
@@ -214,8 +214,8 @@ new class extends Component
                                     'inline-flex size-6 items-center justify-center rounded-full bg-accent font-semibold text-accent-foreground' => $day['date']->isToday(),
                                 ])>{{ $day['date']->day }}</div>
 
-                                @if ($this->canEdit && ! $selecting)
-                                    <button type="button" x-on:click.stop="$wire.$dispatch('new-task', { dueDate: '{{ $day['date']->toDateString() }}' })"
+                                @if ($this->canEdit)
+                                    <button type="button" x-show="! $wire.selecting" x-on:click.stop="$wire.$dispatch('new-task', { dueDate: '{{ $day['date']->toDateString() }}' })"
                                         class="rounded p-0.5 text-zinc-400 opacity-0 hover:bg-zinc-200 hover:text-zinc-700 focus:opacity-100 group-hover:opacity-100 dark:hover:bg-zinc-700 dark:hover:text-zinc-200"
                                         aria-label="{{ __('New task on :date', ['date' => $day['date']->isoFormat('L')]) }}" title="{{ __('New task on :date', ['date' => $day['date']->isoFormat('L')]) }}">
                                         <flux:icon.plus variant="micro" />
@@ -227,24 +227,24 @@ new class extends Component
                                 <div wire:key="chip-{{ $day['date']->toDateString() }}-{{ $task->id }}" class="group/chip relative">
                                     <a href="{{ route('tasks.show', $task) }}" x-on:click="$openTask($event, {{ $task->id }})"
                                        style="--badge: {{ $task->status->color }}"
-                                       @if ($this->canEdit && ! $selecting)
+                                       @if ($this->canEdit)
                                            draggable="true"
-                                           x-on:dragstart="$event.dataTransfer.setData('text/plain', JSON.stringify({ id: {{ $task->id }}, from: '{{ $day['date']->toDateString() }}' })); $event.dataTransfer.effectAllowed = 'move'"
+                                           x-bind:class="{ 'ps-6': $wire.selecting, '[@media(hover:none)]:pe-7': ! $wire.selecting }"
+                                           x-on:dragstart="if ($wire.selecting) { return }; $event.dataTransfer.setData('text/plain', JSON.stringify({ id: {{ $task->id }}, from: '{{ $day['date']->toDateString() }}' })); $event.dataTransfer.effectAllowed = 'move'"
                                        @endif
                                        @class([
                                            'color-chip block truncate rounded px-1.5 py-0.5 text-xs hover:underline',
-                                           'ps-6' => $selecting,
-                                           '[@media(hover:none)]:pe-7' => $this->canEdit && ! $selecting,
                                            'line-through opacity-60' => $task->isDone(),
                                        ])>{{ $task->title }}</a>
-                                    @if ($selecting)
-                                        <span class="absolute inset-y-0 start-1 flex items-center" x-on:click.stop>
-                                            <x-task-select-box :task="$task" />
-                                        </span>
-                                    @elseif ($this->canEdit)
+                                    @if ($this->canEdit)
+                                        <template x-if="$wire.selecting">
+                                            <span class="absolute inset-y-0 start-1 flex items-center" x-on:click.stop>
+                                                <x-task-select-box :task="$task" />
+                                            </span>
+                                        </template>
                                         {{-- Over the end of the title while the chip is pointed at or focused (the cell is too narrow for a permanent check, and
                                              the title keeps its place); on screens without a pointer it is always there and the title leaves room --}}
-                                        <span class="absolute inset-y-0 end-0 hidden items-center rounded-e bg-white/90 group-focus-within/chip:flex group-hover/chip:flex dark:bg-zinc-800/90 [@media(hover:none)]:flex" x-on:click.stop>
+                                        <span x-show="! $wire.selecting" class="absolute inset-y-0 end-0 hidden items-center rounded-e bg-white/90 group-focus-within/chip:flex group-hover/chip:flex dark:bg-zinc-800/90 [@media(hover:none)]:flex" x-on:click.stop>
                                             <x-task-done-button :task="$task" />
                                         </span>
                                     @endif
@@ -268,9 +268,12 @@ new class extends Component
         </flux:text>
     @endif
 
-    @if ($selecting)
-        <x-selection-bar />
+    {{-- The bar is always there for who may edit, shown as soon as the browser selects; the dialog needs what the server knows --}}
+    @if ($this->canEdit)
+        <x-selection-bar x-show="$wire.selecting" x-cloak />
+    @endif
 
+    @if ($selecting && $this->canEdit)
         <x-bulk-edit-modal :choices="$this->bulkChoices" />
     @endif
 </div>

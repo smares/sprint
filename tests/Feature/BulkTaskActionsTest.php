@@ -73,13 +73,13 @@ class BulkTaskActionsTest extends TestCase
 
     public function test_the_list_offers_selecting_to_editors_only(): void
     {
-        $task = $this->task('Eins');
+        $this->task('Eins');
 
-        Livewire::test('pages::projects.show', ['project' => $this->project])->assertSee('Aufgabe auswählen')->assertDontSee('Auswahl beenden');
+        Livewire::test('pages::projects.show', ['project' => $this->project])->assertSee('Aufgabe auswählen')->assertSet('selecting', false);
 
         $viewer = User::factory()->create();
         $this->project->setRole($viewer, ProjectRole::Viewer);
-        Livewire::actingAs($viewer)->test('pages::projects.show', ['project' => $this->project])->assertDontSee('Aufgabe auswählen')->call('selectTask', $task->id)->assertForbidden();
+        Livewire::actingAs($viewer)->test('pages::projects.show', ['project' => $this->project])->assertDontSee('Aufgabe auswählen')->call('startSelecting')->assertForbidden();
     }
 
     public function test_the_checkbox_is_for_selecting_and_a_button_of_its_own_completes(): void
@@ -88,7 +88,8 @@ class BulkTaskActionsTest extends TestCase
 
         $page = Livewire::test('pages::projects.show', ['project' => $this->project])
             ->assertSee('Als erledigt markieren')
-            ->call('selectTask', $task->id)
+            ->call('startSelecting')
+            ->set('selected', [(string) $task->id])
             ->assertSet('selecting', true)
             ->assertSet('selected', [(string) $task->id]);
 
@@ -100,11 +101,11 @@ class BulkTaskActionsTest extends TestCase
 
     public function test_the_checkbox_of_a_viewer_cannot_start_a_selection(): void
     {
-        $task = $this->task('Eins');
+        $this->task('Eins');
         $viewer = User::factory()->create();
         $this->project->setRole($viewer, ProjectRole::Viewer);
 
-        Livewire::actingAs($viewer)->test('pages::projects.show', ['project' => $this->project])->call('selectTask', $task->id)->assertForbidden();
+        Livewire::actingAs($viewer)->test('pages::projects.show', ['project' => $this->project])->call('startSelecting')->assertForbidden();
     }
 
     public function test_selecting_shows_checkboxes_and_the_action_bar_with_a_count(): void
@@ -114,7 +115,7 @@ class BulkTaskActionsTest extends TestCase
 
         $this->list([$a])->assertSee('Auswahl beenden')->assertSee('Als erledigt markieren')->assertSee('Ändern')->assertSee('Löschen')->assertSeeHtml('$wire.selected');
         $this->list([$a, $b])->assertSee('Auswahl beenden');
-        $this->list()->call('stopSelecting')->assertDontSee('Auswahl beenden');
+        $this->list()->call('stopSelecting')->assertSet('selecting', false)->assertSeeHtml('x-show="$wire.selecting"');
     }
 
     public function test_the_page_can_be_selected_and_deselected_at_once(): void
@@ -145,7 +146,7 @@ class BulkTaskActionsTest extends TestCase
     {
         Task::factory()->for($this->project)->count(60)->create();
 
-        $html = $this->list()->call('selectTask', $this->project->tasks()->first()->id)->html();
+        $html = $this->list()->call('startSelecting')->set('selected', [(string) $this->project->tasks()->first()->id])->html();
 
         // The button counts the browser's selection, so it disappears without a request once all 60 are ticked
         $this->assertMatchesRegularExpression('/x-show="\$wire\.selected\.length (<|&lt;) 60"/', $html);
@@ -348,33 +349,32 @@ class BulkTaskActionsTest extends TestCase
         $this->assertStringContainsString('max-sm:size-10!', $html);
     }
 
-    public function test_the_checkboxes_are_drawn_anew_when_the_selection_starts_and_ends(): void
+    public function test_the_boxes_of_the_list_are_there_before_the_selection_and_start_it_in_the_browser(): void
     {
         $task = $this->task('Eins');
 
-        // Same markup before and after would let the browser keep a tick set by hand, so the boxes are keyed by the mode
+        // One box for the whole time: it follows `selected` (x-effect), so nothing set by hand outlives the selection
         $page = Livewire::test('pages::projects.show', ['project' => $this->project])
-            ->assertSeeHtml('wire:key="select-'.$task->id.'-off"')->assertSeeHtml('wire:key="select-page-off"');
+            ->assertSeeHtml('wire:key="select-'.$task->id.'-on"')
+            ->assertSeeHtml('$wire.selecting = true; $wire.$refresh()')
+            ->assertSeeHtml('wire:key="select-page-off"');
 
-        $page->call('selectTask', $task->id)
-            ->assertSeeHtml('wire:key="select-'.$task->id.'-on"')->assertSeeHtml('wire:key="select-page-on"');
+        $page->call('startSelecting')->assertSeeHtml('wire:key="select-page-on"');
 
-        $page->call('stopSelecting')
-            ->assertSeeHtml('wire:key="select-'.$task->id.'-off"')->assertSet('selected', []);
+        $page->call('stopSelecting')->assertSeeHtml('wire:key="select-page-off"')->assertSet('selected', []);
     }
 
     public function test_unticking_everything_ends_the_selection(): void
     {
-        $a = $this->task('Eins');
+        $this->task('Eins');
         $this->task('Zwei');
 
         Livewire::test('pages::projects.show', ['project' => $this->project])
             ->call('togglePage')->assertSet('selecting', true)->assertCount('selected', 2)
-            ->call('togglePage')->assertSet('selecting', false)->assertSet('selected', [])
-            ->assertDontSee('Auswahl beenden');
+            ->call('togglePage')->assertSet('selecting', false)->assertSet('selected', []);
 
-        $html = Livewire::test('pages::projects.show', ['project' => $this->project])->call('selectTask', $a->id)->html();
-        $this->assertStringContainsString('if ($wire.selected.length === 0) { $wire.stopSelecting() }', $html);
+        $html = Livewire::test('pages::projects.show', ['project' => $this->project])->html();
+        $this->assertStringContainsString('if ($wire.selected.length === 0) { $wire.selecting = false; $wire.stopSelecting() }', $html);
     }
 
     public function test_assigning_in_bulk_takes_the_new_assignee_off_the_collaborators(): void

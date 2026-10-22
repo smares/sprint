@@ -16,6 +16,8 @@ class SortOnTouchTest extends TestCase
 
     private const string MOVE_ONLY_CONFIG = '\\App\\Sortable::CONFIG_MOVE_ONLY';
 
+    private const string UNLESS_SELECTING_CONFIG = 'unlessSelecting(\\App\\Sortable::CONFIG)';
+
     public function test_every_sortable_list_waits_for_a_long_press_on_touch_screens(): void
     {
         $missing = [];
@@ -24,7 +26,7 @@ class SortOnTouchTest extends TestCase
             $contents = $file->getContents();
             $sortables = preg_match_all('/(?<![\w-]):?wire:sort=/', $contents);
 
-            if ($sortables > substr_count($contents, self::TOUCH_CONFIG) + substr_count($contents, self::MOVE_ONLY_CONFIG)) {
+            if ($sortables > substr_count($contents, self::TOUCH_CONFIG) + substr_count($contents, self::MOVE_ONLY_CONFIG) + substr_count($contents, self::UNLESS_SELECTING_CONFIG)) {
                 $missing[] = $file->getRelativePathname();
             }
         }

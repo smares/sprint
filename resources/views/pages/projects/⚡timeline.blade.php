@@ -146,7 +146,7 @@ new class extends Component
 };
 ?>
 
-<div @class(['pb-40' => $selecting]) data-wide>
+<div @class(['pb-40' => $selecting]) x-bind:class="{ 'pb-40': $wire.selecting }" data-wide>
     <x-project-header :project="$project" active="timeline" :presence="$this->presenceChannel()" />
 
     <div class="mb-4 flex flex-wrap items-center gap-2">
@@ -155,8 +155,8 @@ new class extends Component
         <flux:button wire:click="today">{{ __('Today') }}</flux:button>
         <flux:text class="ms-2 whitespace-nowrap">{{ $this->start->isoFormat('L') }} – {{ $this->end->isoFormat('L') }}</flux:text>
 
-        @if ($this->canEdit && ! $selecting && $this->rows->isNotEmpty())
-            <x-selection-toggle class="ms-auto" />
+        @if ($this->canEdit && $this->rows->isNotEmpty())
+            <x-selection-toggle instant class="ms-auto" x-show="! $wire.selecting" />
         @endif
     </div>
 
@@ -194,8 +194,8 @@ new class extends Component
                         <div wire:key="row-{{ $task->id }}" class="flex border-b border-zinc-100 last:border-b-0 dark:border-zinc-800">
                             <div class="pinned-shadow sticky start-0 z-10 flex w-32 shrink-0 sm:w-56 items-center gap-1 border-e border-zinc-200 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-800">
                                 <x-task-done-button :task="$task" :editable="$this->canEdit" compact />
-                                @if ($selecting)
-                                    <x-task-select-box :task="$task" />
+                                @if ($this->canEdit)
+                                    <template x-if="$wire.selecting"><x-task-select-box :task="$task" /></template>
                                 @endif
                                 <a href="{{ route('tasks.show', $task) }}" x-on:click="$openTask($event, {{ $task->id }})" @class(['truncate text-sm hover:underline', 'line-through text-zinc-400' => $task->isDone()])>{{ $task->title }}</a>
                                 @if ($task->isBlocked())
@@ -209,23 +209,25 @@ new class extends Component
                                 @php($clippedStart = $task->spanStart()->startOfDay() < $this->start)
                                 @php($clippedEnd = $task->spanEnd()->startOfDay() > $this->end->copy()->startOfDay())
                                 <a href="{{ route('tasks.show', $task) }}" x-on:click="$openTask($event, {{ $task->id }})" title="{{ $task->title }}: {{ $task->spanStart()->isoFormat('L') }} – {{ $task->spanEnd()->isoFormat('L') }}"
-                                   @if ($this->canEdit && ! $selecting)
+                                   {{-- The bar stands still while the browser selects (`$wire.selecting`, see timelineBar) --}}
+                                   @if ($this->canEdit)
                                        draggable="false"
                                        x-data="timelineBar({{ $task->id }})"
+                                       x-bind:class="$wire.selecting ? '' : 'cursor-grab touch-none select-none'"
                                        x-on:pointerdown="begin($event, 'move')"
                                        x-on:pointermove="move($event)"
                                        x-on:pointerup="finish()"
                                        x-on:pointercancel="cancel()"
                                        x-on:click.capture="suppressClick($event)"
                                    @endif
-                                   class="color-chip relative my-1.5 block h-5 truncate rounded px-1 text-xs leading-5 {{ $task->isDone() ? 'opacity-50' : '' }} {{ $this->canEdit && ! $selecting ? 'cursor-grab touch-none select-none' : '' }}"
+                                   class="color-chip relative my-1.5 block h-5 truncate rounded px-1 text-xs leading-5 {{ $task->isDone() ? 'opacity-50' : '' }}"
                                    style="grid-column: {{ $row['first'] }} / {{ $row['last'] + 1 }}; grid-row: 1; --badge: {{ $task->status->color }}">{{ $row['last'] - $row['first'] >= 2 ? $task->title : '' }}
-                                    @if ($this->canEdit && ! $selecting)
+                                    @if ($this->canEdit)
                                         @unless ($clippedStart)
-                                            <span class="absolute inset-y-0 start-0 w-1.5 cursor-ew-resize" aria-hidden="true" x-on:pointerdown.stop="begin($event, 'start')"></span>
+                                            <span x-show="! $wire.selecting" class="absolute inset-y-0 start-0 w-1.5 cursor-ew-resize" aria-hidden="true" x-on:pointerdown.stop="begin($event, 'start')"></span>
                                         @endunless
                                         @unless ($clippedEnd)
-                                            <span class="absolute inset-y-0 end-0 w-1.5 cursor-ew-resize" aria-hidden="true" x-on:pointerdown.stop="begin($event, 'end')"></span>
+                                            <span x-show="! $wire.selecting" class="absolute inset-y-0 end-0 w-1.5 cursor-ew-resize" aria-hidden="true" x-on:pointerdown.stop="begin($event, 'end')"></span>
                                         @endunless
                                     @endif
                                 </a>
@@ -249,9 +251,12 @@ new class extends Component
         </flux:text>
     @endif
 
-    @if ($selecting)
-        <x-selection-bar />
+    {{-- The bar is always there for who may edit, shown as soon as the browser selects; the dialog needs what the server knows --}}
+    @if ($this->canEdit)
+        <x-selection-bar x-show="$wire.selecting" x-cloak />
+    @endif
 
+    @if ($selecting && $this->canEdit)
         <x-bulk-edit-modal :choices="$this->bulkChoices" />
     @endif
 </div>

@@ -1,9 +1,11 @@
-@props(['task', 'endsWhenEmpty' => false])
+@props(['task', 'endsWhenEmpty' => false, 'instant' => false])
 
 {{-- The box before a task while tasks are being selected (see EditsTasksInBulk and ListsMyTasks): it adds the task to the selection
      of the page, which the browser keeps until an action is chosen. A task can have several boxes (the calendar shows a task on every
      day it spans), so each one follows the selection instead of toggling it, also when it is ticked with the space bar (which sends
      no click). `endsWhenEmpty`: unticking the last one ends the selection (the list, where ticking a box started it).
+     `instant`: the box is there before the selection (the list), the first tick starts it in the browser (`$wire.selecting`) and the server
+     is told afterwards (it draws the bar); if that fails, the page is as it was. Ending sets `selecting` in the browser at once, too.
      In a box as high as a line of text and as the done button (24px), so the two stand on one line with the title. --}}
 <span class="flex size-6 shrink-0 items-center justify-center" data-select-box>
     <flux:checkbox
@@ -15,7 +17,8 @@
             const selected = $wire.selected.map(String)
             if ($el.checked && ! selected.includes(id)) { $wire.selected = [...selected, id] }
             if (! $el.checked && selected.includes(id)) { $wire.selected = selected.filter((other) => other !== id) }
-            {{ $endsWhenEmpty ? 'if ($wire.selected.length === 0) { $wire.stopSelecting() }' : '' }}
+            {{ $instant ? 'if (! $wire.selecting && $wire.selected.length > 0) { $wire.selecting = true; $wire.$refresh().catch(() => { $wire.selecting = false; $wire.selected = [] }) }' : '' }}
+            {{ $endsWhenEmpty ? 'if ($wire.selected.length === 0) { $wire.selecting = false; $wire.stopSelecting() }' : '' }}
         "
         aria-label="{{ __('Select task') }}: {{ $task->title }}"
     />

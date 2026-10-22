@@ -232,12 +232,32 @@ class SelectionInViewsTest extends TestCase
         $calendar->assertSeeHtml("if (! \$wire.selecting && ! \$event.target.closest('a, button'))")
             ->assertSeeHtml('x-on:drop.prevent="over = false; if ($wire.selecting) { return }')
             ->assertSeeHtml('x-on:dragstart="if ($wire.selecting) { return }')
-            ->assertSeeHtml("'cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-700/40': ! \$wire.selecting");
+            ->assertSeeHtml("'cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-700/40': ! \$wire.selecting")
+            ->assertSeeHtml("'ps-6': \$wire.selecting, '[@media(hover:none)]:pe-7': ! \$wire.selecting")
+            ->assertSeeHtml('x-show="! $wire.selecting" x-on:click.stop="$wire.$dispatch(\'new-task\'')
+            ->assertSeeHtml('<span x-show="! $wire.selecting" class="absolute inset-y-0 end-0 hidden');
 
         // The bar of the timeline does not start moving while tasks are selected (timelineBar, resources/js/app.js)
         $timeline = Livewire::test('pages::projects.timeline', ['project' => $this->project]);
-        $timeline->assertSeeHtml('x-data="timelineBar(')->assertSeeHtml("\$wire.selecting ? '' : 'cursor-grab touch-none select-none'");
+        $timeline->assertSeeHtml('x-data="timelineBar(')
+            ->assertSeeHtml("\$wire.selecting ? '' : 'cursor-grab touch-none select-none'")
+            ->assertSeeHtml('<span x-show="! $wire.selecting" class="absolute inset-y-0 start-0 w-1.5')
+            ->assertSeeHtml('<span x-show="! $wire.selecting" class="absolute inset-y-0 end-0 w-1.5');
         $this->assertStringContainsString('this.$wire.selecting', file_get_contents(base_path('resources/js/app.js')));
+    }
+
+    public function test_the_views_leave_the_boxes_and_the_bar_out_for_those_who_may_not_edit(): void
+    {
+        $readOnly = Project::factory()->create();
+        $readOnly->setRole($this->user, ProjectRole::Viewer);
+        $this->task(['title' => 'Nur lesen'], $readOnly);
+
+        foreach (['pages::projects.show', 'pages::projects.calendar', 'pages::projects.timeline'] as $view) {
+            Livewire::test($view, ['project' => $readOnly])
+                ->assertDontSeeHtml('x-if="$wire.selecting"')
+                ->assertDontSeeHtml('aria-label="Aufgabe auswählen: ')
+                ->assertDontSeeHtml('Auswahl beenden');
+        }
     }
 
     public function test_the_boxes_follow_the_selection_and_work_with_the_keyboard(): void

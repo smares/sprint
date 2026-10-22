@@ -1,6 +1,7 @@
 @props(['project', 'active', 'presence' => null])
 
-{{-- Breadcrumbs, title and the same toolbar for list, board, calendar, timeline and statistics. --}}
+{{-- Breadcrumbs, title and the same toolbar for list, board, calendar, timeline and statistics. The slot `selection` is the button that
+     starts selecting tasks: on phones it stands right-aligned in the row of the views (the toolbar of the page has no room for it then). --}}
 <x-project-breadcrumbs :project="$project" />
 
 @if ($project->archived_at)
@@ -37,7 +38,7 @@
     </div>
 </div>
 
-<x-project-views :project="$project" :active="$active" class="-mt-2 mb-6" />
+<x-project-views :project="$project" :active="$active" class="-mt-2 mb-6">{{ $selection ?? '' }}</x-project-views>
 
 @can('edit', $project)
     <livewire:task-create :project="$project" />

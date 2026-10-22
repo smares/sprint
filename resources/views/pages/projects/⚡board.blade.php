@@ -285,7 +285,16 @@ new class extends Component
 ?>
 
 <div @class(['pb-40' => $selecting]) x-bind:class="{ 'pb-40': $wire.selecting }" data-wide>
-    <x-project-header :project="$project" active="board" :presence="$this->presenceChannel()" />
+    @php
+        $offersSelecting = $this->canEdit && array_sum($this->columnTotals) > 0;
+    @endphp
+    <x-project-header :project="$project" active="board" :presence="$this->presenceChannel()">
+        <x-slot name="selection">
+            @if ($offersSelecting)
+                <x-selection-toggle instant class="sm:hidden" x-show="! $wire.selecting" />
+            @endif
+        </x-slot>
+    </x-project-header>
 
     <div class="mb-4 flex flex-wrap items-center gap-2">
         <flux:dropdown align="start">
@@ -314,8 +323,8 @@ new class extends Component
             <flux:button icon="bookmark">{{ __('Views') }} @if ($this->savedFilters->isNotEmpty()) <flux:badge size="sm" inset="top bottom">{{ $this->savedFilters->count() }}</flux:badge> @endif</flux:button>
         </flux:modal.trigger>
 
-        @if ($this->canEdit && array_sum($this->columnTotals) > 0)
-            <x-selection-toggle instant class="ms-auto" x-show="! $wire.selecting" />
+        @if ($offersSelecting)
+            <x-selection-toggle instant class="ms-auto max-sm:hidden" x-show="! $wire.selecting" />
         @endif
     </div>
 

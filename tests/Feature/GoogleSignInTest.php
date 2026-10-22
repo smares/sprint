@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Notifications\AccountRegisteredWithGoogle;
 use App\Services\SsoSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
@@ -246,16 +247,36 @@ class GoogleSignInTest extends TestCase
         $this->assertAuthenticatedAs($user);
     }
 
-    public function test_stay_signed_in_and_the_language_of_the_visit_carry_through_google(): void
+    public function test_stay_signed_in_carries_through_google_only_when_asked_for(): void
     {
         $this->googleSays();
-
         $this->get(route('auth.google.redirect', ['remember' => 1]));
-        $this->withSession(['locale' => 'en'])->get(route('auth.google.callback'));
+        $this->get(route('auth.google.callback'))->assertRedirect(route('projects.index'))->assertCookie(Auth::guard()->getRecallerName());
 
-        $this->assertAuthenticated();
-        $this->assertNotNull(User::firstOrFail()->getRememberToken());
-        $this->assertSame(app()->getLocale(), User::firstOrFail()->locale);
+        Auth::logout();
+        $this->flushSession();
+        $this->get(route('auth.google.redirect'));
+        $this->get(route('auth.google.callback'))->assertRedirect(route('projects.index'))->assertCookieMissing(Auth::guard()->getRecallerName());
+    }
+
+    public function test_the_domain_hint_gives_way_to_an_address_of_another_domain(): void
+    {
+        $provider = Mockery::mock(GoogleProvider::class);
+        $provider->shouldReceive('with')->once()->with(['login_hint' => 'foo@gmail.com', 'hl' => app()->getLocale()])->andReturnSelf();
+        $provider->shouldReceive('redirect')->once()->andReturn(redirect('https://accounts.google.com/o/oauth2/auth'));
+        Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
+
+        $this->get(route('auth.google.redirect', ['email' => 'foo@gmail.com']))->assertRedirect();
+    }
+
+    public function test_odd_values_in_the_way_to_google_do_not_break_it(): void
+    {
+        $provider = Mockery::mock(GoogleProvider::class);
+        $provider->shouldReceive('with')->once()->with(['prompt' => 'select_account', 'hl' => app()->getLocale(), 'hd' => 'example.com'])->andReturnSelf();
+        $provider->shouldReceive('redirect')->once()->andReturn(redirect('https://accounts.google.com/o/oauth2/auth'));
+        Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
+
+        $this->get('/auth/google/redirect?email[]=x&remember[]=1')->assertRedirect();
     }
 
     public function test_cancelling_at_google_says_so(): void

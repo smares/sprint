@@ -152,7 +152,7 @@ new class extends Component
         <flux:button wire:click="today">{{ __('Today') }}</flux:button>
         <flux:heading size="lg" class="ms-2">{{ $this->monthStart->isoFormat('MMMM YYYY') }}</flux:heading>
 
-        @if ($this->canEdit && ! $selecting && collect($this->weeks)->flatten(1)->contains(fn ($day) => $day['tasks']->isNotEmpty()))
+        @if ($this->canEdit && collect($this->weeks)->flatten(1)->contains(fn ($day) => $day['tasks']->isNotEmpty()))
             <x-selection-toggle instant class="ms-auto" x-show="! $wire.selecting" />
         @endif
     </div>

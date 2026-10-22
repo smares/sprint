@@ -6,8 +6,8 @@
      `instant`: for the pages that draw a (hidden) box in every row already (see data-select-box in the board): the selection starts in the
      browser at once and the server is only told afterwards, so the boxes do not wait for it to draw the whole page again. --}}
 @php($start = $instant
-    ? '$wire.selecting = true; $wire.$refresh().catch(() => { $wire.selecting = false; $wire.selected = [] }); $nextTick(() => document.querySelector(\'[data-select-box] ui-checkbox\')?.focus())'
-    : '$wire.startSelecting().then(() => $nextTick(() => document.querySelector(\'[data-select-box] ui-checkbox\')?.focus()))')
+    ? '$wire.selecting = true; $wire.$refresh().catch(() => { $wire.selecting = false; $wire.selected = [] }); $nextTick(() => [...document.querySelectorAll(\'[data-select-box] ui-checkbox\')].find((box) => box.offsetParent !== null)?.focus())'
+    : '$wire.startSelecting().then(() => $nextTick(() => [...document.querySelectorAll(\'[data-select-box] ui-checkbox\')].find((box) => box.offsetParent !== null)?.focus()))')
 <div {{ $attributes->class('shrink-0') }} data-selection-toggle>
     <flux:button icon="clipboard-document-check" square x-on:click="{{ $start }}" class="sm:hidden max-sm:size-10!" aria-label="{{ __('Select') }}" tooltip="{{ __('Select') }}" />
     <flux:button icon="clipboard-document-check" x-on:click="{{ $start }}" class="max-sm:hidden">{{ __('Select') }}</flux:button>

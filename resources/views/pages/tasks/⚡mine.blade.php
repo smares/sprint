@@ -78,7 +78,7 @@ new class extends Component
     <div class="mb-6 flex items-center justify-between gap-3">
         <flux:heading level="1" size="xl">{{ __('My tasks') }}</flux:heading>
         <div class="flex items-center gap-2">
-            @if (! $selecting && $this->tasks->isNotEmpty())
+            @if ($this->tasks->isNotEmpty())
                 <x-selection-toggle instant x-show="! $wire.selecting" />
             @endif
             <x-mine-views active="list" />

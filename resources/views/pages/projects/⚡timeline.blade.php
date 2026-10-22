@@ -155,7 +155,7 @@ new class extends Component
         <flux:button wire:click="today">{{ __('Today') }}</flux:button>
         <flux:text class="ms-2 whitespace-nowrap">{{ $this->start->isoFormat('L') }} – {{ $this->end->isoFormat('L') }}</flux:text>
 
-        @if ($this->canEdit && ! $selecting && $this->rows->isNotEmpty())
+        @if ($this->canEdit && $this->rows->isNotEmpty())
             <x-selection-toggle instant class="ms-auto" x-show="! $wire.selecting" />
         @endif
     </div>

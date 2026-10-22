@@ -314,7 +314,7 @@ new class extends Component
             <flux:button icon="bookmark">{{ __('Views') }} @if ($this->savedFilters->isNotEmpty()) <flux:badge size="sm" inset="top bottom">{{ $this->savedFilters->count() }}</flux:badge> @endif</flux:button>
         </flux:modal.trigger>
 
-        @if ($this->canEdit && ! $selecting && array_sum($this->columnTotals) > 0)
+        @if ($this->canEdit && array_sum($this->columnTotals) > 0)
             <x-selection-toggle instant class="ms-auto" x-show="! $wire.selecting" />
         @endif
     </div>
@@ -416,7 +416,7 @@ new class extends Component
                         @endif
                     </flux:kanban.column.cards>
 
-                    @if ($this->canEdit && ! $selecting)
+                    @if ($this->canEdit)
                         <x-quick-add :status-id="$status->id" class="mt-1 px-2 pb-2" x-show="! $wire.selecting" />
                     @endif
                 </flux:kanban.column>

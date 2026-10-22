@@ -750,7 +750,7 @@ new class extends Component
         </div>
     @endif
 
-    @if ($this->canEdit && ! $selecting)
+    @if ($this->canEdit)
         <x-quick-add class="mt-2" x-show="! $wire.selecting" />
     @endif
 

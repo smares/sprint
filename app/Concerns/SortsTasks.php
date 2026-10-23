@@ -140,7 +140,7 @@ trait SortsTasks
 
     /**
      * The order as SQL for the table `tasks`: terms with their bindings, empty for the manual order. Tasks without a
-     * value come last in both directions.
+     * value come last in both directions, tasks that are equal come newest first.
      *
      * @return list<array{0: string, 1: list<mixed>}>
      */
@@ -152,12 +152,15 @@ trait SortsTasks
 
         $direction = $this->direction();
 
-        return match (true) {
+        $terms = match (true) {
             $this->sortBy === 'due' => [['tasks.due_date is null', []], ["tasks.due_date {$direction}", []]],
             $this->sortBy === 'title' => [['tasks.title'.$this->caseInsensitiveCollation()." {$direction}", []]],
             $this->sortBy === 'status' => [["(select task_statuses.position from task_statuses where task_statuses.id = tasks.status_id) {$direction}", []]],
             default => $this->fieldSortTerms($direction),
         };
+
+        // Tasks that are equal in the criterion (many with the same priority) come newest first, whichever direction is sorted
+        return $terms === [] ? [] : [...$terms, ['tasks.created_at desc', []], ['tasks.id desc', []]];
     }
 
     /**

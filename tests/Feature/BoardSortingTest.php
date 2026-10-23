@@ -42,6 +42,40 @@ class BoardSortingTest extends TestCase
         return $board->instance()->columns[$this->statusId]->pluck('title')->all();
     }
 
+    public function test_tasks_that_are_equal_in_the_criterion_come_newest_first_in_both_directions(): void
+    {
+        $this->task('Älteste', ['position' => 0, 'due_date' => '2026-11-01', 'created_at' => '2026-10-01 10:00:00']);
+        $this->task('Mittlere', ['position' => 1, 'due_date' => '2026-11-01', 'created_at' => '2026-10-05 10:00:00']);
+        $this->task('Neueste', ['position' => 2, 'due_date' => '2026-11-01', 'created_at' => '2026-10-09 10:00:00']);
+        $this->task('Früher', ['position' => 3, 'due_date' => '2026-10-20', 'created_at' => '2026-10-02 10:00:00']);
+
+        $board = Livewire::test('pages::projects.board', ['project' => $this->project])->set('sortBy', 'due');
+        $this->assertSame(['Früher', 'Neueste', 'Mittlere', 'Älteste'], $this->column($board));
+
+        $board->call('reverseSort');
+        $this->assertSame(['Neueste', 'Mittlere', 'Älteste', 'Früher'], $this->column($board));
+
+        // The same moment of creation: the higher id counts as newer
+        $a = $this->task('Gleich A', ['due_date' => '2026-12-01', 'created_at' => '2026-10-10 10:00:00']);
+        $b = $this->task('Gleich B', ['due_date' => '2026-12-01', 'created_at' => '2026-10-10 10:00:00']);
+        $this->assertGreaterThan($a->id, $b->id);
+        $this->assertSame(['Gleich B', 'Gleich A'], array_slice($this->column($board->call('resetSort')->set('sortBy', 'due')->call('reverseSort')), 0, 2));
+    }
+
+    public function test_the_list_breaks_ties_of_a_sort_by_the_newest_task_too(): void
+    {
+        $this->task('Älteste', ['position' => 0, 'created_at' => '2026-10-01 10:00:00']);
+        $this->task('Neueste', ['position' => 1, 'created_at' => '2026-10-09 10:00:00']);
+        $this->task('Mittlere', ['position' => 2, 'created_at' => '2026-10-05 10:00:00']);
+
+        // Same status for all, so "status" ties them all
+        $list = Livewire::test('pages::projects.show', ['project' => $this->project])->call('sort', 'status');
+        $this->assertSame(['Neueste', 'Mittlere', 'Älteste'], $list->instance()->tasks->pluck('title')->all());
+
+        $list->call('resetSort');
+        $this->assertSame(['Älteste', 'Neueste', 'Mittlere'], $list->instance()->tasks->pluck('title')->all());
+    }
+
     public function test_the_manual_order_is_the_default(): void
     {
         $this->task('Zebra', ['position' => 0]);

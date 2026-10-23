@@ -307,6 +307,11 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
     }
 }
 
+/* Without the sidebar (login, password reset) there is nothing to sit against: the content stands in the middle. */
+[data-flux-main][data-guest] {
+    margin-inline: auto;
+}
+
 /* Project views (list, board, calendar, timeline) fill the window below the page header and scroll within it, so the column
    headers, statuses and weekdays stay in sight however far one scrolls. The page becomes a column whose view
    (data-fills-height) takes the remaining height, never less than 20rem. Not on phones and low windows, where the header

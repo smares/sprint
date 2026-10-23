@@ -126,7 +126,8 @@
         @endauth
 
         {{-- isolate: what the page stacks with z-index (sticky titles, shadows of scrolling areas, the bar of a selection) stays below the sticky header of phones --}}
-        <flux:main container id="main-content" role="main" tabindex="-1" class="isolate focus:outline-none">
+        {{-- data-guest: without the sidebar (login, password reset) the content stands in the middle of wide windows, see app.css --}}
+        <flux:main container id="main-content" role="main" tabindex="-1" class="isolate focus:outline-none" :data-guest="auth()->guest()">
             {{ $slot }}
         </flux:main>
 

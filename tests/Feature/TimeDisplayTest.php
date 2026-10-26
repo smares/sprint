@@ -139,7 +139,7 @@ class TimeDisplayTest extends TestCase
 
         $this->assertSame(
             ['2026-10-25 00:30:00', '2026-10-25 01:00:00', '2026-10-25 01:30:00'],
-            $entries->map(fn (array $entry) => $entry['at']->copy()->utc()->format('Y-m-d H:i:s'))->take(-3)->values()->all(),
+            $entries->map(fn (array $entry) => $entry['at']->copy()->utc()->format('Y-m-d H:i:s'))->filter(fn (string $at) => str_starts_with($at, '2026-10-25'))->values()->all(),
         );
     }
 

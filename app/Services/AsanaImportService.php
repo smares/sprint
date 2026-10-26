@@ -212,7 +212,7 @@ class AsanaImportService
                 // Nothing is written; the list of people comes with the report
                 $stopped = 'Some people in Asana have no account here (see the list). Create them, run with --create-users to have them created, or with --ignore-missing-users to leave their assignments out.';
             } else {
-                $this->apply($plans, $missing);
+                Task::withoutAssignmentNotices(fn () => $this->apply($plans, $missing));
             }
         }
 

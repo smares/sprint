@@ -197,6 +197,8 @@ class Task extends Model
                 return;
             }
 
+            $task->announcedAssigneeId = null;
+
             $actor = auth()->user();
             $automation = app(AutomationService::class)->running();
             $actorName = $automation?->label() ?? $actor?->name;

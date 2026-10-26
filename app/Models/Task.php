@@ -8,6 +8,8 @@ use App\Enums\ActivityType;
 use App\Enums\CustomFieldType;
 use App\Enums\RepeatMode;
 use App\Enums\RepeatUnit;
+use App\Notifications\TaskAssigned;
+use App\Notifications\TasksAssigned;
 use App\Notifications\TasksStatusChanged;
 use App\Notifications\TaskStatusChanged;
 use App\Notifications\UserMentioned;
@@ -69,21 +71,43 @@ class Task extends Model
     private static ?array $bundledStatusChanges = null;
 
     /**
+     * While tasks are changed in bulk: the tasks handed to each person, to be announced in one message.
+     *
+     * @var array<int, array{user: User, tasks: list<Task>}>|null
+     */
+    private static ?array $bundledAssignments = null;
+
+    /** The assignee who was just told that the task is theirs; a mention or a status change in the same save adds nothing. */
+    private ?int $announcedAssigneeId = null;
+
+    /** Above zero while tasks are created or copied without telling their assignees (imports, copies). */
+    private static int $silencedAssignments = 0;
+
+    /**
      * Change many tasks without one mail per task: everybody who would have got several messages about
      * status changes gets a single one that lists them; a single change is sent as usual.
      */
     public static function bundlingStatusNotifications(Closure $changes): void
     {
         self::$bundledStatusChanges = [];
+        self::$bundledAssignments = [];
 
         try {
             app(RealtimeService::class)->bundling($changes);
             $bundled = self::$bundledStatusChanges;
+            $assigned = self::$bundledAssignments;
         } finally {
             self::$bundledStatusChanges = null;
+            self::$bundledAssignments = null;
         }
 
         $actorName = auth()->user()?->name;
+
+        foreach ($assigned as $entry) {
+            Notification::send($entry['user'], count($entry['tasks']) === 1
+                ? new TaskAssigned($entry['tasks'][0], $actorName)
+                : new TasksAssigned(array_map(fn (self $task) => ['id' => $task->id, 'title' => $task->title, 'project' => $task->project->name], $entry['tasks']), $actorName));
+        }
 
         foreach ($bundled as $entry) {
             if (count($entry['changes']) === 1) {
@@ -101,8 +125,30 @@ class Task extends Model
         }
     }
 
+    /**
+     * Run something that creates or hands out tasks without telling the people they are assigned to: imports and
+     * copies, where nobody asked for a message per task.
+     *
+     * @template T
+     *
+     * @param  Closure(): T  $work
+     * @return T
+     */
+    public static function withoutAssignmentNotices(Closure $work): mixed
+    {
+        self::$silencedAssignments++;
+
+        try {
+            return $work();
+        } finally {
+            self::$silencedAssignments--;
+        }
+    }
+
     protected static function booted(): void
     {
+        static::created(fn (self $task) => $task->announceAssignee());
+
         static::creating(function (self $task) {
             $task->status_id ??= $task->project->defaultStatus()->id;
         });
@@ -151,6 +197,8 @@ class Task extends Model
                 return;
             }
 
+            $task->announcedAssigneeId = null;
+
             $actor = auth()->user();
             $automation = app(AutomationService::class)->running();
             $actorName = $automation?->label() ?? $actor?->name;
@@ -169,8 +217,17 @@ class Task extends Model
                 app(CelebrationService::class)->taskCompleted();
             }
 
+            if ($task->wasChanged('assignee_id')) {
+                $task->announceAssignee();
+            }
+
             if ($task->wasChanged('status_id')) {
                 foreach ($task->usersToNotify($actor) as $recipient) {
+                    // Told about the assignment already
+                    if ($recipient->id === $task->announcedAssigneeId) {
+                        continue;
+                    }
+
                     $change = ['task' => $task, 'from' => $old?->name ?? '–', 'to' => $task->status->name];
 
                     if (self::$bundledStatusChanges === null || $automation !== null) {
@@ -371,7 +428,7 @@ class Task extends Model
      */
     private function makeCopy(array $attributes, int $offset = 0): self
     {
-        return DB::transaction(function () use ($attributes, $offset) {
+        return self::withoutAssignmentNotices(fn () => DB::transaction(function () use ($attributes, $offset) {
             $copy = self::create($attributes + [
                 'project_id' => $this->project_id,
                 'parent_id' => $this->parent_id,
@@ -395,7 +452,7 @@ class Task extends Model
             $this->copyChildrenTo($copy, $offset);
 
             return $copy;
-        });
+        }));
     }
 
     /**
@@ -644,6 +701,37 @@ class Task extends Model
     }
 
     /**
+     * Tells the assignee that the task is theirs now (when it was created for them or handed to them): not when they did
+     * it themselves, not for a muted task, and one message for many tasks while changing in bulk (see bundlingStatusNotifications).
+     */
+    private function announceAssignee(): void
+    {
+        if ($this->is_section || $this->assignee_id === null || self::$silencedAssignments > 0) {
+            return;
+        }
+
+        $actor = auth()->user();
+        $automation = app(AutomationService::class)->running();
+        $actorName = $automation?->label() ?? $actor?->name;
+
+        // Without a person or a rule behind it (console, queue, tests) nobody handed the task over
+        if ($actorName === null) {
+            return;
+        }
+
+        foreach ($this->usersToMention([$this->assignee_id], $automation === null ? $actor : null) as $recipient) {
+            $this->announcedAssigneeId = $recipient->id;
+
+            if (self::$bundledAssignments === null || $automation !== null) {
+                Notification::send($recipient, new TaskAssigned($this, $actorName));
+            } else {
+                self::$bundledAssignments[$recipient->id]['user'] = $recipient;
+                self::$bundledAssignments[$recipient->id]['tasks'][] = $this;
+            }
+        }
+    }
+
+    /**
      * Mentioned people who should get an email: not the person who wrote the mention and not
      * those who muted this task. Mentioned people do not need to be assignee or collaborator.
      *
@@ -668,7 +756,10 @@ class Task extends Model
      */
     public function notifyMentionedInDescription(iterable $userIds, ?User $actor): void
     {
-        if (collect($userIds)->isEmpty()) {
+        // The assignee who was just told about the task does not get a second message for being mentioned in it
+        $userIds = collect($userIds)->reject(fn ($id) => (int) $id === $this->announcedAssigneeId);
+
+        if ($userIds->isEmpty()) {
             return;
         }
 

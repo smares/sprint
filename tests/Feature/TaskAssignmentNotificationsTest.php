@@ -8,6 +8,8 @@ use App\Models\Task;
 use App\Models\User;
 use App\Notifications\TaskAssigned;
 use App\Notifications\TasksAssigned;
+use App\Notifications\TaskStatusChanged;
+use App\Notifications\UserMentioned;
 use App\Services\InboxTextService;
 use App\Services\LocaleService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -104,6 +106,38 @@ class TaskAssignmentNotificationsTest extends TestCase
 
         $outsider = User::factory()->create();
         $this->task()->assignTo($outsider);
+
+        Notification::assertNothingSent();
+    }
+
+    public function test_the_assignee_is_not_told_twice_for_being_mentioned_in_the_same_task(): void
+    {
+        $task = $this->task(['assignee_id' => $this->anna->id]);
+        Notification::fake();
+        $task->update(['assignee_id' => null]);
+
+        $task->update(['assignee_id' => $this->anna->id, 'description' => "@[Anna](user:{$this->anna->id}) bitte"]);
+        $task->notifyMentionedInDescription([$this->anna->id], $this->actor);
+
+        Notification::assertSentToTimes($this->anna, TaskAssigned::class, 1);
+        Notification::assertNotSentTo($this->anna, UserMentioned::class);
+    }
+
+    public function test_a_status_change_in_the_same_save_does_not_tell_the_new_assignee_twice(): void
+    {
+        $task = $this->task();
+
+        $task->update(['assignee_id' => $this->anna->id, 'status_id' => $this->project->doneStatus()->id]);
+
+        Notification::assertSentToTimes($this->anna, TaskAssigned::class, 1);
+        Notification::assertNotSentTo($this->anna, TaskStatusChanged::class);
+    }
+
+    public function test_nobody_is_told_without_a_person_or_rule_behind_the_change(): void
+    {
+        auth()->logout();
+
+        $this->task(['assignee_id' => $this->anna->id]);
 
         Notification::assertNothingSent();
     }

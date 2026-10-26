@@ -77,6 +77,9 @@ class Task extends Model
      */
     private static ?array $bundledAssignments = null;
 
+    /** The assignee who was just told that the task is theirs; a mention or a status change in the same save adds nothing. */
+    private ?int $announcedAssigneeId = null;
+
     /** Above zero while tasks are created or copied without telling their assignees (imports, copies). */
     private static int $silencedAssignments = 0;
 
@@ -212,8 +215,17 @@ class Task extends Model
                 app(CelebrationService::class)->taskCompleted();
             }
 
+            if ($task->wasChanged('assignee_id')) {
+                $task->announceAssignee();
+            }
+
             if ($task->wasChanged('status_id')) {
                 foreach ($task->usersToNotify($actor) as $recipient) {
+                    // Told about the assignment already
+                    if ($recipient->id === $task->announcedAssigneeId) {
+                        continue;
+                    }
+
                     $change = ['task' => $task, 'from' => $old?->name ?? '–', 'to' => $task->status->name];
 
                     if (self::$bundledStatusChanges === null || $automation !== null) {
@@ -223,10 +235,6 @@ class Task extends Model
                         self::$bundledStatusChanges[$recipient->id]['changes'][] = $change;
                     }
                 }
-            }
-
-            if ($task->wasChanged('assignee_id')) {
-                $task->announceAssignee();
             }
 
             if ($task->wasChanged('status_id') && $task->isDone() && $task->repeat_unit !== null) {
@@ -704,7 +712,14 @@ class Task extends Model
         $automation = app(AutomationService::class)->running();
         $actorName = $automation?->label() ?? $actor?->name;
 
+        // Without a person or a rule behind it (console, queue, tests) nobody handed the task over
+        if ($actorName === null) {
+            return;
+        }
+
         foreach ($this->usersToMention([$this->assignee_id], $automation === null ? $actor : null) as $recipient) {
+            $this->announcedAssigneeId = $recipient->id;
+
             if (self::$bundledAssignments === null || $automation !== null) {
                 Notification::send($recipient, new TaskAssigned($this, $actorName));
             } else {
@@ -739,7 +754,10 @@ class Task extends Model
      */
     public function notifyMentionedInDescription(iterable $userIds, ?User $actor): void
     {
-        if (collect($userIds)->isEmpty()) {
+        // The assignee who was just told about the task does not get a second message for being mentioned in it
+        $userIds = collect($userIds)->reject(fn ($id) => (int) $id === $this->announcedAssigneeId);
+
+        if ($userIds->isEmpty()) {
             return;
         }
 

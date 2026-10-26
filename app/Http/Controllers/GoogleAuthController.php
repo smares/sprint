@@ -191,10 +191,15 @@ class GoogleAuthController extends Controller
 
     private function remember(User $user, GoogleUser $google): void
     {
-        SocialAccount::query()->firstOrCreate(
-            ['user_id' => $user->id, 'provider' => SocialAccount::GOOGLE, 'provider_id' => $google->getId()],
-            ['email' => Str::lower((string) $google->getEmail())],
-        )->update(['email' => Str::lower((string) $google->getEmail())]);
+        $keys = ['user_id' => $user->id, 'provider' => SocialAccount::GOOGLE, 'provider_id' => $google->getId()];
+        $email = Str::lower((string) $google->getEmail());
+
+        try {
+            SocialAccount::query()->firstOrCreate($keys, ['email' => $email])->update(['email' => $email]);
+        } catch (UniqueConstraintViolationException) {
+            // Two returns from Google at once: the other one connected the account first
+            SocialAccount::query()->where($keys)->update(['email' => $email]);
+        }
     }
 
     private function toGoogle(bool $hintDomain, string $hintEmail): RedirectResponse

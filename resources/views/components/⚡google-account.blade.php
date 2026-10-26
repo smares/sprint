@@ -45,7 +45,7 @@ new class extends Component
             @if ($this->account)
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     <flux:text>{{ __('Connected: :email', ['email' => $this->account->email]) }}</flux:text>
-                    <flux:button size="sm" wire:click="disconnect" wire:confirm="{{ __('Disconnect the Google account? Signing in with Google with the same address stays possible and connects it again.') }}">{{ __('Disconnect') }}</flux:button>
+                    <flux:button size="sm" wire:click="disconnect" wire:confirm="{{ __('Disconnect the Google account? You can connect it again here in the profile.') }}">{{ __('Disconnect') }}</flux:button>
                 </div>
             @else
                 {{-- A plain link: the way leads to Google and back, not through the page loading of the app --}}

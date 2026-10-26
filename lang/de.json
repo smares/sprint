@@ -284,7 +284,7 @@
     "detached the task from “:from”": "hat die Aufgabe aus „:from“ gelöst",
     "Discard your unsaved changes to this task?": "Ungespeicherte Änderungen an dieser Aufgabe verwerfen?",
     "Disconnect": "Trennen",
-    "Disconnect the Google account? Signing in with Google with the same address stays possible and connects it again.": "Google-Konto trennen? Die Anmeldung mit Google über dieselbe Adresse bleibt möglich und verbindet es wieder.",
+    "Disconnect the Google account? You can connect it again here in the profile.": "Google-Konto trennen? Du kannst es hier im Profil wieder verbinden.",
     "Do not disturb": "Bitte nicht stören",
     "Do not disturb saved.": "„Bitte nicht stören“ gespeichert.",
     "Do you want to stop receiving emails about “:task” (:project), :name?": "Möchtest du keine E-Mails mehr zu „:task“ (:project) bekommen, :name?",

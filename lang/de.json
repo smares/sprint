@@ -23,6 +23,8 @@
     ":done of :total done": ":done von :total erledigt",
     ":failed failed jobs, see `php artisan queue:failed`.": ":failed fehlgeschlagene Jobs, siehe `php artisan queue:failed`.",
     ":file, :hours h ago": ":file, vor :hours Std.",
+    ":name assigned :count tasks to you": ":name hat dir :count Aufgaben zugewiesen",
+    ":name assigned this task to you": ":name hat dir diese Aufgabe zugewiesen",
     ":name changed the status from “:from” to “:to”": ":name hat den Status von „:from“ auf „:to“ geändert",
     ":name changed the status of :count tasks": ":name hat den Status von :count Aufgaben geändert",
     ":name commented": ":name hat kommentiert",

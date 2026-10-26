@@ -101,14 +101,15 @@ class BundledStatusNotificationsTest extends TestCase
         Notification::assertNotSentTo($this->anna, TasksStatusChanged::class);
     }
 
-    public function test_the_change_window_bundles_too_and_other_changes_send_nothing(): void
+    public function test_the_change_window_bundles_too_and_other_changes_send_no_status_message(): void
     {
         $a = $this->task('Eins');
         $b = $this->task('Zwei');
         Notification::fake();
 
         $this->bulk([$a, $b])->set('bulkAssignee', (string) $this->bert->id)->call('applyBulkChanges');
-        Notification::assertNothingSent();
+        Notification::assertNotSentTo($this->bert, TasksStatusChanged::class);
+        Notification::assertNotSentTo($this->bert, TaskStatusChanged::class);
 
         $this->bulk([$a, $b])->set('bulkStatus', (string) $this->project->doneStatus()->id)->call('applyBulkChanges');
         Notification::assertSentToTimes($this->bert, TasksStatusChanged::class, 1);

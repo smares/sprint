@@ -1,5 +1,6 @@
 <?php
 
+use App\Concerns\ConfirmsPassword;
 use App\Models\SocialAccount;
 use App\Services\SsoSettings;
 use Flux\Flux;
@@ -8,10 +9,13 @@ use Livewire\Component;
 
 /**
  * The Google account of the signed-in person: connected (and can be disconnected) or not (and can be connected, if the
- * administrators have switched signing in with Google on).
+ * administrators have switched signing in with Google on). Google replaces the second factor, so connecting and disconnecting
+ * need the password again, like the passkeys and the two-factor settings.
  */
 new class extends Component
 {
+    use ConfirmsPassword;
+
     #[Computed]
     public function account(): ?SocialAccount
     {
@@ -24,8 +28,21 @@ new class extends Component
         return app(SsoSettings::class)->isAvailable();
     }
 
+    public function connect(): void
+    {
+        if (! $this->confirmed) {
+            $this->confirmPassword();
+        }
+
+        $this->redirect(route('auth.google.link'));
+    }
+
     public function disconnect(): void
     {
+        if (! $this->confirmed) {
+            $this->confirmPassword();
+        }
+
         auth()->user()->socialAccounts()->where('provider', SocialAccount::GOOGLE)->delete();
 
         unset($this->account);
@@ -43,13 +60,22 @@ new class extends Component
             </div>
 
             @if ($this->account)
-                <div class="flex flex-wrap items-center justify-between gap-3">
-                    <flux:text>{{ __('Connected: :email', ['email' => $this->account->email]) }}</flux:text>
-                    <flux:button size="sm" wire:click="disconnect" wire:confirm="{{ __('Disconnect the Google account? You can connect it again here in the profile.') }}">{{ __('Disconnect') }}</flux:button>
-                </div>
+                <form wire:submit="disconnect" class="space-y-3">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <flux:text>{{ __('Connected: :email', ['email' => $this->account->email]) }}</flux:text>
+                        <flux:button type="submit" size="sm" wire:confirm="{{ __('Disconnect the Google account? You can connect it again here in the profile.') }}">{{ __('Disconnect') }}</flux:button>
+                    </div>
+                    @unless ($this->confirmed)
+                        <flux:input wire:model="password" type="password" :label="__('Current password')" :description="__('Google replaces the second factor, so changing it needs your password.')" autocomplete="current-password" />
+                    @endunless
+                </form>
             @else
-                {{-- A plain link: the way leads to Google and back, not through the page loading of the app --}}
-                <flux:button :href="route('auth.google.link')" icon="link">{{ __('Connect Google account') }}</flux:button>
+                <form wire:submit="connect" class="space-y-3">
+                    @unless ($this->confirmed)
+                        <flux:input wire:model="password" type="password" :label="__('Current password')" :description="__('Google replaces the second factor, so changing it needs your password.')" autocomplete="current-password" />
+                    @endunless
+                    <flux:button type="submit" icon="link">{{ __('Connect Google account') }}</flux:button>
+                </form>
             @endif
         </div>
 

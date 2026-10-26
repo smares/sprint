@@ -51,6 +51,12 @@ class GoogleAuthController extends Controller
     public function link(Request $request): RedirectResponse
     {
         $this->ensureAvailable();
+
+        // Google replaces the second factor: connecting needs the password again (asked in the profile)
+        if (time() - (int) $request->session()->get('auth.password_confirmed_at', 0) >= (int) config('auth.password_timeout', 10800)) {
+            return to_route('profile', ['tab' => 'security'])->with('warning', __('Please confirm your password first, then connect your Google account.'));
+        }
+
         $request->session()->put(self::LINK_SESSION_KEY, $request->user()->id);
 
         return $this->toGoogle(hintDomain: false, hintEmail: Str::lower((string) $request->user()->email));

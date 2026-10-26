@@ -22,9 +22,8 @@
             <flux:button size="sm" icon="check" wire:click="bulkComplete" x-bind:disabled="$wire.selected.length === 0">{{ __('Mark as done') }}</flux:button>
 
             @if ($change)
-                <flux:modal.trigger name="bulk-edit">
-                    <flux:button size="sm" icon="pencil-square" x-bind:disabled="$wire.selected.length === 0">{{ __('Change') }}</flux:button>
-                </flux:modal.trigger>
+                {{-- The dialog is part of the page once the server has answered the start of the selection; ask for it first, so a quick click is not lost --}}
+                <flux:button size="sm" icon="pencil-square" x-bind:disabled="$wire.selected.length === 0" x-on:click="$wire.$refresh().then(() => $flux.modal('bulk-edit').show())">{{ __('Change') }}</flux:button>
             @endif
 
             <flux:button size="sm" variant="danger" icon="trash" wire:click="bulkDelete" wire:confirm="{{ __('Permanently delete the selected tasks including their subtasks?') }}" x-bind:disabled="$wire.selected.length === 0">{{ __('Delete') }}</flux:button>

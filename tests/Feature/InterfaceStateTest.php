@@ -204,4 +204,23 @@ class InterfaceStateTest extends TestCase
         $this->actingAs($user)->patchJson(route('interface.update'), ['sidebar_collapsed' => true])->assertExactJson(['rev' => 2]);
         $this->actingAs($user)->patchJson(route('interface.update'), ['sidebar_collapsed' => true])->assertExactJson(['rev' => 2]);
     }
+
+    public function test_a_value_that_is_not_a_list_is_refused_with_a_message_not_an_error(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->patchJson(route('interface.update'), ['board_collapsed' => 'x'])->assertUnprocessable();
+        $this->actingAs($user)->patchJson(route('interface.update'), ['mine_board_collapsed' => 'x'])->assertUnprocessable();
+    }
+
+    public function test_every_write_raises_the_version_that_guards_the_row(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->patchJson(route('interface.update'), ['appearance' => 'dark'])->assertOk();
+        $this->actingAs($user)->patchJson(route('interface.update'), ['appearance' => 'dark'])->assertOk();
+        $this->actingAs($user)->patchJson(route('interface.update'), ['appearance' => 'light'])->assertOk();
+
+        $this->assertSame(2, (int) $user->newQuery()->whereKey($user->id)->value('interface_rev'));
+    }
 }

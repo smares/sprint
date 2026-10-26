@@ -245,7 +245,7 @@ class SelectionInViewsTest extends TestCase
         $calendar = Livewire::test('pages::projects.calendar', ['project' => $this->project]);
         $calendar->assertSeeHtml("if (! \$wire.selecting && ! \$event.target.closest('a, button'))")
             ->assertSeeHtml('x-on:drop.prevent="over = false; if ($wire.selecting) { return }')
-            ->assertSeeHtml('x-on:dragstart="if ($wire.selecting) { return }')
+            ->assertSeeHtml('x-on:dragstart="if ($wire.selecting) { $event.preventDefault(); return }')
             ->assertSeeHtml("'cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-700/40': ! \$wire.selecting")
             ->assertSeeHtml("'ps-6': \$wire.selecting, '[@media(hover:none)]:pe-7': ! \$wire.selecting")
             ->assertSeeHtml('x-show="! $wire.selecting" x-on:click.stop="$wire.$dispatch(\'new-task\'')

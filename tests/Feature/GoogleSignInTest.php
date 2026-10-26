@@ -267,7 +267,7 @@ class GoogleSignInTest extends TestCase
         $provider->shouldReceive('redirect')->once()->andReturn(redirect('https://accounts.google.com/o/oauth2/auth'));
         Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
 
-        $this->actingAs($user)->get(route('auth.google.link'))->assertRedirect('https://accounts.google.com/o/oauth2/auth');
+        $this->actingAs($user)->withSession(['auth.password_confirmed_at' => time()])->get(route('auth.google.link'))->assertRedirect('https://accounts.google.com/o/oauth2/auth');
     }
 
     public function test_the_domain_hint_gives_way_to_an_address_of_another_domain(): void
@@ -315,7 +315,7 @@ class GoogleSignInTest extends TestCase
         SocialAccount::create(['user_id' => $user->id, 'provider' => 'google', 'provider_id' => 'g-old', 'email' => 'x@example.com']);
         $this->googleSays('anna@gmail.com', 'g-new', ['hd' => null]);
 
-        $this->actingAs($user)->get(route('auth.google.link'));
+        $this->actingAs($user)->withSession(['auth.password_confirmed_at' => time()])->get(route('auth.google.link'));
         $this->actingAs($user)->get(route('auth.google.callback'))->assertSessionHas('warning');
 
         $this->assertSame('g-old', $user->socialAccounts()->firstOrFail()->provider_id);
@@ -336,7 +336,7 @@ class GoogleSignInTest extends TestCase
         $user = User::factory()->create(['email' => 'anna@private.net']);
         $this->googleSays('anna@gmail.com', 'g-7', ['hd' => null]);
 
-        $this->actingAs($user)->get(route('auth.google.link'))->assertRedirect('https://accounts.google.com/o/oauth2/auth');
+        $this->actingAs($user)->withSession(['auth.password_confirmed_at' => time()])->get(route('auth.google.link'))->assertRedirect('https://accounts.google.com/o/oauth2/auth');
         $this->actingAs($user)->get(route('auth.google.callback'))->assertRedirect(route('profile', ['tab' => 'security']))->assertSessionHas('status');
 
         $this->assertSame('g-7', $user->socialAccounts()->firstOrFail()->provider_id);
@@ -350,7 +350,7 @@ class GoogleSignInTest extends TestCase
         $second = User::factory()->create();
         $this->googleSays('x@example.com', 'g-7');
 
-        $this->actingAs($second)->get(route('auth.google.link'));
+        $this->actingAs($second)->withSession(['auth.password_confirmed_at' => time()])->get(route('auth.google.link'));
         $this->actingAs($second)->get(route('auth.google.callback'))->assertRedirect(route('profile', ['tab' => 'security']))->assertSessionHas('warning');
 
         $this->assertSame(0, $second->socialAccounts()->count());
@@ -388,11 +388,39 @@ class GoogleSignInTest extends TestCase
 
         SocialAccount::create(['user_id' => $user->id, 'provider' => 'google', 'provider_id' => 'g-1', 'email' => 'anna@example.com']);
 
+        session(['auth.password_confirmed_at' => time()]);
         Livewire::actingAs($user)->test('google-account')->assertSee('Verbunden: anna@example.com')->call('disconnect')->assertSee('Google-Konto verbinden');
         $this->assertSame(0, $user->socialAccounts()->count());
 
         app(SsoSettings::class)->update(false, []);
         Livewire::actingAs($user)->test('google-account')->assertDontSee('Google-Konto verbinden');
+    }
+
+    public function test_connecting_and_disconnecting_need_the_password(): void
+    {
+        $user = User::factory()->create(['password' => 'geheim-1234']);
+        SocialAccount::create(['user_id' => $user->id, 'provider' => 'google', 'provider_id' => 'g-1', 'email' => 'anna@example.com']);
+
+        Livewire::actingAs($user)->test('google-account')->call('disconnect')->assertHasErrors('password');
+        $this->assertSame(1, $user->socialAccounts()->count());
+
+        Livewire::actingAs($user)->test('google-account')->set('password', 'falsch')->call('disconnect')->assertHasErrors('password');
+        $this->assertSame(1, $user->socialAccounts()->count());
+
+        Livewire::actingAs($user)->test('google-account')->set('password', 'geheim-1234')->call('disconnect')->assertHasNoErrors();
+        $this->assertSame(0, $user->socialAccounts()->count());
+
+        session()->forget('auth.password_confirmed_at');
+        Livewire::actingAs($user)->test('google-account')->call('connect')->assertHasErrors('password')->assertNoRedirect();
+        Livewire::actingAs($user)->test('google-account')->set('password', 'geheim-1234')->call('connect')->assertRedirect(route('auth.google.link'));
+    }
+
+    public function test_the_link_to_google_needs_a_recent_confirmation_of_the_password(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->get(route('auth.google.link'))->assertRedirect(route('profile', ['tab' => 'security']))->assertSessionHas('warning');
+        $this->actingAs($user)->withSession(['auth.password_confirmed_at' => time() - 20000])->get(route('auth.google.link'))->assertRedirect(route('profile', ['tab' => 'security']));
     }
 
     public function test_the_domains_are_checked_in_lower_case_and_by_their_end(): void

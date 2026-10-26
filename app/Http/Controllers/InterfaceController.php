@@ -37,6 +37,11 @@ class InterfaceController extends Controller
         $pattern = $allowZero ? '/^(0|[1-9]\d{0,17})$/' : '/^[1-9]\d{0,17}$/';
 
         return function (string $attribute, mixed $value, Closure $fail) use ($pattern): void {
+            // The rule 'array' reports a scalar; this one still runs after it
+            if (! is_array($value)) {
+                return;
+            }
+
             foreach (array_keys($value) as $key) {
                 if (preg_match($pattern, (string) $key) !== 1) {
                     $fail(__('validation.array'));

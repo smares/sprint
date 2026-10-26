@@ -164,7 +164,7 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
     /**
      * Merges changes into the interface state. Only the given keys are replaced, and a collapsed column is added or removed
      * on its own (`board_collapsed` by project, `mine_board_collapsed`: column id => collapsed), so a device that has not
-     * seen another one's change does not take it back. The row is written only if it is still what was read (and read
+     * seen another one's change does not take it back. The row is written only if its version (`interface_rev`, a plain integer, so it works on every database) is still the one that was read (and read
      * again if not), so two requests of the same person at once lose nothing. The state stays small: boards without a
      * collapsed column are dropped, and only the most recently changed boards and columns are kept. Every change raises
      * `rev`, so a page can tell an older state from a newer one (a page that comes back from the browser's history).
@@ -175,7 +175,9 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
     public function rememberInterface(array $changes): int
     {
         for ($attempt = 0; $attempt < self::INTERFACE_WRITE_ATTEMPTS; $attempt++) {
-            $stored = DB::table($this->getTable())->where($this->getKeyName(), $this->getKey())->value('interface');
+            $row = DB::table($this->getTable())->where($this->getKeyName(), $this->getKey())->first(['interface', 'interface_rev']);
+            $stored = $row->interface;
+            $version = (int) $row->interface_rev;
             $current = $stored === null ? [] : json_decode($stored, true);
             $state = $this->mergeInterface($current, $changes);
 
@@ -187,8 +189,8 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
 
             $written = DB::table($this->getTable())
                 ->where($this->getKeyName(), $this->getKey())
-                ->where(fn (\Illuminate\Contracts\Database\Query\Builder $row) => $stored === null ? $row->whereNull('interface') : $row->where('interface', $stored))
-                ->update(['interface' => json_encode($state)]);
+                ->where('interface_rev', $version)
+                ->update(['interface' => json_encode($state), 'interface_rev' => $version + 1]);
 
             if ($written === 1) {
                 break;

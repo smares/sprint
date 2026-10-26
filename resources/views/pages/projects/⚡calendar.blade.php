@@ -239,7 +239,7 @@ new class extends Component
                                        @if ($this->canEdit)
                                            draggable="true"
                                            x-bind:class="{ 'ps-6': $wire.selecting, '[@media(hover:none)]:pe-7': ! $wire.selecting }"
-                                           x-on:dragstart="if ($wire.selecting) { return }; $event.dataTransfer.setData('text/plain', JSON.stringify({ id: {{ $task->id }}, from: '{{ $day['date']->toDateString() }}' })); $event.dataTransfer.effectAllowed = 'move'"
+                                           x-on:dragstart="if ($wire.selecting) { $event.preventDefault(); return }; $event.dataTransfer.setData('text/plain', JSON.stringify({ id: {{ $task->id }}, from: '{{ $day['date']->toDateString() }}' })); $event.dataTransfer.effectAllowed = 'move'"
                                        @endif
                                        @class([
                                            'color-chip block truncate rounded px-1.5 py-0.5 text-xs hover:underline',

@@ -39,7 +39,7 @@ const registerMentionable = () => {
         },
 
         field() {
-            return this.$el.querySelector('textarea')
+            return this.$root.querySelector('textarea')
         },
 
         show(matches) {

@@ -56,8 +56,8 @@ class DefaultViewsTest extends TestCase
 
     public function test_the_board_saves_its_sort_order_privately_or_for_everybody(): void
     {
-        $this->board()->call('sort', 'due')->call('reverseSort')->set('saveName', 'Bald fällig')->call('saveCurrentFilter')->assertHasNoErrors();
-        $this->board($this->manager)->call('sort', 'title')->set('saveName', 'Alphabetisch')->set('saveShared', true)->call('saveCurrentFilter');
+        $this->board()->call('sort', 'due')->call('reverseSort')->set('saveName', 'Bald fällig')->call('saveCurrentView')->assertHasNoErrors();
+        $this->board($this->manager)->call('sort', 'title')->set('saveName', 'Alphabetisch')->set('saveShared', true)->call('saveCurrentView');
 
         $mine = SavedFilter::where('name', 'Bald fällig')->firstOrFail();
         $this->assertSame(SavedFilter::BOARD, $mine->view);
@@ -66,8 +66,8 @@ class DefaultViewsTest extends TestCase
         $this->assertTrue(SavedFilter::where('name', 'Alphabetisch')->firstOrFail()->isShared());
 
         // the other person sees the shared one, not the private one
-        $this->assertSame(['Alphabetisch'], $this->board($this->manager)->instance()->savedFilters->pluck('name')->diff(['Bald fällig'])->values()->all());
-        $this->assertEqualsCanonicalizing(['Bald fällig', 'Alphabetisch'], $this->board()->instance()->savedFilters->pluck('name')->all());
+        $this->assertSame(['Alphabetisch'], $this->board($this->manager)->instance()->savedViews->pluck('name')->diff(['Bald fällig'])->values()->all());
+        $this->assertEqualsCanonicalizing(['Bald fällig', 'Alphabetisch'], $this->board()->instance()->savedViews->pluck('name')->all());
     }
 
     public function test_the_list_and_the_board_keep_their_own_views(): void
@@ -75,8 +75,8 @@ class DefaultViewsTest extends TestCase
         $this->savedView(SavedFilter::LIST, 'Liste', 'due');
         $this->savedView(SavedFilter::BOARD, 'Board', 'title');
 
-        $this->assertSame(['Liste'], $this->list()->instance()->savedFilters->pluck('name')->all());
-        $this->assertSame(['Board'], $this->board()->instance()->savedFilters->pluck('name')->all());
+        $this->assertSame(['Liste'], $this->list()->instance()->savedViews->pluck('name')->all());
+        $this->assertSame(['Board'], $this->board()->instance()->savedViews->pluck('name')->all());
     }
 
     public function test_applying_a_view_sorts_the_board_and_skips_what_does_not_exist(): void
@@ -84,8 +84,8 @@ class DefaultViewsTest extends TestCase
         $saved = $this->savedView(SavedFilter::BOARD, 'Nach Titel', 'title');
         $broken = $this->savedView(SavedFilter::BOARD, 'Kaputt', 'field:99999');
 
-        $this->board()->call('applyFilter', $saved->id)->assertSet('sortBy', 'title')->assertSet('sortDirection', 'desc')
-            ->call('applyFilter', $broken->id)->assertSet('sortBy', '');
+        $this->board()->call('applyView', $saved->id)->assertSet('sortBy', 'title')->assertSet('sortDirection', 'desc')
+            ->call('applyView', $broken->id)->assertSet('sortBy', '');
     }
 
     public function test_the_default_of_the_project_opens_when_the_address_has_no_settings(): void
@@ -135,8 +135,8 @@ class DefaultViewsTest extends TestCase
 
     public function test_only_a_sort_order_that_is_in_force_is_saved_and_fields_must_be_single_values(): void
     {
-        $this->list()->set('sortDirection', 'desc')->set('saveName', 'Ohne Sortierung')->call('saveCurrentFilter');
-        $this->list()->set('fieldFilters.3', ['x'])->set('saveName', 'Feld')->call('saveCurrentFilter');
+        $this->list()->set('sortDirection', 'desc')->set('saveName', 'Ohne Sortierung')->call('saveCurrentView');
+        $this->list()->set('fieldFilters.3', ['x'])->set('saveName', 'Feld')->call('saveCurrentView');
 
         $this->assertSame('', SavedFilter::where('name', 'Ohne Sortierung')->firstOrFail()->filters['sort']);
         $this->assertSame([], SavedFilter::where('name', 'Feld')->firstOrFail()->filters['fields']);
@@ -173,7 +173,7 @@ class DefaultViewsTest extends TestCase
         $mine = $this->savedView(SavedFilter::BOARD, 'Meine', 'due');
 
         $this->board()->set('defaultChoice', (string) $mine->id)->call('saveDefaults');
-        $this->board()->call('deleteFilter', $mine->id);
+        $this->board()->call('deleteView', $mine->id);
 
         $this->board()->assertSet('sortBy', 'title');
     }
@@ -219,7 +219,7 @@ class DefaultViewsTest extends TestCase
     {
         $this->savedView(SavedFilter::BOARD, 'Für alle', 'title', shared: true, default: true);
 
-        $this->board($this->manager)->call('sort', 'due')->set('saveName', 'Für alle')->set('saveShared', true)->call('saveCurrentFilter');
+        $this->board($this->manager)->call('sort', 'due')->set('saveName', 'Für alle')->set('saveShared', true)->call('saveCurrentView');
 
         $saved = SavedFilter::where('name', 'Für alle')->firstOrFail();
         $this->assertTrue($saved->is_default);
@@ -317,7 +317,7 @@ class DefaultViewsTest extends TestCase
 
     public function test_the_error_of_a_missing_name_goes_when_the_dialog_is_closed(): void
     {
-        $this->board()->set('saveName', '')->call('saveCurrentFilter')->assertHasErrors('saveName')
+        $this->board()->set('saveName', '')->call('saveCurrentView')->assertHasErrors('saveName')
             ->call('clearSavedViewMessages')->assertHasNoErrors();
     }
 
@@ -326,7 +326,7 @@ class DefaultViewsTest extends TestCase
         $this->savedView(SavedFilter::BOARD, 'Für alle', 'title', shared: true, default: true);
         $mine = $this->savedView(SavedFilter::BOARD, 'Meine', 'due');
 
-        $this->board()->set('defaultChoice', (string) $mine->id)->call('saveDefaults')->call('deleteFilter', $mine->id)
+        $this->board()->set('defaultChoice', (string) $mine->id)->call('saveDefaults')->call('deleteView', $mine->id)
             ->assertSet('defaultChoice', '')->assertSee('Wie im Projekt vorgegeben: „Für alle“');
     }
 
@@ -341,7 +341,7 @@ class DefaultViewsTest extends TestCase
     {
         $default = SavedFilter::factory()->for($this->project)->board()->projectDefault()->create(['name' => 'Weg']);
 
-        $this->board($this->manager)->call('deleteFilter', $default->id);
+        $this->board($this->manager)->call('deleteView', $default->id);
 
         $this->board()->assertSet('sortBy', '');
         $this->assertNull($this->board()->instance()->savedViewDefaults['project']);
@@ -362,9 +362,9 @@ class DefaultViewsTest extends TestCase
         $other = SavedFilter::factory()->for(Project::factory()->create())->shared()->create();
         $list = $this->savedView(SavedFilter::LIST, 'Liste', 'due');
 
-        $this->board()->call('applyFilter', $other->id)->assertNotFound();
-        $this->board()->call('deleteFilter', $list->id)->assertNotFound();
-        $this->list()->call('deleteFilter', $other->id)->assertNotFound();
+        $this->board()->call('applyView', $other->id)->assertNotFound();
+        $this->board()->call('deleteView', $list->id)->assertNotFound();
+        $this->list()->call('deleteView', $other->id)->assertNotFound();
     }
 
     public function test_the_factory_states_and_the_old_rows_count_as_list_views(): void

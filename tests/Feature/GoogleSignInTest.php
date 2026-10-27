@@ -448,4 +448,28 @@ class GoogleSignInTest extends TestCase
         $this->assertStringContainsString('neu@example.com', $rendered);
         $this->assertStringContainsString(route('admin.users'), $rendered);
     }
+
+    public function test_confirming_the_password_here_unlocks_the_other_cards_of_the_page_too(): void
+    {
+        $user = User::factory()->create(['password' => 'geheim-1234']);
+
+        Livewire::actingAs($user)->test('google-account')
+            ->set('password', 'geheim-1234')
+            ->call('confirmPassword')
+            ->assertDispatched('password-confirmed');
+    }
+
+    public function test_a_confirmation_made_elsewhere_unlocks_this_card_and_drops_what_was_typed(): void
+    {
+        $user = User::factory()->create(['password' => 'geheim-1234']);
+
+        $card = Livewire::actingAs($user)->test('google-account')->set('password', 'halb-getippt');
+        $this->assertFalse($card->get('confirmed'));
+
+        session(['auth.password_confirmed_at' => time()]);
+        $card->dispatch('password-confirmed');
+
+        $this->assertTrue($card->get('confirmed'));
+        $card->assertSet('password', '');
+    }
 }

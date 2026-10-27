@@ -11,7 +11,7 @@
 @endphp
 
 {{-- A missing name shown after a failed save is gone when the dialog is closed --}}
-<flux:modal name="saved-filters" class="w-full max-w-md" x-on:close="$el.querySelector('[data-invalid]') && $wire.clearSavedViewMessages()">
+<flux:modal name="saved-views" class="w-full max-w-md" x-on:close="$el.querySelector('[data-invalid]') && $wire.clearSavedViewMessages()">
     <div class="space-y-5">
         <div>
             <flux:heading size="lg">{{ __('Saved views') }}</flux:heading>
@@ -21,12 +21,12 @@
         @forelse ($views as $saved)
             <div wire:key="saved-{{ $saved->id }}" class="space-y-1">
                 <div class="flex items-center gap-2">
-                    <flux:button variant="subtle" class="min-w-0 flex-1 justify-start" wire:click="applyFilter({{ $saved->id }})">
+                    <flux:button variant="subtle" class="min-w-0 flex-1 justify-start" wire:click="applyView({{ $saved->id }})">
                         <span class="truncate">{{ $saved->name }}</span>
                     </flux:button>
 
                     @can('delete', $saved)
-                        <flux:button size="xs" variant="ghost" icon="trash" class="max-sm:size-10!" wire:click="deleteFilter({{ $saved->id }})" wire:confirm="{{ __('Delete view “:name”?', ['name' => $saved->name]) }}" aria-label="{{ __('Delete view “:name”', ['name' => $saved->name]) }}" tooltip="{{ __('Delete view') }}" />
+                        <flux:button size="xs" variant="ghost" icon="trash" class="max-sm:size-10!" wire:click="deleteView({{ $saved->id }})" wire:confirm="{{ __('Delete view “:name”?', ['name' => $saved->name]) }}" aria-label="{{ __('Delete view “:name”', ['name' => $saved->name]) }}" tooltip="{{ __('Delete view') }}" />
                     @endcan
                 </div>
 
@@ -83,7 +83,7 @@
 
         <flux:separator />
 
-        <form wire:submit="saveCurrentFilter" class="space-y-3">
+        <form wire:submit="saveCurrentView" class="space-y-3">
             <flux:heading>{{ __('New view') }}</flux:heading>
             <flux:input wire:model="saveName" :label="$saveLabel" :placeholder="$placeholder" />
             @if ($canManage)

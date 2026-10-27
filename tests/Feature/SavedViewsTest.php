@@ -12,7 +12,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
 
-class SavedFiltersTest extends TestCase
+class SavedViewsTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -44,7 +44,7 @@ class SavedFiltersTest extends TestCase
         $this->list()
             ->set('statusFilter', 'all')->set('assigneeFilter', 'me')->set('tagFilter', (string) $tag->id)
             ->set("fieldFilters.{$priority->id}", (string) $option->id)->call('sort', 'due')
-            ->set('saveName', '  Meine dringenden  ')->call('saveCurrentFilter')->assertHasNoErrors()->assertSet('saveName', '');
+            ->set('saveName', '  Meine dringenden  ')->call('saveCurrentView')->assertHasNoErrors()->assertSet('saveName', '');
 
         $saved = SavedFilter::firstOrFail();
         $this->assertSame('Meine dringenden', $saved->name);
@@ -66,7 +66,7 @@ class SavedFiltersTest extends TestCase
             'fields' => [(string) $priority->id => (string) $option->id], 'sort' => 'title', 'direction' => 'desc',
         ]]);
 
-        $this->list()->call('applyFilter', SavedFilter::first()->id)
+        $this->list()->call('applyView', SavedFilter::first()->id)
             ->assertSet('statusFilter', 'all')->assertSet('assigneeFilter', 'me')->assertSet('tagFilter', (string) $tag->id)
             ->assertSet("fieldFilters.{$priority->id}", (string) $option->id)->assertSet('sortBy', 'title')->assertSet('sortDirection', 'desc');
     }
@@ -77,7 +77,7 @@ class SavedFiltersTest extends TestCase
         Task::factory()->for($this->project)->create(['title' => 'Fremd']);
         $saved = SavedFilter::factory()->for($this->project)->create(['user_id' => $this->editor->id, 'filters' => ['status' => 'open', 'assignee' => 'me', 'tag' => '', 'fields' => [], 'sort' => '', 'direction' => 'asc']]);
 
-        $this->list()->assertSee('Fremd')->call('applyFilter', $saved->id)->assertSee('Meins')->assertDontSee('Fremd');
+        $this->list()->assertSee('Fremd')->call('applyView', $saved->id)->assertSee('Meins')->assertDontSee('Fremd');
     }
 
     public function test_entries_that_no_longer_exist_are_skipped(): void
@@ -86,7 +86,7 @@ class SavedFiltersTest extends TestCase
             'status' => '99999', 'assignee' => '99999', 'tag' => '99999', 'fields' => ['99999' => '1'], 'sort' => 'field:99999', 'direction' => 'sideways',
         ]]);
 
-        $this->list()->call('applyFilter', $saved->id)
+        $this->list()->call('applyView', $saved->id)
             ->assertSet('statusFilter', 'open')->assertSet('assigneeFilter', '')->assertSet('tagFilter', '')
             ->assertSet('fieldFilters', [])->assertSet('sortBy', '')->assertSet('sortDirection', 'asc');
     }
@@ -99,7 +99,7 @@ class SavedFiltersTest extends TestCase
             'status' => (string) $otherStatus->id, 'assignee' => '', 'tag' => (string) $otherTag->id, 'fields' => [], 'sort' => '', 'direction' => 'asc',
         ]]);
 
-        $this->list()->call('applyFilter', $saved->id)->assertSet('statusFilter', 'open')->assertSet('tagFilter', '');
+        $this->list()->call('applyView', $saved->id)->assertSet('statusFilter', 'open')->assertSet('tagFilter', '');
     }
 
     public function test_views_are_private_unless_a_manager_shares_them(): void
@@ -109,31 +109,31 @@ class SavedFiltersTest extends TestCase
         $shared = SavedFilter::factory()->for($this->project)->shared()->create(['name' => 'Für alle']);
 
         $page = $this->list();
-        $this->assertEqualsCanonicalizing(['Privat', 'Für alle'], $page->instance()->savedFilters->pluck('name')->all());
+        $this->assertEqualsCanonicalizing(['Privat', 'Für alle'], $page->instance()->savedViews->pluck('name')->all());
 
-        $page->call('applyFilter', $theirs->id)->assertNotFound();
-        $this->list()->call('deleteFilter', $theirs->id)->assertNotFound();
+        $page->call('applyView', $theirs->id)->assertNotFound();
+        $this->list()->call('deleteView', $theirs->id)->assertNotFound();
         $this->assertNotNull($mine);
         $this->assertNotNull($shared);
     }
 
     public function test_only_managers_can_share_a_view(): void
     {
-        $this->list()->set('saveName', 'Teilen?')->set('saveShared', true)->call('saveCurrentFilter');
+        $this->list()->set('saveName', 'Teilen?')->set('saveShared', true)->call('saveCurrentView');
         $this->assertFalse(SavedFilter::firstOrFail()->isShared());
 
         $manager = User::factory()->create();
         $this->project->setRole($manager, ProjectRole::Admin);
-        $this->list($manager)->set('saveName', 'Für alle')->set('saveShared', true)->call('saveCurrentFilter');
+        $this->list($manager)->set('saveName', 'Für alle')->set('saveShared', true)->call('saveCurrentView');
 
         $this->assertTrue(SavedFilter::where('name', 'Für alle')->firstOrFail()->isShared());
-        $this->assertSame(['Für alle'], $this->list()->instance()->savedFilters->pluck('name')->diff(['Teilen?'])->values()->all());
+        $this->assertSame(['Für alle'], $this->list()->instance()->savedViews->pluck('name')->diff(['Teilen?'])->values()->all());
     }
 
     public function test_saving_under_the_same_name_updates_the_view(): void
     {
-        $this->list()->set('statusFilter', 'all')->set('saveName', 'Meine')->call('saveCurrentFilter');
-        $this->list()->set('assigneeFilter', 'me')->set('saveName', 'Meine')->call('saveCurrentFilter');
+        $this->list()->set('statusFilter', 'all')->set('saveName', 'Meine')->call('saveCurrentView');
+        $this->list()->set('assigneeFilter', 'me')->set('saveName', 'Meine')->call('saveCurrentView');
 
         $this->assertSame(1, SavedFilter::count());
         $this->assertSame('me', SavedFilter::first()->filters['assignee']);
@@ -141,8 +141,8 @@ class SavedFiltersTest extends TestCase
 
     public function test_the_name_is_required_and_limited(): void
     {
-        $this->list()->call('saveCurrentFilter')->assertHasErrors('saveName');
-        $this->list()->set('saveName', str_repeat('x', 81))->call('saveCurrentFilter')->assertHasErrors('saveName');
+        $this->list()->call('saveCurrentView')->assertHasErrors('saveName');
+        $this->list()->set('saveName', str_repeat('x', 81))->call('saveCurrentView')->assertHasErrors('saveName');
 
         $this->assertSame(0, SavedFilter::count());
     }
@@ -152,15 +152,15 @@ class SavedFiltersTest extends TestCase
         $mine = SavedFilter::factory()->for($this->project)->create(['user_id' => $this->editor->id]);
         $shared = SavedFilter::factory()->for($this->project)->shared()->create();
 
-        $this->list()->call('deleteFilter', $mine->id);
+        $this->list()->call('deleteView', $mine->id);
         $this->assertModelMissing($mine);
 
-        $this->list()->call('deleteFilter', $shared->id)->assertForbidden();
+        $this->list()->call('deleteView', $shared->id)->assertForbidden();
         $this->assertModelExists($shared);
 
         $manager = User::factory()->create();
         $this->project->setRole($manager, ProjectRole::Admin);
-        $this->list($manager)->call('deleteFilter', $shared->id);
+        $this->list($manager)->call('deleteView', $shared->id);
         $this->assertModelMissing($shared);
     }
 
@@ -168,8 +168,8 @@ class SavedFiltersTest extends TestCase
     {
         $foreign = SavedFilter::factory()->for(Project::factory()->create())->shared()->create();
 
-        $this->list()->call('applyFilter', $foreign->id)->assertNotFound();
-        $this->list()->call('deleteFilter', $foreign->id)->assertNotFound();
+        $this->list()->call('applyView', $foreign->id)->assertNotFound();
+        $this->list()->call('deleteView', $foreign->id)->assertNotFound();
     }
 
     public function test_viewers_can_use_and_save_views_too(): void
@@ -177,7 +177,7 @@ class SavedFiltersTest extends TestCase
         $viewer = User::factory()->create();
         $this->project->setRole($viewer, ProjectRole::Viewer);
 
-        $this->list($viewer)->set('statusFilter', 'all')->set('saveName', 'Alles')->call('saveCurrentFilter')->assertHasNoErrors();
+        $this->list($viewer)->set('statusFilter', 'all')->set('saveName', 'Alles')->call('saveCurrentView')->assertHasNoErrors();
 
         $this->assertSame($viewer->id, SavedFilter::firstOrFail()->user_id);
     }
@@ -196,6 +196,6 @@ class SavedFiltersTest extends TestCase
 
     public function test_the_views_button_and_window_are_on_the_list(): void
     {
-        $this->get(route('projects.show', $this->project))->assertOk()->assertSee('Ansichten')->assertSee('data-modal="saved-filters"', false)->assertSee('Noch keine Ansichten gespeichert.');
+        $this->get(route('projects.show', $this->project))->assertOk()->assertSee('Ansichten')->assertSee('data-modal="saved-views"', false)->assertSee('Noch keine Ansichten gespeichert.');
     }
 }

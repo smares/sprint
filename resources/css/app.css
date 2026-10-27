@@ -14,7 +14,8 @@
 
     /* The orange of the logo as Flux's accent: primary buttons, the current navigation item, focus, today. */
     --color-accent: var(--color-orange-500);
-    --color-accent-content: var(--color-orange-600);
+    /* Orange as text (links, today, the current navigation item) on white must reach 4.5:1: 600 gives 3.6:1, 700 gives 5.2:1 */
+    --color-accent-content: var(--color-orange-700);
     --color-accent-foreground: var(--color-white);
 }
 

@@ -275,8 +275,9 @@ new class extends Component
     {
         Gate::authorize('view', $this->task->project);
 
-        // Coming here from a push, a mail or the inbox: what the inbox reported about this task has been seen
-        if (auth()->user()->markTaskNotificationsRead($this->task->id) > 0) {
+        // Coming here from a push, a mail or the inbox: what the inbox reported about this task has been seen (in the flyout the
+        // flyout itself says so, see task-flyout: stepping through tasks with the keyboard does not mean reading them)
+        if (! $this->panel && auth()->user()->markTaskNotificationsRead($this->task->id) > 0) {
             $this->dispatch('inbox-changed');
         }
 

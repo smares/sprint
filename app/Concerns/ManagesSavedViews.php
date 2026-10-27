@@ -92,7 +92,7 @@ trait ManagesSavedViews
      * @return Collection<int, SavedFilter>
      */
     #[Computed]
-    public function savedFilters(): Collection
+    public function savedViews(): Collection
     {
         return $this->savedViewsQuery()->visibleTo(auth()->user())->orderBy('name')->get()
             ->each(fn (SavedFilter $saved) => $saved->setRelation('project', $this->project));
@@ -110,18 +110,18 @@ trait ManagesSavedViews
         $picked = auth()->user()->defaultSavedView($this->project->id, $this->savedViewKind());
 
         // A view that was deleted since the person picked it is as good as none picked
-        $mine = $picked === 0 || $this->savedFilters->contains('id', $picked) ? $picked : null;
-        $project = $this->savedFilters->firstWhere('is_default', true)?->id;
+        $mine = $picked === 0 || $this->savedViews->contains('id', $picked) ? $picked : null;
+        $project = $this->savedViews->firstWhere('is_default', true)?->id;
 
         return ['mine' => $mine, 'project' => $project, 'opens' => $mine === 0 ? null : ($mine ?? $project)];
     }
 
     private function viewToOpen(): ?SavedFilter
     {
-        return $this->savedFilters->firstWhere('id', $this->savedViewDefaults['opens']);
+        return $this->savedViews->firstWhere('id', $this->savedViewDefaults['opens']);
     }
 
-    public function saveCurrentFilter(): void
+    public function saveCurrentView(): void
     {
         $validated = $this->validate(['saveName' => ['required', 'string', 'max:80']], attributes: ['saveName' => __('Name')]);
 
@@ -140,17 +140,17 @@ trait ManagesSavedViews
     /**
      * Apply a saved view.
      */
-    public function applyFilter(int $filterId): void
+    public function applyView(int $viewId): void
     {
-        $saved = $this->visibleView($filterId);
+        $saved = $this->visibleView($viewId);
 
         $this->applyViewSettings($saved->filters);
-        Flux::modal('saved-filters')->close();
+        Flux::modal('saved-views')->close();
     }
 
-    public function deleteFilter(int $filterId): void
+    public function deleteView(int $viewId): void
     {
-        $saved = $this->visibleView($filterId)->setRelation('project', $this->project);
+        $saved = $this->visibleView($viewId)->setRelation('project', $this->project);
 
         Gate::authorize('delete', $saved);
 
@@ -216,9 +216,9 @@ trait ManagesSavedViews
      * The shared view is applied by default for everybody in the project (a person's own choice still comes first). The one
      * before it is not any more: there is one per project and kind.
      */
-    private function makeProjectDefault(int $filterId): void
+    private function makeProjectDefault(int $viewId): void
     {
-        $saved = $this->savedViewsQuery()->whereNull('user_id')->findOrFail($filterId);
+        $saved = $this->savedViewsQuery()->whereNull('user_id')->findOrFail($viewId);
 
         // The project row is locked meanwhile, so two managers at once leave one default, not two
         DB::transaction(function () use ($saved): void {
@@ -228,14 +228,14 @@ trait ManagesSavedViews
             $this->savedViewsQuery()->whereKey($saved->getKey())->update(['is_default' => true]);
         });
 
-        unset($this->savedFilters, $this->savedViewDefaults);
+        unset($this->savedViews, $this->savedViewDefaults);
     }
 
     private function clearProjectDefault(): void
     {
         $this->savedViewsQuery()->where('is_default', true)->update(['is_default' => false]);
 
-        unset($this->savedFilters, $this->savedViewDefaults);
+        unset($this->savedViews, $this->savedViewDefaults);
     }
 
     /**
@@ -246,9 +246,9 @@ trait ManagesSavedViews
         $this->resetValidation();
     }
 
-    private function visibleView(int $filterId): SavedFilter
+    private function visibleView(int $viewId): SavedFilter
     {
-        return $this->savedViewsQuery()->visibleTo(auth()->user())->findOrFail($filterId);
+        return $this->savedViewsQuery()->visibleTo(auth()->user())->findOrFail($viewId);
     }
 
     /**
@@ -261,7 +261,7 @@ trait ManagesSavedViews
 
     private function forgetSavedViews(): void
     {
-        unset($this->savedFilters, $this->savedViewDefaults);
+        unset($this->savedViews, $this->savedViewDefaults);
 
         $this->syncDefaultChoices();
     }

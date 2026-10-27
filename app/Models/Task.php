@@ -881,7 +881,10 @@ class Task extends Model
     public function assignTo(?User $user, array $attributes = []): void
     {
         DB::transaction(function () use ($user, $attributes): void {
+            $previousAssigneeId = $this->assignee_id;
+
             $this->update(['assignee_id' => $user?->getKey()] + $attributes);
+            $this->keepPreviousAssigneeAsCollaborator($previousAssigneeId);
 
             if ($user instanceof User && $this->collaborators()->whereKey($user->getKey())->exists()) {
                 $this->collaborators()->detach($user->getKey());
@@ -893,6 +896,25 @@ class Task extends Model
                 );
             }
         });
+    }
+
+    /**
+     * Whoever hands a task to somebody else stays informed: the person who had it becomes a collaborator (silently, as the
+     * assignment itself is in the history). Not when the task is only unassigned, not for imports and copies, and not for somebody
+     * who is deactivated or may no longer see the project.
+     */
+    public function keepPreviousAssigneeAsCollaborator(?int $previousAssigneeId): void
+    {
+        if ($previousAssigneeId === null || $this->assignee_id === null || $previousAssigneeId === (int) $this->assignee_id || self::$silencedAssignments > 0) {
+            return;
+        }
+
+        $previous = $this->userById($previousAssigneeId);
+
+        if ($previous instanceof User && $previous->isActive() && $this->project->viewerIds(collect([$previous])) !== []) {
+            $this->collaborators()->syncWithoutDetaching([$previous->getKey()]);
+            $this->unsetRelation('collaborators');
+        }
     }
 
     /**

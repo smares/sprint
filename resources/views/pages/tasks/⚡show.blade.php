@@ -891,6 +891,7 @@ new class extends Component
         $fieldsBefore = $this->storedFieldValues();
 
         $parentChanged = ($validated['parentId'] ?: null) !== $this->task->parent_id;
+        $previousAssigneeId = $this->task->assignee_id;
 
         $this->task->update([
             'title' => trim((string) preg_replace('/\s*\R\s*/u', ' ', $validated['title'])),
@@ -909,6 +910,9 @@ new class extends Component
             'repeat_until' => ($validated['repeatUnit'] ?: null) ? ($validated['repeatUntil'] ?: null) : null,
         ]);
 
+        // Before the collaborators of the form are saved, so that the person who handed the task over is not removed again
+        $this->task->keepPreviousAssigneeAsCollaborator($previousAssigneeId);
+
         $this->saveFieldValues($validated['fieldValues'] ?? [], $fieldsBefore);
 
         $tagChanges = $this->task->tags()->sync($this->tagsToKeep(
@@ -916,8 +920,9 @@ new class extends Component
             array_map(intval(...), $validated['tagIds']),
             $this->task->tags()->pluck('tags.id')->all(),
         ));
+        $handedOver = $previousAssigneeId !== null && (int) $previousAssigneeId !== (int) $validated['assigneeId'] && $this->task->collaborators()->whereKey($previousAssigneeId)->exists() ? [(string) $previousAssigneeId] : [];
         $collaboratorChanges = $this->task->collaborators()->sync(
-            array_values(array_diff($validated['collaboratorIds'], [(string) $validated['assigneeId']]))
+            array_values(array_unique([...array_diff($validated['collaboratorIds'], [(string) $validated['assigneeId']]), ...$handedOver]))
         );
 
         $names = fn (string $model, string $column) => fn (array $ids) => $model::whereIn('id', $ids)->orderBy($column)->pluck($column)->all();

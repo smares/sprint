@@ -9,14 +9,14 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->boolean('follow_own_tasks')->default(true);
+            $table->boolean('join_own_tasks')->default(true);
         });
     }
 
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn('follow_own_tasks');
+            $table->dropColumn('join_own_tasks');
         });
     }
 };

@@ -56,7 +56,7 @@ new class extends Component
 
     public bool $celebrations = true;
 
-    public bool $followOwnTasks = true;
+    public bool $joinOwnTasks = true;
 
     public string $locale = '';
 
@@ -102,7 +102,7 @@ new class extends Component
         $this->digest = auth()->user()->digest_enabled;
         $this->reminders = auth()->user()->reminders_enabled;
         $this->celebrations = auth()->user()->celebrations_enabled;
-        $this->followOwnTasks = auth()->user()->follow_own_tasks;
+        $this->joinOwnTasks = auth()->user()->join_own_tasks;
         $this->locale = auth()->user()->preferredLocale();
         $this->timezone = (string) auth()->user()->timezone;
         $this->quietHours = auth()->user()->quiet_from !== null;
@@ -233,11 +233,11 @@ new class extends Component
         Flux::toast(variant: 'success', text: $value ? __('Reminders turned on.') : __('Reminders turned off.'));
     }
 
-    public function updatedFollowOwnTasks(bool $value): void
+    public function updatedJoinOwnTasks(bool $value): void
     {
-        auth()->user()->update(['follow_own_tasks' => $value]);
+        auth()->user()->update(['join_own_tasks' => $value]);
 
-        Flux::toast(variant: 'success', text: $value ? __('You follow the tasks you create.') : __('You no longer follow the tasks you create.'));
+        Flux::toast(variant: 'success', text: $value ? __('Joining the tasks you create turned on.') : __('Joining the tasks you create turned off.'));
     }
 
     public function updatedCelebrations(bool $value): void
@@ -517,7 +517,7 @@ new class extends Component
 
             <flux:switch wire:model.live="reminders" :label="__('Reminder the day before')" :description="__('An entry in your inbox the day before a task you are assigned to or collaborate on is due.')" />
 
-            <flux:switch wire:model.live="followOwnTasks" :label="__('Follow tasks I create')" :description="__('A task you create makes you a collaborator, so you hear about comments and status changes like the others. You can mute a task at any time. Not for tasks you assign to yourself.')" />
+            <flux:switch wire:model.live="joinOwnTasks" :label="__('Join tasks I create')" :description="__('A task you create adds you as a collaborator, so you hear about comments, status changes and reminders like the others. Only for new tasks that someone else is assigned to or nobody is: turning this off does not remove you from existing tasks, and you can mute any task.')" />
 
             <flux:switch wire:model.live="celebrations" :label="__('Celebrate completed tasks')" :description="__('Now and then a unicorn flies across the screen when you complete a task. Not shown if your device is set to reduce motion.')" />
 

@@ -50,7 +50,7 @@ class CreatorFollowsTaskTest extends TestCase
 
     public function test_the_setting_can_be_turned_off(): void
     {
-        $this->anna->update(['follow_own_tasks' => false]);
+        $this->anna->update(['join_own_tasks' => false]);
 
         $task = $this->createdBy($this->anna, ['assignee_id' => $this->ben->id]);
 
@@ -59,7 +59,7 @@ class CreatorFollowsTaskTest extends TestCase
 
     public function test_it_is_on_for_new_people(): void
     {
-        $this->assertTrue(User::factory()->create()->fresh()->follow_own_tasks);
+        $this->assertTrue(User::factory()->create()->fresh()->join_own_tasks);
     }
 
     public function test_a_task_one_takes_oneself_a_section_and_a_copy_do_not_add_anybody(): void
@@ -90,9 +90,9 @@ class CreatorFollowsTaskTest extends TestCase
     {
         $this->actingAs($this->anna);
 
-        Livewire::test('pages::profile')->assertSet('followOwnTasks', true)->set('followOwnTasks', false);
+        Livewire::test('pages::profile')->assertSet('joinOwnTasks', true)->set('joinOwnTasks', false);
 
-        $this->assertFalse($this->anna->fresh()->follow_own_tasks);
+        $this->assertFalse($this->anna->fresh()->join_own_tasks);
     }
 
     public function test_a_task_created_through_mcp_follows_the_profile_setting_too(): void
@@ -108,10 +108,44 @@ class CreatorFollowsTaskTest extends TestCase
             $this->assertSame(0, $task->activities()->where('type', 'collaborators_removed')->count(), $title);
         }
 
-        $this->anna->update(['follow_own_tasks' => false]);
+        $this->anna->update(['join_own_tasks' => false]);
 
         $create(['title' => 'Agent 3', 'collaborators' => [$this->ben->email]])->assertOk();
 
         $this->assertFalse(Task::where('title', 'Agent 3')->firstOrFail()->collaborators()->whereKey($this->anna->id)->exists());
+    }
+
+    public function test_whoever_takes_the_task_in_the_dialog_is_not_added_as_a_collaborator(): void
+    {
+        $this->actingAs($this->anna);
+
+        Livewire::test('task-create', ['project' => $this->project])->set('title', 'Für mich')->set('assigneeId', (string) $this->anna->id)->call('create');
+
+        $task = Task::where('title', 'Für mich')->firstOrFail();
+        $this->assertSame($this->anna->id, $task->assignee_id);
+        $this->assertFalse($task->collaborators()->exists());
+    }
+
+    public function test_somebody_without_access_to_the_project_is_not_added(): void
+    {
+        $outsider = User::factory()->create();
+
+        $task = Task::factory()->for($this->project)->create(['creator_id' => $outsider->id, 'assignee_id' => $this->ben->id]);
+
+        $this->assertFalse($task->collaborators()->exists());
+    }
+
+    public function test_taking_the_task_later_leaves_no_entry_about_the_creator_being_removed(): void
+    {
+        $this->actingAs($this->anna);
+        $task = $this->createdBy($this->anna);
+
+        $this->assertTrue($task->collaborators()->whereKey($this->anna->id)->exists());
+
+        $task->collaborators()->syncWithoutDetaching([$this->anna->id]);
+        $task->assignTo($this->anna);
+
+        $this->assertFalse($task->collaborators()->exists());
+        $this->assertSame(0, $task->activities()->where('type', 'collaborators_removed')->count());
     }
 }

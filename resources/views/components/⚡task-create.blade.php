@@ -232,7 +232,8 @@ new class extends Component
             <flux:input wire:model="title" :label="__('Title')" autofocus />
             <x-markdown-editor wire:model="description" :label="__('Description')" grow :max="Task::MAX_DESCRIPTION_LENGTH" :placeholder="__('Describe the task … (Markdown, @ for mentions)')" :rows="3" :images="[]" :mentions="$this->mentionOptions" />
             <div class="space-y-2">
-                <flux:file-upload wire:model="uploads" multiple :label="__('Attachments')">
+                <flux:label>{{ __('Attachments') }}</flux:label>
+                <flux:file-upload wire:model="uploads" multiple>
                     <flux:file-upload.dropzone :heading="__('Drag files here or click')" :text="__('Up to :size MB per file', ['size' => intdiv(\App\Models\Attachment::MAX_KILOBYTES, 1024)])" with-progress inline />
                 </flux:file-upload>
                 <flux:error name="uploads" />

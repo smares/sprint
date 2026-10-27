@@ -1294,6 +1294,8 @@ new class extends Component
                     <button type="button" wire:key="ancestor-{{ $ancestor->id }}" x-on:click="$dispatch('open-task', { id: {{ $ancestor->id }} })" class="hover:underline">{{ $ancestor->title }}</button>
                 @endforeach
             </flux:text>
+            {{-- The address bar of the flyout is that of the list (with its filters and sorting): this one leads to the task itself --}}
+            <flux:button size="sm" variant="ghost" icon="link" x-on:click="$copyText({{ Js::from(route('tasks.show', $task)) }}, {{ Js::from(__('Link copied.')) }}, {{ Js::from(__('The link could not be copied.')) }})" aria-label="{{ __('Copy link') }}" tooltip="{{ __('Copy link') }}" />
             <flux:button size="sm" variant="ghost" icon="arrow-top-right-on-square" href="{{ route('tasks.show', $task) }}" wire:navigate aria-label="{{ __('Open as page') }}" tooltip="{{ __('Open as page') }}" />
             <flux:button size="sm" variant="ghost" icon="x-mark" x-on:click="$dispatch('close-task')" data-flyout-close aria-label="{{ __('Close') }}" tooltip="{{ __('Close') }}" />
         </div>

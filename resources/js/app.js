@@ -837,6 +837,22 @@ const registerTaskFlyout = () => {
     }))
 }
 
+// $copyText(text, done, failed): puts the text on the clipboard and says so with a toast. Without the clipboard (a page over plain
+// http that is not localhost, or a browser that refuses) the other toast says it did not work.
+const registerCopyText = () => {
+    window.Alpine.magic('copyText', () => (text, done, failed) => {
+        const toast = (message, variant) => window.Flux.toast({ text: message, variant })
+
+        if (! navigator.clipboard) {
+            toast(failed, 'danger')
+
+            return
+        }
+
+        navigator.clipboard.writeText(text).then(() => toast(done, 'success')).catch(() => toast(failed, 'danger'))
+    })
+}
+
 // $openTask($event, id): a click on a task link opens the task in the flyout (the component task-flyout); with a modifier key or
 // another button it stays a normal link to the full page, and a click a drag already used (timeline bars) does nothing.
 const registerOpenTask = () => {
@@ -932,6 +948,7 @@ const registerAll = () => {
     // Which task the flyout shows (task-flyout sets it): its title links light up
     window.Alpine.store('taskFlyout', { id: '' })
     registerOpenTask()
+    registerCopyText()
     registerTaskFlyout()
     registerMentionable()
     registerLazyPicker()

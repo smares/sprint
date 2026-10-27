@@ -51,7 +51,8 @@ class TaskPanelTest extends TestCase
     public function test_the_task_in_the_url_opens_the_flyout_on_every_page(): void
     {
         foreach ([route('projects.show', ['project' => $this->project, 'task' => $this->task->id]), route('projects.board', ['project' => $this->project, 'task' => $this->task->id]), route('tasks.mine', ['task' => $this->task->id])] as $url) {
-            $this->get($url)->assertOk()->assertSee('data-modal="task-panel"', false)->assertSee('Als Seite öffnen');
+            $this->get($url)->assertOk()->assertSee('data-modal="task-panel"', false)->assertSee('Als Seite öffnen')
+                ->assertSee('aria-label="Link kopieren"', false)->assertSee('navigator.clipboard.writeText', false);
         }
 
         Livewire::withQueryParams(['task' => $this->task->id])->test('task-flyout')

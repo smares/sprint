@@ -38,6 +38,8 @@
     ":shown of :total tasks": ":shown von :total Aufgaben",
     ":title (copy)": ":title (Kopie)",
     ":waiting jobs have been waiting for more than :minutes minutes; is `php artisan queue:work` running?": ":waiting Jobs warten seit über :minutes Minuten; läuft `php artisan queue:work`?",
+    "Copy link": "Link kopieren",
+    "Link copied.": "Link kopiert.",
     "a field": "ein Feld",
     "A number opens its tasks. Days away count Monday to Friday; amber means there is work due while the person is away.": "Eine Zahl öffnet die Aufgaben dahinter. Abwesenheit zählt Montag bis Freitag; gelb heißt, in der Woche ist etwas fällig, während die Person weg ist.",
     "A project needs at least one member who can manage it.": "Ein Projekt braucht mindestens ein Mitglied, das es verwalten darf.",

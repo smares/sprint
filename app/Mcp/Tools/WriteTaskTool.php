@@ -116,6 +116,7 @@ abstract class WriteTaskTool extends SprintTool
 
         if (array_key_exists('collaborators', $given)) {
             $ids = collect($given['collaborators'] ?? [])->map(fn (string $email) => $this->member($task->project, $email)->id)
+                ->when($task->wasRecentlyCreated && $task->followedByCreator(), fn ($people) => $people->push($task->creator_id))
                 ->reject(fn (int $id) => $id === $task->assignee_id)->unique()->all();
 
             $task->logSyncChanges(ActivityType::CollaboratorsAdded, ActivityType::CollaboratorsRemoved, $task->collaborators()->sync($ids), fn (array $ids) => User::whereIn('id', $ids)->orderBy('name')->pluck('name')->all());

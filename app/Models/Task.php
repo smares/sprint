@@ -149,6 +149,7 @@ class Task extends Model
     protected static function booted(): void
     {
         static::created(fn (self $task) => $task->announceAssignee());
+        static::created(fn (self $task) => $task->addCreatorAsCollaborator());
 
         static::creating(function (self $task) {
             $task->status_id ??= $task->project->defaultStatus()->id;
@@ -685,6 +686,34 @@ class Task extends Model
             $this->notificationMutes()->syncWithoutDetaching([$user->getKey()]);
         } else {
             $this->notificationMutes()->detach($user->getKey());
+        }
+    }
+
+    /**
+     * Whether the person who created the task is to hear how it goes on (their setting "Follow tasks I create"): not for sections,
+     * not for a task they have taken themselves (as the assignee they hear anyway), and not for imports and copies, where nobody
+     * asked for a task each.
+     */
+    public function followedByCreator(): bool
+    {
+        if ($this->is_section || $this->creator_id === null || $this->creator_id === $this->assignee_id || self::$silencedAssignments > 0) {
+            return false;
+        }
+
+        $creator = $this->userById($this->creator_id);
+
+        return $creator instanceof User && $creator->follow_own_tasks && $creator->isActive();
+    }
+
+    /**
+     * The creator becomes a collaborator of the new task, so that comments and status changes reach them like the others
+     * (they can mute the task). Not logged in the history: nobody did it.
+     */
+    private function addCreatorAsCollaborator(): void
+    {
+        if ($this->followedByCreator()) {
+            $this->collaborators()->attach($this->creator_id);
+            $this->unsetRelation('collaborators');
         }
     }
 

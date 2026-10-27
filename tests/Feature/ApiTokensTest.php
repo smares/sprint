@@ -35,7 +35,9 @@ class ApiTokensTest extends TestCase
 
         $plain = $page->get('createdToken');
         $this->assertNotEmpty($plain);
-        $page->assertSee($plain)->assertSee(url('/mcp'))->assertDontSee('@js(', false);
+        $page->assertSee($plain)->assertSee(url('/mcp'))->assertDontSee('@js(', false)
+            ->assertSee('Authorization: Bearer '.$plain)
+            ->assertSee('claude mcp add --transport http sprint '.url('/mcp'));
 
         $token = $this->user->tokens()->firstOrFail();
         $this->assertSame('Laptop', $token->name);
@@ -88,5 +90,15 @@ class ApiTokensTest extends TestCase
 
         $page->call('revoke', $mine->id)->assertDontSee('Meiner');
         $this->assertNull(PersonalAccessToken::find($mine->id));
+    }
+
+    public function test_the_connect_instructions_cover_the_claude_app_and_claude_code_before_a_token_exists(): void
+    {
+        Livewire::test('api-tokens')
+            ->assertSee('Agenten verbinden')
+            ->assertSee('Claude-App')
+            ->assertSee('Einstellungen → Konnektoren')
+            ->assertSee('Authorization: Bearer dein Token')
+            ->assertSee('Claude Code (Terminal)');
     }
 }

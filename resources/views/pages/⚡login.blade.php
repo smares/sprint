@@ -226,7 +226,6 @@ new class extends Component
                 <flux:input wire:model="password" type="password" autocomplete="current-password" />
                 <flux:error name="password" />
             </flux:field>
-            <flux:checkbox wire:model="remember" :label="__('Stay signed in')" />
             <flux:button type="submit" variant="primary" class="w-full">{{ __('Sign in') }}</flux:button>
         </form>
 
@@ -261,6 +260,11 @@ new class extends Component
                 "
             >{{ __('Sign in with a passkey') }}</flux:button>
             <flux:text x-show="failed" class="text-red-600 dark:text-red-400">{{ __('Signing in with the passkey failed.') }}</flux:text>
+        </div>
+
+        {{-- Below every way to sign in, not inside the form of the password: it counts for the password, a passkey and Google alike --}}
+        <div class="mt-6 border-t border-zinc-200 pt-4 dark:border-zinc-700">
+            <flux:checkbox wire:model="remember" :label="__('Stay signed in')" :description="__('Applies to the password, a passkey and Google.')" />
         </div>
     @endif
     </flux:card>

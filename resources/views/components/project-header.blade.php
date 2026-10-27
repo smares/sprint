@@ -28,7 +28,7 @@
 
         @can('edit', $project)
             {{-- On phones only the icon, so new task and the settings stay small next to the title --}}
-            <flux:button variant="primary" icon="plus" square class="sm:hidden" x-on:click="$flux.modal('create-task').show()" :aria-label="__('New task')" :tooltip="__('New task')" />
+            <div class="sm:hidden"><flux:button variant="primary" icon="plus" square x-on:click="$flux.modal('create-task').show()" :aria-label="__('New task')" :tooltip="__('New task')" /></div>
             <flux:button variant="primary" icon="plus" class="max-sm:hidden" x-on:click="$flux.modal('create-task').show()">{{ __('New task') }}</flux:button>
         @endcan
 

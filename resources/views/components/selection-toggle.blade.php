@@ -9,6 +9,6 @@
     ? '$wire.selecting = true; $wire.$refresh().catch(() => { $wire.selecting = false; $wire.selected = [] }); $nextTick(() => [...document.querySelectorAll(\'[data-select-box] ui-checkbox\')].find((box) => box.offsetParent !== null)?.focus())'
     : '$wire.startSelecting().then(() => $nextTick(() => [...document.querySelectorAll(\'[data-select-box] ui-checkbox\')].find((box) => box.offsetParent !== null)?.focus()))')
 <div {{ $attributes->class('shrink-0') }} data-selection-toggle>
-    <flux:button icon="clipboard-document-check" square x-on:click="{{ $start }}" class="sm:hidden max-sm:size-10!" aria-label="{{ __('Select') }}" tooltip="{{ __('Select') }}" />
+    <div class="sm:hidden"><flux:button icon="clipboard-document-check" square x-on:click="{{ $start }}" class="max-sm:size-10!" aria-label="{{ __('Select') }}" tooltip="{{ __('Select') }}" /></div>
     <flux:button icon="clipboard-document-check" x-on:click="{{ $start }}" class="max-sm:hidden">{{ __('Select') }}</flux:button>
 </div>

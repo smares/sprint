@@ -74,7 +74,6 @@ new class extends Component
             <flux:callout.text>
                 {{ __('It is only shown this one time.') }}
                 <code class="mt-2 block break-all rounded bg-zinc-100 p-2 text-xs dark:bg-zinc-800">{{ $createdToken }}</code>
-                <code class="mt-2 block break-all rounded bg-zinc-100 p-2 text-xs dark:bg-zinc-800">claude mcp add --transport http sprint {{ url('/mcp') }} --header "Authorization: Bearer {{ $createdToken }}"</code>
             </flux:callout.text>
             <x-slot name="actions">
                 <flux:button size="sm" x-on:click="navigator.clipboard.writeText({{ Js::from($createdToken) }}); copied = true" x-text="copied ? {{ Js::from(__('Copied')) }} : {{ Js::from(__('Copy token')) }}">{{ __('Copy token') }}</flux:button>
@@ -82,6 +81,44 @@ new class extends Component
             </x-slot>
         </flux:callout>
     @endif
+
+    {{-- Two ways to connect: the Claude app (Connectors) and Claude Code in the terminal. A new token is filled in; otherwise a placeholder stands there --}}
+    @php($tokenValue = $createdToken ?? '<'.__('your token').'>')
+    <div x-data="{ tool: 'app' }" class="space-y-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <flux:heading level="3">{{ __('Connect an agent') }}</flux:heading>
+            <div class="inline-flex gap-0.5 rounded-lg bg-zinc-100 p-0.5 text-sm dark:bg-zinc-700/50" role="group" aria-label="{{ __('Connect an agent') }}">
+                @foreach (['app' => __('Claude app'), 'cli' => __('Claude Code (terminal)')] as $key => $label)
+                    <button type="button" class="touch-target rounded-md px-2.5 py-0.5" x-on:click="tool = '{{ $key }}'" x-bind:aria-pressed="tool === '{{ $key }}'" x-bind:class="tool === '{{ $key }}' ? 'bg-white font-medium text-zinc-900 shadow-sm dark:bg-zinc-600 dark:text-white' : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-white'">{{ $label }}</button>
+                @endforeach
+            </div>
+        </div>
+
+        <div x-show="tool === 'app'" class="space-y-3 text-sm">
+            <ol class="list-decimal space-y-2 ps-5">
+                @unless ($createdToken)
+                    <li>{{ __('Create a token below and copy it; it is only shown once.') }}</li>
+                @endunless
+                <li>{{ __('Open the connectors of the Claude app and add a custom connector.') }}</li>
+                <li>
+                    {{ __('Name it Sprint and enter this address:') }}
+                    <code class="mt-1 block select-all break-all rounded bg-zinc-100 p-2 text-xs dark:bg-zinc-800">{{ url('/mcp') }}</code>
+                </li>
+                <li>
+                    {{ __('Choose no sign-in and send your own request header instead. Its name:') }}
+                    <code class="mt-1 block select-all rounded bg-zinc-100 p-2 text-xs dark:bg-zinc-800">Authorization</code>
+                    {{ __('Its value:') }}
+                    <code class="mt-1 block select-all break-all rounded bg-zinc-100 p-2 text-xs dark:bg-zinc-800">Bearer {{ $tokenValue }}</code>
+                </li>
+            </ol>
+            <flux:text size="sm">{{ __('Custom request headers are a beta feature of the Claude app and not available to every account. In a team or enterprise plan the connector belongs to the whole organization, so everyone in it works with this token; use a token of a service account or a read-only token there. Claude reaches the address from the internet, so a Sprint that is only reachable internally does not work. A token cannot be changed in the connector later: when it expires, add the connector again.') }}</flux:text>
+        </div>
+
+        <div x-show="tool === 'cli'" x-cloak class="space-y-2 text-sm">
+            <p>{{ __('Run this in a terminal; the agent then works with your permissions:') }}</p>
+            <code class="block select-all break-all rounded bg-zinc-100 p-2 text-xs dark:bg-zinc-800">claude mcp add --transport http sprint {{ url('/mcp') }} --header "Authorization: Bearer {{ $tokenValue }}"</code>
+        </div>
+    </div>
 
     <form wire:submit="create" class="space-y-4">
         <flux:input wire:model="name" :label="__('Token name')" placeholder="{{ __('e.g. Claude Code on the laptop') }}" />

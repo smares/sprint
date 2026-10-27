@@ -100,7 +100,7 @@ class ProgressiveWebAppTest extends TestCase
         $before = app(AppBuild::class)->id();
 
         config(['sprint.version' => '9.9.9']);
-        AppBuild::forget();
+        app()->forgetInstance(AppBuild::class);
 
         $this->assertNotSame($before, app(AppBuild::class)->id());
     }

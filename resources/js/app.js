@@ -1119,7 +1119,17 @@ if (build) {
         }
 
         lastCheck = Date.now()
-        fetch(build.dataset.check, { method: 'HEAD', cache: 'no-store' }).then((response) => noteBuild(response.headers.get(build.dataset.header))).catch(() => {})
+        fetch(SERVICE_WORKER_URL, { method: 'HEAD', cache: 'no-store' }).then((response) => noteBuild(response.headers.get(build.dataset.header))).catch(() => {})
+    })
+
+    // A page change nobody could stop (the first one after a deployment, before any answer named the new build) brings the
+    // new head along: its meta tag shows the build, and the old and the new scripts would run side by side
+    document.addEventListener('livewire:navigated', () => {
+        const served = document.querySelector('meta[name="sprint-build"]')?.content
+
+        if (served && served !== build.content) {
+            window.location.reload()
+        }
     })
 
     document.addEventListener('livewire:navigate', (event) => {

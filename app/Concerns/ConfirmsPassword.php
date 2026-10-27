@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 
 /**
  * Sensitive account actions need the password again; the confirmation lasts for the session's password timeout.
@@ -46,6 +47,15 @@ trait ConfirmsPassword
         RateLimiter::clear($throttleKey);
         session(['auth.password_confirmed_at' => time()]);
         $this->reset('password');
+        unset($this->confirmed, $this->confirmedUntil);
+
+        // The other parts of the page that ask for the password are unlocked by the same confirmation
+        $this->dispatch('password-confirmed');
+    }
+
+    #[On('password-confirmed')]
+    public function passwordConfirmedElsewhere(): void
+    {
         unset($this->confirmed, $this->confirmedUntil);
     }
 

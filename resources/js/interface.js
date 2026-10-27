@@ -4,7 +4,7 @@
 // take it back.
 
 const RETRY_AFTER = 5000
-const MAX_RETRIES = 3
+const MAX_RETRY_DELAY = 300000
 const ADOPTED_KEY = 'sprint.interface-adopted'
 
 // Not yet started requests, in the order of the changes; one request at a time is on its way
@@ -18,6 +18,26 @@ let retries = 0
 const hasUnsentChanges = () => timer !== null || sending || outbox.length > 0 || Object.keys(pending).length > 0
 
 window.sprintHasUnsentChanges = hasUnsentChanges
+
+// What waits until everything has reached the server (see whenSaved)
+let afterSaved = []
+
+const settle = () => {
+    if (hasUnsentChanges()) {
+        return
+    }
+
+    const run = afterSaved
+
+    afterSaved = []
+    run.forEach((callback) => callback())
+}
+
+// Runs the callback once the server has everything this device changed (at once when there is nothing on its way)
+export const whenSaved = (callback) => {
+    afterSaved.push(callback)
+    settle()
+}
 
 // Changes merged into others: values replace, collapsed columns (column id => collapsed) merge one by one
 const merge = (older, newer) => {
@@ -71,13 +91,13 @@ const send = async () => {
         retries = 0
         sending = false
         send()
+        settle()
     } catch {
         sending = false
 
-        if (retries++ < MAX_RETRIES) {
-            outbox.unshift(changes)
-            timer ??= setTimeout(flush, RETRY_AFTER)
-        }
+        // Kept and tried again, a little later each time: a change is not given up on because the network was away for a while
+        outbox.unshift(changes)
+        timer ??= setTimeout(flush, Math.min(RETRY_AFTER * 2 ** retries++, MAX_RETRY_DELAY))
     }
 }
 
@@ -171,9 +191,8 @@ export const adoptLocalInterface = () => {
             return
         }
 
-        localStorage.setItem(ADOPTED_KEY, '1')
-
         const changes = {}
+        const oldKeys = []
         const appearance = localStorage.getItem('flux.appearance')
 
         if (! ('appearance' in state) && (appearance === 'light' || appearance === 'dark')) {
@@ -204,12 +223,18 @@ export const adoptLocalInterface = () => {
                 }
             } catch {}
 
-            localStorage.removeItem(key)
+            oldKeys.push(key)
         }
 
         if (Object.keys(changes).length > 0) {
             saveInterface(changes)
         }
+
+        // Only when the server has them: if the page closes or the network is away before, the next page tries again
+        whenSaved(() => {
+            localStorage.setItem(ADOPTED_KEY, '1')
+            oldKeys.forEach((key) => localStorage.removeItem(key))
+        })
     } catch {}
 }
 

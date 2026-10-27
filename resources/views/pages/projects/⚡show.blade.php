@@ -87,10 +87,25 @@ new class extends Component
      * Tasks were imported from a CSV file in the import window.
      */
     #[On('tasks-imported')]
-    #[On('task-created')]
     public function tasksImported(): void
     {
         unset($this->tasks, $this->totalTasks, $this->progress, $this->tagOptions);
+    }
+
+    /**
+     * A task was created in the dialog: the list shows it, or says that the filters hide it.
+     */
+    protected function announceCreatedTask(int $taskId): void
+    {
+        $this->tasksImported();
+
+        if ($taskId > 0 && ! $this->filteredTasks()->whereKey($taskId)->exists()) {
+            Flux::toast(variant: 'success', text: __('Task created, but the current filters hide it.'));
+
+            return;
+        }
+
+        Flux::toast(variant: 'success', text: __('Task created.'));
     }
 
     /**
@@ -544,8 +559,8 @@ new class extends Component
             </flux:button>
         </flux:modal.trigger>
 
-        <flux:modal.trigger name="saved-filters">
-            <flux:button icon="bookmark">{{ __('Views') }} @if ($this->savedFilters->isNotEmpty()) <flux:badge size="sm" inset="top bottom">{{ $this->savedFilters->count() }}</flux:badge> @endif</flux:button>
+        <flux:modal.trigger name="saved-views">
+            <flux:button icon="bookmark">{{ __('Views') }} @if ($this->savedViews->isNotEmpty()) <flux:badge size="sm" inset="top bottom">{{ $this->savedViews->count() }}</flux:badge> @endif</flux:button>
         </flux:modal.trigger>
 
         <flux:badge size="sm" color="zinc">{{ $this->statusFilterLabel }}</flux:badge>
@@ -580,7 +595,7 @@ new class extends Component
         <livewire:project-import :project="$project" defer.bundle />
     @endif
 
-    <x-saved-views-modal :views="$this->savedFilters" :defaults="$this->savedViewDefaults" :can-manage="$this->canManage"
+    <x-saved-views-modal :views="$this->savedViews" :defaults="$this->savedViewDefaults" :can-manage="$this->canManage"
         :description="__('A view remembers the filters and sorting of the list.')" :save-label="__('Save current filters as')" :placeholder="__('e.g. My open tasks')" />
 
     <flux:modal name="filters" class="w-full max-w-md">

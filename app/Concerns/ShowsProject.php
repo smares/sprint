@@ -3,6 +3,7 @@
 namespace App\Concerns;
 
 use App\Models\Project;
+use Flux\Flux;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
@@ -51,10 +52,21 @@ trait ShowsProject
     }
 
     /**
-     * A task was created in the dialog of the project header; rendering again shows it.
+     * A task was created in the dialog of the project header; rendering again shows it, and the person is told it was saved.
      */
     #[On('task-created')]
-    public function taskCreated(): void {}
+    public function taskCreated(int $taskId = 0): void
+    {
+        $this->announceCreatedTask($taskId);
+    }
+
+    /**
+     * The dialog closes when the task is saved, so something says it was: views that may not show the new task say so.
+     */
+    protected function announceCreatedTask(int $taskId): void
+    {
+        Flux::toast(variant: 'success', text: __('Task created.'));
+    }
 
     /**
      * The check before a task in the views: done, or open again. The views compute their tasks while rendering, after this.

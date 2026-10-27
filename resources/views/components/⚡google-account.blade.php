@@ -69,6 +69,9 @@ new class extends Component
                         <flux:input wire:model="password" x-on:input="typed = $event.target.value !== ''" type="password" :label="__('Current password')" :description="__('Google replaces the second factor, so changing it needs your password.')" autocomplete="current-password" />
                         <flux:text size="sm">{{ __('Signed up with Google and no password yet?') }} <flux:link :href="route('password.request')" variant="ghost" wire:navigate>{{ __('Set one with “Forgot password”.') }}</flux:link></flux:text>
                     @endunless
+                    @if ($this->confirmed)
+                        <flux:text size="sm" class="flex items-center gap-1.5 text-green-800 dark:text-green-300"><flux:icon.lock-open variant="micro" />{{ __('Unlocked until :time', ['time' => auth()->user()->inTimezone($this->confirmedUntil)->isoFormat('LT')]) }}</flux:text>
+                    @endif
                 </form>
             @else
                 <form wire:submit="connect" class="space-y-3" x-data="{ typed: false }">
@@ -77,6 +80,9 @@ new class extends Component
                         <flux:text size="sm">{{ __('Signed up with Google and no password yet?') }} <flux:link :href="route('password.request')" variant="ghost" wire:navigate>{{ __('Set one with “Forgot password”.') }}</flux:link></flux:text>
                     @endunless
                     <flux:button type="submit" icon="link" x-bind:disabled="@js(! $this->confirmed) && ! typed">{{ __('Connect Google account') }}</flux:button>
+                    @if ($this->confirmed)
+                        <flux:text size="sm" class="flex items-center gap-1.5 text-green-800 dark:text-green-300"><flux:icon.lock-open variant="micro" />{{ __('Unlocked until :time', ['time' => auth()->user()->inTimezone($this->confirmedUntil)->isoFormat('LT')]) }}</flux:text>
+                    @endif
                 </form>
             @endif
         </div>

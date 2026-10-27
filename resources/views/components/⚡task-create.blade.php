@@ -261,7 +261,7 @@ new class extends Component
         $this->reset('title', 'description', 'assigneeId', 'dueDate', 'startDate', 'draftImages', 'uploads');
         $this->statusId = (string) $this->project->defaultStatus()->id;
         Flux::modal('create-task')->close();
-        $this->dispatch('task-created');
+        $this->dispatch('task-created', taskId: $task->id);
     }
 };
 ?>

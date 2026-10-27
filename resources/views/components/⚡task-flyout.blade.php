@@ -3,6 +3,7 @@
 use App\Models\Task;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Renderless;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
@@ -32,7 +33,7 @@ new class extends Component
      * from, so it is asked once and not twice.
      */
     #[On('open-task')]
-    public function openTask(int|string $id): void
+    public function openTask(int|string $id, bool $stepping = false): void
     {
         $previous = $this->openTaskId;
 
@@ -46,7 +47,22 @@ new class extends Component
             return;
         }
 
-        $this->markSeen();
+        // Stepping through the tasks with j and k: the task counts as seen when it stays open (see taskSeen)
+        if (! $stepping) {
+            $this->markSeen();
+        }
+    }
+
+    /**
+     * The task stayed open for a moment after stepping to it with the keyboard: what the inbox reported about it has been seen.
+     */
+    #[On('task-seen')]
+    #[Renderless]
+    public function taskSeen(int|string $id): void
+    {
+        if ((string) $id === $this->openTaskId) {
+            $this->markSeen();
+        }
     }
 
     /**

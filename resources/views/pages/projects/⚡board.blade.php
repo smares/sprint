@@ -319,8 +319,8 @@ new class extends Component
             <flux:button icon="x-mark" wire:click="resetSort" class="max-sm:size-10!" aria-label="{{ __('Reset') }}" tooltip="{{ __('Reset') }}" />
         @endif
 
-        <flux:modal.trigger name="saved-filters">
-            <flux:button icon="bookmark">{{ __('Views') }} @if ($this->savedFilters->isNotEmpty()) <flux:badge size="sm" inset="top bottom">{{ $this->savedFilters->count() }}</flux:badge> @endif</flux:button>
+        <flux:modal.trigger name="saved-views">
+            <flux:button icon="bookmark">{{ __('Views') }} @if ($this->savedViews->isNotEmpty()) <flux:badge size="sm" inset="top bottom">{{ $this->savedViews->count() }}</flux:badge> @endif</flux:button>
         </flux:modal.trigger>
 
         @if ($offersSelecting)
@@ -328,7 +328,7 @@ new class extends Component
         @endif
     </div>
 
-    <x-saved-views-modal :views="$this->savedFilters" :defaults="$this->savedViewDefaults" :can-manage="$this->canManage"
+    <x-saved-views-modal :views="$this->savedViews" :defaults="$this->savedViewDefaults" :can-manage="$this->canManage"
         :description="__('A view remembers the sorting of the board.')" :save-label="__('Save current sorting as')" :placeholder="__('e.g. By due date')" />
 
     {{-- Columns can be collapsed to a narrow strip with the status upright (data-collapsed, see app.css), remembered per

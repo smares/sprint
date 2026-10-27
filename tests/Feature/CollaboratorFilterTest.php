@@ -131,20 +131,20 @@ class CollaboratorFilterTest extends TestCase
         $this->list()
             ->set('collaboratorFilter', [(string) $this->anna->id, 'me'])
             ->set('saveName', 'Mit Anna')
-            ->call('saveCurrentFilter');
+            ->call('saveCurrentView');
 
         $saved = $this->project->savedFilters()->firstOrFail();
         $this->assertSame([(string) $this->anna->id, 'me'], $saved->filters['collaborators']);
 
         $this->list()
-            ->call('applyFilter', $saved->id)
+            ->call('applyView', $saved->id)
             ->assertSet('collaboratorFilter', [(string) $this->anna->id, 'me']);
 
         $old = $this->project->savedFilters()->create(['user_id' => $this->editor->id, 'name' => 'Alt', 'filters' => ['status' => 'open']]);
 
         $this->list()
             ->set('collaboratorFilter', [(string) $this->anna->id])
-            ->call('applyFilter', $old->id)
+            ->call('applyView', $old->id)
             ->assertSet('collaboratorFilter', []);
     }
 

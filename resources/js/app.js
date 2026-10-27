@@ -1033,7 +1033,13 @@ const stepThroughTasks = (direction) => {
     // From the element of the flyout when there is one, so that its guard asks about unsaved input first (Livewire.dispatch skips it)
     const flyout = document.querySelector('[data-task-flyout]')
 
-    ;(flyout ?? window).dispatchEvent(new CustomEvent('open-task', { detail: { id: Number(items[next].dataset.taskId) }, bubbles: true }))
+    const id = Number(items[next].dataset.taskId)
+
+    ;(flyout ?? window).dispatchEvent(new CustomEvent('open-task', { detail: { id, stepping: true }, bubbles: true }))
+
+    // Walking past tasks does not mean reading them: what the inbox reported counts as seen once a task stays open for a moment
+    clearTimeout(window.sprintSeenTimer)
+    window.sprintSeenTimer = setTimeout(() => window.Livewire.dispatch('task-seen', { id }), 1500)
 }
 
 document.addEventListener('keydown', (event) => {

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Setting;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
@@ -85,8 +86,11 @@ class SsoSettings
      */
     public function update(bool $enabled, array $domains): void
     {
-        Setting::query()->updateOrCreate(['key' => self::ENABLED], ['value' => $enabled]);
-        Setting::query()->updateOrCreate(['key' => self::DOMAINS], ['value' => array_values(array_unique(array_map(Str::lower(...), $domains)))]);
+        // Both or neither: a failure between them must not leave sign-in on with the old domains
+        DB::transaction(function () use ($enabled, $domains): void {
+            Setting::query()->updateOrCreate(['key' => self::ENABLED], ['value' => $enabled]);
+            Setting::query()->updateOrCreate(['key' => self::DOMAINS], ['value' => array_values(array_unique(array_map(Str::lower(...), $domains)))]);
+        });
 
         $this->values = null;
     }

@@ -152,8 +152,7 @@ class GoogleAuthController extends Controller
                 return $this->failed(null, __('This Google account may not register here. Please ask an administrator for an account.'));
             }
 
-            $user = $this->register($google, $email);
-            $registered = true;
+            [$user, $registered] = $this->register($google, $email);
         }
 
         if (! $user->isActive()) {
@@ -176,7 +175,10 @@ class GoogleAuthController extends Controller
      * A new account: no administrator, no password anybody knows (it can be asked for on the login page), the language of
      * the browser.
      */
-    private function register(GoogleUser $google, string $email): User
+    /**
+     * @return array{0: User, 1: bool} the account, and whether this request created it (the administrators are told once)
+     */
+    private function register(GoogleUser $google, string $email): array
     {
         $user = new User([
             'name' => Str::limit(trim((string) $google->getName()) ?: Str::before($email, '@'), 255, ''),
@@ -189,10 +191,10 @@ class GoogleAuthController extends Controller
             $user->forceFill(['email_verified_at' => now()])->save();
         } catch (UniqueConstraintViolationException) {
             // Two returns from Google at once: the other one registered this person first
-            return User::query()->whereRaw('lower(email) = ?', [$email])->firstOrFail();
+            return [User::query()->whereRaw('lower(email) = ?', [$email])->firstOrFail(), false];
         }
 
-        return $user;
+        return [$user, true];
     }
 
     private function remember(User $user, GoogleUser $google): void

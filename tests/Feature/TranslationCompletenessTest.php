@@ -97,7 +97,7 @@ class TranslationCompletenessTest extends TestCase
             $this->assertDirectoryExists(base_path("lang/{$code}"));
             $this->assertSame([], array_values(array_diff($english, array_keys(require base_path("lang/{$code}/validation.php")))), "validation texts missing for {$code}");
 
-            foreach (['task-commented', 'task-status-changed', 'tasks-status-changed', 'user-mentioned', 'daily-digest'] as $mail) {
+            foreach (array_map(fn (string $path) => basename($path, '.blade.php'), glob(resource_path('views/mail/en/*.blade.php'))) as $mail) {
                 $this->assertFileExists(resource_path("views/mail/{$code}/{$mail}.blade.php"));
                 $this->assertFileExists(resource_path("views/mail/{$code}/subjects/{$mail}.blade.php"));
             }

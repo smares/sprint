@@ -12,6 +12,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
+use RuntimeException;
 use Tests\TestCase;
 
 class NewTaskImagesTest extends TestCase
@@ -87,13 +88,20 @@ class NewTaskImagesTest extends TestCase
         Livewire::actingAs($viewer)->test('task-create', ['project' => $this->project])->assertForbidden();
     }
 
-    public function test_textlinks_are_not_underlined_until_hovered(): void
+    public function test_textlinks_are_never_underlined_all_the_time(): void
     {
-        foreach (glob(resource_path('views').'/{components,pages,pages/*}/*.blade.php', GLOB_BRACE) as $file) {
-            preg_match_all('/<flux:link\b[^>]*>/', (string) file_get_contents($file), $links);
+        $directory = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(resource_path('views'), \FilesystemIterator::SKIP_DOTS));
+
+        foreach ($directory as $file) {
+            if (! str_ends_with($file->getFilename(), '.blade.php') || str_contains($file->getPathname(), '/mail/')) {
+                continue;
+            }
+
+            preg_match_all('/<flux:link\b(?:[^>"\']|"[^"]*"|\'[^\']*\')*>/s', (string) file_get_contents($file->getPathname()), $links);
 
             foreach ($links[0] as $link) {
-                $this->assertStringContainsString('variant="ghost"', $link, basename($file).' has a text link that is always underlined: '.$link);
+                $this->assertSame(1, substr_count($link, 'variant='), $file->getFilename().': a text link needs exactly one variant: '.$link);
+                $this->assertMatchesRegularExpression('/(?<![:\w-])variant="(ghost|subtle)"/', $link, $file->getFilename().': ghost (underlined on hover) or subtle (never) only: '.$link);
             }
         }
     }
@@ -137,5 +145,51 @@ class NewTaskImagesTest extends TestCase
 
         Livewire::actingAs($this->anna)->test('task-create', ['project' => $this->project])
             ->set('uploads', [UploadedFile::fake()->create('riesig.zip', Attachment::MAX_KILOBYTES + 1)])->assertHasErrors('uploads.0');
+    }
+
+    public function test_the_preview_announces_an_image_that_waits_for_the_task(): void
+    {
+        $html = Livewire::actingAs($this->anna)->test('task-create', ['project' => $this->project])
+            ->call('previewMarkdown', 'Siehe ![bild.png](attachment:9000000001)')
+            ->effects['returns'][0] ?? '';
+
+        $this->assertStringContainsString('wird angehängt', $html);
+        $this->assertStringNotContainsString('Bild entfernt', $html);
+    }
+
+    public function test_a_failure_while_attaching_leaves_no_task_and_no_file_behind(): void
+    {
+        $dialog = Livewire::actingAs($this->anna)->test('task-create', ['project' => $this->project])
+            ->set('uploads', [UploadedFile::fake()->create('a.txt', 2), UploadedFile::fake()->create('b.txt', 2)])
+            ->set('title', 'Soll nicht entstehen');
+
+        $created = 0;
+        Attachment::creating(function () use (&$created): void {
+            if (++$created === 2) {
+                throw new RuntimeException('Datenträger voll');
+            }
+        });
+
+        try {
+            $dialog->call('create');
+            $this->fail('The failure should reach the person.');
+        } catch (RuntimeException) {
+            // expected: the dialog stays as it was, nothing exists twice
+        }
+
+        $this->assertSame(0, Task::where('title', 'Soll nicht entstehen')->count());
+        $this->assertSame(0, Attachment::count());
+        $this->assertSame([], array_values(array_filter(Storage::allFiles(), fn (string $path) => str_starts_with($path, 'attachments/'))));
+    }
+
+    public function test_the_21st_image_in_a_text_is_refused_with_a_message(): void
+    {
+        $dialog = Livewire::actingAs($this->anna)->test('task-create', ['project' => $this->project]);
+
+        foreach (range(1, 20) as $n) {
+            $dialog->set('inlineUpload', UploadedFile::fake()->image("bild-{$n}.png"))->call('storeInlineImage')->assertHasNoErrors();
+        }
+
+        $dialog->set('inlineUpload', UploadedFile::fake()->image('zu-viel.png'))->call('storeInlineImage')->assertHasErrors('inlineUpload');
     }
 }

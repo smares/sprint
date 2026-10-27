@@ -7,6 +7,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -22,6 +23,15 @@ new class extends Component
         return app(RealtimeService::class)->enabled()
             ? ['echo-private:user.'.auth()->id().',.InboxUpdated' => '$refresh']
             : [];
+    }
+
+    /**
+     * Opening a task elsewhere (the flyout, a link) marks what the inbox reported about it as read: this list follows.
+     */
+    #[On('inbox-changed')]
+    public function entriesChanged(): void
+    {
+        unset($this->notifications, $this->hasUnread, $this->tasks);
     }
 
     #[Computed]

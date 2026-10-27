@@ -7,13 +7,17 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Services\MarkdownService;
 use App\Services\TaskSearchService;
+use App\Services\RealtimeService;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Renderless;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
@@ -25,7 +29,10 @@ use Livewire\WithFileUploads;
  */
 new class extends Component
 {
-    use EditsMarkdown, WithFileUploads;
+    use EditsMarkdown {
+        previewMarkdown as private renderMarkdownPreview;
+    }
+    use WithFileUploads;
 
     /** How many images a text can carry before the task exists (the images wait in Livewire's temporary uploads). */
     private const int MAX_DRAFT_IMAGES = 20;
@@ -122,7 +129,7 @@ new class extends Component
     {
         unset($this->uploads[$index]);
         $this->uploads = array_values($this->uploads);
-        $this->resetErrorBag('uploads');
+        $this->resetErrorBag(['uploads', 'uploads.*']);
     }
 
     /**
@@ -139,6 +146,7 @@ new class extends Component
 
         if (count($this->draftImages) >= self::MAX_DRAFT_IMAGES) {
             $this->reset('inlineUpload');
+            $this->addError('inlineUpload', __('A text can carry up to :count images.', ['count' => self::MAX_DRAFT_IMAGES]));
 
             return null;
         }
@@ -152,15 +160,34 @@ new class extends Component
     }
 
     /**
+     * The preview of the text: an image that waits for the task (its draft number) is announced instead of shown as removed.
+     */
+    #[Renderless]
+    public function previewMarkdown(string $text): string
+    {
+        $text = preg_replace_callback(
+            '/!\[([^\]\n]{0,255})\]\(attachment:(\d{10,})\)/u',
+            fn (array $match) => '_'.__('Image “:name” is attached when the task is created.', ['name' => str_replace(['_', '*', '`'], '', $match[1])]).'_',
+            $text,
+        ) ?? $text;
+
+        return $this->renderMarkdownPreview($text);
+    }
+
+    /**
      * Attaches what was chosen for the task: the files, and the images the description still refers to (their draft numbers in
      * the text become the real ids; the others are dropped).
+     *
+     * @param  list<string>  $storedPaths  filled with the paths of the files stored, so a failure can remove them again
      */
-    private function attachFiles(Task $task): void
+    private function attachFiles(Task $task, array &$storedPaths): void
     {
         $names = [];
 
         foreach ($this->uploads as $file) {
-            $names[] = $task->attachUpload($file)->name;
+            $attachment = $task->attachUpload($file);
+            $storedPaths[] = $attachment->path;
+            $names[] = $attachment->name;
         }
 
         $description = (string) $task->description;
@@ -172,6 +199,7 @@ new class extends Component
             }
 
             $attachment = $task->attachUpload($file);
+            $storedPaths[] = $attachment->path;
             $description = str_replace("](attachment:{$id})", "](attachment:{$attachment->id})", $description);
             $names[] = $attachment->name;
             $textChanged = true;
@@ -185,6 +213,7 @@ new class extends Component
             // The text only changes in the numbers of the images: no entry in the history, no new mentions
             $task->forceFill(['description' => $description])->saveQuietly();
             app(TaskSearchService::class)->index($task);
+            app(RealtimeService::class)->taskChanged($task->project_id, $task->id, 'task');
         }
 
         $task->logActivity(ActivityType::AttachmentsAdded, ['names' => $names]);
@@ -203,16 +232,29 @@ new class extends Component
             'uploads.*' => ['file', 'max:'.Attachment::MAX_KILOBYTES],
         ], attributes: ['title' => __('Title'), 'description' => __('Description'), 'statusId' => __('Status'), 'assigneeId' => __('Assignee'), 'dueDate' => __('Due on'), 'startDate' => __('Starts on'), 'uploads.*' => __('File')]);
 
-        $task = $this->project->createRootTask([
-            'title' => trim($validated['title']),
-            'description' => $validated['description'] ?: null,
-            'status_id' => (int) $validated['statusId'],
-            'assignee_id' => $validated['assigneeId'] ?: null,
-            'due_date' => $validated['dueDate'] ?: null,
-            'start_date' => $validated['startDate'] ?: null,
-        ]);
+        // The task and its attachments are one step: if a file cannot be stored, there is no task (and no file left over) to be created twice
+        $storedPaths = [];
 
-        $this->attachFiles($task);
+        try {
+            $task = DB::transaction(function () use ($validated, &$storedPaths): Task {
+                $task = $this->project->createRootTask([
+                    'title' => trim($validated['title']),
+                    'description' => $validated['description'] ?: null,
+                    'status_id' => (int) $validated['statusId'],
+                    'assignee_id' => $validated['assigneeId'] ?: null,
+                    'due_date' => $validated['dueDate'] ?: null,
+                    'start_date' => $validated['startDate'] ?: null,
+                ]);
+
+                $this->attachFiles($task, $storedPaths);
+
+                return $task;
+            });
+        } catch (\Throwable $exception) {
+            Storage::delete($storedPaths);
+
+            throw $exception;
+        }
 
         $task->notifyMentionedInDescription(MarkdownService::mentionedUserIds($task->description), auth()->user());
 
@@ -231,17 +273,17 @@ new class extends Component
             <flux:heading size="lg">{{ __('New task') }}</flux:heading>
             <flux:input wire:model="title" :label="__('Title')" autofocus />
             <x-markdown-editor wire:model="description" :label="__('Description')" grow :max="Task::MAX_DESCRIPTION_LENGTH" :placeholder="__('Describe the task … (Markdown, @ for mentions)')" :rows="3" :images="[]" :mentions="$this->mentionOptions" />
+            <flux:error name="inlineUpload" />
             <div class="space-y-2">
                 <flux:label>{{ __('Attachments') }}</flux:label>
                 <flux:file-upload wire:model="uploads" multiple>
                     <flux:file-upload.dropzone :heading="__('Drag files here or click')" :text="__('Up to :size MB per file', ['size' => intdiv(\App\Models\Attachment::MAX_KILOBYTES, 1024)])" with-progress inline />
                 </flux:file-upload>
                 <flux:error name="uploads" />
-                <flux:error name="uploads.*" />
                 @if ($uploads !== [])
                     <div class="space-y-2">
                         @foreach ($uploads as $index => $file)
-                            <flux:file-item wire:key="upload-{{ $index }}-{{ $file->getFilename() }}" :heading="$file->getClientOriginalName()" :text="\Illuminate\Support\Number::fileSize($file->getSize())">
+                            <flux:file-item wire:key="upload-{{ $index }}-{{ $file->getFilename() }}" :heading="$file->getClientOriginalName()" :text="\App\Models\Attachment::formatSize($file->getSize())">
                                 <x-slot name="actions">
                                     <flux:button size="sm" variant="ghost" icon="x-mark" inset wire:click="removeUpload({{ $index }})" :aria-label="__('Remove')" :tooltip="__('Remove')" />
                                 </x-slot>

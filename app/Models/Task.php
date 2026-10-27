@@ -569,13 +569,22 @@ class Task extends Model
      */
     public function attachUpload(UploadedFile $file): Attachment
     {
-        return $this->attachments()->create([
-            'user_id' => auth()->id(),
-            'name' => $file->getClientOriginalName(),
-            'path' => $file->store("attachments/{$this->project_id}/{$this->getKey()}"),
-            'mime_type' => $file->getMimeType(),
-            'size' => $file->getSize(),
-        ]);
+        $path = $file->store("attachments/{$this->project_id}/{$this->getKey()}");
+
+        try {
+            return $this->attachments()->create([
+                'user_id' => auth()->id(),
+                'name' => $file->getClientOriginalName(),
+                'path' => $path,
+                'mime_type' => $file->getMimeType(),
+                'size' => $file->getSize(),
+            ]);
+        } catch (\Throwable $exception) {
+            // The file would be left without a row that knows it
+            Storage::delete($path);
+
+            throw $exception;
+        }
     }
 
     /**
@@ -701,6 +710,29 @@ class Task extends Model
     }
 
     /**
+     * The assignee, if they are to hear that the task is theirs: active, able to see the project, not the person who did it and
+     * not somebody who muted the task. Uses what the task has loaded (bulk changes load the people and mutes once for all tasks).
+     *
+     * @return Collection<int, User>
+     */
+    private function usersToTellAboutAssignment(?User $except): Collection
+    {
+        $assignee = $this->assignee_id === null ? null : $this->userById($this->assignee_id);
+
+        if ($assignee === null || $assignee->id === $except?->id || ! $assignee->isActive()) {
+            return new Collection;
+        }
+
+        $muted = $this->relationLoaded('notificationMutes') ? $this->notificationMutes->pluck('id') : $this->notificationMutes()->pluck('users.id');
+
+        if ($muted->contains($assignee->id) || ! in_array($assignee->id, $this->project->viewerIds(collect([$assignee])), true)) {
+            return new Collection;
+        }
+
+        return new Collection([$assignee]);
+    }
+
+    /**
      * Tells the assignee that the task is theirs now (when it was created for them or handed to them): not when they did
      * it themselves, not for a muted task, and one message for many tasks while changing in bulk (see bundlingStatusNotifications).
      */
@@ -719,7 +751,7 @@ class Task extends Model
             return;
         }
 
-        foreach ($this->usersToMention([$this->assignee_id], $automation === null ? $actor : null) as $recipient) {
+        foreach ($this->usersToTellAboutAssignment($automation === null ? $actor : null) as $recipient) {
             $this->announcedAssigneeId = $recipient->id;
 
             if (self::$bundledAssignments === null || $automation !== null) {
@@ -756,8 +788,10 @@ class Task extends Model
      */
     public function notifyMentionedInDescription(iterable $userIds, ?User $actor): void
     {
-        // The assignee who was just told about the task does not get a second message for being mentioned in it
-        $userIds = collect($userIds)->reject(fn ($id) => (int) $id === $this->announcedAssigneeId);
+        // The assignee who was just told about the task does not get a second message for being mentioned in it (once)
+        $announced = $this->announcedAssigneeId;
+        $this->announcedAssigneeId = null;
+        $userIds = collect($userIds)->reject(fn ($id) => (int) $id === $announced);
 
         if ($userIds->isEmpty()) {
             return;

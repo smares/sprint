@@ -156,6 +156,7 @@ trait ManagesSavedViews
 
         $saved->delete();
         $this->forgetSavedViews();
+        Flux::toast(variant: 'success', text: __('View deleted.'));
     }
 
     /**
@@ -166,6 +167,17 @@ trait ManagesSavedViews
     {
         ['mine' => $mine, 'project' => $project] = $this->savedViewDefaults;
 
+        $chosen = match (true) {
+            $this->projectChoice === '' || $this->projectChoice === 'none' => null,
+            ctype_digit($this->projectChoice) => (int) $this->projectChoice,
+            default => $project,
+        };
+
+        // Asked before anything is stored, so a refusal does not leave the personal pick saved
+        if ($chosen !== $project) {
+            Gate::authorize('manage', $this->project);
+        }
+
         // Anything else than what the menus offer leaves the setting as it is
         $this->rememberMyDefault(match (true) {
             $this->defaultChoice === '' => null,
@@ -174,15 +186,7 @@ trait ManagesSavedViews
             default => $mine,
         });
 
-        $chosen = match (true) {
-            $this->projectChoice === '' || $this->projectChoice === 'none' => null,
-            ctype_digit($this->projectChoice) => (int) $this->projectChoice,
-            default => $project,
-        };
-
         if ($chosen !== $project) {
-            Gate::authorize('manage', $this->project);
-
             $chosen === null ? $this->clearProjectDefault() : $this->makeProjectDefault($chosen);
         }
 

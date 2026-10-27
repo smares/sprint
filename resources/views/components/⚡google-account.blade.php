@@ -60,21 +60,23 @@ new class extends Component
             </div>
 
             @if ($this->account)
-                <form wire:submit="disconnect" class="space-y-3">
+                <form wire:submit="disconnect" class="space-y-3" x-data="{ typed: false }">
                     <div class="flex flex-wrap items-center justify-between gap-3">
                         <flux:text>{{ __('Connected: :email', ['email' => $this->account->email]) }}</flux:text>
-                        <flux:button type="submit" size="sm" wire:confirm="{{ __('Disconnect the Google account? You can connect it again here in the profile.') }}">{{ __('Disconnect') }}</flux:button>
+                        <flux:button type="submit" size="sm" x-bind:disabled="@js(! $this->confirmed) && ! typed" wire:confirm="{{ __('Disconnect the Google account? You can connect it again here in the profile.') }}">{{ __('Disconnect') }}</flux:button>
                     </div>
                     @unless ($this->confirmed)
-                        <flux:input wire:model="password" type="password" :label="__('Current password')" :description="__('Google replaces the second factor, so changing it needs your password.')" autocomplete="current-password" />
+                        <flux:input wire:model="password" x-on:input="typed = $event.target.value !== ''" type="password" :label="__('Current password')" :description="__('Google replaces the second factor, so changing it needs your password.')" autocomplete="current-password" />
+                        <flux:text size="sm">{{ __('Signed up with Google and no password yet?') }} <flux:link :href="route('password.request')" variant="ghost" wire:navigate>{{ __('Set one with “Forgot password”.') }}</flux:link></flux:text>
                     @endunless
                 </form>
             @else
-                <form wire:submit="connect" class="space-y-3">
+                <form wire:submit="connect" class="space-y-3" x-data="{ typed: false }">
                     @unless ($this->confirmed)
-                        <flux:input wire:model="password" type="password" :label="__('Current password')" :description="__('Google replaces the second factor, so changing it needs your password.')" autocomplete="current-password" />
+                        <flux:input wire:model="password" x-on:input="typed = $event.target.value !== ''" type="password" :label="__('Current password')" :description="__('Google replaces the second factor, so changing it needs your password.')" autocomplete="current-password" />
+                        <flux:text size="sm">{{ __('Signed up with Google and no password yet?') }} <flux:link :href="route('password.request')" variant="ghost" wire:navigate>{{ __('Set one with “Forgot password”.') }}</flux:link></flux:text>
                     @endunless
-                    <flux:button type="submit" icon="link">{{ __('Connect Google account') }}</flux:button>
+                    <flux:button type="submit" icon="link" x-bind:disabled="@js(! $this->confirmed) && ! typed">{{ __('Connect Google account') }}</flux:button>
                 </form>
             @endif
         </div>

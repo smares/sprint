@@ -252,7 +252,7 @@ class MarkdownService
 
                 return $title === null
                     ? '<span class="mention mention-missing">'.e($mention['name']).'</span>'
-                    : '<a class="mention mention-task" href="'.e(route('tasks.show', $mention['id'])).'">'.e($title).'</a>';
+                    : '<a class="mention mention-task" href="'.e(route('tasks.show', $mention['id'])).'" data-task-id="'.$mention['id'].'">'.e($title).'</a>';
             },
             $html,
         );

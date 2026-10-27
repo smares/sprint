@@ -39,7 +39,7 @@ class TaskUrlLinksTest extends TestCase
         foreach ([$url, "<$url>", "[$url]($url)", "Siehe $url bitte"] as $text) {
             $html = (string) MarkdownService::render($text);
 
-            $this->assertStringContainsString('<a class="mention mention-task" href="'.e($url).'">Angebot schreiben</a>', $html, $text);
+            $this->assertStringContainsString('<a class="mention mention-task" href="'.e($url).'" data-task-id="'.$this->task->id.'">Angebot schreiben</a>', $html, $text);
         }
     }
 

@@ -96,7 +96,7 @@ new class extends Component
         <div class="flex items-center justify-between px-3 pb-1 pt-3 in-data-flux-sidebar-collapsed-desktop:hidden">
             <flux:text size="sm" class="font-medium">{{ $heading }}</flux:text>
             @if ($loop->first)
-                <flux:link :href="route('projects.index')" wire:navigate variant="subtle" class="text-xs max-sm:-my-2.5 max-sm:flex max-sm:min-h-10 max-sm:items-center max-sm:px-2">{{ __('All projects') }}</flux:link>
+                <flux:link :href="route('projects.index')" wire:navigate variant="ghost" class="text-xs max-sm:-my-2.5 max-sm:flex max-sm:min-h-10 max-sm:items-center max-sm:px-2">{{ __('All projects') }}</flux:link>
             @endif
         </div>
 

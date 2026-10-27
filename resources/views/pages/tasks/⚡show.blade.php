@@ -1645,7 +1645,7 @@ new class extends Component
                             </flux:timeline.indicator>
 
                             <flux:timeline.content>
-                                <flux:text size="sm"><strong class="font-medium text-zinc-800 dark:text-white">{{ $comment->authorName() ?? __('Someone') }}</strong> {{ __('commented') }} · <x-time :at="$comment->created_at" /> · <flux:link href="#comment-{{ $comment->id }}" variant="subtle" wire:click.prevent="showComment({{ $comment->id }})" class="text-[length:inherit]!">{{ __('Go to comment') }}</flux:link></flux:text>
+                                <flux:text size="sm"><strong class="font-medium text-zinc-800 dark:text-white">{{ $comment->authorName() ?? __('Someone') }}</strong> {{ __('commented') }} · <x-time :at="$comment->created_at" /> · <flux:link variant="ghost" href="#comment-{{ $comment->id }}" variant="subtle" wire:click.prevent="showComment({{ $comment->id }})" class="text-[length:inherit]!">{{ __('Go to comment') }}</flux:link></flux:text>
                             </flux:timeline.content>
                         </flux:timeline.item>
                     @else

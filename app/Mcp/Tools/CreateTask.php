@@ -15,7 +15,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Name;
 
 #[Name('create-task')]
-#[Description('Creates a task in a project, or a subtask when "parent_id" is given. The token owner is recorded as creator. Returns the new task.')]
+#[Description('Creates a task in a project, or a subtask when "parent_id" is given. The token owner is recorded as creator and, unless they turned that off in their profile, joins the task as a collaborator. Returns the new task.')]
 class CreateTask extends WriteTaskTool
 {
     public function schema(JsonSchema $schema): array

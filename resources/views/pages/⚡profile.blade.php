@@ -56,6 +56,8 @@ new class extends Component
 
     public bool $celebrations = true;
 
+    public bool $joinOwnTasks = true;
+
     public string $locale = '';
 
     /** The person's own time zone; empty for the application's. */
@@ -100,6 +102,7 @@ new class extends Component
         $this->digest = auth()->user()->digest_enabled;
         $this->reminders = auth()->user()->reminders_enabled;
         $this->celebrations = auth()->user()->celebrations_enabled;
+        $this->joinOwnTasks = auth()->user()->join_own_tasks;
         $this->locale = auth()->user()->preferredLocale();
         $this->timezone = (string) auth()->user()->timezone;
         $this->quietHours = auth()->user()->quiet_from !== null;
@@ -228,6 +231,13 @@ new class extends Component
         auth()->user()->update(['reminders_enabled' => $value]);
 
         Flux::toast(variant: 'success', text: $value ? __('Reminders turned on.') : __('Reminders turned off.'));
+    }
+
+    public function updatedJoinOwnTasks(bool $value): void
+    {
+        auth()->user()->update(['join_own_tasks' => $value]);
+
+        Flux::toast(variant: 'success', text: $value ? __('Joining the tasks you create turned on.') : __('Joining the tasks you create turned off.'));
     }
 
     public function updatedCelebrations(bool $value): void
@@ -506,6 +516,8 @@ new class extends Component
             <flux:switch wire:model.live="digest" :label="__('Daily digest by email')" :description="__('On weekday mornings, an email with your overdue and soon-due tasks, only if there is something to report.')" />
 
             <flux:switch wire:model.live="reminders" :label="__('Reminder the day before')" :description="__('An entry in your inbox the day before a task you are assigned to or collaborate on is due.')" />
+
+            <flux:switch wire:model.live="joinOwnTasks" :label="__('Join tasks I create')" :description="__('A task you create adds you as a collaborator, so you hear about comments, status changes and reminders like the others. Only for new tasks that someone else is assigned to or nobody is: turning this off does not remove you from existing tasks, and you can mute any task.')" />
 
             <flux:switch wire:model.live="celebrations" :label="__('Celebrate completed tasks')" :description="__('Now and then a unicorn flies across the screen when you complete a task. Not shown if your device is set to reduce motion.')" />
 

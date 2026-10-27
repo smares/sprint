@@ -127,8 +127,9 @@ class Task extends Model
     }
 
     /**
-     * Run something that creates or hands out tasks without telling the people they are assigned to: imports and
-     * copies, where nobody asked for a message per task.
+     * Run something that creates or hands out tasks without telling the people they are assigned to, and without making the
+     * creator a collaborator of each new task (addCreatorAsCollaborator): imports and copies, where nobody asked for a message
+     * per task.
      *
      * @template T
      *
@@ -149,6 +150,7 @@ class Task extends Model
     protected static function booted(): void
     {
         static::created(fn (self $task) => $task->announceAssignee());
+        static::created(fn (self $task) => $task->addCreatorAsCollaborator());
 
         static::creating(function (self $task) {
             $task->status_id ??= $task->project->defaultStatus()->id;
@@ -689,6 +691,35 @@ class Task extends Model
     }
 
     /**
+     * Whether the person who created the task is to hear how it goes on (their setting "Join tasks I create"): not for sections,
+     * not for a task they have taken themselves (as the assignee they hear anyway), not for somebody who may not see the project,
+     * and not for imports and copies (see withoutAssignmentNotices), where nobody asked for a task each.
+     */
+    public function followedByCreator(): bool
+    {
+        if ($this->is_section || $this->creator_id === null || (int) $this->creator_id === (int) $this->assignee_id || self::$silencedAssignments > 0) {
+            return false;
+        }
+
+        $actor = auth()->user();
+        $creator = $actor?->getKey() === (int) $this->creator_id ? $actor : $this->userById((int) $this->creator_id);
+
+        return $creator instanceof User && $creator->join_own_tasks && $creator->isActive() && $this->project->viewerIds(collect([$creator])) !== [];
+    }
+
+    /**
+     * The creator becomes a collaborator of the new task, so that comments and status changes reach them like the others
+     * (they can mute the task). Not logged in the history: nobody did it.
+     */
+    private function addCreatorAsCollaborator(): void
+    {
+        if ($this->followedByCreator()) {
+            $this->collaborators()->attach($this->creator_id);
+            $this->unsetRelation('collaborators');
+        }
+    }
+
+    /**
      * People who want to hear about this task: the assignee and all collaborators, without
      * those who muted it and without the person who caused the event.
      *
@@ -894,6 +925,15 @@ class Task extends Model
         foreach ([[$added, 'attached'], [$removed, 'detached']] as [$type, $key]) {
             if (($changes[$key] ?? []) !== []) {
                 $ids = array_values(array_map(intval(...), $changes[$key]));
+
+                // The creator joined without an entry (addCreatorAsCollaborator); taking the task over removes them again, which is not news
+                if ($type === ActivityType::CollaboratorsRemoved && $this->creator_id !== null && (int) $this->assignee_id === (int) $this->creator_id) {
+                    $ids = array_values(array_diff($ids, [(int) $this->creator_id]));
+                }
+
+                if ($ids === []) {
+                    continue;
+                }
 
                 $this->logActivity($type, ['names' => $names($ids), 'ids' => $ids]);
             }

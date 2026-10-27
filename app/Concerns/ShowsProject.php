@@ -65,7 +65,43 @@ trait ShowsProject
      */
     protected function announceCreatedTask(int $taskId): void
     {
-        Flux::toast(variant: 'success', text: __('Task created.'));
+        Flux::toast(variant: 'success', text: $this->hiddenCreatedTaskMessage($taskId) ?? __('Task created.'));
+    }
+
+    /**
+     * Why the new task is not to be seen on this page (it is outside the filters, or has no date the page needs), or null.
+     */
+    protected function hiddenCreatedTaskMessage(int $taskId): ?string
+    {
+        if ($taskId <= 0 || ! method_exists($this, 'filteredTasks')) {
+            return null;
+        }
+
+        if (! $this->filteredTasks()->whereKey($taskId)->exists()) {
+            return __('Task created, but the current filters hide it.');
+        }
+
+        $columns = $this->datesNeededToShowTask();
+
+        if ($columns !== [] && ! $this->project->tasks()->whereKey($taskId)->where(function ($tasks) use ($columns): void {
+            foreach ($columns as $column) {
+                $tasks->orWhereNotNull($column);
+            }
+        })->exists()) {
+            return __('Task created, but without a date it does not appear here.');
+        }
+
+        return null;
+    }
+
+    /**
+     * The date columns a task needs one of to appear on the page (the calendar and the timeline place tasks by their dates).
+     *
+     * @return list<string>
+     */
+    protected function datesNeededToShowTask(): array
+    {
+        return [];
     }
 
     /**

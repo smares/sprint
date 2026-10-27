@@ -129,6 +129,11 @@ new class extends Component
     /**
      * The timeline has no filters: every top-level task of the project can be selected.
      */
+    protected function datesNeededToShowTask(): array
+    {
+        return ['start_date', 'due_date'];
+    }
+
     protected function filteredTasks(): HasMany
     {
         return $this->project->tasks()->topLevel();

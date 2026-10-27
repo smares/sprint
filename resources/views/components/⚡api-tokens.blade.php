@@ -91,9 +91,11 @@ new class extends Component
             <flux:select.option value="365">{{ __('1 year') }}</flux:select.option>
         </flux:select>
         <flux:switch wire:model="readOnly" :label="__('Read only')" :description="__('The agent can view tasks but not create or change anything.')" />
-        @unless ($this->confirmed)
+        @if ($this->confirmed)
+            <x-unlocked-note :until="$this->confirmedUntil" />
+        @else
             <flux:input wire:model="password" type="password" :label="__('Current password')" :description="__('A token acts in your name, so creating one needs your password.')" autocomplete="current-password" />
-        @endunless
+        @endif
         <flux:button type="submit">{{ __('Create token') }}</flux:button>
     </form>
 

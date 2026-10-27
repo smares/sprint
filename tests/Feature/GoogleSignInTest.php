@@ -458,4 +458,18 @@ class GoogleSignInTest extends TestCase
             ->call('confirmPassword')
             ->assertDispatched('password-confirmed');
     }
+
+    public function test_a_confirmation_made_elsewhere_unlocks_this_card_and_drops_what_was_typed(): void
+    {
+        $user = User::factory()->create(['password' => 'geheim-1234']);
+
+        $card = Livewire::actingAs($user)->test('google-account')->set('password', 'halb-getippt');
+        $this->assertFalse($card->get('confirmed'));
+
+        session(['auth.password_confirmed_at' => time()]);
+        $card->dispatch('password-confirmed');
+
+        $this->assertTrue($card->get('confirmed'));
+        $card->assertSet('password', '');
+    }
 }

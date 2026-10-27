@@ -999,8 +999,10 @@ document.addEventListener('click', (event) => {
     // While tasks are being selected a click on the card ticks its box (the flyout would open over the bar and its buttons)
     const page = window.Livewire.find(card.closest('[wire\\:id]')?.getAttribute('wire:id'))
 
-    if (page?.selecting) {
-        card.querySelector('[data-select-box] ui-checkbox, [data-select-box] input')?.click()
+    const box = card.querySelector('[data-select-box] ui-checkbox, [data-select-box] input')
+
+    if (page?.selecting && box) {
+        box.click()
 
         return
     }
@@ -1011,6 +1013,9 @@ document.addEventListener('click', (event) => {
 // Keyboard shortcuts, listed in the overview behind "?" (components/keyboard-shortcuts.blade.php).
 // They never fire while typing, with a modifier key held or while a dialog is open (the task flyout allows j, k, e, a and m).
 const typingIn = (target) => target.closest?.('input, textarea, select, [contenteditable], [role=combobox], [role=listbox], [role=menu], ui-select, ui-date-picker, ui-editor')
+
+// A task stepped to is not seen any more when the page changes before the moment is over
+document.addEventListener('livewire:navigate', () => clearTimeout(window.sprintSeenTimer))
 
 const openTaskId = () => new URLSearchParams(window.location.search).get('task')
 

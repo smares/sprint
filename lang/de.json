@@ -757,6 +757,7 @@
     "Tags only apply to this project. Renaming and recoloring takes effect on all tasks immediately.": "Tags gelten nur in diesem Projekt. Umbenennen und Umfärben wirkt sofort auf alle Aufgaben.",
     "Task": "Aufgabe",
     "Task created, but the current filters hide it.": "Aufgabe angelegt, aber die aktuellen Filter blenden sie aus.",
+    "Task created, but without a date it does not appear here.": "Aufgabe angelegt, erscheint hier aber nicht, weil sie kein Datum hat.",
     "Task created.": "Aufgabe angelegt.",
     "Task duplicated.": "Aufgabe dupliziert.",
     "Task lists": "Aufgabenlisten",

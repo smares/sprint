@@ -56,6 +56,8 @@ trait ConfirmsPassword
     #[On('password-confirmed')]
     public function passwordConfirmedElsewhere(): void
     {
+        // What was typed here is not needed any more and is not kept in the page
+        $this->reset('password');
         unset($this->confirmed, $this->confirmedUntil);
     }
 

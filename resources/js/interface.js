@@ -5,6 +5,9 @@
 
 const RETRY_AFTER = 5000
 const MAX_RETRY_DELAY = 300000
+// After this many failures in a row (about an hour with the growing delays) a batch is given up on, so that the page is not
+// 'unsent' for the rest of the session
+const MAX_RETRIES = 10
 const ADOPTED_KEY = 'sprint.interface-adopted'
 
 // Not yet started requests, in the order of the changes; one request at a time is on its way
@@ -13,6 +16,8 @@ let pending = {}
 let timer = null
 let sending = false
 let retries = 0
+// A change the server refused (expired session, invalid value) was not saved: what waits for everything to be saved must not run
+let refused = false
 
 // Whether this device has a change the server has not confirmed yet; a page that arrives meanwhile must not take it back
 const hasUnsentChanges = () => timer !== null || sending || outbox.length > 0 || Object.keys(pending).length > 0
@@ -30,7 +35,17 @@ const settle = () => {
     const run = afterSaved
 
     afterSaved = []
-    run.forEach((callback) => callback())
+
+    if (refused) {
+        return
+    }
+
+    // A callback that fails (storage full or blocked) must not stop the others or look like a network failure
+    run.forEach((callback) => {
+        try {
+            callback()
+        } catch {}
+    })
 }
 
 // Runs the callback once the server has everything this device changed (at once when there is nothing on its way)
@@ -84,6 +99,10 @@ const send = async () => {
             throw new Error('not saved')
         }
 
+        if (! response.ok || response.redirected) {
+            refused = true
+        }
+
         // The revision of the state the server has now; a page rendered before it arrives with an older one and is ignored
         const { rev = 0 } = await response.json().catch(() => ({}))
 
@@ -96,8 +115,13 @@ const send = async () => {
         sending = false
 
         // Kept and tried again, a little later each time: a change is not given up on because the network was away for a while
-        outbox.unshift(changes)
-        timer ??= setTimeout(flush, Math.min(RETRY_AFTER * 2 ** retries++, MAX_RETRY_DELAY))
+        if (retries < MAX_RETRIES) {
+            outbox.unshift(changes)
+            timer ??= setTimeout(flush, Math.min(RETRY_AFTER * 2 ** retries++, MAX_RETRY_DELAY))
+        } else {
+            retries = 0
+            refused = true
+        }
     }
 }
 

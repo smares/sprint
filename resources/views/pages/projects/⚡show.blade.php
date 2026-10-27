@@ -97,15 +97,16 @@ new class extends Component
      */
     protected function announceCreatedTask(int $taskId): void
     {
-        $this->tasksImported();
+        $task = $taskId > 0 ? $this->project->tasks()->withoutSections()->find($taskId) : null;
 
-        if ($taskId > 0 && ! $this->filteredTasks()->whereKey($taskId)->exists()) {
-            Flux::toast(variant: 'success', text: __('Task created, but the current filters hide it.'));
+        if ($task === null) {
+            $this->tasksImported();
+            Flux::toast(variant: 'success', text: __('Task created.'));
 
             return;
         }
 
-        Flux::toast(variant: 'success', text: __('Task created.'));
+        Flux::toast(variant: 'success', text: $this->showAdded($task) ? __('Task created.') : __('Task created, but the current filters hide it.'));
     }
 
     /**
@@ -275,6 +276,16 @@ new class extends Component
      */
     protected function quickAdded(Task $task): void
     {
+        if (! $this->showAdded($task)) {
+            Flux::toast(variant: 'success', text: __('Task created, but the current filters hide it.'));
+        }
+    }
+
+    /**
+     * Makes room for the new task in the list (it counts as one more of the page) and tells whether the filters let it through.
+     */
+    private function showAdded(Task $task): bool
+    {
         $total = $this->totalTasks;
 
         if ($total > $this->limit && $total - 1 <= $this->limit) {
@@ -283,9 +294,7 @@ new class extends Component
 
         unset($this->tasks, $this->totalTasks, $this->progress, $this->tagOptions);
 
-        if (! $this->filteredTasks()->whereKey($task->id)->exists()) {
-            Flux::toast(variant: 'success', text: __('Task created, but the current filters hide it.'));
-        }
+        return $this->filteredTasks()->whereKey($task->id)->exists();
     }
 
     public function loadMore(): void

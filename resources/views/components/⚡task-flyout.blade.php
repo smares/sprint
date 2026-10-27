@@ -29,6 +29,14 @@ new class extends Component
     }
 
     /**
+     * The address changed under the flyout (the browser's back and forward buttons): the task it names has been seen, too.
+     */
+    public function updatedOpenTaskId(): void
+    {
+        $this->markSeen();
+    }
+
+    /**
      * Any task one may see opens, whatever page asks for it. The check is the query for the task the flyout is drawn
      * from, so it is asked once and not twice.
      */

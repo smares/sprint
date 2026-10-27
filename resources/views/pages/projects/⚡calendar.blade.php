@@ -126,6 +126,11 @@ new class extends Component
     /**
      * The calendar has no filters: every top-level task of the project can be selected.
      */
+    protected function datesNeededToShowTask(): array
+    {
+        return ['due_date'];
+    }
+
     protected function filteredTasks(): HasMany
     {
         return $this->project->tasks()->topLevel();

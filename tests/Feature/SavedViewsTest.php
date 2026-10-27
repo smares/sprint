@@ -12,7 +12,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
 
-class SavedFiltersTest extends TestCase
+class SavedViewsTest extends TestCase
 {
     use RefreshDatabase;
 

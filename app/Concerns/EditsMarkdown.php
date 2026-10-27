@@ -7,6 +7,7 @@ use App\Models\Task;
 use App\Models\User;
 use App\Services\MarkdownService;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Renderless;
 
@@ -63,6 +64,21 @@ trait EditsMarkdown
     public function mentionTasks(string $query): array
     {
         return $this->mentionProject()->mentionableTasks($query);
+    }
+
+    /**
+     * The task a pasted address leads to, for the editor that turns it into a mention: null when it is another address, the task
+     * is gone, or the person may not see it (the address then stays as pasted). Nothing is kept: the title is read anew each time.
+     *
+     * @return array{id: int, title: string}|null
+     */
+    #[Renderless]
+    public function resolveTaskLink(string $url): ?array
+    {
+        $id = MarkdownService::taskIdFromUrl(mb_substr($url, 0, 2000));
+        $task = $id === null ? null : Task::withoutSections()->with('project')->find($id);
+
+        return $task !== null && Gate::allows('view', $task->project) ? ['id' => $task->id, 'title' => $task->title] : null;
     }
 
     #[Renderless]

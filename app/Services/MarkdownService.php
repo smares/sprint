@@ -68,7 +68,7 @@ class MarkdownService
             return self::PLACEHOLDER_START.(count($mentions) - 1).self::PLACEHOLDER_END;
         }, $withPlaceholders);
 
-        $html = self::convert($withPlaceholders, $cache);
+        $html = self::linkedTasksAsMentions(self::convert($withPlaceholders, $cache), $mentions);
 
         return new HtmlString(self::insertMentions($html, $mentions));
     }
@@ -105,6 +105,55 @@ class MarkdownService
     }
 
     /**
+     * The id of the task an address of this installation leads to: the page of the task (/tasks/7) or any page that opens it in
+     * the flyout (?task=7, as the address bar of a list shows it). Null for every other address.
+     */
+    public static function taskIdFromUrl(string $url): ?int
+    {
+        $parts = parse_url(trim($url));
+        $hosts = array_filter([parse_url((string) config('app.url'), PHP_URL_HOST), parse_url(url('/'), PHP_URL_HOST)]);
+
+        if (! isset($parts['host']) || ! in_array(strtolower($parts['host']), array_map('strtolower', $hosts), true) || ! in_array($parts['scheme'] ?? '', ['http', 'https'], true)) {
+            return null;
+        }
+
+        if (preg_match('#^/tasks/(\d{1,18})/?$#', $parts['path'] ?? '', $match)) {
+            return (int) $match[1];
+        }
+
+        parse_str($parts['query'] ?? '', $query);
+
+        return isset($query['task']) && is_string($query['task']) && preg_match('/^\d{1,18}$/', $query['task']) ? (int) $query['task'] : null;
+    }
+
+    /**
+     * A link whose text is the address itself (a pasted address, `<…>`, `[…](…)` with the same address twice) to a task of this
+     * installation becomes a mention of the task, shown with its title like `@[Title](task:7)`. A link with words of its own stays
+     * as it is, and so does one to a task that is gone or that the reader may not see (see insertMentions).
+     *
+     * @param  list<array{name: string, type: string, id: int, original?: string}>  $mentions
+     */
+    private static function linkedTasksAsMentions(string $html, array &$mentions): string
+    {
+        if (! str_contains($html, '<a ')) {
+            return $html;
+        }
+
+        return (string) preg_replace_callback('#<a href="([^"]*)"[^>]*>([^<]*)</a>#', function (array $match) use (&$mentions): string {
+            $url = html_entity_decode($match[1]);
+            $id = $url === html_entity_decode($match[2]) ? self::taskIdFromUrl($url) : null;
+
+            if ($id === null) {
+                return $match[0];
+            }
+
+            $mentions[] = ['name' => '', 'type' => 'task', 'id' => $id, 'original' => $match[0]];
+
+            return self::PLACEHOLDER_START.(count($mentions) - 1).self::PLACEHOLDER_END;
+        }, $html);
+    }
+
+    /**
      * Ids of all people mentioned in the text.
      *
      * @return list<int>
@@ -132,7 +181,7 @@ class MarkdownService
     }
 
     /**
-     * @param  list<array{name: string, type: string, id: int}>  $mentions
+     * @param  list<array{name: string, type: string, id: int, original?: string}>  $mentions
      */
     private static function insertMentions(string $html, array $mentions): string
     {
@@ -179,6 +228,10 @@ class MarkdownService
                 }
 
                 $title = $tasks->get($mention['id']);
+
+                if ($title === null && isset($mention['original'])) {
+                    return $mention['original'];
+                }
 
                 return $title === null
                     ? '<span class="mention mention-missing">'.e($mention['name']).'</span>'

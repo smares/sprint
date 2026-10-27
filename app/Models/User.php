@@ -112,6 +112,28 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
     }
 
     /**
+     * Whoever opens a task has seen what the inbox reported about it, so those unread entries count as read (they stay in the
+     * inbox). Entries that bundle several tasks into one (`*_many`) name only the first task and stay as they are.
+     *
+     * The unread entries of a person are few, so they are filtered here instead of by a JSON path in the query, which
+     * PostgreSQL does not offer on the text column.
+     *
+     * @return int how many entries were marked
+     */
+    public function markTaskNotificationsRead(int $taskId): int
+    {
+        $ids = $this->unreadNotifications()->get(['id', 'data'])
+            ->filter(fn ($entry) => (int) ($entry->data['task_id'] ?? 0) === $taskId && ! str_ends_with((string) ($entry->data['kind'] ?? ''), '_many'))
+            ->pluck('id');
+
+        if ($ids->isEmpty()) {
+            return 0;
+        }
+
+        return $this->notifications()->whereKey($ids)->update(['read_at' => now()]);
+    }
+
+    /**
      * @return HasMany<SocialAccount, $this>
      */
     public function socialAccounts(): HasMany

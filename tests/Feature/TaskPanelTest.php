@@ -8,6 +8,7 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Js;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -57,6 +58,13 @@ class TaskPanelTest extends TestCase
         Livewire::withQueryParams(['task' => $this->task->id])->test('task-flyout')
             ->assertSet('openTaskId', (string) $this->task->id)
             ->assertSeeHtml('data-modal="task-panel"');
+    }
+
+    public function test_the_flyout_offers_the_link_to_the_task_itself_to_copy(): void
+    {
+        $this->get(route('projects.show', ['project' => $this->project, 'task' => $this->task->id, 'sort' => 'due']))->assertOk()
+            ->assertSee('aria-label="Link kopieren"', false)
+            ->assertSee('$copyText('.Js::from(route('tasks.show', $this->task)), false);
     }
 
     public function test_the_pages_do_not_draw_the_flyout_themselves(): void

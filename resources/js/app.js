@@ -837,6 +837,22 @@ const registerTaskFlyout = () => {
     }))
 }
 
+// $copyText(text, done, failed): puts the text on the clipboard and says so with a toast. Without the clipboard (a page over plain
+// http that is not localhost, or a browser that refuses) the other toast says it did not work.
+const registerCopyText = () => {
+    window.Alpine.magic('copyText', () => (text, done, failed) => {
+        const toast = (message, variant) => window.Flux.toast({ text: message, variant })
+
+        if (! navigator.clipboard) {
+            toast(failed, 'danger')
+
+            return
+        }
+
+        navigator.clipboard.writeText(text).then(() => toast(done, 'success')).catch(() => toast(failed, 'danger'))
+    })
+}
+
 // $openTask($event, id): a click on a task link opens the task in the flyout (the component task-flyout); with a modifier key or
 // another button it stays a normal link to the full page, and a click a drag already used (timeline bars) does nothing.
 const registerOpenTask = () => {
@@ -946,6 +962,7 @@ const registerAll = () => {
     // Which task the flyout shows (task-flyout sets it): its title links light up
     window.Alpine.store('taskFlyout', { id: '' })
     registerOpenTask()
+    registerCopyText()
     registerTaskFlyout()
     registerMentionable()
     registerLazyPicker()
@@ -1104,6 +1121,54 @@ document.addEventListener('keydown', (event) => {
 // Not with the Vite dev server, whose files are not in the build. The offline page shows the language last used here.
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
     window.addEventListener('load', () => navigator.serviceWorker.register(SERVICE_WORKER_URL).catch(() => {}))
+}
+
+// A deployment while the page is open: every answer of the app names its build (MarkAppResponse), and the page knows the
+// one it was loaded with. A different one shows the banner of the layout, and the next page change loads the page from the
+// server instead, so that its scripts fit again. Checked with Livewire's own requests, and when the tab is shown again.
+const build = document.querySelector('meta[name="sprint-build"]')
+let outdated = false
+
+const noteBuild = (served) => {
+    if (build && served && served !== build.content && ! outdated) {
+        outdated = true
+        window.dispatchEvent(new CustomEvent('sprint-outdated'))
+    }
+}
+
+if (build) {
+    document.addEventListener('livewire:init', () => {
+        window.Livewire.interceptRequest(({ onResponse }) => onResponse(({ response }) => noteBuild(response.headers.get(build.dataset.header))))
+    })
+
+    let lastCheck = Date.now()
+
+    document.addEventListener('visibilitychange', () => {
+        // The service worker's address: no session, so the cheapest answer of the app
+        if (document.visibilityState !== 'visible' || outdated || Date.now() - lastCheck < 60000) {
+            return
+        }
+
+        lastCheck = Date.now()
+        fetch(SERVICE_WORKER_URL, { method: 'HEAD', cache: 'no-store' }).then((response) => noteBuild(response.headers.get(build.dataset.header))).catch(() => {})
+    })
+
+    // A page change nobody could stop (the first one after a deployment, before any answer named the new build) brings the
+    // new head along: its meta tag shows the build, and the old and the new scripts would run side by side
+    document.addEventListener('livewire:navigated', () => {
+        const served = document.querySelector('meta[name="sprint-build"]')?.content
+
+        if (served && served !== build.content) {
+            window.location.reload()
+        }
+    })
+
+    document.addEventListener('livewire:navigate', (event) => {
+        if (outdated) {
+            event.preventDefault()
+            window.location.href = event.detail.url.href
+        }
+    })
 }
 
 // Also after wire:navigate page changes, such as the one after logging in

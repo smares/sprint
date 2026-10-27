@@ -64,7 +64,7 @@ class TaskPanelTest extends TestCase
     {
         $this->get(route('projects.show', ['project' => $this->project, 'task' => $this->task->id, 'sort' => 'due']))->assertOk()
             ->assertSee('aria-label="Link kopieren"', false)
-            ->assertSee('$copyText('.(string) Js::from(route('tasks.show', $this->task)), false);
+            ->assertSee('$copyText('.Js::from(route('tasks.show', $this->task)), false);
     }
 
     public function test_the_pages_do_not_draw_the_flyout_themselves(): void

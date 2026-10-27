@@ -60,6 +60,15 @@ class TaskPanelTest extends TestCase
             ->assertSeeHtml('data-modal="task-panel"');
     }
 
+    public function test_the_header_of_the_flyout_stays_above_the_bar_with_the_buttons(): void
+    {
+        // The bar sticks inside the form and moves up behind the header once the form has scrolled out of sight: it must pass underneath
+        $html = $this->get(route('projects.show', ['project' => $this->project, 'task' => $this->task->id]))->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('/sticky -top-5 z-20[^"]*"/', $html);
+        $this->assertMatchesRegularExpression('/sticky -bottom-5 z-10[^"]*"/', $html);
+    }
+
     public function test_the_flyout_offers_the_link_to_the_task_itself_to_copy(): void
     {
         $this->get(route('projects.show', ['project' => $this->project, 'task' => $this->task->id, 'sort' => 'due']))->assertOk()

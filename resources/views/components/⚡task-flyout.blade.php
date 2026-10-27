@@ -20,6 +20,14 @@ new class extends Component
     public string $openTaskId = '';
 
     /**
+     * A task in the address (a link, a reload) is opened as well.
+     */
+    public function mount(): void
+    {
+        $this->markSeen();
+    }
+
+    /**
      * Any task one may see opens, whatever page asks for it. The check is the query for the task the flyout is drawn
      * from, so it is asked once and not twice.
      */
@@ -34,6 +42,20 @@ new class extends Component
         if ($this->panelTask === null) {
             $this->openTaskId = $previous;
             unset($this->panelTask);
+
+            return;
+        }
+
+        $this->markSeen();
+    }
+
+    /**
+     * The open task has been seen: what the inbox reported about it counts as read, and the bell is told.
+     */
+    private function markSeen(): void
+    {
+        if ($this->panelTask !== null && auth()->user()->markTaskNotificationsRead($this->panelTask->id) > 0) {
+            $this->dispatch('inbox-changed');
         }
     }
 

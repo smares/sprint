@@ -275,6 +275,11 @@ new class extends Component
     {
         Gate::authorize('view', $this->task->project);
 
+        // Coming here from a push, a mail or the inbox: what the inbox reported about this task has been seen
+        if (auth()->user()->markTaskNotificationsRead($this->task->id) > 0) {
+            $this->dispatch('inbox-changed');
+        }
+
         $this->title = $this->task->title;
         $this->description = $this->task->description ?? '';
         $this->statusId = (string) $this->task->status_id;

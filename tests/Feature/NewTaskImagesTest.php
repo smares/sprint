@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\ActivityType;
 use App\Enums\ProjectRole;
+use App\Models\Attachment;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
@@ -95,5 +96,46 @@ class NewTaskImagesTest extends TestCase
                 $this->assertStringContainsString('variant="ghost"', $link, basename($file).' has a text link that is always underlined: '.$link);
             }
         }
+    }
+
+    public function test_files_chosen_in_the_dialog_become_attachments_of_the_new_task(): void
+    {
+        $dialog = Livewire::actingAs($this->anna)->test('task-create', ['project' => $this->project])
+            ->set('uploads', [UploadedFile::fake()->create('angebot.pdf', 50, 'application/pdf'), UploadedFile::fake()->create('notizen.txt', 2, 'text/plain')])
+            ->assertHasNoErrors()
+            ->assertSee('angebot.pdf')
+            ->set('title', 'Mit Dateien')
+            ->call('create')
+            ->assertHasNoErrors();
+
+        $task = Task::where('title', 'Mit Dateien')->firstOrFail();
+
+        $this->assertEqualsCanonicalizing(['angebot.pdf', 'notizen.txt'], $task->attachments()->pluck('name')->all());
+        $this->assertSame([], $dialog->get('uploads'));
+        $this->assertSame(1, $task->activities()->where('type', ActivityType::AttachmentsAdded)->count());
+    }
+
+    public function test_a_chosen_file_can_be_taken_out_again(): void
+    {
+        $dialog = Livewire::actingAs($this->anna)->test('task-create', ['project' => $this->project])
+            ->set('uploads', [UploadedFile::fake()->create('a.txt', 1), UploadedFile::fake()->create('b.txt', 1)])
+            ->call('removeUpload', 0);
+
+        $this->assertCount(1, $dialog->get('uploads'));
+
+        $dialog->set('title', 'Eine Datei')->call('create');
+
+        $this->assertSame(['b.txt'], Task::where('title', 'Eine Datei')->firstOrFail()->attachments()->pluck('name')->all());
+    }
+
+    public function test_files_follow_the_limits_of_the_attachments_of_a_task(): void
+    {
+        $tooMany = array_map(fn (int $n) => UploadedFile::fake()->create("datei-{$n}.txt", 1), range(1, 21));
+
+        Livewire::actingAs($this->anna)->test('task-create', ['project' => $this->project])
+            ->set('uploads', $tooMany)->assertHasErrors('uploads');
+
+        Livewire::actingAs($this->anna)->test('task-create', ['project' => $this->project])
+            ->set('uploads', [UploadedFile::fake()->create('riesig.zip', Attachment::MAX_KILOBYTES + 1)])->assertHasErrors('uploads.0');
     }
 }

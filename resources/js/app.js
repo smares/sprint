@@ -866,6 +866,20 @@ const registerOpenTask = () => {
     })
 }
 
+// A task mentioned in a text of the flyout (a chip, or an address that became one) opens in the flyout, like the parent tasks above
+// the title; on a page of a task it stays a link to the page of the other task, and with a modifier key or another button it stays
+// a link everywhere. The event goes through the flyout's guard, which asks before leaving a form with unsaved input.
+document.addEventListener('click', (event) => {
+    const chip = event.target.closest?.('a.mention-task[data-task-id]')
+
+    if (! chip || event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0 || ! chip.closest('[data-modal="task-panel"]')) {
+        return
+    }
+
+    event.preventDefault()
+    chip.dispatchEvent(new CustomEvent('open-task', { detail: { id: Number(chip.dataset.taskId) }, bubbles: true }))
+})
+
 // A picker of the task flyout (tasks/⚡show.blade.php) holds only its chosen values until somebody uses it (focus, click
 // or a key); then the component sends its list of choices (loadPicker). Merely pointing at a field loads nothing: the
 // request renders the whole task again (comments and activity included), too much to spend on a mouse that passes by.

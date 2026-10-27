@@ -66,12 +66,82 @@
             )
         },
         onPaste(event) {
-            const file = [...(event.clipboardData?.files ?? [])].find((item) => item.type.startsWith('image/'))
+            const file = @js($images !== null) ? [...(event.clipboardData?.files ?? [])].find((item) => item.type.startsWith('image/')) : null
 
             if (file) {
                 event.preventDefault()
                 this.uploadImage(file)
+
+                return
             }
+
+            this.linkPastedTask(event)
+        },
+        // The address of a task of this installation (the page of the task, or a list with ?task=) that is pasted stays as pasted
+        // at first and becomes @[Title](task:7) once the server has told the title: a task that is gone or that the person may not
+        // see stays an address (resolveTaskLink). Typing goes on meanwhile, so the answer looks for the address again.
+        linkPastedTask(event) {
+            const field = event.target
+            const address = (event.clipboardData?.getData('text/plain') ?? '').trim()
+
+            if (field.tagName !== 'TEXTAREA' || field.selectionStart !== field.selectionEnd || ! this.isTaskAddress(address)) {
+                return
+            }
+
+            const near = field.selectionStart
+
+            $wire.resolveTaskLink(address)
+                .then((task) => task && this.replaceAddress(field, address, near, task))
+                .catch(() => {})
+        },
+        isTaskAddress(address) {
+            try {
+                const url = new URL(address)
+
+                return /^https?:$/.test(url.protocol) && url.origin === window.location.origin
+                    && (/^\/tasks\/\d+\/?$/.test(url.pathname) || /^\d+$/.test(url.searchParams.getAll('task').at(-1) ?? ''))
+            } catch {
+                return false
+            }
+        },
+        // Only an address that still stands alone (between spaces or line ends, so not one the person has changed or continued) and
+        // the one nearest to where it was pasted: it may have moved, been deleted, or been pasted again
+        replaceAddress(field, address, near, task) {
+            if (! field.isConnected) {
+                return
+            }
+
+            const text = field.value
+            let found = -1
+
+            for (let at = text.indexOf(address); at !== -1; at = text.indexOf(address, at + 1)) {
+                const alone = (at === 0 || /\s/.test(text[at - 1])) && (at + address.length === text.length || /\s/.test(text[at + address.length]))
+
+                if (alone && (found === -1 || Math.abs(at - near) < Math.abs(found - near))) {
+                    found = at
+                }
+            }
+
+            if (found === -1) {
+                return
+            }
+
+            // As the list after @ writes it: brackets become parentheses, and a title of only blanks has no name to show
+            const title = [...String(task.title).replace(/\[/g, '(').replace(/\]/g, ')').replace(/\s+/g, ' ').trim()].slice(0, 255).join('')
+            const token = '@[' + (title || '#' + task.id) + '](task:' + task.id + ')'
+            const end = found + address.length
+            const [from, to] = [field.selectionStart, field.selectionEnd].map((caret) => (caret >= end ? caret + token.length - address.length : (caret > found ? found + token.length : caret)))
+
+            // Typed into the focused field, the replacement stays in its undo history (Ctrl+Z gives the address back); in a field
+            // that is not focused (the person went elsewhere meanwhile) the text is set directly
+            field.setSelectionRange(found, end)
+
+            if (document.activeElement !== field || ! document.execCommand('insertText', false, token)) {
+                field.setRangeText(token, found, end, 'preserve')
+                field.dispatchEvent(new Event('input', { bubbles: true }))
+            }
+
+            field.setSelectionRange(from, to)
         },
         onDrop(event) {
             const file = [...(event.dataTransfer?.files ?? [])].find((item) => item.type.startsWith('image/'))
@@ -132,7 +202,7 @@
         </div>
     </div>
 
-    <div x-show="tab === 'write'" @if ($preview) x-cloak @endif class="relative" x-data="mentionable(@js($mentionsOnDemand ? ['users' => null, 'searchTasks' => true] : $mentions))" x-on:input="onInput($event)" x-on:keydown="onKeydown($event)" @if ($mentionsOnDemand) x-on:focusin.once="loadPeople()" @endif x-on:click.outside="open = false"@if ($images !== null) x-on:paste="onPaste($event)" x-on:drop="onDrop($event)" x-on:dragover.prevent @endif>
+    <div x-show="tab === 'write'" @if ($preview) x-cloak @endif class="relative" x-data="mentionable(@js($mentionsOnDemand ? ['users' => null, 'searchTasks' => true] : $mentions))" x-on:input="onInput($event)" x-on:keydown="onKeydown($event)" @if ($mentionsOnDemand) x-on:focusin.once="loadPeople()" @endif x-on:click.outside="open = false" x-on:paste="onPaste($event)"@if ($images !== null) x-on:drop="onDrop($event)" x-on:dragover.prevent @endif>
         {{-- grow: the field is as tall as its text (at least $rows lines), so a long description is never hidden behind a scrollbar --}}
         <flux:textarea :rows="$rows" :placeholder="$placeholder" :resize="$grow ? 'none' : 'vertical'" :class="$grow ? 'field-sizing-content min-h-24 not-supports-[field-sizing:content]:resize-y!' : ''" {{ $attributes->whereStartsWith('wire:model') }} />
 

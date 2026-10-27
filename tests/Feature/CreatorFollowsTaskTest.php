@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Enums\ProjectRole;
+use App\Mcp\Servers\SprintServer;
+use App\Mcp\Tools\CreateTask;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
@@ -91,5 +93,25 @@ class CreatorFollowsTaskTest extends TestCase
         Livewire::test('pages::profile')->assertSet('followOwnTasks', true)->set('followOwnTasks', false);
 
         $this->assertFalse($this->anna->fresh()->follow_own_tasks);
+    }
+
+    public function test_a_task_created_through_mcp_follows_the_profile_setting_too(): void
+    {
+        $create = fn (array $extra = []) => SprintServer::actingAs($this->anna)->tool(CreateTask::class, $extra + ['project_id' => $this->project->id, 'assignee' => $this->ben->email]);
+
+        $create(['title' => 'Agent 1'])->assertOk();
+        $create(['title' => 'Agent 2', 'collaborators' => [$this->ben->email]])->assertOk();
+
+        foreach (['Agent 1', 'Agent 2'] as $title) {
+            $task = Task::where('title', $title)->firstOrFail();
+            $this->assertTrue($task->collaborators()->whereKey($this->anna->id)->exists(), $title);
+            $this->assertSame(0, $task->activities()->where('type', 'collaborators_removed')->count(), $title);
+        }
+
+        $this->anna->update(['follow_own_tasks' => false]);
+
+        $create(['title' => 'Agent 3', 'collaborators' => [$this->ben->email]])->assertOk();
+
+        $this->assertFalse(Task::where('title', 'Agent 3')->firstOrFail()->collaborators()->whereKey($this->anna->id)->exists());
     }
 }

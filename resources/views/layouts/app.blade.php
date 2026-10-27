@@ -12,6 +12,7 @@
         {{-- The browser's bar (and the installed app's) in the color of the header; app.js follows the appearance chosen in the menu --}}
         <meta name="theme-color" content="{{ \App\Http\Controllers\ProgressiveWebAppController::THEME_COLOR }}" media="(prefers-color-scheme: light)">
         <meta name="theme-color" content="{{ \App\Http\Controllers\ProgressiveWebAppController::THEME_COLOR_DARK }}" media="(prefers-color-scheme: dark)">
+        <meta name="sprint-build" content="{{ app(\App\Services\AppBuild::class)->id() }}" data-header="{{ \App\Http\Middleware\MarkAppResponse::BUILD_HEADER }}" data-check="{{ route('pwa.service-worker', absolute: false) }}">
         @auth
             <meta name="sprint-interface" content="{{ route('interface.update', absolute: false) }}">
             <script>
@@ -142,6 +143,17 @@
                 <div class="flex items-center gap-2 rounded-full bg-zinc-800 px-4 py-2 text-sm text-white shadow-lg dark:bg-zinc-100 dark:text-zinc-900">
                     <flux:icon.signal-slash variant="micro" />
                     {{ __('No connection. Changes cannot be saved right now.') }}
+                </div>
+            </div>
+        @endpersist
+
+        {{-- A page loaded before a deployment: its scripts may no longer fit the server. Not reloaded by itself, since something typed would be lost --}}
+        @persist('update-available')
+            <div x-data="{ outdated: false }" x-on:sprint-outdated.window="outdated = true" x-show="outdated" x-cloak role="status" class="fixed inset-x-0 bottom-4 z-50 flex justify-center px-4">
+                <div class="flex items-center gap-3 rounded-full bg-zinc-800 py-1.5 ps-4 pe-1.5 text-sm text-white shadow-lg dark:bg-zinc-100 dark:text-zinc-900">
+                    <flux:icon.arrow-path variant="micro" />
+                    {{ __('A new version of :app is available.', ['app' => config('app.name')]) }}
+                    <flux:button size="sm" variant="primary" x-on:click="window.location.reload()">{{ __('Reload') }}</flux:button>
                 </div>
             </div>
         @endpersist

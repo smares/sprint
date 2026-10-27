@@ -1092,6 +1092,44 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
     window.addEventListener('load', () => navigator.serviceWorker.register(SERVICE_WORKER_URL).catch(() => {}))
 }
 
+// A deployment while the page is open: every answer of the app names its build (MarkAppResponse), and the page knows the
+// one it was loaded with. A different one shows the banner of the layout, and the next page change loads the page from the
+// server instead, so that its scripts fit again. Checked with Livewire's own requests, and when the tab is shown again.
+const build = document.querySelector('meta[name="sprint-build"]')
+let outdated = false
+
+const noteBuild = (served) => {
+    if (build && served && served !== build.content && ! outdated) {
+        outdated = true
+        window.dispatchEvent(new CustomEvent('sprint-outdated'))
+    }
+}
+
+if (build) {
+    document.addEventListener('livewire:init', () => {
+        window.Livewire.interceptRequest(({ onResponse }) => onResponse(({ response }) => noteBuild(response.headers.get(build.dataset.header))))
+    })
+
+    let lastCheck = Date.now()
+
+    document.addEventListener('visibilitychange', () => {
+        // The service worker's address: no session, so the cheapest answer of the app
+        if (document.visibilityState !== 'visible' || outdated || Date.now() - lastCheck < 60000) {
+            return
+        }
+
+        lastCheck = Date.now()
+        fetch(build.dataset.check, { method: 'HEAD', cache: 'no-store' }).then((response) => noteBuild(response.headers.get(build.dataset.header))).catch(() => {})
+    })
+
+    document.addEventListener('livewire:navigate', (event) => {
+        if (outdated) {
+            event.preventDefault()
+            window.location.href = event.detail.url.href
+        }
+    })
+}
+
 // Also after wire:navigate page changes, such as the one after logging in
 const rememberLocale = () => {
     try {

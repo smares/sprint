@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Middleware\MarkAppResponse;
+use App\Services\AppBuild;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\File;
@@ -60,7 +61,7 @@ class ProgressiveWebAppController extends Controller
     {
         $precache = [route('offline', absolute: false), ...$this->builtAssets(), ...array_column(self::ICONS, 'src')];
 
-        $script = 'const VERSION = '.json_encode($this->version()).";\n"
+        $script = 'const VERSION = '.json_encode(app(AppBuild::class)->id()).";\n"
             .'const PRECACHE = '.json_encode($precache, JSON_UNESCAPED_SLASHES).";\n"
             .'const OFFLINE_URL = '.json_encode(route('offline', absolute: false), JSON_UNESCAPED_SLASHES).";\n"
             .'const APP_HEADER = '.json_encode(MarkAppResponse::HEADER).";\n\n"
@@ -82,7 +83,7 @@ class ProgressiveWebAppController extends Controller
      */
     private function builtAssets(): array
     {
-        $manifest = $this->viteManifest();
+        $manifest = app(AppBuild::class)->viteManifest();
 
         return collect(self::ENTRIES)
             ->filter(fn (string $entry) => isset($manifest[$entry]['file']))
@@ -91,23 +92,5 @@ class ProgressiveWebAppController extends Controller
             ->unique()
             ->values()
             ->all();
-    }
-
-    /**
-     * Only a hash: /sw.js is public, and the exact version is for signed-in people (it would help to pick known flaws).
-     */
-    private function version(): string
-    {
-        return substr(md5(config('sprint.version').(json_encode($this->viteManifest()) ?: '')), 0, 12);
-    }
-
-    /**
-     * @return array<string, array{file?: string, css?: list<string>}>
-     */
-    private function viteManifest(): array
-    {
-        $path = public_path('build/manifest.json');
-
-        return File::exists($path) ? (array) json_decode(File::get($path), true) : [];
     }
 }

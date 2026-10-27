@@ -215,56 +215,62 @@ new class extends Component
             </div>
         </form>
     @else
-        <form wire:submit="login" class="space-y-6">
-            <flux:input wire:model="email" :label="__('Email')" type="email" autofocus autocomplete="email webauthn" />
-            {{-- The way to a new password sits in the label, where one looks when the password does not come to mind --}}
-            <flux:field>
-                <flux:label>
-                    {{ __('Password') }}
-                    <span class="ms-1 font-normal text-zinc-500 dark:text-zinc-400">(<flux:link variant="ghost" :href="route('password.request')" wire:navigate>{{ __('Forgot?') }}</flux:link>)</span>
-                </flux:label>
-                <flux:input wire:model="password" type="password" autocomplete="current-password" />
-                <flux:error name="password" />
-            </flux:field>
-            <flux:button type="submit" variant="primary" class="w-full">{{ __('Sign in') }}</flux:button>
-        </form>
-
         @php($google = app(\App\Services\SsoSettings::class)->isAvailable())
 
-        <div
-            x-data="{ supported: !!window.PublicKeyCredential, busy: false, failed: false }"
-            x-show="supported || {{ $google ? 'true' : 'false' }}"
-            x-cloak
-            class="mt-6 space-y-3"
-        >
-            <flux:separator :text="__('or')" />
-            @if ($google)
-                {{-- A plain link: the way leads to Google and back, not through the page loading of the app --}}
-                <flux:button :href="route('auth.google.redirect')" x-on:click="$el.href = '{{ route('auth.google.redirect') }}?' + new URLSearchParams({ ...($wire.remember ? { remember: 1 } : {}), email: $wire.email ?? '' })" class="w-full">
-                    <svg class="size-4" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.6 5.9c4.4-4.1 7-10.1 7-17.6z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.5-.8-3-.8-4.7s.3-3.2.8-4.7l-7.9-6.1C.9 16.4 0 20.1 0 24s.9 7.6 2.6 10.8l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.6-5.9c-2.1 1.4-4.9 2.3-8.3 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
-                    {{ __('Sign in with Google') }}
-                </flux:button>
-            @endif
-            <flux:button
-                x-show="supported"
-                type="button"
-                icon="finger-print"
-                class="w-full"
-                x-bind:disabled="busy"
-                x-on:click="
-                    busy = true; failed = false
-                    window.passkeys().then((passkeys) => passkeys.verify({ remember: $wire.remember }))
-                        .then((response) => { window.location.href = response.redirect })
-                        .catch(() => { failed = true })
-                        .finally(() => { busy = false })
-                "
-            >{{ __('Sign in with a passkey') }}</flux:button>
-            <flux:text x-show="failed" class="text-red-600 dark:text-red-400">{{ __('Signing in with the passkey failed.') }}</flux:text>
-        </div>
+        {{-- In the order of the keyboard: the fields, the box, then the buttons. On the screen the box comes last: it counts for every way
+             to sign in (password, passkey, Google), so it stands below all of them, and Tab still reaches it before "Sign in". --}}
+        <div class="flex flex-col gap-6">
+            <form id="login-form" wire:submit="login" class="order-1 space-y-6">
+                <flux:input wire:model="email" :label="__('Email')" type="email" autofocus autocomplete="email webauthn" />
+                {{-- The way to a new password sits in the label, where one looks when the password does not come to mind --}}
+                <flux:field>
+                    <flux:label>
+                        {{ __('Password') }}
+                        <span class="ms-1 font-normal text-zinc-500 dark:text-zinc-400">(<flux:link variant="ghost" :href="route('password.request')" wire:navigate>{{ __('Forgot?') }}</flux:link>)</span>
+                    </flux:label>
+                    <flux:input wire:model="password" type="password" autocomplete="current-password" />
+                    <flux:error name="password" />
+                </flux:field>
+            </form>
 
-        {{-- Below every way to sign in, not inside the form of the password: it counts for the password, a passkey and Google alike, which the place says --}}
-        <div class="mt-6 border-t border-zinc-200 pt-4 dark:border-zinc-700">
-            <flux:checkbox wire:model="remember" :label="__('Stay signed in')" />
+            <div class="order-3 border-t border-zinc-200 pt-4 dark:border-zinc-700">
+                <flux:checkbox wire:model="remember" :label="__('Stay signed in')" />
+            </div>
+
+            <div class="order-2 space-y-6">
+                <flux:button type="submit" form="login-form" variant="primary" class="w-full">{{ __('Sign in') }}</flux:button>
+
+                <div
+                    x-data="{ supported: !!window.PublicKeyCredential, busy: false, failed: false }"
+                    x-show="supported || {{ $google ? 'true' : 'false' }}"
+                    x-cloak
+                    class="space-y-3"
+                >
+                    <flux:separator :text="__('or')" />
+                    @if ($google)
+                        {{-- A plain link: the way leads to Google and back, not through the page loading of the app --}}
+                        <flux:button :href="route('auth.google.redirect')" x-on:click="$el.href = '{{ route('auth.google.redirect') }}?' + new URLSearchParams({ ...($wire.remember ? { remember: 1 } : {}), email: $wire.email ?? '' })" class="w-full">
+                            <svg class="size-4" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.6 5.9c4.4-4.1 7-10.1 7-17.6z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.5-.8-3-.8-4.7s.3-3.2.8-4.7l-7.9-6.1C.9 16.4 0 20.1 0 24s.9 7.6 2.6 10.8l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.6-5.9c-2.1 1.4-4.9 2.3-8.3 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
+                            {{ __('Sign in with Google') }}
+                        </flux:button>
+                    @endif
+                    <flux:button
+                        x-show="supported"
+                        type="button"
+                        icon="finger-print"
+                        class="w-full"
+                        x-bind:disabled="busy"
+                        x-on:click="
+                            busy = true; failed = false
+                            window.passkeys().then((passkeys) => passkeys.verify({ remember: $wire.remember }))
+                                .then((response) => { window.location.href = response.redirect })
+                                .catch(() => { failed = true })
+                                .finally(() => { busy = false })
+                        "
+                    >{{ __('Sign in with a passkey') }}</flux:button>
+                    <flux:text x-show="failed" class="text-red-600 dark:text-red-400">{{ __('Signing in with the passkey failed.') }}</flux:text>
+                </div>
+            </div>
         </div>
     @endif
     </flux:card>

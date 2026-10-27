@@ -223,4 +223,12 @@ class InterfaceStateTest extends TestCase
 
         $this->assertSame(2, (int) $user->newQuery()->whereKey($user->id)->value('interface_rev'));
     }
+
+    public function test_saving_for_a_person_who_is_gone_is_not_an_error(): void
+    {
+        $user = User::factory()->create();
+        $user->delete();
+
+        $this->assertSame(0, $user->rememberInterface(['appearance' => 'dark']));
+    }
 }

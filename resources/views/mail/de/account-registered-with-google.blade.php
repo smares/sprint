@@ -6,6 +6,6 @@
 Das neue Konto ist kein Administrator und sieht noch kein Projekt. Bitte schau kurz hinein und vergib die nötigen Rechte und Projekte.
 
 <x-mail::button :url="$url">
-Zu den Benutzern
+Zu den Personen
 </x-mail::button>
 </x-mail::message>

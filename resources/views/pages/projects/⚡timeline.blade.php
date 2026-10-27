@@ -255,7 +255,7 @@ new class extends Component
             @endif
             @if ($this->outside['undated'] > 0)
                 {{ trans_choice('{1} :count task has no date.|[2,*] :count tasks have no date.', $this->outside['undated']) }}
-                <flux:link :href="route('projects.show', [$project, 'dates' => 'none', 'status' => 'all'])" wire:navigate>{{ __('Show them in the list') }}</flux:link>
+                <flux:link variant="ghost" :href="route('projects.show', [$project, 'dates' => 'none', 'status' => 'all'])" wire:navigate>{{ __('Show them in the list') }}</flux:link>
             @endif
         </flux:text>
     @endif

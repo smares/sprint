@@ -996,6 +996,15 @@ document.addEventListener('click', (event) => {
         return
     }
 
+    // While tasks are being selected a click on the card ticks its box (the flyout would open over the bar and its buttons)
+    const page = window.Livewire.find(card.closest('[wire\\:id]')?.getAttribute('wire:id'))
+
+    if (page?.selecting) {
+        card.querySelector('[data-select-box] ui-checkbox, [data-select-box] input')?.click()
+
+        return
+    }
+
     window.Livewire.dispatch('open-task', { id: Number(card.dataset.opensTask) })
 })
 

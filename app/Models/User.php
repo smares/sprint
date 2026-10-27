@@ -115,14 +115,15 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
      * Whoever opens a task has seen what the inbox reported about it, so those unread entries count as read (they stay in the
      * inbox). Entries that bundle several tasks into one (`*_many`) name only the first task and stay as they are.
      *
-     * The unread entries of a person are few, so they are filtered here instead of by a JSON path in the query, which
-     * PostgreSQL does not offer on the text column.
+     * A text search narrows the unread entries (a JSON path in the query is not available on PostgreSQL, where the
+     * column is text), and the rest is filtered here.
      *
      * @return int how many entries were marked
      */
     public function markTaskNotificationsRead(int $taskId): int
     {
-        $ids = $this->unreadNotifications()->get(['id', 'data'])
+        // The text search only narrows the rows (the id may also stand inside another number); the exact check is made in PHP
+        $ids = $this->unreadNotifications()->where('data', 'like', '%"task_id":'.$taskId.'%')->get(['id', 'data'])
             ->filter(fn ($entry) => (int) ($entry->data['task_id'] ?? 0) === $taskId && ! str_ends_with((string) ($entry->data['kind'] ?? ''), '_many'))
             ->pluck('id');
 
@@ -130,7 +131,7 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
             return 0;
         }
 
-        return $this->notifications()->whereKey($ids)->update(['read_at' => now()]);
+        return $this->unreadNotifications()->whereKey($ids)->update(['read_at' => now()]);
     }
 
     /**
@@ -196,14 +197,24 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
      */
     public function rememberInterface(array $changes): int
     {
+        $settled = false;
+
         for ($attempt = 0; $attempt < self::INTERFACE_WRITE_ATTEMPTS; $attempt++) {
             $row = DB::table($this->getTable())->where($this->getKeyName(), $this->getKey())->first(['interface', 'interface_rev']);
+
+            // The person is gone (deleted meanwhile): nothing to keep
+            if ($row === null) {
+                return 0;
+            }
+
             $stored = $row->interface;
             $version = (int) $row->interface_rev;
             $current = $stored === null ? [] : json_decode($stored, true);
             $state = $this->mergeInterface($current, $changes);
 
             if ($state === $current) {
+                $settled = true;
+
                 break;
             }
 
@@ -215,8 +226,16 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
                 ->update(['interface' => json_encode($state), 'interface_rev' => $version + 1]);
 
             if ($written === 1) {
+                $settled = true;
+
                 break;
             }
+        }
+
+        // Every attempt lost against other writers: report what is stored, not what was meant to be, so the browser does not run ahead of the server
+        if (! $settled) {
+            $stored = DB::table($this->getTable())->where($this->getKeyName(), $this->getKey())->value('interface');
+            $state = $stored === null ? [] : json_decode($stored, true);
         }
 
         $this->setAttribute('interface', $state);

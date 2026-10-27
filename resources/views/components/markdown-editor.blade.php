@@ -119,15 +119,14 @@
                 </div>
             @endif
             {{-- Preview first when the text starts rendered: the order in the markup is the order on the screen (and for the Tab key) --}}
-            <div class="flex gap-1" role="group">
+            {{-- A switch between two views, not a link: the active one is a raised segment, never underlined (underline means link) --}}
+            <div class="inline-flex gap-0.5 rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-700/50" role="group">
                 @if ($preview)
-                    <button type="button" class="touch-target" x-on:click="showPreview()" x-bind:aria-pressed="tab === 'preview'" x-bind:class="tab === 'preview' ? 'font-semibold underline' : 'text-zinc-500 dark:text-zinc-400'">{{ __('Preview') }}</button>
-                    <span class="text-zinc-300 dark:text-zinc-600" aria-hidden="true">|</span>
-                    <button type="button" class="touch-target" x-on:click="edit()" x-bind:aria-pressed="tab === 'write'" x-bind:class="tab === 'write' ? 'font-semibold underline' : 'text-zinc-500 dark:text-zinc-400'">{{ __('Edit') }}</button>
+                    <button type="button" class="touch-target rounded-md px-2.5 py-0.5 text-sm" x-on:click="showPreview()" x-bind:aria-pressed="tab === 'preview'" x-bind:class="tab === 'preview' ? 'bg-white font-medium text-zinc-900 shadow-sm dark:bg-zinc-600 dark:text-white' : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-white'">{{ __('Preview') }}</button>
+                    <button type="button" class="touch-target rounded-md px-2.5 py-0.5 text-sm" x-on:click="edit()" x-bind:aria-pressed="tab === 'write'" x-bind:class="tab === 'write' ? 'bg-white font-medium text-zinc-900 shadow-sm dark:bg-zinc-600 dark:text-white' : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-white'">{{ __('Edit') }}</button>
                 @else
-                    <button type="button" class="touch-target" x-on:click="edit()" x-bind:aria-pressed="tab === 'write'" x-bind:class="tab === 'write' ? 'font-semibold underline' : 'text-zinc-500 dark:text-zinc-400'">{{ __('Write') }}</button>
-                    <span class="text-zinc-300 dark:text-zinc-600" aria-hidden="true">|</span>
-                    <button type="button" class="touch-target" x-on:click="showPreview()" x-bind:aria-pressed="tab === 'preview'" x-bind:class="tab === 'preview' ? 'font-semibold underline' : 'text-zinc-500 dark:text-zinc-400'">{{ __('Preview') }}</button>
+                    <button type="button" class="touch-target rounded-md px-2.5 py-0.5 text-sm" x-on:click="edit()" x-bind:aria-pressed="tab === 'write'" x-bind:class="tab === 'write' ? 'bg-white font-medium text-zinc-900 shadow-sm dark:bg-zinc-600 dark:text-white' : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-white'">{{ __('Write') }}</button>
+                    <button type="button" class="touch-target rounded-md px-2.5 py-0.5 text-sm" x-on:click="showPreview()" x-bind:aria-pressed="tab === 'preview'" x-bind:class="tab === 'preview' ? 'bg-white font-medium text-zinc-900 shadow-sm dark:bg-zinc-600 dark:text-white' : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-white'">{{ __('Preview') }}</button>
                 @endif
             </div>
         </div>

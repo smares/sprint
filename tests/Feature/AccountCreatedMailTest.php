@@ -35,7 +35,7 @@ class AccountCreatedMailTest extends TestCase
         $html = (string) $mail->render();
 
         $this->assertSame('Du wurdest in Sprint angelegt', $mail->subject);
-        $this->assertStringContainsString('Berta Boss hat dich als Nutzer in Sprint angelegt.', $html);
+        $this->assertStringContainsString('Berta Boss hat dich als Person in Sprint angelegt.', $html);
         $this->assertStringContainsString(route('login'), $html);
         $this->assertStringNotContainsString('reset-password', $html);
         $this->assertStringNotContainsString('token', $html);

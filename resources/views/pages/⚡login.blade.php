@@ -221,7 +221,7 @@ new class extends Component
             <flux:field>
                 <flux:label>
                     {{ __('Password') }}
-                    <span class="ms-1 font-normal text-zinc-500 dark:text-zinc-400">(<flux:link :href="route('password.request')" wire:navigate>{{ __('Forgot?') }}</flux:link>)</span>
+                    <span class="ms-1 font-normal text-zinc-500 dark:text-zinc-400">(<flux:link variant="ghost" :href="route('password.request')" wire:navigate>{{ __('Forgot?') }}</flux:link>)</span>
                 </flux:label>
                 <flux:input wire:model="password" type="password" autocomplete="current-password" />
                 <flux:error name="password" />

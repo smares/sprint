@@ -74,7 +74,7 @@ new class extends Component
         @endif
 
         <div class="text-center">
-            <flux:link :href="route('login')" wire:navigate class="text-sm">{{ __('Back to sign in') }}</flux:link>
+            <flux:link variant="ghost" :href="route('login')" wire:navigate class="text-sm">{{ __('Back to sign in') }}</flux:link>
         </div>
     </flux:card>
 

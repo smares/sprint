@@ -77,6 +77,14 @@ class Attachment extends Model
 
     public function humanSize(): string
     {
-        return preg_replace('/[.,]0(?= )/', '', Number::fileSize($this->size, precision: 1));
+        return self::formatSize($this->size);
+    }
+
+    /**
+     * A size for people ("1,4 MB", "20 KB"), the same wherever files are listed.
+     */
+    public static function formatSize(int $bytes): string
+    {
+        return preg_replace('/[.,]0(?= )/', '', Number::fileSize($bytes, precision: 1));
     }
 }

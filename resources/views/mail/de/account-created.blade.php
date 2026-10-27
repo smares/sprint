@@ -2,7 +2,7 @@
 # Hallo {{ $name }},
 
 @if ($createdBy)
-{{ $createdBy }} hat dich als Nutzer in {{ config('app.name') }} angelegt.
+{{ $createdBy }} hat dich als Person in {{ config('app.name') }} angelegt.
 @else
 für dich wurde ein Konto in {{ config('app.name') }} angelegt.
 @endif

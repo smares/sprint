@@ -117,10 +117,36 @@ class TaskAssignmentNotificationsTest extends TestCase
         $task->update(['assignee_id' => null]);
 
         $task->update(['assignee_id' => $this->anna->id, 'description' => "@[Anna](user:{$this->anna->id}) bitte"]);
-        $task->notifyMentionedInDescription([$this->anna->id], $this->actor);
 
         Notification::assertSentToTimes($this->anna, TaskAssigned::class, 1);
         Notification::assertNotSentTo($this->anna, UserMentioned::class);
+    }
+
+    public function test_the_new_task_dialog_does_not_tell_the_assignee_twice_for_a_mention(): void
+    {
+        Livewire::actingAs($this->actor)->test('task-create', ['project' => $this->project])
+            ->set('title', 'Mit Erwähnung')
+            ->set('assigneeId', (string) $this->anna->id)
+            ->set('description', "@[Anna](user:{$this->anna->id}) bitte")
+            ->call('create');
+
+        Notification::assertSentToTimes($this->anna, TaskAssigned::class, 1);
+        Notification::assertNotSentTo($this->anna, UserMentioned::class);
+    }
+
+    public function test_somebody_else_who_is_mentioned_is_still_told(): void
+    {
+        $bert = User::factory()->create();
+        $this->project->setRole($bert, ProjectRole::Editor);
+
+        Livewire::actingAs($this->actor)->test('task-create', ['project' => $this->project])
+            ->set('title', 'Mit Erwähnung')
+            ->set('assigneeId', (string) $this->anna->id)
+            ->set('description', "@[Bert](user:{$bert->id}) schau mal")
+            ->call('create');
+
+        Notification::assertSentTo($bert, UserMentioned::class);
+        Notification::assertSentToTimes($this->anna, TaskAssigned::class, 1);
     }
 
     public function test_a_status_change_in_the_same_save_does_not_tell_the_new_assignee_twice(): void

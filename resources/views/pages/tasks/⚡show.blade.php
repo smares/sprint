@@ -1483,11 +1483,11 @@ new class extends Component
             {{-- In the flyout the bar stays at the bottom edge while the properties scroll: changes are only taken with "Save" --}}
             <div @class(['flex gap-3', 'sticky -bottom-5 z-10 -mx-5 border-t border-zinc-200 bg-white px-5 py-3 dark:border-zinc-700 dark:bg-zinc-800' => $panel])>
                 <flux:button type="submit" variant="primary">{{ __('Save') }}</flux:button>
-                <flux:button type="button" icon="document-duplicate" square class="sm:hidden" wire:click="duplicate" :aria-label="__('Duplicate')" :tooltip="__('Duplicate')" />
+                <div class="sm:hidden"><flux:button type="button" icon="document-duplicate" square wire:click="duplicate" :aria-label="__('Duplicate')" :tooltip="__('Duplicate')" /></div>
                 <flux:button type="button" icon="document-duplicate" class="max-sm:hidden" wire:click="duplicate">{{ __('Duplicate') }}</flux:button>
                 <flux:spacer />
                 <flux:modal.trigger name="delete-task">
-                    <flux:button variant="danger" icon="trash" square class="sm:hidden" :aria-label="__('Delete')" :tooltip="__('Delete')" />
+                    <div class="sm:hidden"><flux:button variant="danger" icon="trash" square :aria-label="__('Delete')" :tooltip="__('Delete')" /></div>
                     <flux:button variant="danger" icon="trash" class="max-sm:hidden">{{ __('Delete') }}</flux:button>
                 </flux:modal.trigger>
             </div>

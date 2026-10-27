@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Events\InboxUpdated;
 use App\Models\User;
 use App\Notifications\InboxPush;
+use App\Services\AppBuild;
 use App\Services\AutomationService;
 use App\Services\CelebrationService;
 use App\Services\LocaleService;
@@ -36,6 +37,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->singleton(AppBuild::class);
         $this->app->singleton(TaskSearchService::class);
         $this->app->singleton(RealtimeService::class);
         $this->app->singleton(AutomationService::class);

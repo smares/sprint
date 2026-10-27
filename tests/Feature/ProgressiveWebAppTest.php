@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Services\AppBuild;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -82,5 +83,25 @@ class ProgressiveWebAppTest extends TestCase
         // also the app's own "not found", which the service worker must show as it is
         $this->get('/there-is-no-such-page')->assertNotFound()->assertHeader('X-Sprint-App', '1');
         $this->actingAs(User::factory()->create())->get('/tasks/999999')->assertNotFound()->assertHeader('X-Sprint-App', '1');
+    }
+
+    public function test_every_answer_names_the_build_and_the_page_knows_its_own(): void
+    {
+        $build = app(AppBuild::class)->id();
+
+        $this->get('/up')->assertHeader('X-Sprint-Build', $build);
+        $this->get('/sw.js')->assertHeader('X-Sprint-Build', $build);
+        $this->get(route('login'))->assertSee('<meta name="sprint-build" content="'.$build.'"', false)
+            ->assertSee('Es gibt eine neue Version von Sprint.');
+    }
+
+    public function test_the_build_changes_with_the_release(): void
+    {
+        $before = app(AppBuild::class)->id();
+
+        config(['sprint.version' => '9.9.9']);
+        app()->forgetInstance(AppBuild::class);
+
+        $this->assertNotSame($before, app(AppBuild::class)->id());
     }
 }

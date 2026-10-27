@@ -150,7 +150,7 @@
         {{-- A page loaded before a deployment: its scripts may no longer fit the server. Not reloaded by itself, since something typed would be lost --}}
         @persist('update-available')
             <div x-data="{ outdated: false }" x-on:sprint-outdated.window="outdated = true" x-show="outdated" x-cloak role="status" class="fixed inset-x-0 bottom-4 z-50 flex justify-center px-4">
-                <div class="flex items-center gap-3 rounded-full bg-zinc-800 py-1.5 ps-4 pe-1.5 text-sm text-white shadow-lg dark:bg-zinc-100 dark:text-zinc-900">
+                <div class="flex items-center gap-3 rounded-full bg-zinc-800 py-2 ps-4 pe-3 text-sm text-white shadow-lg dark:bg-zinc-100 dark:text-zinc-900">
                     <flux:icon.arrow-path variant="micro" />
                     {{ __('A new version of :app is available.', ['app' => config('app.name')]) }}
                     <flux:button size="sm" variant="primary" x-on:click="window.location.reload()">{{ __('Reload') }}</flux:button>

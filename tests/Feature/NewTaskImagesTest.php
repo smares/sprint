@@ -8,10 +8,13 @@ use App\Models\Attachment;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
+use FilesystemIterator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -90,7 +93,7 @@ class NewTaskImagesTest extends TestCase
 
     public function test_textlinks_are_never_underlined_all_the_time(): void
     {
-        $directory = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(resource_path('views'), \FilesystemIterator::SKIP_DOTS));
+        $directory = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(resource_path('views'), FilesystemIterator::SKIP_DOTS));
 
         foreach ($directory as $file) {
             if (! str_ends_with($file->getFilename(), '.blade.php') || str_contains($file->getPathname(), '/mail/')) {
@@ -165,9 +168,7 @@ class NewTaskImagesTest extends TestCase
 
         $created = 0;
         Attachment::creating(function () use (&$created): void {
-            if (++$created === 2) {
-                throw new RuntimeException('Datenträger voll');
-            }
+            throw_if(++$created === 2, RuntimeException::class, 'Datenträger voll');
         });
 
         try {

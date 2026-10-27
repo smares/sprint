@@ -36,6 +36,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Throwable;
 
 #[Fillable(['project_id', 'parent_id', 'is_section', 'assignee_id', 'creator_id', 'title', 'description', 'status_id', 'position', 'start_date', 'due_date', 'completed_at', 'repeat_unit', 'repeat_interval', 'repeat_mode', 'repeat_until', 'repeat_day'])]
 class Task extends Model
@@ -579,7 +580,7 @@ class Task extends Model
                 'mime_type' => $file->getMimeType(),
                 'size' => $file->getSize(),
             ]);
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             // The file would be left without a row that knows it
             Storage::delete($path);
 
@@ -719,7 +720,7 @@ class Task extends Model
     {
         $assignee = $this->assignee_id === null ? null : $this->userById($this->assignee_id);
 
-        if ($assignee === null || $assignee->id === $except?->id || ! $assignee->isActive()) {
+        if (! $assignee instanceof User || $assignee->id === $except?->id || ! $assignee->isActive()) {
             return new Collection;
         }
 

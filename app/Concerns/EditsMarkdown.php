@@ -68,7 +68,8 @@ trait EditsMarkdown
 
     /**
      * The task a pasted address leads to, for the editor that turns it into a mention: null when it is another address, the task
-     * is gone, or the person may not see it (the address then stays as pasted). Nothing is kept: the title is read anew each time.
+     * is gone, not of this project (a title that is written into the text would reach readers who may not see that project), or
+     * the person may not see it (the address then stays as pasted, and is shown with the live title, if the reader may see it).
      *
      * @return array{id: int, title: string}|null
      */
@@ -76,9 +77,9 @@ trait EditsMarkdown
     public function resolveTaskLink(string $url): ?array
     {
         $id = MarkdownService::taskIdFromUrl(mb_substr($url, 0, 2000));
-        $task = $id === null ? null : Task::withoutSections()->with('project')->find($id);
+        $task = $id === null ? null : Task::withoutSections()->whereBelongsTo($this->mentionProject())->find($id);
 
-        return $task !== null && Gate::allows('view', $task->project) ? ['id' => $task->id, 'title' => $task->title] : null;
+        return $task !== null && Gate::allows('view', $this->mentionProject()) ? ['id' => $task->id, 'title' => $task->title] : null;
     }
 
     #[Renderless]

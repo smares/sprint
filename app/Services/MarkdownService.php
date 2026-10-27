@@ -68,7 +68,7 @@ class MarkdownService
             return self::PLACEHOLDER_START.(count($mentions) - 1).self::PLACEHOLDER_END;
         }, $withPlaceholders);
 
-        $html = self::linkedTasksAsMentions(self::convert($withPlaceholders, $cache), $mentions);
+        $html = self::linkedTasksAsMentions(self::withoutPlaceholdersInTags(self::convert($withPlaceholders, $cache)), $mentions);
 
         return new HtmlString(self::insertMentions($html, $mentions));
     }
@@ -111,19 +111,36 @@ class MarkdownService
     public static function taskIdFromUrl(string $url): ?int
     {
         $parts = parse_url(trim($url));
-        $hosts = array_filter([parse_url((string) config('app.url'), PHP_URL_HOST), parse_url(url('/'), PHP_URL_HOST)]);
 
-        if (! isset($parts['host']) || ! in_array(strtolower($parts['host']), array_map('strtolower', $hosts), true) || ! in_array($parts['scheme'] ?? '', ['http', 'https'], true)) {
+        if (! isset($parts['host']) || ! in_array($parts['scheme'] ?? '', ['http', 'https'], true)) {
             return null;
         }
 
-        if (preg_match('#^/tasks/(\d{1,18})/?$#', $parts['path'] ?? '', $match)) {
+        // The address of this installation: host and port (an instance on the same host with another port is another one)
+        $ours = collect([(string) config('app.url'), url('/')])->map(fn (string $own) => parse_url($own))->contains(
+            fn ($own) => is_array($own) && isset($own['host']) && strtolower($own['host']) === strtolower($parts['host']) && ($own['port'] ?? null) === ($parts['port'] ?? null),
+        );
+
+        if (! $ours) {
+            return null;
+        }
+
+        if (preg_match('#^/tasks/(\\d{1,18})/?$#', $parts['path'] ?? '', $match)) {
             return (int) $match[1];
         }
 
         parse_str($parts['query'] ?? '', $query);
 
-        return isset($query['task']) && is_string($query['task']) && preg_match('/^\d{1,18}$/', $query['task']) ? (int) $query['task'] : null;
+        return isset($query['task']) && is_string($query['task']) && preg_match('/^\\d{1,18}$/', $query['task']) ? (int) $query['task'] : null;
+    }
+
+    /**
+     * A placeholder written as an HTML entity (&#xE000;) is decoded by the converter, also inside an attribute such as the title of a
+     * link; it would be replaced there by markup with quotes, which breaks out of the attribute. Placeholders belong in the text only.
+     */
+    private static function withoutPlaceholdersInTags(string $html): string
+    {
+        return (string) preg_replace_callback('/<[^>]*>/', fn (array $tag): string => str_replace([self::PLACEHOLDER_START, self::PLACEHOLDER_END], '', $tag[0]), $html);
     }
 
     /**
@@ -131,7 +148,7 @@ class MarkdownService
      * installation becomes a mention of the task, shown with its title like `@[Title](task:7)`. A link with words of its own stays
      * as it is, and so does one to a task that is gone or that the reader may not see (see insertMentions).
      *
-     * @param  list<array{name: string, type: string, id: int, original?: string}>  $mentions
+     * @param  list<array{name: string, type: string, id: int, url?: string}>  $mentions
      */
     private static function linkedTasksAsMentions(string $html, array &$mentions): string
     {
@@ -139,7 +156,7 @@ class MarkdownService
             return $html;
         }
 
-        return (string) preg_replace_callback('#<a href="([^"]*)"[^>]*>([^<]*)</a>#', function (array $match) use (&$mentions): string {
+        return (string) preg_replace_callback('#<a\s[^>]*?href="([^"]*)"[^>]*>([^<]*)</a>#', function (array $match) use (&$mentions): string {
             $url = html_entity_decode($match[1]);
             $id = $url === html_entity_decode($match[2]) ? self::taskIdFromUrl($url) : null;
 
@@ -147,7 +164,7 @@ class MarkdownService
                 return $match[0];
             }
 
-            $mentions[] = ['name' => '', 'type' => 'task', 'id' => $id, 'original' => $match[0]];
+            $mentions[] = ['name' => '', 'type' => 'task', 'id' => $id, 'url' => $url];
 
             return self::PLACEHOLDER_START.(count($mentions) - 1).self::PLACEHOLDER_END;
         }, $html);
@@ -181,7 +198,7 @@ class MarkdownService
     }
 
     /**
-     * @param  list<array{name: string, type: string, id: int, original?: string}>  $mentions
+     * @param  list<array{name: string, type: string, id: int, url?: string}>  $mentions
      */
     private static function insertMentions(string $html, array $mentions): string
     {
@@ -229,8 +246,8 @@ class MarkdownService
 
                 $title = $tasks->get($mention['id']);
 
-                if ($title === null && isset($mention['original'])) {
-                    return $mention['original'];
+                if ($title === null && isset($mention['url'])) {
+                    return '<a href="'.e($mention['url']).'">'.e($mention['url']).'</a>';
                 }
 
                 return $title === null

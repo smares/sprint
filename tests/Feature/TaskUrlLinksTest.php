@@ -107,4 +107,35 @@ class TaskUrlLinksTest extends TestCase
     {
         $this->get(route('projects.show', $this->project))->assertOk()->assertSee('x-on:paste="onPaste($event)"', false)->assertSee('resolveTaskLink', false);
     }
+
+    public function test_a_placeholder_hidden_in_a_link_title_cannot_break_out_of_the_attribute(): void
+    {
+        $gone = route('projects.show', ['project' => $this->project, 'task' => $this->task->id + 1000, 'x' => '" onmouseover="alert(1)']);
+        $text = "[$gone](https://example.com \"&#xE000;0&#xE001;\")\n\n$gone";
+
+        $html = (string) MarkdownService::render($text);
+
+        $this->assertStringNotContainsString('onmouseover="alert', $html);
+        $this->assertStringNotContainsString("\u{E000}", $html);
+        $this->assertDoesNotMatchRegularExpression('/<a [^>]*onmouseover=/', $html);
+    }
+
+    public function test_an_address_with_another_port_is_not_ours(): void
+    {
+        $parts = parse_url(url('/'));
+        $other = $parts['scheme'].'://'.$parts['host'].':9999/tasks/'.$this->task->id;
+
+        $this->assertNull(MarkdownService::taskIdFromUrl($other));
+        $this->assertNull(MarkdownService::taskIdFromUrl(strtoupper(url('/')).'x'));
+    }
+
+    public function test_the_editor_only_turns_addresses_of_its_own_project_into_a_title(): void
+    {
+        $editor = Livewire::actingAs($this->anna)->test('task-create', ['project' => $this->project]);
+        $elsewhere = Project::factory()->create();
+        $elsewhere->setRole($this->anna, ProjectRole::Editor);
+        $foreign = Task::factory()->for($elsewhere)->create(['title' => 'Nur dort sichtbar']);
+
+        $this->assertNull($editor->instance()->resolveTaskLink(route('tasks.show', $foreign)));
+    }
 }

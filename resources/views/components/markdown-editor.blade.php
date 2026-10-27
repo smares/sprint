@@ -99,7 +99,7 @@
                 const url = new URL(address)
 
                 return /^https?:$/.test(url.protocol) && url.origin === window.location.origin
-                    && (/^\/tasks\/\d+\/?$/.test(url.pathname) || /^\d+$/.test(url.searchParams.get('task') ?? ''))
+                    && (/^\/tasks\/\d+\/?$/.test(url.pathname) || /^\d+$/.test(url.searchParams.getAll('task').at(-1) ?? ''))
             } catch {
                 return false
             }
@@ -126,13 +126,22 @@
                 return
             }
 
-            const token = '@[' + String(task.title).replace(/[\[\]\r\n]+/g, ' ').trim().slice(0, 255) + '](task:' + task.id + ')'
+            // As the list after @ writes it: brackets become parentheses, and a title of only blanks has no name to show
+            const title = [...String(task.title).replace(/\[/g, '(').replace(/\]/g, ')').replace(/\s+/g, ' ').trim()].slice(0, 255).join('')
+            const token = '@[' + (title || '#' + task.id) + '](task:' + task.id + ')'
             const end = found + address.length
             const [from, to] = [field.selectionStart, field.selectionEnd].map((caret) => (caret >= end ? caret + token.length - address.length : (caret > found ? found + token.length : caret)))
 
-            field.setRangeText(token, found, end, 'preserve')
+            // Typed into the focused field, the replacement stays in its undo history (Ctrl+Z gives the address back); in a field
+            // that is not focused (the person went elsewhere meanwhile) the text is set directly
+            field.setSelectionRange(found, end)
+
+            if (document.activeElement !== field || ! document.execCommand('insertText', false, token)) {
+                field.setRangeText(token, found, end, 'preserve')
+                field.dispatchEvent(new Event('input', { bubbles: true }))
+            }
+
             field.setSelectionRange(from, to)
-            field.dispatchEvent(new Event('input', { bubbles: true }))
         },
         onDrop(event) {
             const file = [...(event.dataTransfer?.files ?? [])].find((item) => item.type.startsWith('image/'))

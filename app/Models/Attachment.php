@@ -21,6 +21,9 @@ class Attachment extends Model
     /** Maximum upload size in kilobytes. */
     public const MAX_KILOBYTES = 20480;
 
+    /** The largest file an agent may send inside a tool call (Base64 inflates it by a third); bigger files go through an upload link. */
+    public const MAX_INLINE_BYTES = 1048576;
+
     /** Image types that may be shown inline; everything else is always downloaded. */
     public const INLINE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
 
@@ -39,6 +42,16 @@ class Attachment extends Model
             app(TaskSearchService::class)->index($attachment->task_id);
             app(RealtimeService::class)->taskContentChanged($attachment->task_id, 'attachment');
         });
+    }
+
+    /**
+     * A file name as it may be shown and offered for download: no folders, no control characters, at most 255 characters.
+     */
+    public static function cleanName(string $name): string
+    {
+        $name = trim((string) preg_replace('/[\x00-\x1F\x7F]+/u', '', basename(str_replace('\\', '/', $name))));
+
+        return in_array($name, ['', '.', '..'], true) ? 'file' : mb_substr($name, 0, 255);
     }
 
     /**

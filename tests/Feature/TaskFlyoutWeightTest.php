@@ -191,6 +191,8 @@ class TaskFlyoutWeightTest extends TestCase
             $page->call('loadPicker', $picker);
         }
 
+        $previousAssigneeId = $this->task->assignee_id;
+
         $page->set('assigneeId', (string) $this->members[10]->id)
             ->set('collaboratorIds', [(string) $this->members[11]->id, (string) $this->members[12]->id])
             ->set('tagIds', [(string) $this->tags[4]->id])
@@ -203,7 +205,8 @@ class TaskFlyoutWeightTest extends TestCase
         $task = $this->task->fresh();
         $this->assertSame($this->members[10]->id, $task->assignee_id);
         $this->assertSame($this->others[20]->id, $task->parent_id);
-        $this->assertEqualsCanonicalizing([$this->members[11]->id, $this->members[12]->id], $task->collaborators()->pluck('users.id')->all());
+        // Whoever had the task stays on it as a collaborator (see PreviousAssigneeJoinsTest)
+        $this->assertEqualsCanonicalizing(array_filter([$this->members[11]->id, $this->members[12]->id, $previousAssigneeId]), $task->collaborators()->pluck('users.id')->all());
         $this->assertSame([$this->tags[4]->id], $task->tags()->pluck('tags.id')->all());
         $this->assertSame([$this->others[21]->id], $task->blockers()->pluck('tasks.id')->all());
         $this->assertSame([$this->others[22]->id], $task->blocking()->pluck('tasks.id')->all());

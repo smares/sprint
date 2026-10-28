@@ -59,7 +59,7 @@ class ShortcutReloadsFormTest extends TestCase
 
         $page->assertDispatched('task-form-outdated')->assertSet('assigneeId', (string) $this->anna->id);
 
-        $page->call('reloadForm')->assertSet('assigneeId', (string) $this->rita->id);
+        $page->call('reloadFromServer')->assertSet('assigneeId', (string) $this->rita->id);
     }
 
     public function test_nothing_is_asked_when_no_rule_changed_anything(): void
@@ -71,7 +71,7 @@ class ShortcutReloadsFormTest extends TestCase
     {
         $page = Livewire::test('pages::tasks.show', ['task' => $this->task])->set('title', 'Getippt')->set('assigneeId', (string) $this->rita->id);
 
-        $page->call('reloadForm')->assertSet('title', $this->task->title)->assertSet('assigneeId', (string) $this->anna->id);
+        $page->call('reloadFromServer')->assertSet('title', $this->task->title)->assertSet('assigneeId', (string) $this->anna->id);
     }
 
     public function test_the_question_says_what_cancelling_means(): void
@@ -79,7 +79,7 @@ class ShortcutReloadsFormTest extends TestCase
         $this->ruleAssigningRita();
 
         Livewire::test('pages::tasks.show', ['task' => $this->task])->call('toggleDoneByShortcut')
-            ->assertDispatched('task-form-outdated', question: __('A rule has changed this task. Reload the form and discard unsaved changes? If you cancel, saving undoes the rule.'));
+            ->assertDispatched('task-form-outdated', question: __('A rule has just changed this task. Reload the form? Your unsaved input is lost. If you do not reload and save later, you overwrite what the rule changed.'));
     }
 
     public function test_a_rule_that_only_comments_does_not_ask(): void
@@ -112,7 +112,7 @@ class ShortcutReloadsFormTest extends TestCase
         $page = Livewire::test('pages::tasks.show', ['task' => $this->task])->call('assignToMeByShortcut');
 
         $page->assertDispatched('task-form-outdated')->assertSet('tagIds', []);
-        $page->call('reloadForm')->assertSet('tagIds', [(string) $tag->id])->assertSet('assigneeId', (string) $this->rita->id);
+        $page->call('reloadFromServer')->assertSet('tagIds', [(string) $tag->id])->assertSet('assigneeId', (string) $this->rita->id);
     }
 
     public function test_taking_the_task_with_m_asks_nothing_without_a_rule(): void
@@ -137,5 +137,35 @@ class ShortcutReloadsFormTest extends TestCase
         $this->actingAs($this->rita);
 
         Livewire::test('pages::tasks.show', ['task' => $this->task])->call('assignToMeByShortcut')->assertDispatched('task-form-outdated');
+    }
+
+    public function test_taking_the_task_with_m_asks_when_a_rule_sets_the_status(): void
+    {
+        Automation::factory()->create([
+            'project_id' => $this->project->id,
+            'created_by' => $this->anna->id,
+            'name' => 'Erledigt',
+            'trigger' => AutomationTrigger::AssigneeChanged,
+            'trigger_value' => $this->rita->id,
+            'actions' => [['type' => AutomationAction::SetStatus->value, 'value' => $this->project->doneStatus()->id]],
+        ]);
+        $this->actingAs($this->rita);
+
+        Livewire::test('pages::tasks.show', ['task' => $this->task])->call('assignToMeByShortcut')->assertDispatched('task-form-outdated');
+    }
+
+    public function test_taking_the_task_with_m_asks_nothing_when_the_rules_do_not_react(): void
+    {
+        Automation::factory()->create([
+            'project_id' => $this->project->id,
+            'created_by' => $this->anna->id,
+            'name' => 'Nur für Anna',
+            'trigger' => AutomationTrigger::AssigneeChanged,
+            'trigger_value' => $this->anna->id,
+            'actions' => [['type' => AutomationAction::SetStatus->value, 'value' => $this->project->doneStatus()->id]],
+        ]);
+        $this->actingAs($this->rita);
+
+        Livewire::test('pages::tasks.show', ['task' => $this->task])->call('assignToMeByShortcut')->assertNotDispatched('task-form-outdated');
     }
 }

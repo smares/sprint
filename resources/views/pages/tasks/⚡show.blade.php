@@ -4,6 +4,7 @@ use App\Enums\ActivityType;
 use App\Concerns\ConfirmsAutosave;
 use App\Concerns\EditsMarkdown;
 use App\Concerns\ListensForRealtime;
+use App\Enums\AutomationTrigger;
 use App\Enums\CustomFieldType;
 use App\Enums\RepeatMode;
 use App\Enums\RepeatUnit;
@@ -199,14 +200,14 @@ new class extends Component
             return;
         }
 
-        $before = $this->storedStateRulesChange();
+        $before = $this->storedStateRulesChange(AutomationTrigger::StatusChanged);
 
         $this->task->toggleDone();
         $this->statusId = (string) $this->task->status_id;
         $this->fillRepeatRule();
         $this->announceChange();
 
-        $this->askToReloadWhenRulesChangedTask($before);
+        $this->askToReloadWhenRulesChangedTask($before, AutomationTrigger::StatusChanged, ['status']);
     }
 
     /**
@@ -215,18 +216,20 @@ new class extends Component
      * whether something was typed (task-form-outdated).
      *
      * @param  array<string, mixed>|null  $before  the state before the shortcut, null when no rule could run
+     * @param  AutomationTrigger  $trigger  the trigger the shortcut fires, the only rules that can run
      * @param  list<string>  $expected  the parts of the state the shortcut itself changes
+     * @param  int|null  $expectedAssigneeId  who must hold the task afterwards, if the shortcut hands it over
      */
-    private function askToReloadWhenRulesChangedTask(?array $before, array $expected = []): void
+    private function askToReloadWhenRulesChangedTask(?array $before, AutomationTrigger $trigger, array $expected, ?int $expectedAssigneeId = null): void
     {
         if ($before === null) {
             return;
         }
 
-        $after = $this->storedStateRulesChange();
+        $after = $this->storedStateRulesChange($trigger);
 
-        if (Arr::except($after, $expected) !== Arr::except($before, $expected) || ($expected !== [] && $after['assignee'] !== auth()->id())) {
-            $this->dispatch('task-form-outdated', question: __('A rule has changed this task. Reload the form and discard unsaved changes? If you cancel, saving undoes the rule.'));
+        if (Arr::except($after, $expected) !== Arr::except($before, $expected) || ($expectedAssigneeId !== null && (int) $after['assignee'] !== $expectedAssigneeId)) {
+            $this->dispatch('task-form-outdated', question: __('A rule has just changed this task. Reload the form? Your unsaved input is lost. If you do not reload and save later, you overwrite what the rule changed.'));
         }
     }
 
@@ -235,15 +238,16 @@ new class extends Component
      *
      * @return array<string, mixed>|null null when the project has no enabled rule
      */
-    private function storedStateRulesChange(): ?array
+    private function storedStateRulesChange(AutomationTrigger $trigger): ?array
     {
-        if (! Automation::query()->enabled()->where('project_id', $this->task->project_id)->exists()) {
+        if (! Automation::query()->enabled()->where('project_id', $this->task->project_id)->where('trigger', $trigger)->exists()) {
             return null;
         }
 
         $task = Task::query()->with(['tags:id', 'collaborators:id', 'fieldValues'])->findOrFail($this->task->getKey());
 
         return [
+            'status' => $task->status_id,
             'assignee' => $task->assignee_id,
             'due' => $task->due_date?->toDateString(),
             'start' => $task->start_date?->toDateString(),
@@ -270,14 +274,14 @@ new class extends Component
             return;
         }
 
-        $before = $this->storedStateRulesChange();
+        $before = $this->storedStateRulesChange(AutomationTrigger::AssigneeChanged);
 
         $this->task->assignTo(auth()->user());
         $this->assigneeId = (string) auth()->id();
         $this->collaboratorIds = $this->storedCollaboratorIds();
         $this->announceChange();
 
-        $this->askToReloadWhenRulesChangedTask($before, ['assignee', 'collaborators']);
+        $this->askToReloadWhenRulesChangedTask($before, AutomationTrigger::AssigneeChanged, ['assignee', 'collaborators'], (int) auth()->id());
 
         Flux::toast(variant: 'success', text: __('Assigned to you.'));
     }
@@ -359,21 +363,6 @@ new class extends Component
         $this->collaboratorIds = $this->storedCollaboratorIds();
         $this->blockerIds = $this->task->blockers()->pluck('tasks.id')->map(fn ($id) => (string) $id)->all();
         $this->blockingIds = $this->task->blocking()->pluck('tasks.id')->map(fn ($id) => (string) $id)->all();
-    }
-
-    /**
-     * Load the form anew, dropping what was typed and not saved. The page asks for it (see task-form-outdated) once a rule changed
-     * the task, and where something was typed only after the person agreed.
-     */
-    public function reloadForm(): void
-    {
-        $this->task->refresh();
-        $this->fillForm();
-        $this->changedElsewhere = false;
-        $this->resetErrorBag();
-
-        // The editors show the text of the server again
-        $this->dispatch('task-saved');
     }
 
     public function updatedNotificationsOn(bool $value): void

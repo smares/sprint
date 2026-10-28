@@ -718,10 +718,10 @@ const registerTaskFlyout = () => {
         return Boolean(component) && properties.some((property) => JSON.stringify(component.canonical[property]) !== JSON.stringify(component.reactive[property]))
     }
 
-    // A rule changed the task while the form was open (the "e" key finished it): the form shows what was stored before. Loaded
+    // A rule changed the task while the form was open (the "e" or "m" key changed it): the form shows what was stored before. Loaded
     // anew at once when nothing was typed, and otherwise only if the person agrees, as it drops what they typed.
     window.addEventListener('task-form-outdated', (event) => {
-        const form = event.target.closest?.('[wire\\:id]')?.querySelector('form[data-task-form]') ?? document.querySelector('form[data-task-form]')
+        const form = event.target.closest?.('[wire\\:id]')?.querySelector('form[data-task-form]')
         const component = form ? componentOf(form) : null
 
         if (! component) {
@@ -732,7 +732,7 @@ const registerTaskFlyout = () => {
             return
         }
 
-        window.Livewire.find(form.closest('[wire\\:id]').getAttribute('wire:id')).call('reloadForm')
+        window.Livewire.find(form.closest('[wire\\:id]').getAttribute('wire:id')).call('reloadFromServer')
     })
 
     // Saved or loaded anew: what was sent before is on the server now

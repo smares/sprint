@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\PersonalAccessToken;
 
 /**
@@ -33,7 +34,7 @@ class McpUploadController extends Controller
 
         $user = User::query()->find($grant['user']);
         abort_unless($user instanceof User && $user->isActive(), 403, 'This link is no longer valid.');
-        abort_unless($this->tokenStillAllowsWriting($grant['token'] ?? null), 403, 'The access token of this link is gone or read-only.');
+        abort_unless($this->tokenStillAllowsWriting($grant['token'] ?? null), 403, 'The access token of this link is gone, expired or read-only.');
 
         $task = Task::query()
             ->withoutSections()
@@ -42,7 +43,8 @@ class McpUploadController extends Controller
         abort_if($task === null, 404, 'Task not found.');
         abort_unless(Gate::forUser($user)->allows('edit', $task->project), 403, 'You may not change tasks in this project.');
 
-        abort_if(str_starts_with(strtolower((string) $request->header('Content-Type')), 'multipart/'), 415, 'Send the raw file as the request body (curl -T file URL), not multipart/form-data.');
+        // PHP reads these two kinds of bodies itself (and in a different way on 8.3 and 8.4), so only a raw body reaches the file unchanged
+        abort_if(Str::of((string) $request->header('Content-Type'))->lower()->startsWith(['multipart/', 'application/x-www-form-urlencoded']), 415, 'Send the raw file as the request body: curl -T file -H "Content-Type: application/octet-stream" URL (not -F, not --data).');
 
         $limit = Attachment::MAX_KILOBYTES * 1024;
         abort_if((int) $request->header('Content-Length') > $limit, 413, "The file is larger than {$limit} bytes.");
@@ -50,9 +52,10 @@ class McpUploadController extends Controller
         $lock = Cache::lock(self::grantKey($key).':lock', 300);
         abort_unless($lock->get(), 409, 'An upload with this link is already running.');
 
-        $path = (string) tempnam(sys_get_temp_dir(), 'sprint-upload-');
+        $path = '';
 
         try {
+            $path = (string) tempnam(sys_get_temp_dir(), 'sprint-upload-');
             abort_unless(Cache::has(self::grantKey($key)), 404, 'This link is invalid, expired or already used.');
 
             $size = $this->receive($request, $path, $limit);
@@ -70,15 +73,11 @@ class McpUploadController extends Controller
     }
 
     /**
-     * Links that were issued to a token only work while that token exists and may write (links from tests or sessions carry none).
+     * Links only work while the token they were issued to exists, has not expired and may write.
      */
     private function tokenStillAllowsWriting(mixed $tokenId): bool
     {
-        if ($tokenId === null) {
-            return true;
-        }
-
-        $token = PersonalAccessToken::query()->find($tokenId);
+        $token = $tokenId === null ? null : PersonalAccessToken::query()->find($tokenId);
 
         return $token instanceof PersonalAccessToken && $token->can('write') && ($token->expires_at === null || $token->expires_at->isFuture());
     }
@@ -88,32 +87,12 @@ class McpUploadController extends Controller
      */
     private function receive(Request $request, string $path, int $limit): int
     {
-        $input = $request->getContent(true);
         $output = fopen($path, 'wb');
-        $size = 0;
+        $copied = stream_copy_to_stream($request->getContent(true), $output, $limit + 1);
 
-        while (is_resource($input) && ! feof($input)) {
-            $chunk = fread($input, 65536);
+        abort_if(! fclose($output) || $copied === false, 507, 'The file could not be stored (disk full?).');
+        abort_if($copied > $limit, 413, "The file is larger than {$limit} bytes.");
 
-            if ($chunk === false) {
-                break;
-            }
-
-            $size += strlen($chunk);
-
-            if ($size > $limit) {
-                fclose($output);
-                abort(413, "The file is larger than {$limit} bytes.");
-            }
-
-            if (fwrite($output, $chunk) !== strlen($chunk)) {
-                fclose($output);
-                abort(507, 'The file could not be stored (disk full?).');
-            }
-        }
-
-        fclose($output);
-
-        return $size;
+        return $copied;
     }
 }

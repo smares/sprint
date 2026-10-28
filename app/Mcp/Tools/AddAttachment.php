@@ -14,9 +14,10 @@ use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Name;
+use Laravel\Sanctum\PersonalAccessToken;
 
 #[Name('add-attachment')]
-#[Description('Attaches a file to a task as the token owner. Small files (up to 1 MB) go in content_base64. Without content_base64 the tool returns a one-time upload URL (valid for 10 minutes, keep it secret) for files up to 20 MB: send the file with an HTTP PUT whose body is the raw file, for example `curl -T file "URL"` (not multipart, so no `curl -F`). Files cannot be downloaded through this server.')]
+#[Description('Attaches a file to a task as the token owner. Small files (up to 1 MB) go in content_base64. Without content_base64 the tool returns a one-time upload URL (valid for 10 minutes, keep it secret) for files up to 20 MB: send the file with an HTTP PUT whose body is the raw file, for example `curl -T file -H "Content-Type: application/octet-stream" "URL"` (not multipart, so no `curl -F` or `--data`). Files cannot be downloaded through this server.')]
 class AddAttachment extends SprintTool
 {
     private const int LINK_MINUTES = 10;
@@ -77,20 +78,23 @@ class AddAttachment extends SprintTool
      */
     private function uploadLink(int $taskId, User $user, string $name): Response
     {
+        $token = $user->currentAccessToken();
+        throw_unless($token instanceof PersonalAccessToken, ToolFailure::class, 'Upload links need an access token.');
+
         $expires = now()->addMinutes(self::LINK_MINUTES);
         $key = Str::random(40);
 
         Cache::put(McpUploadController::grantKey($key), [
             'task' => $taskId,
             'user' => $user->id,
-            'token' => $user->currentAccessToken()?->getKey(),
+            'token' => $token->getKey(),
             'name' => $name,
         ], $expires);
 
         return Response::json([
             'upload_url' => route('mcp.uploads.store', $key),
             'method' => 'PUT',
-            'how' => 'Send the raw file as the request body, e.g. curl -T <file> "<upload_url>". Do not use multipart/form-data (curl -F).',
+            'how' => 'Send the raw file as the request body: curl -T <file> -H "Content-Type: application/octet-stream" "<upload_url>". Do not use multipart/form-data (curl -F) or curl --data.',
             'expires_at' => $expires->toIso8601String(),
             'max_bytes' => Attachment::MAX_KILOBYTES * 1024,
             'single_use' => true,

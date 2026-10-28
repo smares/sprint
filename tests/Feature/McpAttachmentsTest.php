@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\ProjectRole;
+use App\Http\Controllers\McpUploadController;
 use App\Mcp\Servers\SprintServer;
 use App\Mcp\Tools\AddAttachment;
 use App\Mcp\Tools\GetTask;
@@ -11,6 +12,7 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Mcp\Server\Testing\TestResponse;
 use Tests\TestCase;
@@ -42,6 +44,16 @@ class McpAttachmentsTest extends TestCase
     }
 
     /**
+     * What `curl -T file -H "Content-Type: application/octet-stream" URL` sends.
+     *
+     * @param  array<string, mixed>  $server
+     */
+    private function upload(string $url, string $body, array $server = []): \Illuminate\Testing\TestResponse
+    {
+        return $this->call('PUT', $url, [], [], [], ['CONTENT_TYPE' => 'application/octet-stream'] + $server, $body);
+    }
+
+    /**
      * Asks for an upload link over HTTP with a real token and returns it.
      */
     private function link(string $name = 'bericht.txt', ?string $token = null): string
@@ -58,6 +70,7 @@ class McpAttachmentsTest extends TestCase
         $this->assertSame('PUT', $link['method']);
         $this->assertTrue($link['single_use']);
         $this->assertStringContainsString('curl -T', $link['how']);
+        $this->assertStringContainsString('application/octet-stream', $link['how']);
 
         return $link['upload_url'];
     }
@@ -126,7 +139,7 @@ class McpAttachmentsTest extends TestCase
 
         $this->assertMatchesRegularExpression('#/mcp-uploads/[A-Za-z0-9]{40}$#', $url);
 
-        $this->call('PUT', $url, [], [], [], [], "Zeile 1\nZeile 2\n")->assertCreated()->assertJsonPath('name', 'bericht.txt')->assertJsonPath('size', 16);
+        $this->upload($url, "Zeile 1\nZeile 2\n")->assertCreated()->assertJsonPath('name', 'bericht.txt')->assertJsonPath('size', 16);
 
         $attachment = $this->task->attachments()->sole();
         $this->assertSame($this->user->id, $attachment->user_id);
@@ -134,7 +147,7 @@ class McpAttachmentsTest extends TestCase
         Storage::assertExists($attachment->path);
         $this->assertSame(1, $this->task->activities()->where('type', 'attachments_added')->count());
 
-        $this->call('PUT', $url, [], [], [], [], 'noch einmal')->assertNotFound()->assertJsonPath('message', 'This link is invalid, expired or already used.');
+        $this->upload($url, 'noch einmal')->assertNotFound()->assertJsonPath('message', 'This link is invalid, expired or already used.');
         $this->assertSame(1, $this->task->attachments()->count());
     }
 
@@ -154,12 +167,12 @@ class McpAttachmentsTest extends TestCase
 
     public function test_unknown_and_expired_links_are_refused(): void
     {
-        $this->call('PUT', route('mcp.uploads.store', str_repeat('a', 40)), [], [], [], [], 'x')->assertNotFound();
-        $this->call('PUT', '/mcp-uploads/kurz', [], [], [], [], 'x')->assertNotFound();
+        $this->upload(route('mcp.uploads.store', str_repeat('a', 40)), 'x')->assertNotFound();
+        $this->upload('/mcp-uploads/kurz', 'x')->assertNotFound();
 
         $url = $this->link();
         $this->travel(11)->minutes();
-        $this->call('PUT', $url, [], [], [], [], 'x')->assertNotFound();
+        $this->upload($url, 'x')->assertNotFound();
 
         $this->assertSame(0, $this->task->attachments()->count());
     }
@@ -170,15 +183,15 @@ class McpAttachmentsTest extends TestCase
 
         $revoked = $this->link('a.txt', $token->plainTextToken);
         $token->accessToken->delete();
-        $this->call('PUT', $revoked, [], [], [], [], 'x')->assertForbidden();
+        $this->upload($revoked, 'x')->assertForbidden();
 
         $viewerLink = $this->link();
         $this->project->setRole($this->user, ProjectRole::Viewer);
-        $this->call('PUT', $viewerLink, [], [], [], [], 'x')->assertForbidden();
+        $this->upload($viewerLink, 'x')->assertForbidden();
 
         $this->project->setRole($this->user, ProjectRole::Editor);
         $this->user->update(['deactivated_at' => now()]);
-        $this->call('PUT', $viewerLink, [], [], [], [], 'x')->assertForbidden();
+        $this->upload($viewerLink, 'x')->assertForbidden();
 
         $this->assertSame(0, $this->task->attachments()->count());
     }
@@ -187,12 +200,14 @@ class McpAttachmentsTest extends TestCase
     {
         $url = $this->link();
 
-        $this->call('PUT', $url, [], [], [], [], '')->assertStatus(422);
-        $this->call('PUT', $url, [], [], [], [], str_repeat('x', Attachment::MAX_KILOBYTES * 1024 + 1))->assertStatus(413);
+        $this->upload($url, '')->assertStatus(422);
+        $this->upload($url, str_repeat('x', Attachment::MAX_KILOBYTES * 1024 + 1))->assertStatus(413);
         $this->call('PUT', $url, [], [], [], ['CONTENT_TYPE' => 'multipart/form-data; boundary=x'], "--x\r\n--x--")->assertStatus(415)->assertJsonPath('message', fn (string $message) => str_contains($message, 'curl -T'));
+        $this->call('PUT', $url, [], [], [], ['CONTENT_TYPE' => 'application/x-www-form-urlencoded'], 'a=b')->assertStatus(415);
+        $this->upload($url, 'klein', ['CONTENT_LENGTH' => Attachment::MAX_KILOBYTES * 1024 + 1])->assertStatus(413);
         $this->assertSame(0, $this->task->attachments()->count());
 
-        $this->call('PUT', $url, [], [], [], [], 'jetzt richtig')->assertCreated();
+        $this->upload($url, 'jetzt richtig')->assertCreated();
         $this->assertSame(1, $this->task->attachments()->count());
     }
 
@@ -200,6 +215,34 @@ class McpAttachmentsTest extends TestCase
     {
         $url = $this->link();
 
-        $this->call('PUT', $url, [], [], [], [], 'ohne Anmeldung')->assertCreated()->assertCookieMissing(config('session.cookie'));
+        $this->upload($url, 'ohne Anmeldung')->assertCreated()->assertCookieMissing(config('session.cookie'));
+    }
+
+    public function test_a_token_that_has_expired_since_stops_the_link(): void
+    {
+        $token = $this->user->createToken('Agent', ['read', 'write']);
+        $url = $this->link('a.txt', $token->plainTextToken);
+
+        $token->accessToken->forceFill(['expires_at' => now()->subMinute()])->save();
+
+        $this->upload($url, 'x')->assertForbidden();
+        $this->assertSame(0, $this->task->attachments()->count());
+    }
+
+    public function test_an_upload_that_is_already_running_does_not_use_up_the_link(): void
+    {
+        $url = $this->link();
+        $lock = Cache::lock(McpUploadController::grantKey(basename($url)).':lock', 60);
+        $this->assertTrue($lock->get());
+
+        $this->upload($url, 'x')->assertStatus(409);
+
+        $lock->release();
+        $this->upload($url, 'x')->assertCreated();
+    }
+
+    public function test_links_need_an_access_token(): void
+    {
+        $this->tool(['name' => 'a.txt'])->assertHasErrors(['access token']);
     }
 }

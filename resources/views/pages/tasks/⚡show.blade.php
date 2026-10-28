@@ -187,7 +187,8 @@ new class extends Component
     }
 
     /**
-     * The "e" key: done or open again, without touching what is being edited in the form.
+     * The "e" key: done or open again, without touching what is being edited in the form (unless a rule changed the task: then the
+     * page asks whether to reload it).
      */
     #[On('shortcut-toggle-done')]
     public function toggleDoneByShortcut(): void
@@ -196,10 +197,37 @@ new class extends Component
             return;
         }
 
+        $before = $this->storedStateRulesChange();
+
         $this->task->toggleDone();
         $this->statusId = (string) $this->task->status_id;
         $this->fillRepeatRule();
         $this->announceChange();
+
+        // A rule that fires on "done" may have handed the task on or moved its dates: the form still shows the old values, and
+        // saving it would undo the rule. The page decides, as only it knows whether something was typed (task-form-outdated).
+        if ($this->storedStateRulesChange() !== $before) {
+            $this->dispatch('task-form-outdated', question: __('A rule has changed this task. Reload the form and discard what you have not saved?'));
+        }
+    }
+
+    /**
+     * What a rule can change on this task and the form shows, as stored now.
+     *
+     * @return array<string, mixed>
+     */
+    private function storedStateRulesChange(): array
+    {
+        $task = Task::query()->with(['tags:id', 'collaborators:id', 'fieldValues'])->findOrFail($this->task->getKey());
+
+        return [
+            'assignee' => $task->assignee_id,
+            'due' => $task->due_date?->toDateString(),
+            'start' => $task->start_date?->toDateString(),
+            'tags' => $task->tags->pluck('id')->sort()->values()->all(),
+            'collaborators' => $task->collaborators->pluck('id')->sort()->values()->all(),
+            'fields' => $task->fieldValues->mapWithKeys(fn ($value) => [$value->custom_field_id => (string) ($value->option_id ?? $value->value)])->sortKeys()->all(),
+        ];
     }
 
     /**
@@ -281,6 +309,16 @@ new class extends Component
             $this->dispatch('inbox-changed');
         }
 
+        $this->fillForm();
+        $this->notificationsOn = ! $this->task->isMutedBy(auth()->user());
+        $this->sectionTitles = $this->subtreeTasks->where('is_section', true)->pluck('title', 'id')->all();
+    }
+
+    /**
+     * The form as the task is stored.
+     */
+    private function fillForm(): void
+    {
         $this->title = $this->task->title;
         $this->description = $this->task->description ?? '';
         $this->statusId = (string) $this->task->status_id;
@@ -289,13 +327,22 @@ new class extends Component
         $this->startDate = $this->task->start_date?->format('Y-m-d') ?? '';
         $this->fillRepeatRule();
         $this->fieldValues = $this->storedFieldValues();
-        $this->notificationsOn = ! $this->task->isMutedBy(auth()->user());
         $this->parentId = (string) ($this->task->parent_id ?? '');
-        $this->sectionTitles = $this->subtreeTasks->where('is_section', true)->pluck('title', 'id')->all();
-        $this->tagIds = $this->task->tags->pluck('id')->map(fn ($id) => (string) $id)->all();
-        $this->collaboratorIds = $this->task->collaborators()->pluck('users.id')->map(fn ($id) => (string) $id)->all();
+        $this->tagIds = $this->task->tags()->pluck('tags.id')->map(fn ($id) => (string) $id)->all();
+        $this->collaboratorIds = $this->storedCollaboratorIds();
         $this->blockerIds = $this->task->blockers()->pluck('tasks.id')->map(fn ($id) => (string) $id)->all();
         $this->blockingIds = $this->task->blocking()->pluck('tasks.id')->map(fn ($id) => (string) $id)->all();
+    }
+
+    /**
+     * Load the form anew, dropping what was typed and not saved. The page asks for it (see task-form-outdated) once a rule changed
+     * the task, and where something was typed only after the person agreed.
+     */
+    public function reloadForm(): void
+    {
+        $this->task->refresh();
+        $this->fillForm();
+        $this->resetErrorBag();
     }
 
     public function updatedNotificationsOn(bool $value): void

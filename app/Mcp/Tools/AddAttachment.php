@@ -17,7 +17,7 @@ use Laravel\Mcp\Server\Attributes\Name;
 use Laravel\Sanctum\PersonalAccessToken;
 
 #[Name('add-attachment')]
-#[Description('Attaches a file to a task as the token owner. Small files (up to 1 MB) go in content_base64. Without content_base64 the tool returns a one-time upload URL (valid for 10 minutes, keep it secret) for files up to 20 MB: send the file with an HTTP PUT whose body is the raw file, for example `curl -T file -H "Content-Type: application/octet-stream" "URL"` (not multipart, so no `curl -F` or `--data`). Files cannot be downloaded through this server.')]
+#[Description('Attaches a file to a task as the token owner. Small files (up to 1 MB) go in content_base64. Without content_base64 the tool returns a one-time upload URL (valid for 10 minutes, keep it secret) for files up to 20 MB, which needs a client that can run commands (without a shell, use content_base64): send the file with an HTTP PUT whose body is the raw file, for example `curl -T file -H "Content-Type: application/octet-stream" "URL"` (not multipart, so no `curl -F` or `--data`). Files cannot be downloaded through this server.')]
 class AddAttachment extends SprintTool
 {
     private const int LINK_MINUTES = 10;

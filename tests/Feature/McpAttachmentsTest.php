@@ -14,7 +14,10 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
+use Laravel\Mcp\Server\Attributes\Description;
+use Laravel\Mcp\Server\Attributes\Instructions;
 use Laravel\Mcp\Server\Testing\TestResponse;
+use ReflectionClass;
 use Tests\TestCase;
 
 class McpAttachmentsTest extends TestCase
@@ -245,5 +248,21 @@ class McpAttachmentsTest extends TestCase
     public function test_links_need_an_access_token(): void
     {
         $this->tool(['name' => 'a.txt'])->assertHasErrors(['access token']);
+    }
+
+    public function test_agents_learn_how_to_send_files_from_the_server_instructions_and_the_tool(): void
+    {
+        $instructions = (new ReflectionClass(SprintServer::class))->getAttributes(Instructions::class)[0]->newInstance()->value;
+        $description = (new ReflectionClass(AddAttachment::class))->getAttributes(Description::class)[0]->newInstance()->value;
+
+        $this->assertStringContainsString('Base64', $instructions);
+        $this->assertStringContainsString('shell', $instructions);
+        $this->assertStringContainsString('content_base64', $description);
+        $this->assertStringContainsString('without a shell', $description);
+        $this->assertStringContainsString('1 MB', $instructions);
+        $this->assertStringContainsString('upload URL', $instructions);
+        $this->assertStringContainsString('curl -T', $description);
+        $this->assertStringContainsString('application/octet-stream', $description);
+        $this->assertStringContainsString('not multipart', $description);
     }
 }

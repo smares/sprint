@@ -9,6 +9,7 @@ use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Mockery;
 use PDO;
@@ -68,7 +69,7 @@ class BackupTest extends TestCase
         $copy = tempnam(sys_get_temp_dir(), 'restored-');
         file_put_contents($copy, $contents['database.sqlite']);
         $emails = (new PDO("sqlite:{$copy}"))->query('select email from users')->fetchAll(PDO::FETCH_COLUMN);
-        unlink($copy);
+        File::delete($copy);
         $this->assertSame(['anna@example.com'], $emails);
 
         $this->assertTrue(app(BackupService::class)->lastRun()['ok']);

@@ -22,6 +22,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Symfony\Component\Mime\MimeTypes;
@@ -1355,7 +1356,7 @@ class AsanaImportService
             Storage::disk()->writeStream($path, $stream);
             fclose($stream);
         } finally {
-            @unlink($temporary);
+            File::delete($temporary);
         }
 
         // Whoever uploaded the file in Asana; without a matching account the importer stands there, as for comments

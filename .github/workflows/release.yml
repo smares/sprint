@@ -62,7 +62,7 @@ jobs:
           fi
           status="$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $token" "https://ghcr.io/v2/$repository/tags/list")"
           if [ "$status" = "200" ]; then
-            echo "::error::The package ghcr.io/$repository can be read without a login. Set it to private (profile → Packages → sprint → Package settings → Change visibility) before releasing; the Flux Pro license does not allow publishing it."
+            echo "::error::The package ghcr.io/$repository can be read without a login. Set it to private (profile → Packages → sprint → Package settings → Change visibility) before releasing; each production install needs its own Flux Pro license, so the image must stay private."
             exit 1
           fi
 
@@ -151,7 +151,7 @@ jobs:
           labels: |
             org.opencontainers.image.title=Sprint
             org.opencontainers.image.version=${{ inputs.version }}
-            org.opencontainers.image.licenses=Apache-2.0 WITH Commons-Clause
+            org.opencontainers.image.licenses=Apache-2.0 AND LicenseRef-Commons-Clause
 
       - name: Build image
         id: build
@@ -236,7 +236,7 @@ jobs:
           VERSION: ${{ inputs.version }}
         run: docker buildx imagetools inspect "$IMAGE:$VERSION"
 
-      # The image contains the code of Flux Pro, whose license does not allow passing it on:
+      # The image contains the code of Flux Pro, whose license ties each production install to its own license, so the image must stay private:
       # the package must stay private. Fails the release only if it can be pulled without a login;
       # a refused request for an anonymous token or manifest (401, 403, 404) is what a private package answers.
       - name: The image must not be public
@@ -251,7 +251,7 @@ jobs:
           fi
           status="$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $token" -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json' "https://ghcr.io/v2/$repository/manifests/$VERSION")"
           if [ "$status" = "200" ]; then
-            echo "::error::The package ghcr.io/$repository can be pulled without a login. Set it to private (profile → Packages → sprint → Package settings → Change visibility) and turn off 'Inherit access from source repository'; the Flux Pro license does not allow publishing it."
+            echo "::error::The package ghcr.io/$repository can be pulled without a login. Set it to private (profile → Packages → sprint → Package settings → Change visibility) and turn off 'Inherit access from source repository'; each production install needs its own Flux Pro license, so the image must stay private."
             exit 1
           fi
           echo "The manifest is refused without a login (HTTP $status): the package is private."

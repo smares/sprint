@@ -4,12 +4,12 @@ Copyright (c) 2026 Sebastian Mares
 
 Lizenziert unter der Apache License 2.0 mit der Commons Clause License
 Condition v1.0 (beides unten). Kurz gesagt: Sie dürfen Sprint nutzen, auch
-betrieblich selbst hosten, verändern und intern weitergeben. Sie dürfen Sprint
-aber nicht „verkaufen“: Das umfasst, Dritten gegen Entgelt ein Produkt oder einen
-Dienst anzubieten, dessen Wert ganz oder im Wesentlichen aus Sprint stammt,
-einschließlich Hosting sowie Beratung oder Support rund um Sprint. Lizenz- und
-Urhebervermerke müssen erhalten bleiben, geänderte Dateien sind zu
-kennzeichnen. Maßgeblich ist allein der englische Lizenztext.
+betrieblich selbst hosten, verändern und weitergeben (auch öffentlich), solange
+nicht gegen Entgelt. Sie dürfen Sprint nicht „verkaufen“: Das umfasst, Dritten
+gegen Entgelt (auch für Hosting, Beratung oder Support) ein Produkt oder einen
+Dienst anzubieten, dessen Wert ganz oder im Wesentlichen aus Sprint stammt. Bei
+Weitergabe müssen Lizenz- und Urhebervermerke erhalten bleiben, geänderte Dateien
+sind zu kennzeichnen. Maßgeblich ist allein der englische Lizenztext.
 
 Drittkomponenten, insbesondere Flux UI Pro, unterliegen ihren eigenen
 Lizenzbedingungen und sind nicht Teil dieser Lizenz. Flux UI Pro ist

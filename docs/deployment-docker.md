@@ -66,7 +66,7 @@ REVERB_SCHEME=https       # lokal http
 
 ## Fertiges Image
 
-Mit jedem Release baut GitHub das Image und legt es für `amd64` und `arm64` (Raspberry Pi, Apple-Silicon-Server, Graviton) unter `ghcr.io/smares/sprint` ab (Tags `0.1.0`, `0.1` und `latest`; `latest` zeigt auf die jüngste Version ohne Vorabkennung). Damit muss der Server nichts bauen und braucht keinen Flux-Pro-Zugang. Die Datei `compose.image.yaml` ist derselbe Stack wie `compose.yaml`, nur mit diesem Image:
+Mit jedem Release baut GitHub das Image und legt es für `amd64` und `arm64` (Raspberry Pi, Apple-Silicon-Server, Graviton) unter `ghcr.io/smares/sprint` ab (Tags `0.1.0`, `0.1` und `latest`; `latest` zeigt auf die jüngste Version ohne Vorabkennung). Damit muss der Server nichts bauen und braucht keinen Flux-Zugang zum Bauen (eine eigene Flux-Pro-Lizenz trotzdem, siehe unten). Die Datei `compose.image.yaml` ist derselbe Stack wie `compose.yaml`, nur mit diesem Image:
 
 ```bash
 docker login ghcr.io                                  # einmal; Benutzername und ein Token mit read:packages
@@ -76,7 +76,7 @@ SPRINT_VERSION=x.y.z docker compose -f compose.image.yaml up -d   # x.y.z durch 
 
 `SPRINT_VERSION` in die `.env` zu schreiben genügt; ohne Angabe gilt `latest`. Der Befehl für Live-Updates ist `--profile realtime`, wie beim Selbstbauen.
 
-**Das Paket ist privat.** Es enthält den Quellcode von Flux UI Pro, dessen Lizenz jede Installation an eine eigene Flux-Pro-Lizenz bindet; deshalb darf das Paket nicht öffentlich werden, und wer ein Image betreibt, braucht eine eigene Lizenz (auf GitHub: Profil → Packages → `sprint` → Package settings: Sichtbarkeit *Private*, den Haken *Inherit access from source repository* entfernen, sonst darf jede Person mit Zugriff auf das öffentliche Repository auch das Paket lesen, und unter *Manage Actions access* das Repository mit der Rolle *Write* eintragen, damit der Release-Workflow schreiben darf; beides ist nur einmal nach dem ersten Release nötig). Wer Zugriff haben soll, braucht dort Leserechte und für `docker login` ein *personal access token (classic)* mit `read:packages`. Der Release-Workflow bricht ab, wenn er das Paket ohne Anmeldung ziehen kann.
+**Das Paket ist privat.** Es enthält den Quellcode von Flux UI Pro, dessen Lizenz jede Produktivumgebung an eine eigene Flux-Pro-Lizenz bindet; deshalb darf das Paket nicht öffentlich werden, und wer ein Image betreibt, braucht eine eigene Lizenz (auf GitHub: Profil → Packages → `sprint` → Package settings: Sichtbarkeit *Private*, den Haken *Inherit access from source repository* entfernen, sonst darf jede Person mit Zugriff auf das öffentliche Repository auch das Paket lesen, und unter *Manage Actions access* das Repository mit der Rolle *Write* eintragen, damit der Release-Workflow schreiben darf; beides ist nur einmal nach dem ersten Release nötig). Wer Zugriff haben soll, braucht dort Leserechte und für `docker login` ein *personal access token (classic)* mit `read:packages`. Der Release-Workflow bricht ab, wenn er das Paket ohne Anmeldung ziehen kann.
 
 Hinter einem eigenen Traefik: [Bereitstellung hinter Traefik](deployment-traefik.md). Die anderen Wege bleiben: `compose.yaml` baut selbst (mit eigenem Flux-Zugang), siehe oben.
 

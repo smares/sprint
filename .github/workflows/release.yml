@@ -151,7 +151,7 @@ jobs:
           labels: |
             org.opencontainers.image.title=Sprint
             org.opencontainers.image.version=${{ inputs.version }}
-            org.opencontainers.image.licenses=Elastic-2.0
+            org.opencontainers.image.licenses=Apache-2.0 WITH Commons-Clause
 
       - name: Build image
         id: build

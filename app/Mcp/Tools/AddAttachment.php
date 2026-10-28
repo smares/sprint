@@ -9,6 +9,7 @@ use App\Models\Attachment;
 use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -56,7 +57,7 @@ class AddAttachment extends SprintTool
 
             return Response::json(AttachmentUpload::describe(AttachmentUpload::store($task, $path, $name)));
         } finally {
-            @unlink($path);
+            File::delete($path);
         }
     }
 

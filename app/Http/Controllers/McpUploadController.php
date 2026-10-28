@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -67,7 +68,7 @@ class McpUploadController extends Controller
 
             return response()->json(AttachmentUpload::describe($attachment), 201);
         } finally {
-            @unlink($path);
+            File::delete($path);
             $lock->release();
         }
     }

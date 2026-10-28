@@ -9,7 +9,7 @@
 # syntax frontend here and of BuildKit in .github/workflows/release.yml are updated by hand.
 
 # The Composer binary comes from its own pinned stage, so the vendor stage (which holds the Flux Pro credentials) runs nothing unpinned
-FROM mirror.gcr.io/library/composer:2@sha256:af98f42dfff7c68ba8d53c2164fd9fde1087b7d449514baa38c418b1f6bc4bac AS composer
+FROM mirror.gcr.io/library/composer:2@sha256:b6dcd72ca98fa19d0e5b8476de179859704891fad06dd9e0b96833d4c430a5fc AS composer
 
 FROM mirror.gcr.io/dunglas/frankenphp:1-php8.4-bookworm@sha256:49369ff211d81dc30a15890d58c0651d639aef0d9c0a9b91bcc6f387a77bd7a2 AS base
 

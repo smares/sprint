@@ -11,12 +11,14 @@ use App\Models\Attachment;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Instructions;
 use Laravel\Mcp\Server\Testing\TestResponse;
+use Mockery;
 use ReflectionClass;
 use Tests\TestCase;
 
@@ -281,5 +283,21 @@ class McpAttachmentsTest extends TestCase
         $this->assertStringContainsString('curl -T', $description);
         $this->assertStringContainsString('application/octet-stream', $description);
         $this->assertStringContainsString('not multipart', $description);
+    }
+
+    public function test_a_disk_that_does_not_take_the_file_gives_507_and_keeps_the_link(): void
+    {
+        $url = $this->link();
+
+        $disk = Mockery::mock(FilesystemAdapter::class);
+        $disk->shouldReceive('put')->once()->andReturn(false);
+        Storage::set('failing', $disk);
+        config(['filesystems.default' => 'failing']);
+
+        $this->upload($url, 'Inhalt')->assertStatus(507);
+        $this->assertSame(0, $this->task->attachments()->count());
+
+        config(['filesystems.default' => 'local']);
+        $this->upload($url, 'Inhalt')->assertCreated();
     }
 }

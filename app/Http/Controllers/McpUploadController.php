@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Mcp\AttachmentUpload;
 use App\Models\Attachment;
+use App\Models\AttachmentNotStored;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Contracts\Database\Query\Builder;
@@ -14,7 +15,6 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\PersonalAccessToken;
-use RuntimeException;
 
 /**
  * Takes the file for a link that the MCP tool add-attachment handed out. The link holds only a random key; the person, the task, the
@@ -63,7 +63,7 @@ class McpUploadController extends Controller
 
             try {
                 $attachment = AttachmentUpload::store($task, $user, (string) $grant['name'], $file);
-            } catch (RuntimeException) {
+            } catch (AttachmentNotStored) {
                 abort(507, 'The file could not be stored (disk full?).');
             }
 
@@ -97,6 +97,9 @@ class McpUploadController extends Controller
     private function receive(Request $request, int $limit): mixed
     {
         $file = tmpfile();
+
+        abort_if($file === false, 507, 'The file could not be stored (disk full?).');
+
         $copied = stream_copy_to_stream($request->getContent(true), $file, $limit + 1);
 
         abort_if($copied === false, 507, 'The file could not be stored (disk full?).');

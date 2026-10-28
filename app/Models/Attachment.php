@@ -13,7 +13,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Number;
 use Illuminate\Support\Str;
-use RuntimeException;
 use Symfony\Component\Mime\MimeTypes;
 
 #[Fillable(['task_id', 'user_id', 'name', 'path', 'mime_type', 'size'])]
@@ -49,7 +48,7 @@ class Attachment extends Model
     }
 
     /**
-     * Put bytes or a stream on the default disk under the task's folder: the type is read from the whole content, and the file gets a
+     * Put bytes or a stream on the default disk under the task's folder: the type is read from the whole content (of a stream that is a file; of any other stream from its first MB), and the file gets a
      * random name plus the extension of that type ("x.php" must not be stored as a script). The caller makes the row, and removes the
      * file again if that fails.
      *
@@ -71,12 +70,13 @@ class Attachment extends Model
             rewind($contents);
         }
 
+        $size = is_string($contents) ? strlen($contents) : (int) (fstat($contents)['size'] ?? 0);
         $extension = self::extensionFor($mimeType);
         $path = "attachments/{$task->project_id}/{$task->getKey()}/".Str::random(40).($extension === '' ? '' : ".{$extension}");
 
-        throw_unless(Storage::disk()->put($path, $contents, ['mimetype' => $mimeType]), RuntimeException::class, 'The file could not be stored.');
+        throw_unless(Storage::disk()->put($path, $contents, ['mimetype' => $mimeType]), AttachmentNotStored::class, 'The file could not be stored.');
 
-        return ['path' => $path, 'mime_type' => $mimeType, 'size' => is_string($contents) ? strlen($contents) : (int) fstat($contents)['size']];
+        return ['path' => $path, 'mime_type' => $mimeType, 'size' => $size];
     }
 
     /**

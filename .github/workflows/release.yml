@@ -151,6 +151,7 @@ jobs:
           labels: |
             org.opencontainers.image.title=Sprint
             org.opencontainers.image.version=${{ inputs.version }}
+            org.opencontainers.image.licenses=Elastic-2.0
 
       - name: Build image
         id: build

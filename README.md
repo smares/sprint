@@ -89,4 +89,4 @@ Alles Weitere steht in [`docs/`](docs/README.md):
 
 ## Lizenz
 
-Sprint ist proprietäre Software, alle Rechte vorbehalten (siehe [LICENSE](LICENSE)). Flux UI Pro ist ein kommerzielles Produkt und braucht eine eigene Lizenz.
+Sprint steht unter der [Elastic License 2.0](LICENSE): Sie dürfen es nutzen, selbst betreiben, verändern und weitergeben, aber nicht Dritten als gehosteten oder verwalteten Dienst (SaaS) anbieten. Flux UI Pro ist ein kommerzielles Produkt und braucht eine eigene Lizenz; Images, die Flux Pro enthalten, dürfen nicht öffentlich weitergegeben werden.

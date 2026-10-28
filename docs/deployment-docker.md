@@ -2,7 +2,7 @@
 
 Vorher: die [Checkliste](deployment.md#checkliste-für-jeden-host). Das meiste davon übernimmt hier das Image.
 
-Im Repository liegen ein `Dockerfile` und eine `compose.yaml`. Alle Dienste nutzen dasselbe Image ([FrankenPHP](https://frankenphp.dev): Caddy und PHP in einem Prozess, läuft ohne Root-Rechte). Die Basis-Images von Docker Hub (FrankenPHP, Composer, Node) lädt der Build über Googles Spiegel `mirror.gcr.io`, damit er nicht an den Abruflimits oder Ausfällen von Docker Hub scheitert:
+Im Repository liegen ein `Dockerfile` und eine `compose.yaml`. Alle Dienste nutzen dasselbe Image ([FrankenPHP](https://frankenphp.dev): Caddy und PHP in einem Prozess, läuft ohne Root-Rechte). Die Basis-Images von Docker Hub (Composer, Node) lädt der Build über Googles Spiegel `mirror.gcr.io`, damit er nicht an den Abruflimits oder Ausfällen von Docker Hub scheitert. FrankenPHP kommt direkt von Docker Hub, weil der Spiegel neue Image-Stände (hier das arm64-Manifest) nicht immer rechtzeitig hat; der Release-Workflow meldet sich dort an, wenn die Repository-Secrets `DOCKERHUB_USERNAME` und `DOCKERHUB_TOKEN` (Zugangstoken mit Leserecht) gesetzt sind, und umgeht so das Abruflimit für anonyme Clients. Wer selbst baut, lädt FrankenPHP ebenfalls direkt von Docker Hub; gegen das Limit hilft dort `docker login`:
 
 | Dienst | Aufgabe |
 |---|---|

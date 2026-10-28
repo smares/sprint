@@ -4,11 +4,13 @@ use App\Enums\ActivityType;
 use App\Concerns\ConfirmsAutosave;
 use App\Concerns\EditsMarkdown;
 use App\Concerns\ListensForRealtime;
+use App\Enums\AutomationTrigger;
 use App\Enums\CustomFieldType;
 use App\Enums\RepeatMode;
 use App\Enums\RepeatUnit;
 use App\Emoji;
 use App\Models\Attachment;
+use App\Models\Automation;
 use App\Models\Comment;
 use App\Models\CustomField;
 use App\Models\Project;
@@ -19,6 +21,7 @@ use App\Services\MarkdownService;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -187,7 +190,8 @@ new class extends Component
     }
 
     /**
-     * The "e" key: done or open again, without touching what is being edited in the form.
+     * The "e" key: done or open again, without touching what is being edited in the form (unless a rule changed the task: then the
+     * page asks whether to reload it).
      */
     #[On('shortcut-toggle-done')]
     public function toggleDoneByShortcut(): void
@@ -196,10 +200,61 @@ new class extends Component
             return;
         }
 
+        $before = $this->storedStateRulesChange(AutomationTrigger::StatusChanged);
+
         $this->task->toggleDone();
         $this->statusId = (string) $this->task->status_id;
         $this->fillRepeatRule();
         $this->announceChange();
+
+        $this->askToReloadWhenRulesChangedTask($before, AutomationTrigger::StatusChanged, ['status']);
+    }
+
+    /**
+     * A rule that fires on "done" or on a new assignee may have handed the task on, moved its dates or set tags and fields: the
+     * form still shows the old values, and saving it would undo the rule. The page decides what happens, as only it knows
+     * whether something was typed (task-form-outdated).
+     *
+     * @param  array<string, mixed>|null  $before  the state before the shortcut, null when no rule could run
+     * @param  AutomationTrigger  $trigger  the trigger the shortcut fires, the only rules that can run
+     * @param  list<string>  $expected  the parts of the state the shortcut itself changes
+     * @param  int|null  $expectedAssigneeId  who must hold the task afterwards, if the shortcut hands it over
+     */
+    private function askToReloadWhenRulesChangedTask(?array $before, AutomationTrigger $trigger, array $expected, ?int $expectedAssigneeId = null): void
+    {
+        if ($before === null) {
+            return;
+        }
+
+        $after = $this->storedStateRulesChange($trigger);
+
+        if (Arr::except($after, $expected) !== Arr::except($before, $expected) || ($expectedAssigneeId !== null && (int) $after['assignee'] !== $expectedAssigneeId)) {
+            $this->dispatch('task-form-outdated', question: __('A rule has just changed this task. Reload the form? Your unsaved input is lost. If you do not reload and save later, you overwrite what the rule changed.'));
+        }
+    }
+
+    /**
+     * What a rule can change on this task and the form shows, as stored now.
+     *
+     * @return array<string, mixed>|null null when the project has no enabled rule
+     */
+    private function storedStateRulesChange(AutomationTrigger $trigger): ?array
+    {
+        if (! Automation::query()->enabled()->where('project_id', $this->task->project_id)->where('trigger', $trigger)->exists()) {
+            return null;
+        }
+
+        $task = Task::query()->with(['tags:id', 'collaborators:id', 'fieldValues'])->findOrFail($this->task->getKey());
+
+        return [
+            'status' => $task->status_id,
+            'assignee' => $task->assignee_id,
+            'due' => $task->due_date?->toDateString(),
+            'start' => $task->start_date?->toDateString(),
+            'tags' => $task->tags->pluck('id')->sort()->values()->all(),
+            'collaborators' => $task->collaborators->pluck('id')->sort()->values()->all(),
+            'fields' => $task->fieldValues->mapWithKeys(fn ($value) => [$value->custom_field_id => (string) ($value->option_id ?? $value->value)])->sortKeys()->all(),
+        ];
     }
 
     /**
@@ -219,6 +274,7 @@ new class extends Component
             return;
         }
 
+        $before = $this->storedStateRulesChange(AutomationTrigger::AssigneeChanged);
         $collaboratorsBefore = $this->storedCollaboratorIds();
 
         $this->task->assignTo(auth()->user());
@@ -230,6 +286,8 @@ new class extends Component
             [(string) auth()->id()],
         ));
         $this->announceChange();
+
+        $this->askToReloadWhenRulesChangedTask($before, AutomationTrigger::AssigneeChanged, ['assignee', 'collaborators'], (int) auth()->id());
 
         Flux::toast(variant: 'success', text: __('Assigned to you.'));
     }
@@ -288,6 +346,16 @@ new class extends Component
             $this->dispatch('inbox-changed');
         }
 
+        $this->fillForm();
+        $this->notificationsOn = ! $this->task->isMutedBy(auth()->user());
+        $this->sectionTitles = $this->subtreeTasks->where('is_section', true)->pluck('title', 'id')->all();
+    }
+
+    /**
+     * The form as the task is stored.
+     */
+    private function fillForm(): void
+    {
         $this->title = $this->task->title;
         $this->description = $this->task->description ?? '';
         $this->statusId = (string) $this->task->status_id;
@@ -296,11 +364,9 @@ new class extends Component
         $this->startDate = $this->task->start_date?->format('Y-m-d') ?? '';
         $this->fillRepeatRule();
         $this->fieldValues = $this->storedFieldValues();
-        $this->notificationsOn = ! $this->task->isMutedBy(auth()->user());
         $this->parentId = (string) ($this->task->parent_id ?? '');
-        $this->sectionTitles = $this->subtreeTasks->where('is_section', true)->pluck('title', 'id')->all();
         $this->tagIds = $this->task->tags->pluck('id')->map(fn ($id) => (string) $id)->all();
-        $this->collaboratorIds = $this->task->collaborators()->pluck('users.id')->map(fn ($id) => (string) $id)->all();
+        $this->collaboratorIds = $this->storedCollaboratorIds();
         $this->blockerIds = $this->task->blockers()->pluck('tasks.id')->map(fn ($id) => (string) $id)->all();
         $this->blockingIds = $this->task->blocking()->pluck('tasks.id')->map(fn ($id) => (string) $id)->all();
     }

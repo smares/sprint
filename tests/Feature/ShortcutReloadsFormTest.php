@@ -7,6 +7,7 @@ use App\Enums\AutomationTrigger;
 use App\Enums\ProjectRole;
 use App\Models\Automation;
 use App\Models\Project;
+use App\Models\Tag;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -71,5 +72,70 @@ class ShortcutReloadsFormTest extends TestCase
         $page = Livewire::test('pages::tasks.show', ['task' => $this->task])->set('title', 'Getippt')->set('assigneeId', (string) $this->rita->id);
 
         $page->call('reloadForm')->assertSet('title', $this->task->title)->assertSet('assigneeId', (string) $this->anna->id);
+    }
+
+    public function test_the_question_says_what_cancelling_means(): void
+    {
+        $this->ruleAssigningRita();
+
+        Livewire::test('pages::tasks.show', ['task' => $this->task])->call('toggleDoneByShortcut')
+            ->assertDispatched('task-form-outdated', question: __('A rule has changed this task. Reload the form and discard unsaved changes? If you cancel, saving undoes the rule.'));
+    }
+
+    public function test_a_rule_that_only_comments_does_not_ask(): void
+    {
+        Automation::factory()->create([
+            'project_id' => $this->project->id,
+            'created_by' => $this->anna->id,
+            'name' => 'Kommentar',
+            'trigger' => AutomationTrigger::StatusChanged,
+            'trigger_value' => $this->project->doneStatus()->id,
+            'actions' => [['type' => AutomationAction::Comment->value, 'value' => 'Erledigt']],
+        ]);
+
+        Livewire::test('pages::tasks.show', ['task' => $this->task])->call('toggleDoneByShortcut')->assertNotDispatched('task-form-outdated');
+    }
+
+    public function test_taking_the_task_with_m_asks_when_a_rule_reacts_to_the_new_assignee(): void
+    {
+        $tag = Tag::factory()->create(['project_id' => $this->project->id]);
+        Automation::factory()->create([
+            'project_id' => $this->project->id,
+            'created_by' => $this->anna->id,
+            'name' => 'Etikett',
+            'trigger' => AutomationTrigger::AssigneeChanged,
+            'trigger_value' => $this->rita->id,
+            'actions' => [['type' => AutomationAction::AddTag->value, 'value' => $tag->id]],
+        ]);
+        $this->actingAs($this->rita);
+
+        $page = Livewire::test('pages::tasks.show', ['task' => $this->task])->call('assignToMeByShortcut');
+
+        $page->assertDispatched('task-form-outdated')->assertSet('tagIds', []);
+        $page->call('reloadForm')->assertSet('tagIds', [(string) $tag->id])->assertSet('assigneeId', (string) $this->rita->id);
+    }
+
+    public function test_taking_the_task_with_m_asks_nothing_without_a_rule(): void
+    {
+        $this->actingAs($this->rita);
+
+        Livewire::test('pages::tasks.show', ['task' => $this->task])->call('assignToMeByShortcut')->assertNotDispatched('task-form-outdated');
+    }
+
+    public function test_taking_the_task_with_m_asks_when_a_rule_hands_it_on(): void
+    {
+        $other = User::factory()->create();
+        $this->project->setRole($other, ProjectRole::Editor);
+        Automation::factory()->create([
+            'project_id' => $this->project->id,
+            'created_by' => $this->anna->id,
+            'name' => 'Weiter',
+            'trigger' => AutomationTrigger::AssigneeChanged,
+            'trigger_value' => $this->rita->id,
+            'actions' => [['type' => AutomationAction::SetAssignee->value, 'value' => $other->id]],
+        ]);
+        $this->actingAs($this->rita);
+
+        Livewire::test('pages::tasks.show', ['task' => $this->task])->call('assignToMeByShortcut')->assertDispatched('task-form-outdated');
     }
 }

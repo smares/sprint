@@ -721,19 +721,23 @@ const registerTaskFlyout = () => {
     // A rule changed the task while the form was open (the "e" key finished it): the form shows what was stored before. Loaded
     // anew at once when nothing was typed, and otherwise only if the person agrees, as it drops what they typed.
     window.addEventListener('task-form-outdated', (event) => {
-        const form = document.querySelector('form[data-task-form]')
+        const form = event.target.closest?.('[wire\\:id]')?.querySelector('form[data-task-form]') ?? document.querySelector('form[data-task-form]')
         const component = form ? componentOf(form) : null
 
         if (! component) {
             return
         }
 
-        if ((sentChanges.has(component) || differs(form)) && ! window.confirm(event.detail?.question ?? event.detail?.[0]?.question ?? '')) {
+        if ((sentChanges.has(component) || differs(form)) && ! window.confirm(event.detail?.question ?? '')) {
             return
         }
 
-        sentChanges.delete(component)
         window.Livewire.find(form.closest('[wire\\:id]').getAttribute('wire:id')).call('reloadForm')
+    })
+
+    // Saved or loaded anew: what was sent before is on the server now
+    window.addEventListener('task-saved', () => {
+        document.querySelectorAll('form[data-task-form]').forEach((form) => sentChanges.delete(componentOf(form)))
     })
 
     window.Livewire.interceptMessage(({ message }) => {

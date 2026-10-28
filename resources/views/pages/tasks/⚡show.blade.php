@@ -9,6 +9,7 @@ use App\Enums\RepeatMode;
 use App\Enums\RepeatUnit;
 use App\Emoji;
 use App\Models\Attachment;
+use App\Models\Automation;
 use App\Models\Comment;
 use App\Models\CustomField;
 use App\Models\Project;
@@ -19,6 +20,7 @@ use App\Services\MarkdownService;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -204,20 +206,41 @@ new class extends Component
         $this->fillRepeatRule();
         $this->announceChange();
 
-        // A rule that fires on "done" may have handed the task on or moved its dates: the form still shows the old values, and
-        // saving it would undo the rule. The page decides, as only it knows whether something was typed (task-form-outdated).
-        if ($this->storedStateRulesChange() !== $before) {
-            $this->dispatch('task-form-outdated', question: __('A rule has changed this task. Reload the form and discard what you have not saved?'));
+        $this->askToReloadWhenRulesChangedTask($before);
+    }
+
+    /**
+     * A rule that fires on "done" or on a new assignee may have handed the task on, moved its dates or set tags and fields: the
+     * form still shows the old values, and saving it would undo the rule. The page decides what happens, as only it knows
+     * whether something was typed (task-form-outdated).
+     *
+     * @param  array<string, mixed>|null  $before  the state before the shortcut, null when no rule could run
+     * @param  list<string>  $expected  the parts of the state the shortcut itself changes
+     */
+    private function askToReloadWhenRulesChangedTask(?array $before, array $expected = []): void
+    {
+        if ($before === null) {
+            return;
+        }
+
+        $after = $this->storedStateRulesChange();
+
+        if (Arr::except($after, $expected) !== Arr::except($before, $expected) || ($expected !== [] && $after['assignee'] !== auth()->id())) {
+            $this->dispatch('task-form-outdated', question: __('A rule has changed this task. Reload the form and discard unsaved changes? If you cancel, saving undoes the rule.'));
         }
     }
 
     /**
      * What a rule can change on this task and the form shows, as stored now.
      *
-     * @return array<string, mixed>
+     * @return array<string, mixed>|null null when the project has no enabled rule
      */
-    private function storedStateRulesChange(): array
+    private function storedStateRulesChange(): ?array
     {
+        if (! Automation::query()->enabled()->where('project_id', $this->task->project_id)->exists()) {
+            return null;
+        }
+
         $task = Task::query()->with(['tags:id', 'collaborators:id', 'fieldValues'])->findOrFail($this->task->getKey());
 
         return [
@@ -247,10 +270,14 @@ new class extends Component
             return;
         }
 
+        $before = $this->storedStateRulesChange();
+
         $this->task->assignTo(auth()->user());
         $this->assigneeId = (string) auth()->id();
         $this->collaboratorIds = $this->storedCollaboratorIds();
         $this->announceChange();
+
+        $this->askToReloadWhenRulesChangedTask($before, ['assignee', 'collaborators']);
 
         Flux::toast(variant: 'success', text: __('Assigned to you.'));
     }
@@ -328,7 +355,7 @@ new class extends Component
         $this->fillRepeatRule();
         $this->fieldValues = $this->storedFieldValues();
         $this->parentId = (string) ($this->task->parent_id ?? '');
-        $this->tagIds = $this->task->tags()->pluck('tags.id')->map(fn ($id) => (string) $id)->all();
+        $this->tagIds = $this->task->tags->pluck('id')->map(fn ($id) => (string) $id)->all();
         $this->collaboratorIds = $this->storedCollaboratorIds();
         $this->blockerIds = $this->task->blockers()->pluck('tasks.id')->map(fn ($id) => (string) $id)->all();
         $this->blockingIds = $this->task->blocking()->pluck('tasks.id')->map(fn ($id) => (string) $id)->all();
@@ -342,7 +369,11 @@ new class extends Component
     {
         $this->task->refresh();
         $this->fillForm();
+        $this->changedElsewhere = false;
         $this->resetErrorBag();
+
+        // The editors show the text of the server again
+        $this->dispatch('task-saved');
     }
 
     public function updatedNotificationsOn(bool $value): void

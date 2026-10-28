@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Http\File as HttpFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -48,14 +49,10 @@ class BackupService
             throw_unless($zip->close(), RuntimeException::class, 'The backup archive could not be written.');
 
             // Disks such as s3 report a failed upload only through the return value ('throw' => false)
-            $stream = fopen($zipPath, 'r');
-            $written = Storage::disk(config('sprint.backup.disk'))->writeStream($file, $stream);
-            if (is_resource($stream)) {
-                fclose($stream);
-            }
+            $written = Storage::disk(config('sprint.backup.disk'))->putFileAs('', new HttpFile($zipPath), $file);
             throw_unless($written, RuntimeException::class, 'The backup could not be stored on the disk "'.config('sprint.backup.disk').'".');
 
-            $result = ['file' => $file, 'bytes' => (int) filesize($zipPath), 'database' => $databaseCopy !== null, 'attachments' => $attachments];
+            $result = ['file' => $file, 'bytes' => File::size($zipPath), 'database' => $databaseCopy !== null, 'attachments' => $attachments];
         } finally {
             File::delete($zipPath);
             if ($databaseCopy !== null) {

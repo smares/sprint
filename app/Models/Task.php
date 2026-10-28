@@ -591,6 +591,29 @@ class Task extends Model
     }
 
     /**
+     * Store bytes or a stream that did not come from a browser upload (an agent through the MCP server) on the default disk and attach
+     * them, see Attachment::put.
+     *
+     * @param  string|resource  $contents
+     */
+    public function attachContents(string $name, mixed $contents, ?User $by = null): Attachment
+    {
+        $stored = Attachment::put($this, $contents);
+
+        try {
+            return $this->attachments()->create([
+                'user_id' => ($by ?? auth()->user())?->getKey(),
+                'name' => $name,
+                ...$stored,
+            ]);
+        } catch (Throwable $exception) {
+            Storage::delete($stored['path']);
+
+            throw $exception;
+        }
+    }
+
+    /**
      * @return BelongsToMany<Tag, $this>
      */
     public function tags(): BelongsToMany
@@ -952,12 +975,12 @@ class Task extends Model
     {
         foreach ([[$added, 'attached'], [$removed, 'detached']] as [$type, $key]) {
             if (($changes[$key] ?? []) !== []) {
-                $ids = array_values(array_map(intval(...), $changes[$key]));
+                $ids = collect($changes[$key])->map(fn ($id) => (int) $id)->values()->all();
 
                 // Somebody who joined without an entry (the creator, or whoever handed the task over) and now has the task is not
                 // "removed": the change of the assignee says it, and nobody read of the joining
                 if ($type === ActivityType::CollaboratorsRemoved && $this->assignee_id !== null) {
-                    $ids = array_values(array_diff($ids, [(int) $this->assignee_id]));
+                    $ids = collect($ids)->diff([(int) $this->assignee_id])->values()->all();
                 }
 
                 if ($ids === []) {

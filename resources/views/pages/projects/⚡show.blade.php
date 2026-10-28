@@ -118,12 +118,12 @@ new class extends Component
 
         $this->selecting = true;
 
-        $page = $this->tasks->pluck('id')->map(fn ($id) => (string) $id)->all();
-        $current = array_map(strval(...), $this->selected);
+        $page = $this->tasks->pluck('id')->map(fn ($id) => (string) $id);
+        $current = collect($this->selected)->map(fn ($id) => (string) $id);
 
-        $this->selected = array_diff($page, $current) === []
-            ? array_values(array_diff($current, $page))
-            : array_values(array_unique([...$current, ...$page]));
+        $this->selected = $page->diff($current)->isEmpty()
+            ? $current->diff($page)->values()->all()
+            : $current->concat($page)->unique()->values()->all();
 
         // Unticking the last ones ends the selection, as the bar has nothing left to act on
         if ($this->selected === []) {

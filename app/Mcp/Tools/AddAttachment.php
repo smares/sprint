@@ -9,7 +9,6 @@ use App\Models\Attachment;
 use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -18,7 +17,7 @@ use Laravel\Mcp\Server\Attributes\Name;
 use Laravel\Sanctum\PersonalAccessToken;
 
 #[Name('add-attachment')]
-#[Description('Attaches a file to a task as the token owner. Small files (up to 1 MB) go in content_base64. Without content_base64 the tool returns a one-time upload URL (valid for 10 minutes, keep it secret) for files up to 20 MB: send the file with an HTTP PUT whose body is the raw file, for example `curl -T file -H "Content-Type: application/octet-stream" "URL"` (not multipart, so no `curl -F` or `--data`). Files cannot be downloaded through this server.')]
+#[Description('Attaches a file to a task as the token owner. Small files (up to 1 MB) go in content_base64. Without content_base64 the tool returns a one-time upload URL (valid for 10 minutes, keep it secret) for files up to 20 MB, which needs a client that can run commands (without a shell, use content_base64): send the file with an HTTP PUT whose body is the raw file, for example `curl -T file -H "Content-Type: application/octet-stream" "URL"` (not multipart, so no `curl -F` or `--data`). Files cannot be downloaded through this server.')]
 class AddAttachment extends SprintTool
 {
     private const int LINK_MINUTES = 10;
@@ -49,16 +48,9 @@ class AddAttachment extends SprintTool
             return $this->uploadLink($task->id, $user, $name);
         }
 
-        $content = $this->decode($validated['content_base64']);
-        $path = (string) tempnam(sys_get_temp_dir(), 'sprint-upload-');
+        $attachment = AttachmentUpload::store($task, $user, $name, $this->decode($validated['content_base64']));
 
-        try {
-            file_put_contents($path, $content);
-
-            return Response::json(AttachmentUpload::describe(AttachmentUpload::store($task, $path, $name)));
-        } finally {
-            File::delete($path);
-        }
+        return Response::json(AttachmentUpload::describe($attachment));
     }
 
     private function decode(string $encoded): string

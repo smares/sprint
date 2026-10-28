@@ -304,7 +304,7 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
     private function applyCollapsed(array $collapsed, array $changes): array
     {
         foreach ($changes as $column => $isCollapsed) {
-            $collapsed = array_values(array_diff($collapsed, [(int) $column]));
+            $collapsed = collect($collapsed)->diff([(int) $column])->values()->all();
 
             if ($isCollapsed) {
                 $collapsed[] = (int) $column;

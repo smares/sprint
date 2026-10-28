@@ -83,6 +83,11 @@ class SearchTest extends TestCase
         $this->assertSame([], $this->titles('monat gibtsnicht'));
     }
 
+    public function test_search_terms_that_only_look_alike_numerically_stay_apart(): void
+    {
+        $this->assertSame(['1', '01', '1e1', '10'], app(TaskSearchService::class)->terms('1 01 1e1 10 1'));
+    }
+
     public function test_diacritics_and_case_do_not_matter_with_fts5(): void
     {
         $this->task('Übersicht für Müller');

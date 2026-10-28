@@ -57,7 +57,7 @@ class PersonalColumn extends Model
         DB::transaction(function () use ($task, $position, $visibleTaskIds): void {
             $current = $this->placements()->where('task_id', '!=', $task->getKey())->orderBy('position')->orderBy('id')->pluck('position', 'task_id')->all();
             $placedIds = array_keys($current);
-            $orderedIds = static::insertAmongVisible($placedIds, array_values(array_intersect($placedIds, $visibleTaskIds)), $position, $task->getKey());
+            $orderedIds = static::insertAmongVisible($placedIds, collect($placedIds)->intersect($visibleTaskIds)->values()->all(), $position, $task->getKey());
 
             PersonalPlacement::query()->updateOrCreate(
                 ['user_id' => $this->user_id, 'task_id' => $task->getKey()],

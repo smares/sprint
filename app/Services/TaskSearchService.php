@@ -137,10 +137,11 @@ class TaskSearchService
      */
     public function terms(string $query): array
     {
-        return array_values(array_unique(array_filter(
-            preg_split('/[^\p{L}\p{N}]+/u', mb_strtolower($query)) ?: [],
-            fn (string $term) => $term !== '',
-        )));
+        return collect(preg_split('/[^\p{L}\p{N}]+/u', mb_strtolower($query)) ?: [])
+            ->filter(fn (string $term) => $term !== '')
+            ->uniqueStrict()
+            ->values()
+            ->all();
     }
 
     /**

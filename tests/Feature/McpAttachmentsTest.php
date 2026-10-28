@@ -11,10 +11,15 @@ use App\Models\Attachment;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
+use Laravel\Mcp\Server\Attributes\Description;
+use Laravel\Mcp\Server\Attributes\Instructions;
 use Laravel\Mcp\Server\Testing\TestResponse;
+use Mockery;
+use ReflectionClass;
 use Tests\TestCase;
 
 class McpAttachmentsTest extends TestCase
@@ -98,6 +103,24 @@ class McpAttachmentsTest extends TestCase
         $this->assertSame('passwd.png', $attachment->name);
         $this->assertSame('text/plain', $attachment->mime_type);
         $this->assertStringStartsWith("attachments/{$this->project->id}/{$this->task->id}/", $attachment->path);
+        $this->assertStringEndsWith('.txt', $attachment->path);
+    }
+
+    public function test_the_type_is_read_from_the_whole_file_not_from_its_beginning(): void
+    {
+        $json = json_encode(['rows' => array_fill(0, 600, ['name' => 'Zeile', 'wert' => 12345])]);
+        $this->assertGreaterThan(16384, strlen($json));
+
+        $this->upload($this->link('gross.json'), $json)->assertCreated();
+        $this->tool(['name' => 'daten.json', 'content_base64' => base64_encode($json)])->assertOk();
+
+        foreach ($this->task->attachments()->get() as $attachment) {
+            $this->assertSame('application/json', $attachment->mime_type);
+            $this->assertStringEndsWith('.json', $attachment->path);
+            $this->assertSame(strlen($json), $attachment->size);
+        }
+
+        $this->assertSame(2, $this->task->attachments()->count());
     }
 
     public function test_content_must_be_valid_and_small(): void
@@ -244,5 +267,37 @@ class McpAttachmentsTest extends TestCase
     public function test_links_need_an_access_token(): void
     {
         $this->tool(['name' => 'a.txt'])->assertHasErrors(['access token']);
+    }
+
+    public function test_agents_learn_how_to_send_files_from_the_server_instructions_and_the_tool(): void
+    {
+        $instructions = (new ReflectionClass(SprintServer::class))->getAttributes(Instructions::class)[0]->newInstance()->value;
+        $description = (new ReflectionClass(AddAttachment::class))->getAttributes(Description::class)[0]->newInstance()->value;
+
+        $this->assertStringContainsString('Base64', $instructions);
+        $this->assertStringContainsString('shell', $instructions);
+        $this->assertStringContainsString('content_base64', $description);
+        $this->assertStringContainsString('without a shell', $description);
+        $this->assertStringContainsString('1 MB', $instructions);
+        $this->assertStringContainsString('upload URL', $instructions);
+        $this->assertStringContainsString('curl -T', $description);
+        $this->assertStringContainsString('application/octet-stream', $description);
+        $this->assertStringContainsString('not multipart', $description);
+    }
+
+    public function test_a_disk_that_does_not_take_the_file_gives_507_and_keeps_the_link(): void
+    {
+        $url = $this->link();
+
+        $disk = Mockery::mock(FilesystemAdapter::class);
+        $disk->shouldReceive('put')->once()->andReturn(false);
+        Storage::set('failing', $disk);
+        config(['filesystems.default' => 'failing']);
+
+        $this->upload($url, 'Inhalt')->assertStatus(507);
+        $this->assertSame(0, $this->task->attachments()->count());
+
+        config(['filesystems.default' => 'local']);
+        $this->upload($url, 'Inhalt')->assertCreated();
     }
 }

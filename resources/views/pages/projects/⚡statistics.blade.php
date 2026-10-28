@@ -73,7 +73,7 @@ new class extends Component
      */
     protected function monthsWith(string $field): array
     {
-        return array_values(array_filter($this->cycle, fn (array $month) => $month[$field] !== null));
+        return collect($this->cycle)->filter(fn (array $month) => $month[$field] !== null)->values()->all();
     }
 
     /**
@@ -137,9 +137,9 @@ new class extends Component
     <div class="space-y-10">
         <section class="space-y-4">
             @php
-                $lastFour = array_slice($this->flow, -self::SUMMED_WEEKS - 1, self::SUMMED_WEEKS);
-                $created = array_sum(array_column($lastFour, 'created'));
-                $completed = array_sum(array_column($lastFour, 'completed'));
+                $lastFour = collect($this->flow)->slice(-self::SUMMED_WEEKS - 1, self::SUMMED_WEEKS);
+                $created = $lastFour->sum('created');
+                $completed = $lastFour->sum('completed');
             @endphp
             <div>
                 <flux:heading level="2" size="lg">{{ __('Created and completed per week') }}</flux:heading>

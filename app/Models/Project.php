@@ -52,11 +52,9 @@ class Project extends Model
                 'type' => CustomFieldType::Select,
                 'position' => 0,
             ]);
-            $field->options()->createMany(array_map(
-                fn (array $option, int $position) => $option + ['position' => $position],
-                $priority['options'],
-                array_keys($priority['options']),
-            ));
+            $field->options()->createMany(
+                collect($priority['options'])->map(fn (array $option, int $position) => $option + ['position' => $position])->all(),
+            );
         });
     }
 
@@ -75,7 +73,7 @@ class Project extends Model
             return strtolower($this->color);
         }
 
-        $colorful = array_values(array_filter(Color::SWATCHES, fn (array $swatch) => $swatch[0] !== Color::FALLBACK));
+        $colorful = collect(Color::SWATCHES)->reject(fn (array $swatch) => $swatch[0] === Color::FALLBACK)->values()->all();
 
         return $colorful[(int) $this->getKey() % count($colorful)][0];
     }
@@ -453,7 +451,7 @@ class Project extends Model
                 ->orderBy('id')
                 ->pluck('position', 'id')
                 ->all();
-            $orderedIds = array_values(array_diff(array_keys($currentPositions), [$task->getKey()]));
+            $orderedIds = collect($currentPositions)->keys()->diff([$task->getKey()])->values()->all();
 
             $orderedIds = Task::insertAmongVisible($orderedIds, $visibleIds, $position, $task->getKey());
 

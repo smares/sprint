@@ -281,10 +281,12 @@ new class extends Component
         $this->assigneeId = (string) auth()->id();
 
         // What the person has changed in the list and not saved yet stays; whoever handed the task over (and joined) is added
-        $this->collaboratorIds = array_values(array_diff(
-            array_unique([...$this->collaboratorIds, ...array_diff($this->storedCollaboratorIds(), $collaboratorsBefore)]),
-            [(string) auth()->id()],
-        ));
+        $this->collaboratorIds = collect($this->collaboratorIds)
+            ->merge(collect($this->storedCollaboratorIds())->diff($collaboratorsBefore))
+            ->unique()
+            ->diff([(string) auth()->id()])
+            ->values()
+            ->all();
         $this->announceChange();
 
         $this->askToReloadWhenRulesChangedTask($before, AutomationTrigger::AssigneeChanged, ['assignee', 'collaborators'], (int) auth()->id());
@@ -412,7 +414,7 @@ new class extends Component
         $removed = array_diff($before, $fromForm);
         $added = array_diff($fromForm, $before);
 
-        return array_values(array_unique([...array_diff($now, $removed), ...$added]));
+        return collect($now)->diff($removed)->merge($added)->unique()->values()->all();
     }
 
     /**
@@ -552,7 +554,7 @@ new class extends Component
     #[Computed]
     public function chosenTasks(): SupportCollection
     {
-        $ids = array_values(array_unique([...($this->parentId === '' ? [] : [$this->parentId]), ...$this->blockerIds, ...$this->blockingIds]));
+        $ids = collect($this->parentId === '' ? [] : [$this->parentId])->merge($this->blockerIds)->merge($this->blockingIds)->unique()->values()->all();
 
         return $ids === [] ? collect() : $this->task->project->tasks()->whereKey($ids)->get(['id', 'title', 'is_section'])->keyBy('id');
     }
@@ -626,7 +628,7 @@ new class extends Component
      */
     private function containerIds(): array
     {
-        return array_values(array_diff([$this->task->getKey(), ...$this->descendantIds], $this->sectionIds));
+        return collect([$this->task->getKey(), ...$this->descendantIds])->diff($this->sectionIds)->values()->all();
     }
 
     private function resetSubtaskCaches(): void
@@ -833,9 +835,9 @@ new class extends Component
 
         $tag = $this->task->project->findOrCreateTag($validated['newTag']);
 
-        $this->tagIds = array_values(array_unique([...$this->tagIds, (string) $tag->id]));
+        $this->tagIds = collect($this->tagIds)->push((string) $tag->id)->unique()->values()->all();
         $this->reset('newTag');
-        $this->loadedPickers = array_values(array_unique([...$this->loadedPickers, 'tags']));
+        $this->loadedPickers = collect($this->loadedPickers)->push('tags')->unique()->values()->all();
         unset($this->projectTags, $this->tagOptions);
     }
 
@@ -859,7 +861,7 @@ new class extends Component
     #[Computed]
     public function chosenUsers(): Collection
     {
-        $ids = array_values(array_filter([$this->assigneeId, ...$this->collaboratorIds]));
+        $ids = collect([$this->assigneeId, ...$this->collaboratorIds])->filter()->values()->all();
 
         if ($ids === []) {
             return new Collection;
@@ -1011,7 +1013,7 @@ new class extends Component
         $assigneeNow = (string) Task::query()->whereKey($this->task->getKey())->value('assignee_id');
         $joinedWhileSaving = array_diff($this->storedCollaboratorIds(), $collaboratorsBefore);
         $collaboratorChanges = $this->task->collaborators()->sync(
-            array_values(array_diff(array_unique([...$validated['collaboratorIds'], ...$joinedWhileSaving]), [$assigneeNow]))
+            collect($validated['collaboratorIds'])->merge($joinedWhileSaving)->unique()->diff([$assigneeNow])->values()->all()
         );
 
         $names = fn (string $model, string $column) => fn (array $ids) => $model::whereIn('id', $ids)->orderBy($column)->pluck($column)->all();

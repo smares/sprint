@@ -48,7 +48,7 @@ class SsoSettings
      */
     public function domains(): array
     {
-        return array_values(array_filter((array) $this->value(self::DOMAINS, []), is_string(...)));
+        return collect((array) $this->value(self::DOMAINS, []))->filter(fn ($domain) => is_string($domain))->values()->all();
     }
 
     /**
@@ -89,7 +89,7 @@ class SsoSettings
         // Both or neither: a failure between them must not leave sign-in on with the old domains
         DB::transaction(function () use ($enabled, $domains): void {
             Setting::query()->updateOrCreate(['key' => self::ENABLED], ['value' => $enabled]);
-            Setting::query()->updateOrCreate(['key' => self::DOMAINS], ['value' => array_values(array_unique(array_map(Str::lower(...), $domains)))]);
+            Setting::query()->updateOrCreate(['key' => self::DOMAINS], ['value' => collect($domains)->map(fn (string $domain) => Str::lower($domain))->unique()->values()->all()]);
         });
 
         $this->values = null;

@@ -274,7 +274,7 @@ new class extends Component
             return null;
         }
 
-        if (! in_array((int) $value, array_map(intval(...), $allowed), true)) {
+        if (! collect($allowed)->map(fn ($id) => (int) $id)->contains((int) $value)) {
             $this->addError($property, __('Please choose a value.'));
 
             return null;
@@ -405,11 +405,11 @@ new class extends Component
     {
         $conditions = $rule->conditions ?? [];
 
-        return array_values(array_filter([
+        return collect([
             isset($conditions['status_id']) ? __('the status is “:name”', ['name' => $this->statusNames[$conditions['status_id']] ?? '–']) : null,
             isset($conditions['assignee_id']) ? __('the assignee is :name', ['name' => $this->userNames[$conditions['assignee_id']] ?? '–']) : null,
             isset($conditions['tag_id']) ? __('the task has the tag “:name”', ['name' => $this->tagNames[$conditions['tag_id']] ?? '–']) : null,
-        ]));
+        ])->filter()->values()->all();
     }
 
     /**

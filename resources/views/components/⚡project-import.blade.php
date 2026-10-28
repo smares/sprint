@@ -36,7 +36,7 @@ new class extends Component
     private function planFromFile(): array
     {
         $csv = app(TaskCsvService::class);
-        $parsed = $csv->parse((string) file_get_contents($this->file->getRealPath()));
+        $parsed = $csv->parse((string) $this->file->get());
 
         if ($parsed['error'] !== null) {
             return ['plan' => null, 'error' => $parsed['error']];

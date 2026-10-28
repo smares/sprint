@@ -21,7 +21,6 @@ use App\Services\TaskSearchService;
 use Carbon\CarbonInterface;
 use Closure;
 use Database\Factories\TaskFactory;
-use finfo;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -37,7 +36,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use RuntimeException;
 use Throwable;
 
 #[Fillable(['project_id', 'parent_id', 'is_section', 'assignee_id', 'creator_id', 'title', 'description', 'status_id', 'position', 'start_date', 'due_date', 'completed_at', 'repeat_unit', 'repeat_interval', 'repeat_mode', 'repeat_until', 'repeat_day'])]
@@ -594,42 +592,22 @@ class Task extends Model
 
     /**
      * Store bytes or a stream that did not come from a browser upload (an agent through the MCP server) on the default disk and attach
-     * them. The type is read from the whole content, and the stored file has no name of its own beyond a random one plus the extension
-     * of that type: "x.php" must not be stored as a script.
+     * them, see Attachment::put.
      *
-     * @param  string|resource  $contents  A string, or a seekable stream positioned at its start (best a file such as tmpfile(), whose type is read from the file)
+     * @param  string|resource  $contents
      */
     public function attachContents(string $name, mixed $contents, ?User $by = null): Attachment
     {
-        $finfo = new finfo(FILEINFO_MIME_TYPE);
-        $uri = is_string($contents) ? null : (stream_get_meta_data($contents)['uri'] ?? null);
-
-        $mimeType = match (true) {
-            is_string($contents) => $finfo->buffer($contents),
-            is_string($uri) && is_file($uri) => $finfo->file($uri),
-            default => $finfo->buffer((string) fread($contents, 1048576)),
-        } ?: 'application/octet-stream';
-
-        if (! is_string($contents)) {
-            rewind($contents);
-        }
-
-        $size = is_string($contents) ? strlen($contents) : (int) fstat($contents)['size'];
-        $extension = Attachment::extensionFor($mimeType);
-        $path = "attachments/{$this->project_id}/{$this->getKey()}/".Str::random(40).($extension === '' ? '' : ".{$extension}");
-
-        throw_unless(Storage::disk()->put($path, $contents, ['mimetype' => $mimeType]), RuntimeException::class, 'The file could not be stored.');
+        $stored = Attachment::put($this, $contents);
 
         try {
             return $this->attachments()->create([
                 'user_id' => ($by ?? auth()->user())?->getKey(),
                 'name' => $name,
-                'path' => $path,
-                'mime_type' => $mimeType,
-                'size' => $size,
+                ...$stored,
             ]);
         } catch (Throwable $exception) {
-            Storage::delete($path);
+            Storage::delete($stored['path']);
 
             throw $exception;
         }

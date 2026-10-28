@@ -5,12 +5,15 @@ namespace App\Models;
 use App\Services\RealtimeService;
 use App\Services\TaskSearchService;
 use Database\Factories\AttachmentFactory;
+use finfo;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Number;
+use Illuminate\Support\Str;
+use RuntimeException;
 use Symfony\Component\Mime\MimeTypes;
 
 #[Fillable(['task_id', 'user_id', 'name', 'path', 'mime_type', 'size'])]
@@ -43,6 +46,37 @@ class Attachment extends Model
             app(TaskSearchService::class)->index($attachment->task_id);
             app(RealtimeService::class)->taskContentChanged($attachment->task_id, 'attachment');
         });
+    }
+
+    /**
+     * Put bytes or a stream on the default disk under the task's folder: the type is read from the whole content, and the file gets a
+     * random name plus the extension of that type ("x.php" must not be stored as a script). The caller makes the row, and removes the
+     * file again if that fails.
+     *
+     * @param  string|resource  $contents  A string, or a seekable stream positioned at its start (best a file such as tmpfile(), whose type is read from the file)
+     * @return array{path: string, mime_type: string, size: int}
+     */
+    public static function put(Task $task, mixed $contents): array
+    {
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $uri = is_string($contents) ? null : (stream_get_meta_data($contents)['uri'] ?? null);
+
+        $mimeType = match (true) {
+            is_string($contents) => $finfo->buffer($contents),
+            is_string($uri) && is_file($uri) => $finfo->file($uri),
+            default => $finfo->buffer((string) fread($contents, 1048576)),
+        } ?: 'application/octet-stream';
+
+        if (! is_string($contents)) {
+            rewind($contents);
+        }
+
+        $extension = self::extensionFor($mimeType);
+        $path = "attachments/{$task->project_id}/{$task->getKey()}/".Str::random(40).($extension === '' ? '' : ".{$extension}");
+
+        throw_unless(Storage::disk()->put($path, $contents, ['mimetype' => $mimeType]), RuntimeException::class, 'The file could not be stored.');
+
+        return ['path' => $path, 'mime_type' => $mimeType, 'size' => is_string($contents) ? strlen($contents) : (int) fstat($contents)['size']];
     }
 
     /**

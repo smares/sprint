@@ -16,9 +16,7 @@ use App\Models\Task;
 use App\Models\TaskStatus;
 use App\Models\User;
 use Closure;
-use finfo;
 use Illuminate\Database\Query\JoinClause;
-use Illuminate\Http\File as HttpFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -1344,17 +1342,15 @@ class AsanaImportService
 
             throw_unless($downloaded, AsanaException::class, 'Asana gives no download for it');
 
-            $size = File::size($temporary);
-
             $name = mb_substr(preg_replace('/[\x00-\x1F\x7F\/\\\\]+/', '_', (string) $attachment['name']) ?? 'file', 0, 255);
-            $mimeType = (new finfo(FILEINFO_MIME_TYPE))->file($temporary) ?: 'application/octet-stream';
-            // The extension follows the detected type, not the name Asana gives: "x.php" must not be stored as a script
-            $extension = Attachment::extensionFor($mimeType);
-            $storedPath = Storage::disk()->putFileAs("attachments/{$task->project_id}/{$task->id}", new HttpFile($temporary), Str::random(40).($extension !== '' ? ".{$extension}" : ''));
 
-            throw_unless($storedPath, AsanaException::class, 'The file could not be stored');
+            $stream = fopen($temporary, 'rb');
 
-            $path = $storedPath;
+            try {
+                $stored = Attachment::put($task, $stream);
+            } finally {
+                fclose($stream);
+            }
         } finally {
             File::delete($temporary);
         }
@@ -1367,9 +1363,7 @@ class AsanaImportService
                 'task_id' => $task->id,
                 'user_id' => ($uploader ?? $this->importer)->id,
                 'name' => $name,
-                'path' => $path,
-                'mime_type' => $mimeType,
-                'size' => $size,
+                ...$stored,
             ]);
             $record->forceFill(['created_at' => $attachment['created_at'] ?? now(), 'updated_at' => $attachment['created_at'] ?? now()]);
 
@@ -1379,7 +1373,7 @@ class AsanaImportService
                 $this->remembered('attachment', (string) $attachment['gid'], $record->id);
             });
         } catch (Throwable $exception) {
-            Storage::disk()->delete($path);
+            Storage::disk()->delete($stored['path']);
 
             throw $exception;
         }

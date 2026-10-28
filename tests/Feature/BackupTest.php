@@ -157,7 +157,7 @@ class BackupTest extends TestCase
     public function test_a_failed_upload_counts_as_a_failure(): void
     {
         $disk = Mockery::mock(FilesystemAdapter::class);
-        $disk->shouldReceive('writeStream')->once()->andReturn(false);
+        $disk->shouldReceive('putFileAs')->once()->andReturn(false);
         Storage::set('failing', $disk);
         config(['sprint.backup.disk' => 'failing']);
 

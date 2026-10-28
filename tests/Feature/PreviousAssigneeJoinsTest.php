@@ -165,4 +165,15 @@ class PreviousAssigneeJoinsTest extends TestCase
         $this->assertEqualsCanonicalizing([$this->anna->id, $this->carla->id], $this->collaboratorIds());
         $this->assertSame(0, $this->task->activities()->where('type', 'collaborators_removed')->count());
     }
+
+    public function test_the_shortcut_keeps_what_was_changed_in_the_list_and_not_saved_yet(): void
+    {
+        $this->actingAs($this->ben);
+
+        $page = Livewire::test('pages::tasks.show', ['task' => $this->task])
+            ->set('collaboratorIds', [(string) $this->carla->id, (string) $this->ben->id])
+            ->call('assignToMeByShortcut');
+
+        $page->assertSet('collaboratorIds', [(string) $this->carla->id, (string) $this->anna->id]);
+    }
 }

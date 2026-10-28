@@ -275,10 +275,16 @@ new class extends Component
         }
 
         $before = $this->storedStateRulesChange(AutomationTrigger::AssigneeChanged);
+        $collaboratorsBefore = $this->storedCollaboratorIds();
 
         $this->task->assignTo(auth()->user());
         $this->assigneeId = (string) auth()->id();
-        $this->collaboratorIds = $this->storedCollaboratorIds();
+
+        // What the person has changed in the list and not saved yet stays; whoever handed the task over (and joined) is added
+        $this->collaboratorIds = array_values(array_diff(
+            array_unique([...$this->collaboratorIds, ...array_diff($this->storedCollaboratorIds(), $collaboratorsBefore)]),
+            [(string) auth()->id()],
+        ));
         $this->announceChange();
 
         $this->askToReloadWhenRulesChangedTask($before, AutomationTrigger::AssigneeChanged, ['assignee', 'collaborators'], (int) auth()->id());

@@ -2,6 +2,7 @@
 
 namespace App\Mcp;
 
+use App\Models\Attachment;
 use App\Models\Comment;
 use App\Models\Task;
 use App\Models\User;
@@ -38,7 +39,7 @@ class TaskData
      */
     public static function detail(Task $task): array
     {
-        $task->loadMissing('collaborators', 'fieldValues.field.options', 'comments.user', 'children.status');
+        $task->loadMissing('collaborators', 'fieldValues.field.options', 'comments.user', 'children.status', 'attachments');
 
         return self::summary($task) + [
             'description' => $task->description,
@@ -54,6 +55,7 @@ class TaskData
                 'at' => $comment->created_at->toIso8601String(),
                 'body' => $comment->body,
             ])->values()->all(),
+            'attachments' => $task->attachments->map(fn (Attachment $attachment) => AttachmentUpload::describe($attachment))->all(),
             'created_at' => $task->created_at->toIso8601String(),
             'updated_at' => $task->updated_at->toIso8601String(),
         ];

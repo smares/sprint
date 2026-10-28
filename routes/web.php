@@ -6,6 +6,7 @@ use App\Http\Controllers\ConfirmEmailController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\InterfaceController;
+use App\Http\Controllers\McpUploadController;
 use App\Http\Controllers\ProgressiveWebAppController;
 use App\Http\Controllers\ProjectExportController;
 use App\Services\LocaleService;
@@ -34,6 +35,13 @@ Route::post('/locale', function (Request $request): RedirectResponse {
 })->name('locale.update');
 
 Route::get('/health', HealthController::class)->middleware('throttle:60,1')->name('health');
+
+// The upload link of the MCP tool add-attachment: called by an agent (curl) with the signature as its only credential, so no session
+// and no CSRF check; the controller checks the person and what they may change
+Route::withoutMiddleware([StartSession::class, ShareErrorsFromSession::class, PreventRequestForgery::class, AddQueuedCookiesToResponse::class, EncryptCookies::class])
+    ->put('/mcp-uploads/{task}', McpUploadController::class)
+    ->middleware(['signed', 'throttle:30,1'])
+    ->name('mcp.uploads.store');
 
 Route::controller(ProgressiveWebAppController::class)->group(function () {
     // Fetched by the browser on its own (the manifest even without cookies): no session, which would otherwise be

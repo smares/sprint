@@ -9,7 +9,7 @@
         "kanban"
     ],
     "author": "Sebastian Mares",
-    "license": "UNLICENSED",
+    "license": "SEE LICENSE IN LICENSE",
     "private": true,
     "type": "module",
     "scripts": {

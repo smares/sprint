@@ -7,7 +7,7 @@
     "authors": [
         {"name": "Sebastian Mares"}
     ],
-    "license": "proprietary",
+    "license": "SEE LICENSE IN LICENSE",
     "require": {
         "php": "^8.3",
         "ext-intl": "*",

@@ -138,7 +138,13 @@ jobs:
       # FrankenPHP comes from Docker Hub (see the Dockerfile); with an account the pull limit for anonymous clients does not apply
       - name: Docker Hub account known
         id: dockerhub
-        run: echo "enabled=$([ -n "$DOCKERHUB_TOKEN" ] && [ -n "$DOCKERHUB_USERNAME" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+        run: |
+          if [ -n "$DOCKERHUB_TOKEN" ] && [ -n "$DOCKERHUB_USERNAME" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::DOCKERHUB_USERNAME and DOCKERHUB_TOKEN are not set: FrankenPHP is pulled from Docker Hub without a login."
+          fi
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}

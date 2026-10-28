@@ -4,10 +4,11 @@
 # the queue worker, the scheduler and Reverb (see compose.yaml and docs/deployment-docker.md).
 
 # Docker Hub images come through Google's mirror (mirror.gcr.io): Docker Hub limits anonymous pulls and has been
-# down during releases; the mirror serves the same images. The exception is FrankenPHP: the mirror had no arm64 manifest for
-# a new digest (the arm64 release build failed), so it comes straight from Docker Hub; the release workflow logs in there when
-# the secrets DOCKERHUB_USERNAME and DOCKERHUB_TOKEN exist, which lifts the pull limit. Every image is pinned by digest, so a build uses exactly the
-# image that was tested; Dependabot proposes new digests for the FROM lines (the tag says which line they follow). The digests of the
+# down during releases; the mirror serves the same images. The exception is FrankenPHP: for a new digest the mirror was
+# missing the arm64 manifest for a while (the arm64 release build failed), so it comes straight from Docker Hub. The release
+# workflow logs in there when the secrets DOCKERHUB_USERNAME and DOCKERHUB_TOKEN exist, so the limit for anonymous pulls does
+# not apply. Every image is pinned by digest, so a build uses exactly the image that was tested; Dependabot proposes new
+# digests for the FROM lines (the tag says which line they follow). The digests of the
 # syntax frontend here and of BuildKit in .github/workflows/release.yml are updated by hand.
 
 # The Composer binary comes from its own pinned stage, so the vendor stage (which holds the Flux Pro credentials) runs nothing unpinned

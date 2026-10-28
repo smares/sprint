@@ -9,10 +9,12 @@ use App\Models\User;
 use Illuminate\Contracts\Database\Query\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\PersonalAccessToken;
+use RuntimeException;
 
 /**
  * Takes the file for a link that the MCP tool add-attachment handed out. The link holds only a random key; the person, the task, the
@@ -55,7 +57,16 @@ class McpUploadController extends Controller
             abort_unless(Cache::has(self::grantKey($key)), 404, 'This link is invalid, expired or already used.');
 
             $file = $this->receive($request, $limit);
-            $attachment = AttachmentUpload::store($task, $user, (string) $grant['name'], $file);
+
+            // The history and the notifications name the person who is acting
+            Auth::setUser($user);
+
+            try {
+                $attachment = AttachmentUpload::store($task, $user, (string) $grant['name'], $file);
+            } catch (RuntimeException) {
+                abort(507, 'The file could not be stored (disk full?).');
+            }
+
             Cache::forget(self::grantKey($key));
 
             return response()->json(AttachmentUpload::describe($attachment), 201);
@@ -79,13 +90,13 @@ class McpUploadController extends Controller
     }
 
     /**
-     * The request body as a stream (kept in memory up to a few MB, in a temporary file beyond); stops as soon as it is bigger than allowed.
+     * The request body in a temporary file (removed when closed); stops as soon as it is bigger than allowed.
      *
      * @return resource
      */
     private function receive(Request $request, int $limit): mixed
     {
-        $file = fopen('php://temp', 'r+');
+        $file = tmpfile();
         $copied = stream_copy_to_stream($request->getContent(true), $file, $limit + 1);
 
         abort_if($copied === false, 507, 'The file could not be stored (disk full?).');

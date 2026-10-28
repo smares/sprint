@@ -104,6 +104,23 @@ class McpAttachmentsTest extends TestCase
         $this->assertStringEndsWith('.txt', $attachment->path);
     }
 
+    public function test_the_type_is_read_from_the_whole_file_not_from_its_beginning(): void
+    {
+        $json = json_encode(['rows' => array_fill(0, 600, ['name' => 'Zeile', 'wert' => 12345])]);
+        $this->assertGreaterThan(16384, strlen($json));
+
+        $this->upload($this->link('gross.json'), $json)->assertCreated();
+        $this->tool(['name' => 'daten.json', 'content_base64' => base64_encode($json)])->assertOk();
+
+        foreach ($this->task->attachments()->get() as $attachment) {
+            $this->assertSame('application/json', $attachment->mime_type);
+            $this->assertStringEndsWith('.json', $attachment->path);
+            $this->assertSame(strlen($json), $attachment->size);
+        }
+
+        $this->assertSame(2, $this->task->attachments()->count());
+    }
+
     public function test_content_must_be_valid_and_small(): void
     {
         $this->tool(['name' => 'a.txt', 'content_base64' => '***kein base64***'])->assertHasErrors(['not valid Base64']);

@@ -594,24 +594,31 @@ class Task extends Model
 
     /**
      * Store bytes or a stream that did not come from a browser upload (an agent through the MCP server) on the default disk and attach
-     * them. The type is read from the content, and the stored file has no name of its own beyond a random one plus the extension of that
-     * type: "x.php" must not be stored as a script.
+     * them. The type is read from the whole content, and the stored file has no name of its own beyond a random one plus the extension
+     * of that type: "x.php" must not be stored as a script.
      *
-     * @param  string|resource  $contents  A string, or a seekable stream positioned at its start
+     * @param  string|resource  $contents  A string, or a seekable stream positioned at its start (best a file such as tmpfile(), whose type is read from the file)
      */
     public function attachContents(string $name, mixed $contents, ?User $by = null): Attachment
     {
-        $head = is_string($contents) ? substr($contents, 0, 8192) : (string) fread($contents, 8192);
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $uri = is_string($contents) ? null : (stream_get_meta_data($contents)['uri'] ?? null);
+
+        $mimeType = match (true) {
+            is_string($contents) => $finfo->buffer($contents),
+            is_string($uri) && is_file($uri) => $finfo->file($uri),
+            default => $finfo->buffer((string) fread($contents, 1048576)),
+        } ?: 'application/octet-stream';
 
         if (! is_string($contents)) {
             rewind($contents);
         }
 
-        $mimeType = (new finfo(FILEINFO_MIME_TYPE))->buffer($head) ?: 'application/octet-stream';
+        $size = is_string($contents) ? strlen($contents) : (int) fstat($contents)['size'];
         $extension = Attachment::extensionFor($mimeType);
         $path = "attachments/{$this->project_id}/{$this->getKey()}/".Str::random(40).($extension === '' ? '' : ".{$extension}");
 
-        throw_unless(Storage::disk()->put($path, $contents), RuntimeException::class, 'The file could not be stored.');
+        throw_unless(Storage::disk()->put($path, $contents, ['mimetype' => $mimeType]), RuntimeException::class, 'The file could not be stored.');
 
         try {
             return $this->attachments()->create([
@@ -619,7 +626,7 @@ class Task extends Model
                 'name' => $name,
                 'path' => $path,
                 'mime_type' => $mimeType,
-                'size' => Storage::disk()->size($path),
+                'size' => $size,
             ]);
         } catch (Throwable $exception) {
             Storage::delete($path);

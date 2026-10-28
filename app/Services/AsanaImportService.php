@@ -1350,11 +1350,11 @@ class AsanaImportService
             $mimeType = (new finfo(FILEINFO_MIME_TYPE))->file($temporary) ?: 'application/octet-stream';
             // The extension follows the detected type, not the name Asana gives: "x.php" must not be stored as a script
             $extension = Attachment::extensionFor($mimeType);
-            $stored = Storage::disk()->putFileAs("attachments/{$task->project_id}/{$task->id}", new HttpFile($temporary), Str::random(40).($extension !== '' ? ".{$extension}" : ''));
+            $storedPath = Storage::disk()->putFileAs("attachments/{$task->project_id}/{$task->id}", new HttpFile($temporary), Str::random(40).($extension !== '' ? ".{$extension}" : ''));
 
-            throw_unless($stored, AsanaException::class, 'The file could not be stored');
+            throw_unless($storedPath, AsanaException::class, 'The file could not be stored');
 
-            $path = $stored;
+            $path = $storedPath;
         } finally {
             File::delete($temporary);
         }

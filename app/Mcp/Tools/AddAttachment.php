@@ -48,7 +48,9 @@ class AddAttachment extends SprintTool
             return $this->uploadLink($task->id, $user, $name);
         }
 
-        return Response::json(AttachmentUpload::describe(AttachmentUpload::store($task, $user, $name, $this->decode($validated['content_base64']))));
+        $attachment = AttachmentUpload::store($task, $user, $name, $this->decode($validated['content_base64']));
+
+        return Response::json(AttachmentUpload::describe($attachment));
     }
 
     private function decode(string $encoded): string

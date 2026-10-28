@@ -6,7 +6,6 @@ use App\Enums\ActivityType;
 use App\Models\Attachment;
 use App\Models\Task;
 use App\Models\User;
-use Illuminate\Support\Facades\Auth;
 
 /**
  * A file that agents sent, whether inside a tool call or through an upload link: stored like an upload in the app.
@@ -19,9 +18,6 @@ class AttachmentUpload
     public static function store(Task $task, User $by, string $name, mixed $contents): Attachment
     {
         $name = Attachment::cleanName($name);
-
-        // The history and the notifications name the person who is acting
-        Auth::setUser($by);
 
         $attachment = $task->attachContents($name, $contents, $by);
         $task->logActivity(ActivityType::AttachmentsAdded, ['names' => [$name]]);

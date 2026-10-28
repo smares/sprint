@@ -52,11 +52,9 @@ class Project extends Model
                 'type' => CustomFieldType::Select,
                 'position' => 0,
             ]);
-            $field->options()->createMany(array_map(
-                fn (array $option, int $position) => $option + ['position' => $position],
-                $priority['options'],
-                array_keys($priority['options']),
-            ));
+            $field->options()->createMany(
+                collect($priority['options'])->map(fn (array $option, int $position) => $option + ['position' => $position])->all(),
+            );
         });
     }
 

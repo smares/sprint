@@ -139,7 +139,7 @@ class TaskSearchService
     {
         return collect(preg_split('/[^\p{L}\p{N}]+/u', mb_strtolower($query)) ?: [])
             ->filter(fn (string $term) => $term !== '')
-            ->unique()
+            ->uniqueStrict()
             ->values()
             ->all();
     }

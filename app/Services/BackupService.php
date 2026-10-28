@@ -5,6 +5,7 @@ namespace App\Services;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Throwable;
@@ -56,9 +57,9 @@ class BackupService
 
             $result = ['file' => $file, 'bytes' => (int) filesize($zipPath), 'database' => $databaseCopy !== null, 'attachments' => $attachments];
         } finally {
-            @unlink($zipPath);
+            File::delete($zipPath);
             if ($databaseCopy !== null) {
-                @unlink($databaseCopy);
+                File::delete($databaseCopy);
             }
         }
 
@@ -129,7 +130,7 @@ class BackupService
         }
 
         $copy = tempnam(sys_get_temp_dir(), 'sprint-db-');
-        unlink($copy);
+        File::delete($copy);
         DB::statement('VACUUM INTO ?', [$copy]);
 
         return $copy;

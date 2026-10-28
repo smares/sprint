@@ -167,7 +167,7 @@ class QuickAssignTest extends TestCase
         Livewire::test($view, ['project' => $this->project])->assertSeeHtml('data-unassigned');
     }
 
-    public function test_taking_over_a_task_from_the_collaborators_is_recorded_in_the_history(): void
+    public function test_taking_over_a_task_from_the_collaborators_is_recorded_as_one_change_of_the_assignee(): void
     {
         $task = Task::factory()->for($this->project)->create(['assignee_id' => null]);
         $task->collaborators()->attach($this->member);
@@ -176,6 +176,8 @@ class QuickAssignTest extends TestCase
 
         $types = $task->activities()->pluck('type')->map->value->all();
         $this->assertContains(ActivityType::AssigneeChanged->value, $types);
-        $this->assertContains(ActivityType::CollaboratorsRemoved->value, $types);
+        // The assignee stops being a collaborator without an entry of its own: the change of the assignee says it
+        $this->assertNotContains(ActivityType::CollaboratorsRemoved->value, $types);
+        $this->assertFalse($task->collaborators()->whereKey($this->member->id)->exists());
     }
 }

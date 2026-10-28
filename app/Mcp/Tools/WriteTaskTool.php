@@ -104,8 +104,9 @@ abstract class WriteTaskTool extends SprintTool
      * Tags, collaborators and field values, after the task itself was saved.
      *
      * @param  array<string, mixed>  $given
+     * @param  ?int  $previousAssigneeId  Who had the task before this call: handing it over keeps them as a collaborator, also when the call names the collaborators
      */
-    protected function relations(Task $task, array $given): void
+    protected function relations(Task $task, array $given, ?int $previousAssigneeId = null): void
     {
         if (array_key_exists('tags', $given)) {
             $ids = collect($given['tags'] ?? [])->map(fn (string $name) => $task->project->tags->first(fn ($tag) => mb_strtolower($tag->name) === mb_strtolower($name))?->id
@@ -117,6 +118,7 @@ abstract class WriteTaskTool extends SprintTool
         if (array_key_exists('collaborators', $given)) {
             $ids = collect($given['collaborators'] ?? [])->map(fn (string $email) => $this->member($task->project, $email)->id)
                 ->when($task->wasRecentlyCreated && $task->followedByCreator(), fn ($people) => $people->push($task->creator_id))
+                ->when($task->previousAssigneeToKeep($previousAssigneeId, $task->assignee_id === null ? null : (int) $task->assignee_id), fn ($people, $previous) => $people->push($previous->id))
                 ->reject(fn (int $id) => $id === $task->assignee_id)->unique()->all();
 
             $task->logSyncChanges(ActivityType::CollaboratorsAdded, ActivityType::CollaboratorsRemoved, $task->collaborators()->sync($ids), fn (array $ids) => User::whereIn('id', $ids)->orderBy('name')->pluck('name')->all());

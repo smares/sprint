@@ -873,48 +873,54 @@ class Task extends Model
     }
 
     /**
-     * Hand the task to a person, or to nobody. Whoever becomes the assignee stops being a collaborator, which the history
-     * records like the change of the assignee, all in one go.
+     * Hand the task to a person, or to nobody. Whoever becomes the assignee stops being a collaborator (the history shows the
+     * change of the assignee, which says it), and the person who had the task becomes one (see keepPreviousAssigneeAsCollaborator).
+     * Both happen before the change is saved, so that what a rule or a notification does about it reaches the right people.
      *
      * @param  array<string, mixed>  $attributes  Further columns saved together with the assignee.
      */
     public function assignTo(?User $user, array $attributes = []): void
     {
         DB::transaction(function () use ($user, $attributes): void {
-            $previousAssigneeId = $this->assignee_id;
+            $this->keepPreviousAssigneeAsCollaborator($this->assignee_id === null ? null : (int) $this->assignee_id, $user?->getKey());
+
+            if ($user instanceof User) {
+                $this->collaborators()->detach($user->getKey());
+                $this->unsetRelation('collaborators');
+            }
 
             $this->update(['assignee_id' => $user?->getKey()] + $attributes);
-            $this->keepPreviousAssigneeAsCollaborator($previousAssigneeId);
-
-            if ($user instanceof User && $this->collaborators()->whereKey($user->getKey())->exists()) {
-                $this->collaborators()->detach($user->getKey());
-                $this->logSyncChanges(
-                    ActivityType::CollaboratorsAdded,
-                    ActivityType::CollaboratorsRemoved,
-                    ['detached' => [$user->getKey()]],
-                    fn (array $ids) => User::whereIn('id', $ids)->orderBy('name')->pluck('name')->all(),
-                );
-            }
         });
     }
 
     /**
      * Whoever hands a task to somebody else stays informed: the person who had it becomes a collaborator (silently, as the
-     * assignment itself is in the history). Not when the task is only unassigned, not for imports and copies, and not for somebody
-     * who is deactivated or may no longer see the project.
+     * assignment itself is in the history).
      */
-    public function keepPreviousAssigneeAsCollaborator(?int $previousAssigneeId): void
+    public function keepPreviousAssigneeAsCollaborator(?int $previousAssigneeId, ?int $newAssigneeId): void
     {
-        if ($previousAssigneeId === null || $this->assignee_id === null || $previousAssigneeId === (int) $this->assignee_id || self::$silencedAssignments > 0) {
-            return;
+        $previous = $this->previousAssigneeToKeep($previousAssigneeId, $newAssigneeId);
+
+        if ($previous instanceof User) {
+            $this->collaborators()->syncWithoutDetaching([$previous->getKey()]);
+            $this->unsetRelation('collaborators');
+        }
+    }
+
+    /**
+     * The person who had the task, if they are to stay informed now that it goes to somebody else: not when it is only
+     * unassigned, not for sections, imports and copies (see withoutAssignmentNotices), and not for somebody who is deactivated or
+     * may no longer see the project.
+     */
+    public function previousAssigneeToKeep(?int $previousAssigneeId, ?int $newAssigneeId): ?User
+    {
+        if ($previousAssigneeId === null || $newAssigneeId === null || $previousAssigneeId === $newAssigneeId || $this->is_section || self::$silencedAssignments > 0) {
+            return null;
         }
 
         $previous = $this->userById($previousAssigneeId);
 
-        if ($previous instanceof User && $previous->isActive() && $this->project->viewerIds(collect([$previous])) !== []) {
-            $this->collaborators()->syncWithoutDetaching([$previous->getKey()]);
-            $this->unsetRelation('collaborators');
-        }
+        return $previous instanceof User && $previous->isActive() && $this->project->viewerIds(collect([$previous])) !== [] ? $previous : null;
     }
 
     /**
@@ -948,9 +954,10 @@ class Task extends Model
             if (($changes[$key] ?? []) !== []) {
                 $ids = array_values(array_map(intval(...), $changes[$key]));
 
-                // The creator joined without an entry (addCreatorAsCollaborator); taking the task over removes them again, which is not news
-                if ($type === ActivityType::CollaboratorsRemoved && $this->creator_id !== null && (int) $this->assignee_id === (int) $this->creator_id) {
-                    $ids = array_values(array_diff($ids, [(int) $this->creator_id]));
+                // Somebody who joined without an entry (the creator, or whoever handed the task over) and now has the task is not
+                // "removed": the change of the assignee says it, and nobody read of the joining
+                if ($type === ActivityType::CollaboratorsRemoved && $this->assignee_id !== null) {
+                    $ids = array_values(array_diff($ids, [(int) $this->assignee_id]));
                 }
 
                 if ($ids === []) {

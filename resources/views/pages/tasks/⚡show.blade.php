@@ -221,7 +221,7 @@ new class extends Component
 
         $this->task->assignTo(auth()->user());
         $this->assigneeId = (string) auth()->id();
-        $this->collaboratorIds = array_values(array_diff($this->collaboratorIds, [(string) auth()->id()]));
+        $this->collaboratorIds = $this->storedCollaboratorIds();
         $this->announceChange();
 
         Flux::toast(variant: 'success', text: __('Assigned to you.'));
@@ -577,7 +577,19 @@ new class extends Component
         $this->startDate = $this->task->start_date?->format('Y-m-d') ?? '';
         $this->fillRepeatRule();
         $this->tagIds = $this->task->tags->pluck('id')->map(fn ($id) => (string) $id)->all();
+        $this->collaboratorIds = $this->storedCollaboratorIds();
         $this->fieldValues = $this->storedFieldValues();
+    }
+
+    /**
+     * The collaborators as stored, as the form keeps them. Handing a task over makes the person who had it one, without the form
+     * having asked for it.
+     *
+     * @return list<string>
+     */
+    private function storedCollaboratorIds(): array
+    {
+        return $this->task->collaborators()->pluck('users.id')->map(fn ($id) => (string) $id)->all();
     }
 
     /**
@@ -891,6 +903,11 @@ new class extends Component
         $fieldsBefore = $this->storedFieldValues();
 
         $parentChanged = ($validated['parentId'] ?: null) !== $this->task->parent_id;
+        $previousAssigneeId = $this->task->assignee_id === null ? null : (int) $this->task->assignee_id;
+        $collaboratorsBefore = $this->storedCollaboratorIds();
+
+        // Before the change is saved, so that what a rule does about it reaches the person who had the task too
+        $this->task->keepPreviousAssigneeAsCollaborator($previousAssigneeId, ($validated['assigneeId'] ?: null) === null ? null : (int) $validated['assigneeId']);
 
         $this->task->update([
             'title' => trim((string) preg_replace('/\s*\R\s*/u', ' ', $validated['title'])),
@@ -916,8 +933,12 @@ new class extends Component
             array_map(intval(...), $validated['tagIds']),
             $this->task->tags()->pluck('tags.id')->all(),
         ));
+        // Whoever joined while saving (the person who handed the task over, or somebody a rule added) is not undone by the form's list, which
+        // was read before; and the assignee is whoever has the task now, which a rule may have changed
+        $assigneeNow = (string) Task::query()->whereKey($this->task->getKey())->value('assignee_id');
+        $joinedWhileSaving = array_diff($this->storedCollaboratorIds(), $collaboratorsBefore);
         $collaboratorChanges = $this->task->collaborators()->sync(
-            array_values(array_diff($validated['collaboratorIds'], [(string) $validated['assigneeId']]))
+            array_values(array_diff(array_unique([...$validated['collaboratorIds'], ...$joinedWhileSaving]), [$assigneeNow]))
         );
 
         $names = fn (string $model, string $column) => fn (array $ids) => $model::whereIn('id', $ids)->orderBy($column)->pluck($column)->all();

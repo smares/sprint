@@ -13,7 +13,7 @@ use Laravel\Mcp\Server\Attributes\Name;
 use Laravel\Mcp\Server\Tools\Annotations\IsIdempotent;
 
 #[Name('update-task')]
-#[Description('Changes a task. Only the fields you pass are changed; everything else stays. To finish a task set the status to the project\'s done status. Returns the task afterwards.')]
+#[Description('Changes a task. Only the fields you pass are changed; everything else stays. Handing the task to somebody else makes the previous assignee a collaborator. To finish a task set the status to the project\'s done status. Returns the task afterwards.')]
 #[IsIdempotent]
 class UpdateTask extends WriteTaskTool
 {
@@ -36,8 +36,10 @@ class UpdateTask extends WriteTaskTool
         $this->requireEdit($user, $task->project);
 
         DB::transaction(function () use ($task, $given) {
+            $previousAssigneeId = $task->assignee_id === null ? null : (int) $task->assignee_id;
+
             $task->updateAssigning($this->columns($task->project, $given, $task));
-            $this->relations($task, $given);
+            $this->relations($task, $given, $previousAssigneeId);
         });
 
         return Response::json(TaskData::detail($task->fresh()));

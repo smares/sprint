@@ -2,12 +2,13 @@
 
 namespace App\Mcp\Tools;
 
+use App\Http\Controllers\McpUploadController;
 use App\Mcp\AttachmentUpload;
 use App\Mcp\ToolFailure;
 use App\Models\Attachment;
 use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
-use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -15,7 +16,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Name;
 
 #[Name('add-attachment')]
-#[Description('Attaches a file to a task as the token owner. Small files (up to 1 MB) go in content_base64. Without content_base64 the tool returns a one-time upload URL (valid for 10 minutes, keep it secret) for files up to 20 MB: send the file with an HTTP PUT whose body is the raw file, for example `curl -T file "URL"`.')]
+#[Description('Attaches a file to a task as the token owner. Small files (up to 1 MB) go in content_base64. Without content_base64 the tool returns a one-time upload URL (valid for 10 minutes, keep it secret) for files up to 20 MB: send the file with an HTTP PUT whose body is the raw file, for example `curl -T file "URL"` (not multipart, so no `curl -F`). Files cannot be downloaded through this server.')]
 class AddAttachment extends SprintTool
 {
     private const int LINK_MINUTES = 10;
@@ -71,13 +72,25 @@ class AddAttachment extends SprintTool
         return $content;
     }
 
+    /**
+     * The link carries nothing but a random key; who, which task and which file name are kept on the server.
+     */
     private function uploadLink(int $taskId, User $user, string $name): Response
     {
         $expires = now()->addMinutes(self::LINK_MINUTES);
+        $key = Str::random(40);
+
+        Cache::put(McpUploadController::grantKey($key), [
+            'task' => $taskId,
+            'user' => $user->id,
+            'token' => $user->currentAccessToken()?->getKey(),
+            'name' => $name,
+        ], $expires);
 
         return Response::json([
-            'upload_url' => URL::temporarySignedRoute('mcp.uploads.store', $expires, ['task' => $taskId, 'user' => $user->id, 'name' => $name, 'nonce' => Str::random(40)]),
+            'upload_url' => route('mcp.uploads.store', $key),
             'method' => 'PUT',
+            'how' => 'Send the raw file as the request body, e.g. curl -T <file> "<upload_url>". Do not use multipart/form-data (curl -F).',
             'expires_at' => $expires->toIso8601String(),
             'max_bytes' => Attachment::MAX_KILOBYTES * 1024,
             'single_use' => true,

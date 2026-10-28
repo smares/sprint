@@ -41,9 +41,12 @@ class McpAttachmentsTest extends TestCase
         return SprintServer::actingAs($as ?? $this->user)->tool(AddAttachment::class, ['task_id' => $this->task->id] + $arguments);
     }
 
-    private function link(string $name = 'bericht.txt'): string
+    /**
+     * Asks for an upload link over HTTP with a real token and returns it.
+     */
+    private function link(string $name = 'bericht.txt', ?string $token = null): string
     {
-        $token = $this->user->createToken('Agent', ['read', 'write'])->plainTextToken;
+        $token ??= $this->user->createToken('Agent', ['read', 'write'])->plainTextToken;
 
         $response = $this->withToken($token)->postJson('/mcp', [
             'jsonrpc' => '2.0', 'id' => 1, 'method' => 'tools/call',
@@ -54,6 +57,7 @@ class McpAttachmentsTest extends TestCase
 
         $this->assertSame('PUT', $link['method']);
         $this->assertTrue($link['single_use']);
+        $this->assertStringContainsString('curl -T', $link['how']);
 
         return $link['upload_url'];
     }
@@ -116,11 +120,11 @@ class McpAttachmentsTest extends TestCase
         }
     }
 
-    public function test_a_larger_file_goes_through_a_signed_single_use_link(): void
+    public function test_a_larger_file_goes_through_a_link_that_works_once(): void
     {
         $url = $this->link('bericht.txt');
 
-        $this->assertStringContainsString('/mcp-uploads/'.$this->task->id, $url);
+        $this->assertMatchesRegularExpression('#/mcp-uploads/[A-Za-z0-9]{40}$#', $url);
 
         $this->call('PUT', $url, [], [], [], [], "Zeile 1\nZeile 2\n")->assertCreated()->assertJsonPath('name', 'bericht.txt')->assertJsonPath('size', 16);
 
@@ -130,45 +134,66 @@ class McpAttachmentsTest extends TestCase
         Storage::assertExists($attachment->path);
         $this->assertSame(1, $this->task->activities()->where('type', 'attachments_added')->count());
 
-        $this->call('PUT', $url, [], [], [], [], 'noch einmal')->assertStatus(409);
+        $this->call('PUT', $url, [], [], [], [], 'noch einmal')->assertNotFound()->assertJsonPath('message', 'This link is invalid, expired or already used.');
         $this->assertSame(1, $this->task->attachments()->count());
     }
 
-    public function test_the_link_cannot_be_changed_and_expires(): void
+    public function test_nothing_in_the_request_can_change_who_uploads_or_what_the_file_is_called(): void
     {
+        $other = User::factory()->create();
+        $this->project->setRole($other, ProjectRole::Editor);
+        $url = $this->link('echt.txt');
+
+        $this->call('PUT', $url.'?user='.$other->id.'&name=falsch.txt&task=999', [], [], [], ['CONTENT_TYPE' => 'application/json'], json_encode(['user' => $other->id, 'name' => 'falsch.txt']))->assertCreated();
+
+        $attachment = $this->task->attachments()->sole();
+        $this->assertSame($this->user->id, $attachment->user_id);
+        $this->assertSame('echt.txt', $attachment->name);
+        $this->assertSame($this->user->id, $this->task->activities()->where('type', 'attachments_added')->sole()->user_id);
+    }
+
+    public function test_unknown_and_expired_links_are_refused(): void
+    {
+        $this->call('PUT', route('mcp.uploads.store', str_repeat('a', 40)), [], [], [], [], 'x')->assertNotFound();
+        $this->call('PUT', '/mcp-uploads/kurz', [], [], [], [], 'x')->assertNotFound();
+
         $url = $this->link();
-
-        $this->call('PUT', str_replace('bericht.txt', 'anders.txt', $url), [], [], [], [], 'x')->assertForbidden();
-        $this->call('PUT', str_replace('/mcp-uploads/'.$this->task->id, '/mcp-uploads/'.($this->task->id + 1), $url), [], [], [], [], 'x')->assertForbidden();
-
         $this->travel(11)->minutes();
-        $this->call('PUT', $url, [], [], [], [], 'x')->assertForbidden();
+        $this->call('PUT', $url, [], [], [], [], 'x')->assertNotFound();
 
         $this->assertSame(0, $this->task->attachments()->count());
     }
 
-    public function test_the_link_stops_working_when_the_person_may_no_longer_change_the_task(): void
+    public function test_the_link_stops_working_when_the_person_or_the_token_may_no_longer_do_it(): void
     {
-        $url = $this->link();
-        $this->project->setRole($this->user, ProjectRole::Viewer);
+        $token = $this->user->createToken('Agent', ['read', 'write']);
 
-        $this->call('PUT', $url, [], [], [], [], 'x')->assertForbidden();
+        $revoked = $this->link('a.txt', $token->plainTextToken);
+        $token->accessToken->delete();
+        $this->call('PUT', $revoked, [], [], [], [], 'x')->assertForbidden();
+
+        $viewerLink = $this->link();
+        $this->project->setRole($this->user, ProjectRole::Viewer);
+        $this->call('PUT', $viewerLink, [], [], [], [], 'x')->assertForbidden();
 
         $this->project->setRole($this->user, ProjectRole::Editor);
         $this->user->update(['deactivated_at' => now()]);
-        $this->call('PUT', $url, [], [], [], [], 'x')->assertForbidden();
+        $this->call('PUT', $viewerLink, [], [], [], [], 'x')->assertForbidden();
 
         $this->assertSame(0, $this->task->attachments()->count());
     }
 
-    public function test_empty_and_oversized_bodies_are_refused(): void
+    public function test_a_failed_upload_does_not_use_up_the_link(): void
     {
-        $this->call('PUT', $this->link(), [], [], [], [], '')->assertStatus(422);
+        $url = $this->link();
 
-        $big = str_repeat('x', Attachment::MAX_KILOBYTES * 1024 + 1);
-        $this->call('PUT', $this->link(), [], [], [], [], $big)->assertStatus(413);
-
+        $this->call('PUT', $url, [], [], [], [], '')->assertStatus(422);
+        $this->call('PUT', $url, [], [], [], [], str_repeat('x', Attachment::MAX_KILOBYTES * 1024 + 1))->assertStatus(413);
+        $this->call('PUT', $url, [], [], [], ['CONTENT_TYPE' => 'multipart/form-data; boundary=x'], "--x\r\n--x--")->assertStatus(415)->assertJsonPath('message', fn (string $message) => str_contains($message, 'curl -T'));
         $this->assertSame(0, $this->task->attachments()->count());
+
+        $this->call('PUT', $url, [], [], [], [], 'jetzt richtig')->assertCreated();
+        $this->assertSame(1, $this->task->attachments()->count());
     }
 
     public function test_the_link_needs_no_session_and_no_token(): void

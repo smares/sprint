@@ -36,11 +36,12 @@ Route::post('/locale', function (Request $request): RedirectResponse {
 
 Route::get('/health', HealthController::class)->middleware('throttle:60,1')->name('health');
 
-// The upload link of the MCP tool add-attachment: called by an agent (curl) with the signature as its only credential, so no session
-// and no CSRF check; the controller checks the person and what they may change
+// The upload link of the MCP tool add-attachment: called by an agent (curl) with the random key in the address as its only credential, so
+// no session and no CSRF check; the controller looks up who the link was issued to and checks what they may change
 Route::withoutMiddleware([StartSession::class, ShareErrorsFromSession::class, PreventRequestForgery::class, AddQueuedCookiesToResponse::class, EncryptCookies::class])
-    ->put('/mcp-uploads/{task}', McpUploadController::class)
-    ->middleware(['signed', 'throttle:30,1'])
+    ->put('/mcp-uploads/{key}', McpUploadController::class)
+    ->middleware('throttle:30,1')
+    ->where('key', '[A-Za-z0-9]{40}')
     ->name('mcp.uploads.store');
 
 Route::controller(ProgressiveWebAppController::class)->group(function () {

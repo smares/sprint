@@ -21,6 +21,7 @@ use App\Services\TaskSearchService;
 use Carbon\CarbonInterface;
 use Closure;
 use Database\Factories\TaskFactory;
+use finfo;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -36,6 +37,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use RuntimeException;
 use Throwable;
 
 #[Fillable(['project_id', 'parent_id', 'is_section', 'assignee_id', 'creator_id', 'title', 'description', 'status_id', 'position', 'start_date', 'due_date', 'completed_at', 'repeat_unit', 'repeat_interval', 'repeat_mode', 'repeat_until', 'repeat_day'])]
@@ -591,6 +593,42 @@ class Task extends Model
     }
 
     /**
+     * Store bytes or a stream that did not come from a browser upload (an agent through the MCP server) on the default disk and attach
+     * them. The type is read from the content, and the stored file has no name of its own beyond a random one plus the extension of that
+     * type: "x.php" must not be stored as a script.
+     *
+     * @param  string|resource  $contents  A string, or a seekable stream positioned at its start
+     */
+    public function attachContents(string $name, mixed $contents, ?User $by = null): Attachment
+    {
+        $head = is_string($contents) ? substr($contents, 0, 8192) : (string) fread($contents, 8192);
+
+        if (! is_string($contents)) {
+            rewind($contents);
+        }
+
+        $mimeType = (new finfo(FILEINFO_MIME_TYPE))->buffer($head) ?: 'application/octet-stream';
+        $extension = Attachment::extensionFor($mimeType);
+        $path = "attachments/{$this->project_id}/{$this->getKey()}/".Str::random(40).($extension === '' ? '' : ".{$extension}");
+
+        throw_unless(Storage::disk()->put($path, $contents), RuntimeException::class, 'The file could not be stored.');
+
+        try {
+            return $this->attachments()->create([
+                'user_id' => ($by ?? auth()->user())?->getKey(),
+                'name' => $name,
+                'path' => $path,
+                'mime_type' => $mimeType,
+                'size' => Storage::disk()->size($path),
+            ]);
+        } catch (Throwable $exception) {
+            Storage::delete($path);
+
+            throw $exception;
+        }
+    }
+
+    /**
      * @return BelongsToMany<Tag, $this>
      */
     public function tags(): BelongsToMany
@@ -952,12 +990,12 @@ class Task extends Model
     {
         foreach ([[$added, 'attached'], [$removed, 'detached']] as [$type, $key]) {
             if (($changes[$key] ?? []) !== []) {
-                $ids = array_values(array_map(intval(...), $changes[$key]));
+                $ids = collect($changes[$key])->map(fn ($id) => (int) $id)->values()->all();
 
                 // Somebody who joined without an entry (the creator, or whoever handed the task over) and now has the task is not
                 // "removed": the change of the assignee says it, and nobody read of the joining
                 if ($type === ActivityType::CollaboratorsRemoved && $this->assignee_id !== null) {
-                    $ids = array_values(array_diff($ids, [(int) $this->assignee_id]));
+                    $ids = collect($ids)->diff([(int) $this->assignee_id])->values()->all();
                 }
 
                 if ($ids === []) {

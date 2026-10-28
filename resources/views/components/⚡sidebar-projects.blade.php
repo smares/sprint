@@ -49,8 +49,8 @@ new class extends Component
     {
         $user = auth()->user();
         $favoriteIds = $this->favoriteIds;
-        $recentIds = array_slice(array_values(array_diff($user->recentProjectIds(), $favoriteIds)), 0, self::RECENT_PROJECTS);
-        $ids = array_values(array_unique([...$favoriteIds, ...$recentIds, ...array_filter([$this->currentProjectId])]));
+        $recentIds = collect($user->recentProjectIds())->diff($favoriteIds)->take(self::RECENT_PROJECTS)->values()->all();
+        $ids = collect([...$favoriteIds, ...$recentIds, $this->currentProjectId])->filter()->unique()->values()->all();
 
         $projects = Project::query()
             ->visibleTo($user)

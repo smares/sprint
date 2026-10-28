@@ -5,7 +5,8 @@ namespace App\Mcp;
 use App\Enums\ActivityType;
 use App\Models\Attachment;
 use App\Models\Task;
-use Illuminate\Http\UploadedFile;
+use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 
 /**
  * A file that agents sent, whether inside a tool call or through an upload link: stored like an upload in the app.
@@ -13,12 +14,16 @@ use Illuminate\Http\UploadedFile;
 class AttachmentUpload
 {
     /**
-     * @param  string  $path  The file as it arrived; the caller removes it.
+     * @param  string|resource  $contents  The file as a string or a seekable stream
      */
-    public static function store(Task $task, string $path, string $name): Attachment
+    public static function store(Task $task, User $by, string $name, mixed $contents): Attachment
     {
         $name = Attachment::cleanName($name);
-        $attachment = $task->attachUpload(new UploadedFile($path, $name, null, null, true));
+
+        // The history and the notifications name the person who is acting
+        Auth::setUser($by);
+
+        $attachment = $task->attachContents($name, $contents, $by);
         $task->logActivity(ActivityType::AttachmentsAdded, ['names' => [$name]]);
 
         return $attachment;

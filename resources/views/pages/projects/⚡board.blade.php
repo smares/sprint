@@ -54,8 +54,8 @@ new class extends Component
         // One query for all columns: number the tasks within each status and keep the first n per column.
         // The chosen order (if any) comes before the manual one (it settles the ties only if there is none: the terms end with the newest first)
         $terms = $this->sortTerms();
-        $order = implode(', ', [...array_column($terms, 0), 'tasks.position', 'tasks.id']);
-        $bindings = array_merge(...array_column($terms, 1));
+        $order = collect($terms)->pluck(0)->push('tasks.position', 'tasks.id')->implode(', ');
+        $bindings = collect($terms)->pluck(1)->flatten(1)->all();
 
         $ranked = $this->project->tasks()
             ->topLevel()

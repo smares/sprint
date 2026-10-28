@@ -98,6 +98,7 @@ class McpAttachmentsTest extends TestCase
         $this->assertSame('passwd.png', $attachment->name);
         $this->assertSame('text/plain', $attachment->mime_type);
         $this->assertStringStartsWith("attachments/{$this->project->id}/{$this->task->id}/", $attachment->path);
+        $this->assertStringEndsWith('.txt', $attachment->path);
     }
 
     public function test_content_must_be_valid_and_small(): void

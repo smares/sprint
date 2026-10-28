@@ -31,7 +31,7 @@ trait HasPosition
     {
         DB::transaction(function () use ($position) {
             $current = $this->positionSiblings()->reorder()->orderBy('position')->orderBy('id')->pluck('position', 'id')->all();
-            $orderedIds = array_values(array_diff(array_keys($current), [$this->getKey()]));
+            $orderedIds = collect($current)->keys()->diff([$this->getKey()])->values()->all();
 
             array_splice($orderedIds, max(0, min($position, count($orderedIds))), 0, [$this->getKey()]);
 
@@ -49,7 +49,7 @@ trait HasPosition
      */
     public static function insertAmongVisible(array $orderedIds, array $visibleIds, int $position, int $id): array
     {
-        $visibleIds = array_values(array_intersect($visibleIds, $orderedIds));
+        $visibleIds = collect($visibleIds)->intersect($orderedIds)->values()->all();
         $position = max(0, min($position, count($visibleIds)));
 
         $insertAt = match (true) {

@@ -517,7 +517,7 @@ class TaskCsvService
      */
     private function split(string $value): array
     {
-        return array_values(array_filter(array_map(trim(...), preg_split('/[,;\n]+/', $value) ?: []), fn (string $part) => $part !== ''));
+        return collect(preg_split('/[,;\n]+/', $value) ?: [])->map(fn (string $part) => trim($part))->filter(fn (string $part) => $part !== '')->values()->all();
     }
 
     private function parseDate(string $value): ?string

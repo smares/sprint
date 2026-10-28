@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Vite;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -40,7 +41,7 @@ class SecurityHeaders
         $images = ["'self'", 'data:', 'blob:'];
 
         if (Vite::isRunningHot()) {
-            $images[] = trim((string) file_get_contents(Vite::hotFile()));
+            $images[] = trim(File::get(Vite::hotFile()));
         }
 
         return implode('; ', [

@@ -9,9 +9,7 @@ use App\Models\User;
 use Illuminate\Contracts\Database\Query\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -53,22 +51,19 @@ class McpUploadController extends Controller
         $lock = Cache::lock(self::grantKey($key).':lock', 300);
         abort_unless($lock->get(), 409, 'An upload with this link is already running.');
 
-        $path = '';
-
         try {
-            $path = (string) tempnam(sys_get_temp_dir(), 'sprint-upload-');
             abort_unless(Cache::has(self::grantKey($key)), 404, 'This link is invalid, expired or already used.');
 
-            $size = $this->receive($request, $path, $limit);
-            abort_if($size === 0, 422, 'The file is empty.');
-
-            Auth::setUser($user);
-            $attachment = AttachmentUpload::store($task, $path, (string) $grant['name']);
+            $file = $this->receive($request, $limit);
+            $attachment = AttachmentUpload::store($task, $user, (string) $grant['name'], $file);
             Cache::forget(self::grantKey($key));
 
             return response()->json(AttachmentUpload::describe($attachment), 201);
         } finally {
-            File::delete($path);
+            if (isset($file) && is_resource($file)) {
+                fclose($file);
+            }
+
             $lock->release();
         }
     }
@@ -84,16 +79,21 @@ class McpUploadController extends Controller
     }
 
     /**
-     * Copies the request body to a file and stops as soon as it is bigger than allowed.
+     * The request body as a stream (kept in memory up to a few MB, in a temporary file beyond); stops as soon as it is bigger than allowed.
+     *
+     * @return resource
      */
-    private function receive(Request $request, string $path, int $limit): int
+    private function receive(Request $request, int $limit): mixed
     {
-        $output = fopen($path, 'wb');
-        $copied = stream_copy_to_stream($request->getContent(true), $output, $limit + 1);
+        $file = fopen('php://temp', 'r+');
+        $copied = stream_copy_to_stream($request->getContent(true), $file, $limit + 1);
 
-        abort_if(! fclose($output) || $copied === false, 507, 'The file could not be stored (disk full?).');
+        abort_if($copied === false, 507, 'The file could not be stored (disk full?).');
         abort_if($copied > $limit, 413, "The file is larger than {$limit} bytes.");
+        abort_if($copied === 0, 422, 'The file is empty.');
 
-        return $copied;
+        rewind($file);
+
+        return $file;
     }
 }

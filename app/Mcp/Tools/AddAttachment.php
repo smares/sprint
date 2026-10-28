@@ -9,7 +9,6 @@ use App\Models\Attachment;
 use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -49,16 +48,7 @@ class AddAttachment extends SprintTool
             return $this->uploadLink($task->id, $user, $name);
         }
 
-        $content = $this->decode($validated['content_base64']);
-        $path = (string) tempnam(sys_get_temp_dir(), 'sprint-upload-');
-
-        try {
-            file_put_contents($path, $content);
-
-            return Response::json(AttachmentUpload::describe(AttachmentUpload::store($task, $path, $name)));
-        } finally {
-            File::delete($path);
-        }
+        return Response::json(AttachmentUpload::describe(AttachmentUpload::store($task, $user, $name, $this->decode($validated['content_base64']))));
     }
 
     private function decode(string $encoded): string

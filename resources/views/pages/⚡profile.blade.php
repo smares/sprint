@@ -148,8 +148,7 @@ new class extends Component
             'quietDays.*' => ['integer', 'between:1,7'],
         ], attributes: ['quietFrom' => __('From'), 'quietUntil' => __('Until')]);
 
-        $days = array_values(array_unique(array_map(intval(...), $validated['quietDays'])));
-        sort($days);
+        $days = collect($validated['quietDays'])->map(fn ($day) => (int) $day)->unique()->sort()->values()->all();
 
         auth()->user()->update([
             'quiet_from' => $validated['quietHours'] ? $validated['quietFrom'] : null,

@@ -18,6 +18,7 @@ use App\Models\User;
 use Closure;
 use finfo;
 use Illuminate\Database\Query\JoinClause;
+use Illuminate\Http\File as HttpFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -25,7 +26,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Symfony\Component\Mime\MimeTypes;
 use Throwable;
 
 /**
@@ -172,10 +172,9 @@ class AsanaImportService
         foreach ($this->asana->paginate('workspaces', ['opt_fields' => 'name']) as $workspace) {
             $found[] = [
                 'workspace' => (string) $workspace['name'],
-                'projects' => array_values(array_map(
-                    fn (array $project) => ['gid' => (string) $project['gid'], 'name' => (string) $project['name']],
-                    iterator_to_array($this->asana->paginate('projects', ['workspace' => $workspace['gid'], 'archived' => 'false', 'opt_fields' => 'name']), false),
-                )),
+                'projects' => collect(iterator_to_array($this->asana->paginate('projects', ['workspace' => $workspace['gid'], 'archived' => 'false', 'opt_fields' => 'name']), false))
+                    ->map(fn (array $project) => ['gid' => (string) $project['gid'], 'name' => (string) $project['name']])
+                    ->all(),
             ];
         }
 
@@ -265,10 +264,9 @@ class AsanaImportService
             'archived' => (bool) ($project['archived'] ?? false),
             'owner' => isset($project['owner']['gid']) ? (string) $project['owner']['gid'] : null,
             'members' => $members,
-            'sections' => array_values(array_map(
-                fn (array $section) => ['gid' => (string) $section['gid'], 'name' => trim((string) ($section['name'] ?? ''))],
-                iterator_to_array($this->asana->paginate("projects/{$gid}/sections", ['opt_fields' => 'name']), false),
-            )),
+            'sections' => collect(iterator_to_array($this->asana->paginate("projects/{$gid}/sections", ['opt_fields' => 'name']), false))
+                ->map(fn (array $section) => ['gid' => (string) $section['gid'], 'name' => trim((string) ($section['name'] ?? ''))])
+                ->all(),
             'fields' => $this->planFields($gid),
         ];
 
@@ -293,10 +291,11 @@ class AsanaImportService
                     'gid' => (string) ($field['gid'] ?? ''),
                     'name' => trim((string) ($field['name'] ?? '')),
                     'type' => (string) ($field['resource_subtype'] ?? ''),
-                    'options' => array_values(array_map(
-                        fn (array $option) => (string) $option['name'],
-                        array_filter($field['enum_options'] ?? [], fn (array $option) => $option['enabled'] ?? true),
-                    )),
+                    'options' => collect($field['enum_options'] ?? [])
+                        ->filter(fn (array $option) => $option['enabled'] ?? true)
+                        ->map(fn (array $option) => (string) $option['name'])
+                        ->values()
+                        ->all(),
                 ];
             }
         } catch (AsanaException $exception) {
@@ -320,7 +319,8 @@ class AsanaImportService
         if ($parentGid === null) {
             // A subtask that is a member of the project itself is listed there too. Those come last: they have been planned
             // with their task by then (at any depth) and are skipped, and only one whose task is not here stays a task of its own
-            $raws = [...array_filter($raws, fn (array $raw) => ! isset($raw['parent']['gid'])), ...array_filter($raws, fn (array $raw) => isset($raw['parent']['gid']))];
+            [$ownTasks, $subtasks] = collect($raws)->partition(fn (array $raw) => ! isset($raw['parent']['gid']));
+            $raws = $ownTasks->concat($subtasks)->values()->all();
         }
 
         foreach ($raws as $raw) {
@@ -421,7 +421,7 @@ class AsanaImportService
             'assignee' => $assignee,
             'creator' => isset($raw['created_by']['gid']) ? (string) $raw['created_by']['gid'] : null,
             'followers' => array_map(fn (array $person) => (string) $person['gid'], $raw['followers'] ?? []),
-            'tags' => array_values(array_filter(array_map(fn (array $tag) => trim((string) ($tag['name'] ?? '')), $raw['tags'] ?? []))),
+            'tags' => collect($raw['tags'] ?? [])->map(fn (array $tag) => trim((string) ($tag['name'] ?? '')))->filter()->values()->all(),
             'dependencies' => $dependencies,
             'section' => $section,
             'values' => $values,
@@ -716,7 +716,7 @@ class AsanaImportService
     private function prepareStatuses(array $plan, bool $fresh): void
     {
         $this->statusBySection = [];
-        $sections = array_values(array_filter($plan['sections'], fn (array $section) => ! $this->isDefaultSection($section['name'])));
+        $sections = collect($plan['sections'])->reject(fn (array $section) => $this->isDefaultSection($section['name']))->values()->all();
 
         if ($this->options['sections'] === 'status') {
             foreach ($sections as $section) {
@@ -781,10 +781,10 @@ class AsanaImportService
     {
         $statuses = $this->project->statuses()->get();
         $open = $statuses->where('is_done', false);
-        $sectionIds = array_values(array_unique($this->statusBySection));
+        $sectionIds = collect($this->statusBySection)->unique()->values()->all();
         $keepFirst = $this->usesDefaultStatus($plan['tasks']);
         $first = $open->first();
-        $keep = array_values(array_unique([...($keepFirst && $first !== null ? [$first->id] : []), ...$sectionIds]));
+        $keep = collect($keepFirst && $first !== null ? [$first->id] : [])->merge($sectionIds)->unique()->values()->all();
 
         $this->project->statuses()->whereIn('id', $open->pluck('id')->diff($keep)->all())->delete();
         TaskStatus::writePositions([...$keep, ...$statuses->where('is_done', true)->pluck('id')->all()], $statuses->pluck('position', 'id')->all());
@@ -1089,7 +1089,7 @@ class AsanaImportService
      */
     private function linkedAttachments(array $node): array
     {
-        return array_values(array_filter($node['attachments'], fn (array $attachment) => ! $attachment['stored'] && $attachment['url'] !== null));
+        return collect($node['attachments'])->filter(fn (array $attachment) => ! $attachment['stored'] && $attachment['url'] !== null)->values()->all();
     }
 
     /**
@@ -1120,7 +1120,7 @@ class AsanaImportService
     private function appendLinks(Task $task, array $node): void
     {
         // Links of an import before they were remembered are in the description already
-        $links = array_values(array_filter($this->linkLines($node), fn (string $line) => ! str_contains((string) $task->description, $line)));
+        $links = collect($this->linkLines($node))->reject(fn (string $line) => str_contains((string) $task->description, $line))->values()->all();
 
         if ($links !== []) {
             $description = $task->description.$this->linksBlock($links);
@@ -1220,7 +1220,7 @@ class AsanaImportService
             }
         }
 
-        return array_values(array_unique($ids));
+        return collect($ids)->unique()->values()->all();
     }
 
     /**
@@ -1344,17 +1344,17 @@ class AsanaImportService
 
             throw_unless($downloaded, AsanaException::class, 'Asana gives no download for it');
 
-            $size = (int) filesize($temporary);
+            $size = File::size($temporary);
 
             $name = mb_substr(preg_replace('/[\x00-\x1F\x7F\/\\\\]+/', '_', (string) $attachment['name']) ?? 'file', 0, 255);
             $mimeType = (new finfo(FILEINFO_MIME_TYPE))->file($temporary) ?: 'application/octet-stream';
             // The extension follows the detected type, not the name Asana gives: "x.php" must not be stored as a script
-            $extension = MimeTypes::getDefault()->getExtensions($mimeType)[0] ?? '';
-            $path = "attachments/{$task->project_id}/{$task->id}/".Str::random(40).($extension !== '' ? ".{$extension}" : '');
+            $extension = Attachment::extensionFor($mimeType);
+            $stored = Storage::disk()->putFileAs("attachments/{$task->project_id}/{$task->id}", new HttpFile($temporary), Str::random(40).($extension !== '' ? ".{$extension}" : ''));
 
-            $stream = fopen($temporary, 'rb');
-            Storage::disk()->writeStream($path, $stream);
-            fclose($stream);
+            throw_unless($stored, AsanaException::class, 'The file could not be stored');
+
+            $path = $stored;
         } finally {
             File::delete($temporary);
         }
@@ -1435,7 +1435,7 @@ class AsanaImportService
             $taskId = $this->map['task'][$node['gid']] ?? null;
             $dependencies = isset($this->created[$node['gid']]) || ! isset($this->map['dependencies'][$node['gid']])
                 ? $node['dependencies']
-                : array_values(array_filter($node['dependencies'], fn (string $gid) => isset($this->created[$gid])));
+                : collect($node['dependencies'])->filter(fn (string $gid) => isset($this->created[$gid]))->values()->all();
 
             if ($taskId !== null && $dependencies !== []) {
                 $found[$taskId] = [$node['gid'], $dependencies];

@@ -98,7 +98,7 @@ trait EditsTasksInBulk
 
         return $this->filteredTasks()
             ->withoutSections()
-            ->whereIn('id', array_slice(array_map(intval(...), $this->selected), 0, self::MAX_SELECTION))
+            ->whereIn('id', collect($this->selected)->map(fn ($id) => (int) $id)->take(self::MAX_SELECTION)->values()->all())
             ->pluck('id')
             ->map(fn ($id) => (int) $id)
             ->all();

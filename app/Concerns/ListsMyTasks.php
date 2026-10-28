@@ -105,7 +105,7 @@ trait ListsMyTasks
      */
     protected function selectedTasks(): Collection
     {
-        $ids = array_slice(array_map(intval(...), $this->selected), 0, self::MAX_SELECTION);
+        $ids = collect($this->selected)->map(fn ($id) => (int) $id)->take(self::MAX_SELECTION)->values()->all();
 
         if ($ids === []) {
             throw ValidationException::withMessages(['selected' => __('Select tasks first.')]);

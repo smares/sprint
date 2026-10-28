@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Number;
+use Symfony\Component\Mime\MimeTypes;
 
 #[Fillable(['task_id', 'user_id', 'name', 'path', 'mime_type', 'size'])]
 class Attachment extends Model
@@ -42,6 +43,14 @@ class Attachment extends Model
             app(TaskSearchService::class)->index($attachment->task_id);
             app(RealtimeService::class)->taskContentChanged($attachment->task_id, 'attachment');
         });
+    }
+
+    /**
+     * The usual extension of a type, empty when there is none.
+     */
+    public static function extensionFor(string $mimeType): string
+    {
+        return MimeTypes::getDefault()->getExtensions($mimeType)[0] ?? '';
     }
 
     /**

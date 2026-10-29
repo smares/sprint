@@ -103,12 +103,7 @@ new class extends Component
         @foreach ($projects as $project)
             @php
                 $isCurrent = $project->id === $currentProjectId;
-                $views = $isCurrent ? collect(ProjectView::cases())->mapWithKeys(fn ($view) => [$view->value => [
-                    'href' => route($view->routeName(), $project),
-                    'icon' => $view->icon(),
-                    'label' => $view->label(),
-                    'current' => $currentView === $view->value,
-                ]])->all() : [];
+                $views = $isCurrent ? ProjectView::links($project, ProjectView::tryFrom($currentView ?? '')) : [];
             @endphp
             <flux:sidebar.item wire:key="sidebar-project-{{ $project->id }}" :href="route('projects.show', $project)" wire:navigate :current="$isCurrent && $currentView === null" data-sidebar-project="{{ $project->id }}" :badge="$project->archived_at ? __('Archived') : null">
                 <x-slot name="icon">

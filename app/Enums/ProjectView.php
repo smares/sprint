@@ -2,6 +2,8 @@
 
 namespace App\Enums;
 
+use App\Models\Project;
+
 /**
  * The ways to look at a project's tasks, in the order the switcher and the sidebar offer them.
  */
@@ -41,6 +43,21 @@ enum ProjectView: string
             self::List => 'projects.show',
             default => 'projects.'.$this->value,
         };
+    }
+
+    /**
+     * The links of the view switcher and the sidebar for a project, the open view marked.
+     *
+     * @return array<string, array{href: string, icon: string, label: string, current: bool}>
+     */
+    public static function links(Project $project, ?self $current): array
+    {
+        return collect(self::cases())->mapWithKeys(fn (self $view) => [$view->value => [
+            'href' => route($view->routeName(), $project),
+            'icon' => $view->icon(),
+            'label' => $view->label(),
+            'current' => $view === $current,
+        ]])->all();
     }
 
     /**

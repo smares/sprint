@@ -101,7 +101,10 @@ new class extends Component
         </div>
 
         @foreach ($projects as $project)
-            @php($isCurrent = $project->id === $currentProjectId)
+            @php
+                $isCurrent = $project->id === $currentProjectId;
+                $views = $isCurrent ? ProjectView::links($project, ProjectView::tryFrom($currentView ?? '')) : [];
+            @endphp
             <flux:sidebar.item wire:key="sidebar-project-{{ $project->id }}" :href="route('projects.show', $project)" wire:navigate :current="$isCurrent && $currentView === null" data-sidebar-project="{{ $project->id }}" :badge="$project->archived_at ? __('Archived') : null">
                 <x-slot name="icon">
                     <x-project-icon :project="$project" size="sm" />
@@ -110,14 +113,7 @@ new class extends Component
             </flux:sidebar.item>
 
             @if ($isCurrent)
-                {{-- Collapsed, the views stay as icons right under the project's tile (their names in the tooltip) --}}
-                <div class="ms-5 border-s border-zinc-200 ps-2 in-data-flux-sidebar-collapsed-desktop:ms-0 in-data-flux-sidebar-collapsed-desktop:mb-2 in-data-flux-sidebar-collapsed-desktop:border-s-0 in-data-flux-sidebar-collapsed-desktop:ps-0 dark:border-zinc-700" data-sidebar-views>
-                    @foreach (ProjectView::cases() as $view)
-                        <flux:sidebar.item wire:key="sidebar-view-{{ $view->value }}" :href="route($view->routeName(), $project)" wire:navigate :icon="$view->icon()" :current="$currentView === $view->value">
-                            {{ $view->label() }}
-                        </flux:sidebar.item>
-                    @endforeach
-                </div>
+                <x-sidebar-views :views="$views" :label="$project->name" />
             @endif
         @endforeach
     @empty

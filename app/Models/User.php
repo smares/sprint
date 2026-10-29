@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\MineView;
 use App\Notifications\EmailChanged;
 use App\Notifications\ResetPassword;
 use App\Notifications\VerifyNewEmail;
@@ -317,7 +318,7 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
     /** The route of "My tasks" in the view they had open last. */
     public function mineTasksRoute(): string
     {
-        return ($this->interfaceState()['mine_view'] ?? 'list') === 'board' ? 'tasks.mine.board' : 'tasks.mine';
+        return (MineView::tryFrom($this->interfaceState()['mine_view'] ?? '') ?? MineView::List)->routeName();
     }
 
     protected static function booted(): void

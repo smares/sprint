@@ -410,8 +410,11 @@ class MyTasksBoardTest extends TestCase
             ->assertSee('x-show="! collapsed.includes('.$own->id.')"', false);
     }
 
-    public function test_the_sidebar_marks_my_tasks_on_the_board_too(): void
+    public function test_the_sidebar_marks_the_board_view_of_my_tasks_not_the_entry_itself(): void
     {
-        $this->get(route('tasks.mine.board'), ['X-Livewire-Navigate' => '1'])->assertOk()->assertSeeHtml('href="'.route('tasks.mine.board').'" data-current');
+        $html = $this->get(route('tasks.mine.board'), ['X-Livewire-Navigate' => '1'])->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('/href="'.preg_quote(route('tasks.mine.board'), '/').'"[^>]*data-current="data-current"/', $html);
+        $this->assertDoesNotMatchRegularExpression('/href="'.preg_quote(route('tasks.mine'), '/').'"[^>]*data-current="data-current"/', $html);
     }
 }

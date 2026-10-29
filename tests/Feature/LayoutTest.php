@@ -55,6 +55,7 @@ class LayoutTest extends TestCase
             $this->assertStringContainsString('aria-label="'.$label.'"', $switcher);
         }
         $this->assertStringContainsString('aria-current="page"', $switcher);
+        $this->assertStringContainsString('data-sidebar-views', $html);
     }
 
     public function test_the_task_views_use_the_whole_width_and_other_pages_keep_the_container(): void

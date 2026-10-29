@@ -2,6 +2,7 @@
 
 namespace App\Concerns;
 
+use App\Enums\MineView;
 use App\Models\Project;
 use App\Models\Task;
 use Illuminate\Database\Eloquent\Builder;
@@ -31,7 +32,7 @@ trait ListsMyTasks
      */
     public function mountListsMyTasks(): void
     {
-        $view = request()->routeIs('tasks.mine.board') ? 'board' : 'list';
+        $view = (MineView::forRoute(request()->route()?->getName()) ?? MineView::List)->value;
 
         if (request()->hasHeader('X-Livewire-Navigate') && (auth()->user()->interfaceState()['mine_view'] ?? null) !== $view) {
             auth()->user()->rememberInterface(['mine_view' => $view]);

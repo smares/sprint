@@ -77,6 +77,20 @@ class SelectionInViewsTest extends TestCase
         }
     }
 
+    public function test_my_tasks_have_their_button_in_the_row_of_the_views_on_phones_too(): void
+    {
+        $user = User::factory()->admin()->create();
+        $this->task(['title' => 'Meine', 'assignee_id' => $user->id]);
+
+        foreach (['tasks.mine', 'tasks.mine.board'] as $route) {
+            $html = $this->actingAs($user)->get(route($route))->assertOk()->getContent();
+
+            $this->assertSame(2, substr_count($html, 'data-selection-toggle>'), $route);
+            $this->assertMatchesRegularExpression('/<div[^>]*lg:hidden[^>]*data-view-switcher>.*?class="[^"]*sm:hidden[^"]*"[^>]*data-selection-toggle>/s', $html, $route);
+            $this->assertStringContainsString('aria-label="Board"', $html, $route);
+        }
+    }
+
     public function test_the_boards_have_the_boxes_and_the_bar_ready_and_stand_still_while_selecting(): void
     {
         $this->task(['title' => 'Auswahl', 'assignee_id' => $this->user->id]);

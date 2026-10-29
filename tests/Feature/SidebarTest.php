@@ -81,12 +81,26 @@ class SidebarTest extends TestCase
             $this->assertStringContainsString($label, $views);
         }
         $this->assertStringContainsString('href="'.route('projects.calendar', $project).'"', $views);
-        $this->assertMatchesRegularExpression('/href="'.preg_quote(route('projects.board', $project), '/').'"[^>]*data-current/', $views);
+        $this->assertMatchesRegularExpression('/href="'.preg_quote(route('projects.board', $project), '/').'"[^>]*data-current="data-current"/', $views);
 
         // A task of the project opens it in the sidebar too
         $task = Task::factory()->for($project)->create();
         $this->get(route('tasks.show', $task))->assertOk()->assertSee('data-sidebar-views', false);
-        $this->get(route('tasks.mine'))->assertOk()->assertDontSee('data-sidebar-views', false);
+        $this->get(route('projects.index'))->assertOk()->assertDontSee('data-sidebar-views', false);
+    }
+
+    public function test_my_tasks_show_their_views_in_the_sidebar_like_a_project_with_the_open_one_marked(): void
+    {
+        foreach (['tasks.mine' => 'tasks.mine.board', 'tasks.mine.board' => 'tasks.mine'] as $open => $other) {
+            $html = $this->get(route($open))->assertOk()->getContent();
+            $start = (int) strpos($html, 'data-sidebar-views');
+            $views = substr($html, $start, (int) strpos($html, '</nav>', $start) - $start);
+
+            $this->assertStringContainsString('Liste', $views);
+            $this->assertStringContainsString('Board', $views);
+            $this->assertMatchesRegularExpression('/href="'.preg_quote(route($open), '/').'"[^>]*data-current="data-current"/', $views);
+            $this->assertDoesNotMatchRegularExpression('/href="'.preg_quote(route($other), '/').'"[^>]*data-current="data-current"/', $views);
+        }
     }
 
     public function test_the_sidebar_offers_the_main_pages_and_counts_the_unread_inbox(): void

@@ -1,7 +1,7 @@
 @props(['active'])
 
 @php
-    // As the view switcher of a project: the current view in the accent color, icons only on phones
+    // As the view switcher of a project: the current view in the accent color, icons only on phones; from lg on the sidebar has the views
     $current = 'bg-accent/10! text-accent-content! **:data-flux-icon:text-accent-content!';
     $views = [
         'list' => ['icon' => 'list-bullet', 'label' => __('List'), 'route' => 'tasks.mine'],
@@ -9,7 +9,7 @@
     ];
 @endphp
 
-<div {{ $attributes }} data-view-switcher>
+<div {{ $attributes->class('lg:hidden') }} data-view-switcher>
     <flux:button.group class="sm:hidden">
         @foreach ($views as $key => $view)
             <flux:button :icon="$view['icon']" square :class="$key === $active ? $current : ''" :aria-current="$key === $active ? 'page' : null" href="{{ route($view['route']) }}" wire:navigate :aria-label="$view['label']" :tooltip="$view['label']" />

@@ -110,14 +110,7 @@ new class extends Component
             </flux:sidebar.item>
 
             @if ($isCurrent)
-                {{-- Collapsed, the views stay as icons right under the project's tile (their names in the tooltip) --}}
-                <div class="ms-5 border-s border-zinc-200 ps-2 in-data-flux-sidebar-collapsed-desktop:ms-0 in-data-flux-sidebar-collapsed-desktop:mb-2 in-data-flux-sidebar-collapsed-desktop:border-s-0 in-data-flux-sidebar-collapsed-desktop:ps-0 dark:border-zinc-700" data-sidebar-views>
-                    @foreach (ProjectView::cases() as $view)
-                        <flux:sidebar.item wire:key="sidebar-view-{{ $view->value }}" :href="route($view->routeName(), $project)" wire:navigate :icon="$view->icon()" :current="$currentView === $view->value">
-                            {{ $view->label() }}
-                        </flux:sidebar.item>
-                    @endforeach
-                </div>
+                <x-sidebar-views :views="collect(ProjectView::cases())->mapWithKeys(fn ($view) => [$view->value => ['href' => route($view->routeName(), $project), 'icon' => $view->icon(), 'label' => $view->label(), 'current' => $currentView === $view->value]])->all()" />
             @endif
         @endforeach
     @empty

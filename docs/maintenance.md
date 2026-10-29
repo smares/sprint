@@ -9,7 +9,7 @@ Updates, Gesundheitsprüfung und Backups.
 
 ## Gesundheitsprüfung
 
-- `GET /health` ohne Login für Uptime-Monitore: Antwort `200` mit `{"status":"ok"|"degraded", "checks":{…}}`, solange Datenbank, Speicher (Standard-Disk) und Cache funktionieren, sonst `503` mit `"status":"down"`. `degraded` bedeutet nur Warnungen: der **Scheduler** hat sich länger als 5 Minuten nicht gemeldet (Cron-Eintrag fehlt, Tageszusammenfassung kommt nicht) oder die **Queue** hat einen Rückstand bzw. fehlgeschlagene Jobs (Worker läuft nicht, Mails und Posteingang kommen nicht an) oder das letzte **Backup** ist fehlgeschlagen bzw. älter als zwei Tage. Öffentlich werden nur die Statuswerte gezeigt, keine Details; die Route ist auf 60 Anfragen pro Minute und IP begrenzt
+- `GET /health` ohne Login für Uptime-Monitore: Antwort `200` mit `{"status":"ok"|"degraded", "checks":{…}}`, solange Datenbank, Speicher (Standard-Disk) und Cache funktionieren, sonst `503` mit `"status":"down"`. `degraded` bedeutet nur Warnungen: der **Scheduler** hat sich länger als 5 Minuten nicht gemeldet (Cron-Eintrag fehlt, Tageszusammenfassung kommt nicht) oder die **Queue** hat einen Rückstand bzw. fehlgeschlagene Jobs der letzten 24 Stunden (Worker läuft nicht, Mails und Posteingang kommen nicht an) oder das letzte **Backup** ist fehlgeschlagen bzw. älter als zwei Tage. Öffentlich werden nur die Statuswerte gezeigt, keine Details; die Route ist auf 60 Anfragen pro Minute und IP begrenzt
 - `php artisan sprint:health` zeigt dieselben Prüfungen mit Details im Terminal (Exit-Code `1` nur bei `down`), praktisch nach einem Deployment
 - `GET /up` (von Laravel) prüft nur, ob die Anwendung startet, und eignet sich als einfacher Lebenszeichen-Check für Load Balancer
 

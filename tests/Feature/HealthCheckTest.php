@@ -81,6 +81,7 @@ class HealthCheckTest extends TestCase
         DB::table('failed_jobs')->insert(['uuid' => 'abc', 'connection' => 'database', 'queue' => 'default', 'payload' => '{}', 'exception' => 'x', 'failed_at' => now()]);
 
         $this->getJson(route('health'))->assertOk()->assertJsonPath('checks.queue', 'warn');
+        $this->artisan('sprint:health')->expectsOutputToContain('1 fehlgeschlagene Jobs, siehe `php artisan queue:failed`.');
     }
 
     public function test_a_broken_essential_part_makes_the_installation_count_as_down(): void

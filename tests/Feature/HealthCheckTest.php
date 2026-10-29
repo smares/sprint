@@ -81,7 +81,15 @@ class HealthCheckTest extends TestCase
         DB::table('failed_jobs')->insert(['uuid' => 'abc', 'connection' => 'database', 'queue' => 'default', 'payload' => '{}', 'exception' => 'x', 'failed_at' => now()]);
 
         $this->getJson(route('health'))->assertOk()->assertJsonPath('checks.queue', 'warn');
-        $this->artisan('sprint:health')->expectsOutputToContain('1 fehlgeschlagene Jobs, siehe `php artisan queue:failed`.');
+        $this->artisan('sprint:health')->expectsOutputToContain('1 fehlgeschlagene Jobs in den letzten 24 Stunden, siehe `php artisan queue:failed`.');
+    }
+
+    public function test_an_old_failed_job_is_no_longer_a_warning(): void
+    {
+        $this->heartbeat(0);
+        DB::table('failed_jobs')->insert(['uuid' => 'old', 'connection' => 'database', 'queue' => 'default', 'payload' => '{}', 'exception' => 'x', 'failed_at' => now()->subHours(HealthCheckService::FAILED_HOURS + 1)]);
+
+        $this->getJson(route('health'))->assertOk()->assertJsonPath('checks.queue', 'ok');
     }
 
     public function test_a_broken_essential_part_makes_the_installation_count_as_down(): void

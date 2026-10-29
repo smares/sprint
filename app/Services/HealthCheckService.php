@@ -18,6 +18,9 @@ class HealthCheckService
     /** Minutes after which a silent scheduler or an unprocessed job counts as stuck. */
     public const STALE_MINUTES = 5;
 
+    /** Hours a failed job keeps counting as a warning. */
+    public const FAILED_HOURS = 24;
+
     /** Hours after which the last successful backup counts as too old (a nightly run plus a day of slack). */
     public const BACKUP_STALE_HOURS = 48;
 
@@ -130,7 +133,8 @@ class HealthCheckService
     }
 
     /**
-     * With the database queue, a job that has been waiting for minutes means no worker is running.
+     * With the database queue, a job that has been waiting for minutes means no worker is running. Failed jobs only count for a
+     * day, so an old one that nobody cleared does not keep the installation on "degraded" for good.
      *
      * @return array{status: string, detail: string}
      */
@@ -148,14 +152,14 @@ class HealthCheckService
                 ->where('available_at', '<=', now()->subMinutes(self::STALE_MINUTES)->timestamp)
                 ->whereNull('reserved_at')
                 ->count();
-            $failed = DB::table(config('queue.failed.table', 'failed_jobs'))->count();
+            $failed = DB::table(config('queue.failed.table', 'failed_jobs'))->where('failed_at', '>=', now()->subHours(self::FAILED_HOURS))->count();
         } catch (Throwable $e) {
             return $this->result(self::WARN, $e->getMessage());
         }
 
         return match (true) {
             $waiting > 0 => $this->result(self::WARN, __(':waiting jobs have been waiting for more than :minutes minutes; is `php artisan queue:work` running?', ['waiting' => $waiting, 'minutes' => self::STALE_MINUTES])),
-            $failed > 0 => $this->result(self::WARN, __(':count failed jobs, see `php artisan queue:failed`.', ['count' => $failed])),
+            $failed > 0 => $this->result(self::WARN, __(':count failed jobs in the last :hours hours, see `php artisan queue:failed`.', ['count' => $failed, 'hours' => self::FAILED_HOURS])),
             default => $this->result(self::OK, __('no backlog')),
         };
     }

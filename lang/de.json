@@ -21,7 +21,7 @@
     ":count task|:count tasks": ":count Aufgabe|:count Aufgaben",
     ":domain is not a domain name, for example example.com.": ":domain ist keine Domain, zum Beispiel example.com.",
     ":done of :total done": ":done von :total erledigt",
-    ":count failed jobs, see `php artisan queue:failed`.": ":count fehlgeschlagene Jobs, siehe `php artisan queue:failed`.",
+    ":count failed jobs in the last :hours hours, see `php artisan queue:failed`.": ":count fehlgeschlagene Jobs in den letzten :hours Stunden, siehe `php artisan queue:failed`.",
     ":file, :hours h ago": ":file, vor :hours Std.",
     ":name assigned :count tasks to you": ":name hat dir :count Aufgaben zugewiesen",
     ":name assigned this task to you": ":name hat dir diese Aufgabe zugewiesen",

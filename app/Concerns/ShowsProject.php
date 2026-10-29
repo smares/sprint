@@ -33,7 +33,7 @@ trait ShowsProject
         // does a link that opens the list with a filter (overdue, soon, undated): that is a look-up, not a change of view
         $view = ProjectView::forRoute(request()->route()?->getName());
 
-        if ($view !== null && request()->hasHeader('X-Livewire-Navigate') && ! request()->hasAny(['dates', 'status'])) {
+        if ($view instanceof ProjectView && request()->hasHeader('X-Livewire-Navigate') && ! request()->hasAny(['dates', 'status'])) {
             auth()->user()->rememberProjectView($this->project, $view);
         }
     }

@@ -85,7 +85,7 @@ class HealthCheckService
             $disk->put('.health', (string) now()->timestamp);
             $disk->delete('.health');
 
-            return $this->result(self::OK, __('Attachment storage (:disk) is writable', ['disk' => config('filesystems.default')]));
+            return $this->result(self::OK, sprintf('Attachment storage (%s) is writable', config('filesystems.default')));
         } catch (Throwable $e) {
             return $this->result(self::FAIL, $e->getMessage());
         }
@@ -102,7 +102,7 @@ class HealthCheckService
 
             return Cache::get($key) === 'ok'
                 ? $this->result(self::OK, config('cache.default'))
-                : $this->result(self::FAIL, __('The cache does not keep values.'));
+                : $this->result(self::FAIL, 'The cache does not keep values.');
         } catch (Throwable $e) {
             return $this->result(self::FAIL, $e->getMessage());
         }
@@ -118,18 +118,18 @@ class HealthCheckService
         try {
             $last = Cache::get(self::SCHEDULER_HEARTBEAT);
         } catch (Throwable) {
-            return $this->result(self::WARN, __('Heartbeat not readable.'));
+            return $this->result(self::WARN, 'Heartbeat not readable.');
         }
 
         if ($last === null) {
-            return $this->result(self::WARN, __('The scheduler has never run; the cron entry that starts `php artisan schedule:run` every minute is missing.'));
+            return $this->result(self::WARN, 'The scheduler has never run; the cron entry that starts `php artisan schedule:run` every minute is missing.');
         }
 
         $minutes = (int) floor((now()->timestamp - (int) $last) / 60);
 
         return $minutes >= self::STALE_MINUTES
-            ? $this->result(self::WARN, __('The scheduler last ran :minutes minutes ago.', ['minutes' => $minutes]))
-            : $this->result(self::OK, $minutes === 0 ? __('last ran just now') : __('last ran :minutes min. ago', ['minutes' => $minutes]));
+            ? $this->result(self::WARN, sprintf('The scheduler last ran %d minutes ago.', $minutes))
+            : $this->result(self::OK, $minutes === 0 ? 'last ran just now' : sprintf('last ran %d min. ago', $minutes));
     }
 
     /**
@@ -143,7 +143,7 @@ class HealthCheckService
         $connection = config('queue.default');
 
         if (config("queue.connections.{$connection}.driver") !== 'database') {
-            return $this->result(self::OK, __(':connection (not checked)', ['connection' => $connection]));
+            return $this->result(self::OK, sprintf('%s (not checked)', $connection));
         }
 
         try {
@@ -158,9 +158,9 @@ class HealthCheckService
         }
 
         return match (true) {
-            $waiting > 0 => $this->result(self::WARN, __(':waiting jobs have been waiting for more than :minutes minutes; is `php artisan queue:work` running?', ['waiting' => $waiting, 'minutes' => self::STALE_MINUTES])),
-            $failed > 0 => $this->result(self::WARN, trans_choice('{1} One failed job in the last :hours hours, see `php artisan queue:failed`.|[2,*] :count failed jobs in the last :hours hours, see `php artisan queue:failed`.', $failed, ['hours' => self::FAILED_HOURS])),
-            default => $this->result(self::OK, __('no backlog')),
+            $waiting > 0 => $this->result(self::WARN, sprintf('%d jobs have been waiting for more than %d minutes; is `php artisan queue:work` running?', $waiting, self::STALE_MINUTES)),
+            $failed > 0 => $this->result(self::WARN, sprintf('%s in the last %d hours, see `php artisan queue:failed`.', $failed === 1 ? 'One failed job' : "{$failed} failed jobs", self::FAILED_HOURS)),
+            default => $this->result(self::OK, 'no backlog'),
         };
     }
 
@@ -172,28 +172,28 @@ class HealthCheckService
     protected function backup(): array
     {
         if (! config('sprint.backup.enabled')) {
-            return $this->result(self::OK, __('turned off'));
+            return $this->result(self::OK, 'turned off');
         }
 
         try {
             $last = app(BackupService::class)->lastRun();
         } catch (Throwable) {
-            return $this->result(self::WARN, __('Last backup not readable.'));
+            return $this->result(self::WARN, 'Last backup not readable.');
         }
 
         if ($last === null) {
-            return $this->result(self::OK, __('no backup yet'));
+            return $this->result(self::OK, 'no backup yet');
         }
 
         if (! $last['ok']) {
-            return $this->result(self::WARN, __('The last backup failed: :error', ['error' => $last['error']]));
+            return $this->result(self::WARN, 'The last backup failed: '.$last['error']);
         }
 
         $hours = (int) floor((now()->timestamp - $last['at']) / 3600);
 
         return $hours >= self::BACKUP_STALE_HOURS
-            ? $this->result(self::WARN, __('The last backup is :hours hours old.', ['hours' => $hours]))
-            : $this->result(self::OK, __(':file, :hours h ago', ['file' => $last['file'], 'hours' => $hours]));
+            ? $this->result(self::WARN, sprintf('The last backup is %d hours old.', $hours))
+            : $this->result(self::OK, sprintf('%s, %d h ago', $last['file'], $hours));
     }
 
     /**

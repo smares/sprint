@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\MineView;
+use App\Enums\ProjectView;
 use App\Notifications\EmailChanged;
 use App\Notifications\ResetPassword;
 use App\Notifications\VerifyNewEmail;
@@ -146,9 +147,9 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
 
     /**
      * What the person has arranged in the interface, which follows them from one device to the next: the appearance, the
-     * sidebar, the collapsed board columns, the view of "My tasks" they used last and the saved view of a project that opens by default (default_views).
+     * sidebar, the collapsed board columns, the view of "My tasks" they used last, the view they used last in each project (last_views) and the saved view of a project that opens by default (default_views).
      *
-     * @return array{rev?: int, appearance?: string, sidebar_collapsed?: bool, mine_view?: string, board_collapsed?: array<int|string, list<int>>, mine_board_collapsed?: list<int>, default_views?: array<int|string, array<string, int>>}
+     * @return array{rev?: int, appearance?: string, sidebar_collapsed?: bool, mine_view?: string, last_views?: array<int|string, string>, board_collapsed?: array<int|string, list<int>>, mine_board_collapsed?: list<int>, default_views?: array<int|string, array<string, int>>}
      */
     public function interfaceState(): array
     {
@@ -287,6 +288,21 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
                 if ($state[$key] === []) {
                     unset($state[$key]);
                 }
+            } elseif ($key === 'last_views') {
+                foreach ($value as $project => $view) {
+                    // the project that was changed last goes to the end, where it is kept longest; the list is what opens without an entry
+                    unset($state[$key][$project]);
+
+                    if ($view !== ProjectView::List->value) {
+                        $state[$key][$project] = $view;
+                    }
+                }
+
+                $state[$key] = array_slice($state[$key] ?? [], -self::INTERFACE_MAX_BOARDS, preserve_keys: true);
+
+                if ($state[$key] === []) {
+                    unset($state[$key]);
+                }
             } elseif ($key === 'mine_board_collapsed') {
                 $state[$key] = $this->applyCollapsed($state[$key] ?? [], $value);
             } else {
@@ -313,6 +329,28 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
         }
 
         return array_slice($collapsed, -self::INTERFACE_MAX_COLUMNS);
+    }
+
+    /**
+     * The route that opens a project in the view the person used there last (list, board, calendar, timeline or statistics); the
+     * list if they never chose.
+     */
+    public function projectRoute(Project|int $project): string
+    {
+        $id = $project instanceof Project ? $project->getKey() : $project;
+        $view = ProjectView::tryFrom($this->interfaceState()['last_views'][$id] ?? '') ?? ProjectView::List;
+
+        return $view->routeName();
+    }
+
+    /**
+     * Notes that the person opened a project in one of its views, so the project opens that way next time.
+     */
+    public function rememberProjectView(Project $project, ProjectView $view): void
+    {
+        if (($this->interfaceState()['last_views'][$project->getKey()] ?? null) !== $view->value) {
+            $this->rememberInterface(['last_views' => [$project->getKey() => $view->value]]);
+        }
     }
 
     /** The route of "My tasks" in the view they had open last. */

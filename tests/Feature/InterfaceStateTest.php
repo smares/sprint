@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ProjectView;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -105,6 +106,107 @@ class InterfaceStateTest extends TestCase
 
         $this->actingAs($user->fresh())->get(route('projects.index'))->assertSee('href="'.route('tasks.mine.board').'"', false);
         $this->assertSame('tasks.mine.board', $user->fresh()->mineTasksRoute());
+    }
+
+    public function test_a_project_opens_in_the_view_used_last(): void
+    {
+        $project = Project::factory()->create();
+        $other = Project::factory()->create();
+        $user = User::factory()->admin()->create();
+        $inApp = ['X-Livewire-Navigate' => '1'];
+
+        $this->assertSame('projects.show', $user->projectRoute($project));
+
+        $this->actingAs($user)->get(route('projects.board', $project), $inApp)->assertOk();
+        $this->assertSame('board', $user->fresh()->interfaceState()['last_views'][$project->id]);
+        $this->assertSame('projects.board', $user->fresh()->projectRoute($project));
+        $this->assertSame('projects.show', $user->fresh()->projectRoute($other));
+
+        $this->actingAs($user->fresh())->get(route('projects.index'))->assertSee('href="'.route('projects.board', $project).'"', false);
+
+        $this->actingAs($user)->get(route('projects.show', $project), $inApp)->assertOk();
+        $this->assertSame('projects.show', $user->fresh()->projectRoute($project));
+        $this->assertArrayNotHasKey('last_views', $user->fresh()->interfaceState());
+    }
+
+    public function test_every_view_of_a_project_is_remembered(): void
+    {
+        $project = Project::factory()->create();
+        $user = User::factory()->admin()->create();
+
+        foreach (ProjectView::cases() as $view) {
+            $this->actingAs($user)->get(route($view->routeName(), $project), ['X-Livewire-Navigate' => '1'])->assertOk();
+
+            $this->assertSame($view->routeName(), $user->fresh()->projectRoute($project));
+        }
+    }
+
+    public function test_an_unknown_view_in_the_state_opens_the_list(): void
+    {
+        $project = Project::factory()->create();
+        $user = User::factory()->create(['interface' => ['last_views' => [(string) $project->id => 'kanban']]]);
+
+        $this->assertSame('projects.show', $user->projectRoute($project));
+    }
+
+    public function test_a_project_view_opened_by_a_link_from_outside_is_not_made_the_one_used_last(): void
+    {
+        $project = Project::factory()->create();
+        $user = User::factory()->admin()->create(['interface' => ['last_views' => [(string) $project->id => 'board']]]);
+
+        $this->actingAs($user)->get(route('projects.show', $project))->assertOk();
+
+        $this->assertSame('projects.board', $user->fresh()->projectRoute($project));
+    }
+
+    public function test_the_views_remembered_for_projects_stay_few_and_the_last_changed_is_kept(): void
+    {
+        $user = User::factory()->create();
+        $first = Project::factory()->create();
+        $user->rememberProjectView($first, ProjectView::Board);
+
+        $user->rememberInterface(['last_views' => array_fill_keys(range(1000, 1000 + User::INTERFACE_MAX_BOARDS), 'board')]);
+        $views = $user->fresh()->interfaceState()['last_views'];
+
+        $this->assertCount(User::INTERFACE_MAX_BOARDS, $views);
+        $this->assertArrayNotHasKey($first->id, $views);
+        $this->assertArrayHasKey(1000 + User::INTERFACE_MAX_BOARDS, $views);
+    }
+
+    public function test_the_command_palette_opens_a_project_in_the_view_used_last(): void
+    {
+        $project = Project::factory()->create();
+        $user = User::factory()->admin()->create(['interface' => ['last_views' => [(string) $project->id => 'calendar']]]);
+        $user->rememberProjectVisit($project);
+
+        $html = $this->actingAs($user->fresh())->get(route('projects.index'))->assertOk()->getContent();
+
+        $this->assertStringContainsString("[window.sprintInterface?.last_views?.[{$project->id}]] ?? '".route('projects.show', $project)."'", $html);
+
+        foreach (ProjectView::cases() as $view) {
+            $this->assertStringContainsString('\\u0022'.$view->value.'\\u0022:', $html);
+        }
+    }
+
+    public function test_a_link_that_opens_the_list_with_a_filter_does_not_change_the_view_used_last(): void
+    {
+        $project = Project::factory()->create();
+        $user = User::factory()->admin()->create(['interface' => ['last_views' => [(string) $project->id => 'board']]]);
+
+        $this->actingAs($user)->get(route('projects.show', [$project, 'dates' => 'overdue']), ['X-Livewire-Navigate' => '1'])->assertOk();
+        $this->actingAs($user)->get(route('projects.show', [$project, 'dates' => 'none', 'status' => 'all']), ['X-Livewire-Navigate' => '1'])->assertOk();
+
+        $this->assertSame('projects.board', $user->fresh()->projectRoute($project));
+    }
+
+    public function test_nothing_is_remembered_for_a_project_the_person_may_not_see(): void
+    {
+        $project = Project::factory()->create();
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->get(route('projects.board', $project), ['X-Livewire-Navigate' => '1'])->assertForbidden();
+
+        $this->assertArrayNotHasKey('last_views', $user->fresh()->interfaceState());
     }
 
     public function test_the_columns_of_a_board_come_from_the_server(): void

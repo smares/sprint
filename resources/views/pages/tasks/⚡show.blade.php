@@ -1319,7 +1319,7 @@ new class extends Component
             return;
         }
 
-        $this->redirectRoute('projects.show', $projectId, navigate: true);
+        $this->redirectRoute(auth()->user()->projectRoute($projectId), $projectId, navigate: true);
     }
 
     /**

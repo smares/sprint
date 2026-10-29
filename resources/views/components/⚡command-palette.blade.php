@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\ProjectView;
 use App\Models\Project;
 use App\Services\TaskSearchService;
 use Illuminate\Database\Eloquent\Collection;
@@ -117,7 +118,7 @@ new class extends Component
                     <div class="[&:not(:has([data-flux-command-item]:not([data-hidden])))]:hidden">
                         <div class="px-2 pb-1 pt-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">{{ __('Tasks') }}</div>
                         @foreach ($this->tasks as $task)
-                            <flux:command.item wire:key="task-{{ $task->id }}" icon="check-circle" x-on:click="Livewire.navigate('{{ route('projects.show', ['project' => $task->project_id, 'task' => $task->id]) }}')">
+                            <flux:command.item wire:key="task-{{ $task->id }}" icon="check-circle" x-on:click="Livewire.navigate('{{ route(auth()->user()->projectRoute($task->project_id), ['project' => $task->project_id, 'task' => $task->id]) }}')">
                                 <span class="truncate">{{ $task->title }}</span>
                                 <span class="ms-2 shrink-0 text-xs text-zinc-400">{{ $task->project->name }}</span>
                             </flux:command.item>
@@ -130,7 +131,7 @@ new class extends Component
                     <div class="[&:not(:has([data-flux-command-item]:not([data-hidden])))]:hidden">
                         <div class="px-2 pb-1 pt-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">{{ __('Projects') }}</div>
                         @foreach ($this->projects as $project)
-                            <flux:command.item wire:key="project-{{ $project->id }}" x-on:click="Livewire.navigate('{{ route('projects.show', $project) }}')">
+                            <flux:command.item wire:key="project-{{ $project->id }}" x-on:click="Livewire.navigate({{ \Illuminate\Support\Js::from(collect(ProjectView::cases())->mapWithKeys(fn ($view) => [$view->value => route($view->routeName(), $project)])->all()) }}[window.sprintInterface?.last_views?.[{{ $project->id }}]] ?? '{{ route('projects.show', $project) }}')">
                                 <x-slot name="icon"><x-project-icon :project="$project" size="sm" class="me-2" /></x-slot>
                                 <span class="truncate">{{ $project->name }}</span>
                                 @if (in_array($project->id, $this->favoriteIds, true))

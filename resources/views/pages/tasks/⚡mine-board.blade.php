@@ -240,13 +240,17 @@ new class extends Component
 <div @class(['pb-40' => $selecting]) x-bind:class="{ 'pb-40': $wire.selecting }" data-wide>
     <div class="mb-6 flex items-center justify-between gap-3">
         <flux:heading level="1" size="xl">{{ __('My tasks') }}</flux:heading>
-        <div class="flex items-center gap-2">
-            @if (array_sum($this->columnTotals) > 0)
-                <x-selection-toggle instant x-show="! $wire.selecting" />
-            @endif
-            <x-mine-views active="board" />
-        </div>
+        @if (array_sum($this->columnTotals) > 0)
+            <x-selection-toggle instant x-show="! $wire.selecting" class="max-sm:hidden" />
+        @endif
     </div>
+
+    {{-- Below lg the views stand in their own row like in a project, the selection button on phones at its right end --}}
+    <x-mine-views active="board" class="-mt-2 mb-6">
+        @if (array_sum($this->columnTotals) > 0)
+            <x-selection-toggle instant x-show="! $wire.selecting" class="sm:hidden" />
+        @endif
+    </x-mine-views>
 
     <x-mine-collaborating-switch />
 

@@ -9,7 +9,7 @@
     ];
 @endphp
 
-<div {{ $attributes->class('lg:hidden') }} data-view-switcher>
+<div {{ $attributes->class('flex items-center justify-between gap-2 lg:hidden') }} data-view-switcher>
     <flux:button.group class="sm:hidden">
         @foreach ($views as $key => $view)
             <flux:button :icon="$view['icon']" square :class="$key === $active ? $current : ''" :aria-current="$key === $active ? 'page' : null" href="{{ route($view['route']) }}" wire:navigate :aria-label="$view['label']" :tooltip="$view['label']" />
@@ -21,4 +21,6 @@
             <flux:button :icon="$view['icon']" :class="$key === $active ? $current : ''" :aria-current="$key === $active ? 'page' : null" href="{{ route($view['route']) }}" wire:navigate>{{ $view['label'] }}</flux:button>
         @endforeach
     </flux:button.group>
+
+    {{ $slot }}
 </div>

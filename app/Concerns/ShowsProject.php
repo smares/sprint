@@ -29,10 +29,11 @@ trait ShowsProject
             $this->dispatch('project-visited');
         }
 
-        // Only a change of view inside the app counts: a link in an e-mail or a bookmark does not make its view the one used last
+        // Only a change of view inside the app counts: a link in an e-mail or a bookmark does not make its view the one used last, and neither
+        // does a link that opens the list with a filter (overdue, soon, undated): that is a look-up, not a change of view
         $view = ProjectView::forRoute(request()->route()?->getName());
 
-        if ($view !== null && request()->hasHeader('X-Livewire-Navigate')) {
+        if ($view !== null && request()->hasHeader('X-Livewire-Navigate') && ! request()->hasAny(['dates', 'status'])) {
             auth()->user()->rememberProjectView($this->project, $view);
         }
     }

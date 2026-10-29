@@ -159,7 +159,7 @@ class HealthCheckService
 
         return match (true) {
             $waiting > 0 => $this->result(self::WARN, __(':waiting jobs have been waiting for more than :minutes minutes; is `php artisan queue:work` running?', ['waiting' => $waiting, 'minutes' => self::STALE_MINUTES])),
-            $failed > 0 => $this->result(self::WARN, __(':count failed jobs in the last :hours hours, see `php artisan queue:failed`.', ['count' => $failed, 'hours' => self::FAILED_HOURS])),
+            $failed > 0 => $this->result(self::WARN, trans_choice('{1} One failed job in the last :hours hours, see `php artisan queue:failed`.|[2,*] :count failed jobs in the last :hours hours, see `php artisan queue:failed`.', $failed, ['hours' => self::FAILED_HOURS])),
             default => $this->result(self::OK, __('no backlog')),
         };
     }

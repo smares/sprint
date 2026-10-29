@@ -76,8 +76,8 @@
                 <flux:sidebar.nav>
                     <flux:sidebar.item icon="folder" :href="route('projects.index')" :current="request()->routeIs('projects.index')" wire:navigate>{{ __('Projects') }}</flux:sidebar.item>
                     <flux:sidebar.item icon="check-circle" :href="route(auth()->user()->mineTasksRoute())" wire:navigate :current="false">{{ __('My tasks') }}</flux:sidebar.item>
-                    @if (request()->routeIs('tasks.mine', 'tasks.mine.board'))
-                        <x-sidebar-views :views="\App\Enums\MineView::links(\App\Enums\MineView::forRoute(request()->route()->getName()))" />
+                    @if ($mineView = \App\Enums\MineView::forRoute(request()->route()?->getName()))
+                        <x-sidebar-views :views="\App\Enums\MineView::links($mineView)" :label="__('My tasks')" />
                     @endif
                     <livewire:notification-bell />
                     <flux:sidebar.item icon="calendar-date-range" :href="route('workload')" :current="request()->routeIs('workload')" wire:navigate>{{ __('Workload') }}</flux:sidebar.item>

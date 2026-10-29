@@ -113,7 +113,7 @@ new class extends Component
             </flux:sidebar.item>
 
             @if ($isCurrent)
-                <x-sidebar-views :views="$views" />
+                <x-sidebar-views :views="$views" :label="$project->name" />
             @endif
         @endforeach
     @empty

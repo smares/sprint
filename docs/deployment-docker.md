@@ -157,7 +157,7 @@ flock -n 9 || { echo "sprint-backup-pull: ein anderer Lauf ist noch aktiv" >&2; 
 cd "$COMPOSE_DIR" || fail "Ordner $COMPOSE_DIR nicht gefunden"
 sprint() { docker compose exec -T sprint "$@"; }
 
-docker compose ps --status running --services | grep -qx sprint || fail "der Container 'sprint' läuft nicht"
+[ "$(docker compose ps --status running --services | grep -cx sprint)" -ge 1 ] || fail "der Container 'sprint' läuft nicht"
 
 # Liegen die Backups in einem Bucket, ist das Volume leer: dann nichts synchronisieren, sondern laut scheitern
 disk=$(sprint php artisan --no-ansi config:show sprint.backup.disk | awk 'NF { last = $NF } END { print last }')
@@ -180,7 +180,8 @@ actual=$(stat -c %s "$partial")
 [ "$expected" = "$actual" ] || fail "$latest wurde unvollständig kopiert ($actual von $expected Bytes)"
 unzip -tqq "$partial" >/dev/null || fail "$latest ist keine gültige ZIP-Datei"
 if [ "$REQUIRE_DATABASE" = 1 ]; then
-    unzip -Z1 "$partial" | grep -qx database.sqlite || fail "$latest enthält keine database.sqlite"
+    # Nicht "unzip | grep -q": grep beendet sich beim ersten Treffer, unzip bekäme SIGPIPE, und pipefail ließe das als Fehler gelten
+    [ "$(unzip -Z1 "$partial" | grep -cx database.sqlite)" -ge 1 ] || fail "$latest enthält keine database.sqlite"
 fi
 
 chmod 600 "$partial"

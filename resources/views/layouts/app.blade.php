@@ -75,7 +75,7 @@
 
                 <flux:sidebar.nav>
                     <flux:sidebar.item icon="folder" :href="route('projects.index')" :current="request()->routeIs('projects.index')" wire:navigate>{{ __('Projects') }}</flux:sidebar.item>
-                    <flux:sidebar.item icon="check-circle" :href="route(auth()->user()->mineTasksRoute())" wire:navigate>{{ __('My tasks') }}</flux:sidebar.item>
+                    <flux:sidebar.item icon="check-circle" :href="route(auth()->user()->mineTasksRoute())" wire:navigate :current="false">{{ __('My tasks') }}</flux:sidebar.item>
                     @if (request()->routeIs('tasks.mine', 'tasks.mine.board'))
                         <x-sidebar-views :views="[
                             'list' => ['href' => route('tasks.mine'), 'icon' => 'list-bullet', 'label' => __('List'), 'current' => request()->routeIs('tasks.mine')],

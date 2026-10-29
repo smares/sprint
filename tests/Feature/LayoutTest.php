@@ -46,7 +46,15 @@ class LayoutTest extends TestCase
         $project = Project::factory()->create();
         $html = $this->actingAs(User::factory()->admin()->create())->get(route('projects.board', $project))->assertOk()->getContent();
 
-        $this->assertMatchesRegularExpression('/<div[^>]*lg:hidden[^>]*data-view-switcher/', $html);
+        $start = (int) strpos($html, 'data-view-switcher');
+        $switcher = substr($html, (int) strrpos(substr($html, 0, $start), '<div'), 60000);
+
+        // Hidden where the sidebar lists the views itself; icons with accessible names on phones, the open view marked
+        $this->assertStringContainsString('lg:hidden', $switcher);
+        foreach (['Liste', 'Kalender', 'Zeitleiste', 'Statistik'] as $label) {
+            $this->assertStringContainsString('aria-label="'.$label.'"', $switcher);
+        }
+        $this->assertStringContainsString('aria-current="page"', $switcher);
         $this->assertStringContainsString('data-sidebar-views', $html);
     }
 

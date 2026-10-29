@@ -105,7 +105,7 @@ new class extends Component
                 $isCurrent = $project->id === $currentProjectId;
                 $views = $isCurrent ? ProjectView::links($project, ProjectView::tryFrom($currentView ?? '')) : [];
             @endphp
-            <flux:sidebar.item wire:key="sidebar-project-{{ $project->id }}" :href="route('projects.show', $project)" wire:navigate :current="$isCurrent && $currentView === null" data-sidebar-project="{{ $project->id }}" :badge="$project->archived_at ? __('Archived') : null">
+            <flux:sidebar.item wire:key="sidebar-project-{{ $project->id }}" :href="route(auth()->user()->projectRoute($project), $project)" wire:navigate :current="$isCurrent && $currentView === null" data-sidebar-project="{{ $project->id }}" :badge="$project->archived_at ? __('Archived') : null">
                 <x-slot name="icon">
                     <x-project-icon :project="$project" size="sm" />
                 </x-slot>

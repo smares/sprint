@@ -130,7 +130,7 @@ new class extends Component
                     <div class="[&:not(:has([data-flux-command-item]:not([data-hidden])))]:hidden">
                         <div class="px-2 pb-1 pt-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">{{ __('Projects') }}</div>
                         @foreach ($this->projects as $project)
-                            <flux:command.item wire:key="project-{{ $project->id }}" x-on:click="Livewire.navigate('{{ route('projects.show', $project) }}')">
+                            <flux:command.item wire:key="project-{{ $project->id }}" x-on:click="Livewire.navigate(window.sprintInterface?.project_views?.[{{ $project->id }}] === 'board' ? '{{ route('projects.board', $project) }}' : '{{ route('projects.show', $project) }}')">
                                 <x-slot name="icon"><x-project-icon :project="$project" size="sm" class="me-2" /></x-slot>
                                 <span class="truncate">{{ $project->name }}</span>
                                 @if (in_array($project->id, $this->favoriteIds, true))

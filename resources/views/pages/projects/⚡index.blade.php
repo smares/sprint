@@ -184,7 +184,7 @@ new class extends Component
                         @foreach ($this->archivedProjects as $archived)
                             <li wire:key="archived-{{ $archived->id }}" class="flex flex-wrap items-center gap-x-2">
                                 <x-project-icon :project="$archived" size="sm" class="opacity-60" />
-                                <flux:link :href="route('projects.show', $archived)" variant="ghost" wire:navigate>{{ $archived->name }}</flux:link>
+                                <flux:link :href="route(auth()->user()->projectRoute($archived), $archived)" variant="ghost" wire:navigate>{{ $archived->name }}</flux:link>
                                 <flux:text size="sm" class="inline">{{ __('archived on :date', ['date' => auth()->user()->inTimezone($archived->archived_at)->isoFormat('L')]) }}</flux:text>
                             </li>
                         @endforeach

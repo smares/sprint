@@ -22,7 +22,7 @@
             <div class="flex items-center gap-3 pe-8">
                 <x-project-icon :project="$project" />
                 <flux:heading size="lg" class="min-w-0 truncate">
-                    <a href="{{ route('projects.show', $project) }}" wire:navigate class="hover:underline">{{ $project->name }}</a>
+                    <a href="{{ route(auth()->user()->projectRoute($project), $project) }}" wire:navigate class="hover:underline">{{ $project->name }}</a>
                 </flux:heading>
             </div>
             <flux:text class="mt-2 line-clamp-2">{{ $project->description }}</flux:text>

@@ -125,7 +125,7 @@ new class extends Component
                             <flux:table.cell>
                                 <div class="flex items-center gap-2">
                                     <x-project-icon :project="$task->project" size="sm" />
-                                    <flux:link variant="subtle" :href="route('projects.show', $task->project)" wire:navigate>{{ $task->project->name }}</flux:link>
+                                    <flux:link variant="subtle" :href="route(auth()->user()->projectRoute($task->project), $task->project)" wire:navigate>{{ $task->project->name }}</flux:link>
                                 </div>
                             </flux:table.cell>
                             <flux:table.cell>

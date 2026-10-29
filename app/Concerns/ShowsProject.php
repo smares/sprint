@@ -2,6 +2,7 @@
 
 namespace App\Concerns;
 
+use App\Enums\ProjectView;
 use App\Models\Project;
 use Flux\Flux;
 use Illuminate\Support\Facades\Gate;
@@ -26,6 +27,13 @@ trait ShowsProject
         // The command palette offers the recently opened projects
         if (auth()->user()->rememberProjectVisit($this->project)) {
             $this->dispatch('project-visited');
+        }
+
+        // Only a change of view inside the app counts: a link in an e-mail or a bookmark does not make its view the one used last
+        $view = ProjectView::forRoute(request()->route()?->getName());
+
+        if ($view !== null && request()->hasHeader('X-Livewire-Navigate')) {
+            auth()->user()->rememberProjectView($this->project, $view);
         }
     }
 

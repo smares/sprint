@@ -257,6 +257,20 @@ class TaskSortingTest extends TestCase
         $this->assertSame(5, Task::where('title', 'Neu')->value('position'));
     }
 
+    public function test_the_new_task_dialog_starts_empty_after_it_was_closed(): void
+    {
+        $other = $this->project->statuses()->orderByDesc('position')->first();
+
+        Livewire::test('task-create', ['project' => $this->project])
+            ->set('title', 'Halb getippt')->set('description', 'Text')->set('statusId', (string) $other->id)->set('dueDate', '2026-12-01')->set('startDate', '2026-12-31')
+            ->call('create')->assertHasErrors('startDate')
+            ->call('discard')
+            ->assertSet('title', '')->assertSet('description', '')->assertSet('dueDate', '')->assertSet('startDate', '')
+            ->assertSet('statusId', (string) $this->project->defaultStatus()->id)
+            ->assertHasNoErrors()
+            ->assertDispatched('task-draft-discarded');
+    }
+
     public function test_list_rows_are_only_draggable_in_manual_order(): void
     {
         $this->task();

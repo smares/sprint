@@ -10,8 +10,8 @@
     $shared = $views->filter->isShared();
 @endphp
 
-{{-- A missing name shown after a failed save is gone when the dialog is closed --}}
-<flux:modal name="saved-views" class="w-full max-w-md" x-on:close="$el.querySelector('[data-invalid]') && $wire.clearSavedViewMessages()">
+{{-- What was typed for a new view, and a missing name shown after a failed save, are gone when the dialog is closed --}}
+<flux:modal name="saved-views" class="w-full max-w-md" x-on:close="$wire.discardSavedViewForm()">
     <div class="space-y-5">
         <div>
             <flux:heading size="lg">{{ __('Saved views') }}</flux:heading>

@@ -104,6 +104,15 @@ new class extends Component
             ->get(['id', 'name', 'color', 'icon', 'archived_at']);
     }
 
+    /**
+     * The dialog was closed (cancelled, or after the project was created): what was typed is gone.
+     */
+    public function discard(): void
+    {
+        $this->reset('name', 'description');
+        $this->resetErrorBag();
+    }
+
     public function create(): void
     {
         $validated = $this->validate([
@@ -114,7 +123,7 @@ new class extends Component
         $project = Project::create($validated);
         $project->setRole(auth()->user(), ProjectRole::Admin);
 
-        $this->reset('name', 'description');
+        $this->discard();
         Flux::modal('create-project')->close();
         $this->dispatch('project-updated');
 
@@ -194,7 +203,7 @@ new class extends Component
         </flux:accordion>
     @endif
 
-    <flux:modal name="create-project" class="w-full max-w-md">
+    <flux:modal name="create-project" class="w-full max-w-md" x-on:close="$wire.discard()">
         <form wire:submit="create" class="space-y-6">
             <flux:heading size="lg">{{ __('New project') }}</flux:heading>
             <flux:input wire:model="name" :label="__('Name')" autofocus />

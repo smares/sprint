@@ -239,10 +239,11 @@ trait ManagesSavedViews
     }
 
     /**
-     * What the dialog shows of a failed save (the missing name) goes when it is closed.
+     * The dialog was closed: the name typed for a new view and what a failed save showed are gone.
      */
-    public function clearSavedViewMessages(): void
+    public function discardSavedViewForm(): void
     {
+        $this->reset('saveName', 'saveShared');
         $this->resetValidation();
     }
 

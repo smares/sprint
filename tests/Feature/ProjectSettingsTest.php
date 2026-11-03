@@ -35,6 +35,14 @@ class ProjectSettingsTest extends TestCase
         return Livewire::test('project-settings', ['project' => $this->project]);
     }
 
+    public function test_what_was_changed_but_not_saved_is_gone_when_the_dialog_is_closed(): void
+    {
+        $this->settings()
+            ->set('name', 'Halb getippt')->set('description', 'Auch')->set('color', 'red')->set('icon', '🚀')->set('confirmName', 'Web')
+            ->call('discard')
+            ->assertSet('name', 'Website')->assertSet('description', 'Alt')->assertSet('color', '')->assertSet('icon', '')->assertSet('confirmName', '');
+    }
+
     public function test_name_and_description_can_be_changed(): void
     {
         $this->settings()->set('name', '  Relaunch ')->set('description', 'Neu')->call('save')->assertHasNoErrors()->assertDispatched('project-updated');

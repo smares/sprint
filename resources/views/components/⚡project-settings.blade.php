@@ -30,6 +30,21 @@ new class extends Component
     {
         Gate::authorize('manage', $this->project);
 
+        $this->fillFromProject();
+    }
+
+    /**
+     * The dialog was closed: what was changed but not saved is gone, and the fields show the project again.
+     */
+    public function discard(): void
+    {
+        $this->fillFromProject();
+        $this->confirmName = '';
+        $this->resetErrorBag();
+    }
+
+    private function fillFromProject(): void
+    {
         $this->name = $this->project->name;
         $this->description = (string) $this->project->description;
         $this->color = (string) $this->project->color;
@@ -109,7 +124,7 @@ new class extends Component
 ?>
 
 <div>
-    <flux:modal name="project-settings" class="w-full max-w-lg" x-on:close="$wire.set('confirmName', '')">
+    <flux:modal name="project-settings" class="w-full max-w-lg" x-on:close="$wire.discard()">
         <div class="space-y-8">
             <flux:heading size="lg">{{ __('Project settings') }}</flux:heading>
 

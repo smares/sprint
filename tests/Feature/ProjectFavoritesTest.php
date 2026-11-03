@@ -13,6 +13,16 @@ class ProjectFavoritesTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_the_new_project_dialog_starts_empty_after_it_was_closed(): void
+    {
+        $this->actingAs(User::factory()->admin()->create());
+
+        Livewire::test('pages::projects.index')
+            ->set('name', 'Halb getippt')->set('description', 'Text')
+            ->call('discard')
+            ->assertSet('name', '')->assertSet('description', '')->assertHasNoErrors();
+    }
+
     public function test_starring_projects_lists_them_as_favorites_in_the_order_they_were_starred(): void
     {
         $this->actingAs($user = User::factory()->admin()->create());

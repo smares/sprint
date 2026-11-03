@@ -152,9 +152,10 @@
             }
         },
     }"
-    {{-- The "New task" dialog stays on the page: after creating, the next task starts on Write, not on the old preview --}}
+    {{-- The "New task" dialog stays on the page: after creating or closing it, the next task starts on Write, not on the old preview --}}
     @unless ($preview)
         x-on:task-created.window="tab = 'write'; html = ''"
+        x-on:task-draft-discarded.window="tab = 'write'; html = ''"
     @endunless
     @if ($max !== null)
         x-init="$nextTick(() => { count = size() }); $wire.$watch(@js($attributes->wire('model')->value()), () => { count = size() })"

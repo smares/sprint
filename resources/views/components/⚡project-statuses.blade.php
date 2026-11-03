@@ -93,6 +93,8 @@ new class extends Component
     public function closed(): void
     {
         $this->cancelDelete();
+        $this->reset('newName');
+        $this->resetErrorBag();
 
         if ($this->dirty) {
             $this->dirty = false;

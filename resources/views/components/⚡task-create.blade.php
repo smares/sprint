@@ -24,8 +24,8 @@ use Livewire\WithFileUploads;
 
 /**
  * The "New task" dialog of a project, the same in list, board, calendar and timeline. Opened with
- * $flux.modal('create-task').show() or, with a status or due date already chosen, by dispatching
- * `new-task` with statusId / dueDate.
+ * $flux.modal('create-task').show() or, with a due date already chosen, by dispatching `new-task` with dueDate (a statusId is
+ * taken too). Closing the dialog empties it (discard()).
  */
 new class extends Component
 {
@@ -219,6 +219,17 @@ new class extends Component
         $task->logActivity(ActivityType::AttachmentsAdded, ['names' => $names]);
     }
 
+    /**
+     * The dialog was closed (cancelled, or after the task was created): what was typed is gone, so the next one starts empty.
+     */
+    public function discard(): void
+    {
+        $this->reset('title', 'description', 'assigneeId', 'dueDate', 'startDate', 'draftImages', 'uploads', 'inlineUpload');
+        $this->statusId = (string) $this->project->defaultStatus()->id;
+        $this->resetErrorBag();
+        $this->dispatch('task-draft-discarded');
+    }
+
     public function create(): void
     {
         $validated = $this->validate([
@@ -258,8 +269,7 @@ new class extends Component
 
         $task->notifyMentionedInDescription(MarkdownService::mentionedUserIds($task->description), auth()->user());
 
-        $this->reset('title', 'description', 'assigneeId', 'dueDate', 'startDate', 'draftImages', 'uploads');
-        $this->statusId = (string) $this->project->defaultStatus()->id;
+        $this->discard();
         Flux::modal('create-task')->close();
         $this->dispatch('task-created', taskId: $task->id);
     }
@@ -267,7 +277,7 @@ new class extends Component
 ?>
 
 <div>
-    <flux:modal name="create-task" class="w-full max-w-lg">
+    <flux:modal name="create-task" class="w-full max-w-lg" x-on:close="$wire.discard()">
         {{-- After a validation error the keyboard moves to the first field that is wrong (the submit button, disabled while saving, lost it) --}}
         <form x-on:submit.prevent="$wire.create().then(() => $nextTick(() => $el.querySelector('input[data-invalid], textarea[data-invalid], button[data-invalid], [data-invalid] input, [data-invalid] button')?.focus()))" class="space-y-6">
             <flux:heading size="lg">{{ __('New task') }}</flux:heading>

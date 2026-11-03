@@ -30,7 +30,7 @@ new class extends Component
     {
         Gate::authorize('manage', $this->project);
 
-        $this->discard();
+        $this->fillFromProject();
     }
 
     /**
@@ -38,12 +38,17 @@ new class extends Component
      */
     public function discard(): void
     {
+        $this->fillFromProject();
+        $this->confirmName = '';
+        $this->resetErrorBag();
+    }
+
+    private function fillFromProject(): void
+    {
         $this->name = $this->project->name;
         $this->description = (string) $this->project->description;
         $this->color = (string) $this->project->color;
         $this->icon = (string) $this->project->icon;
-        $this->confirmName = '';
-        $this->resetErrorBag();
     }
 
     /** Emojis offered with one click for the project's icon; any other single emoji or character can be typed. */

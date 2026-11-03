@@ -24,8 +24,8 @@ use Livewire\WithFileUploads;
 
 /**
  * The "New task" dialog of a project, the same in list, board, calendar and timeline. Opened with
- * $flux.modal('create-task').show() or, with a status or due date already chosen, by dispatching
- * `new-task` with statusId / dueDate.
+ * $flux.modal('create-task').show() or, with a due date already chosen, by dispatching `new-task` with dueDate (a statusId is
+ * taken too). Closing the dialog empties it (discard()).
  */
 new class extends Component
 {

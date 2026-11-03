@@ -239,11 +239,12 @@ trait ManagesSavedViews
     }
 
     /**
-     * The dialog was closed: the name typed for a new view and what a failed save showed are gone.
+     * The dialog was closed: the name typed for a new view, a default chosen but not saved and what a failed save showed are gone.
      */
     public function discardSavedViewForm(): void
     {
         $this->reset('saveName', 'saveShared');
+        $this->syncDefaultChoices();
         $this->resetValidation();
     }
 

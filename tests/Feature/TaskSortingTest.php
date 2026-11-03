@@ -262,10 +262,11 @@ class TaskSortingTest extends TestCase
         $other = $this->project->statuses()->orderByDesc('position')->first();
 
         Livewire::test('task-create', ['project' => $this->project])
-            ->set('title', 'Halb getippt')->set('description', 'Text')->set('statusId', (string) $other->id)->set('dueDate', '2026-12-01')->set('startDate', '2026-12-31')
+            ->set('title', 'Halb getippt')->set('description', 'Text')->set('statusId', (string) $other->id)->set('assigneeId', (string) auth()->id())->set('dueDate', '2026-12-01')->set('startDate', '2026-12-31')
+            ->assertSeeHtml('x-on:close="$wire.discard()"')
             ->call('create')->assertHasErrors('startDate')
             ->call('discard')
-            ->assertSet('title', '')->assertSet('description', '')->assertSet('dueDate', '')->assertSet('startDate', '')
+            ->assertSet('title', '')->assertSet('description', '')->assertSet('assigneeId', '')->assertSet('uploads', [])->assertSet('dueDate', '')->assertSet('startDate', '')
             ->assertSet('statusId', (string) $this->project->defaultStatus()->id)
             ->assertHasNoErrors()
             ->assertDispatched('task-draft-discarded');

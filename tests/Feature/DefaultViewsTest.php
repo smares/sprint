@@ -323,8 +323,9 @@ class DefaultViewsTest extends TestCase
 
     public function test_the_name_typed_for_a_new_view_is_gone_when_the_dialog_is_closed(): void
     {
-        $this->board()->set('saveName', 'Halb getippt')->set('saveShared', true)
-            ->call('discardSavedViewForm')->assertSet('saveName', '')->assertSet('saveShared', false);
+        $this->board()->assertSeeHtml('x-on:close="$wire.discardSavedViewForm()"')
+            ->set('saveName', 'Halb getippt')->set('saveShared', true)->set('defaultChoice', 'none')
+            ->call('discardSavedViewForm')->assertSet('saveName', '')->assertSet('saveShared', false)->assertSet('defaultChoice', '');
     }
 
     public function test_a_default_of_the_person_that_was_deleted_leaves_the_project_default_to_switch_off(): void

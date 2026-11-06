@@ -191,7 +191,7 @@ new class extends Component
         ], attributes: ['name' => __('Name'), 'trigger' => __('When'), 'actions' => __('Then'), 'actions.*.type' => __('Action')]);
 
         $trigger = AutomationTrigger::from($validated['trigger']);
-        $triggerValue = $this->idOf('triggerValue', array_keys($this->triggerChoices()), $trigger->valueIsOptional());
+        $triggerValue = $trigger->takesValue() ? $this->idOf('triggerValue', array_keys($this->triggerChoices()), $trigger->valueIsOptional()) : null;
         $triggerFieldValue = $this->fieldValue($this->triggerField(), trim($this->triggerFieldValue));
         $conditions = array_filter([
             'status_id' => $this->idOf('conditionStatus', array_keys($this->statusNames), true),
@@ -313,6 +313,7 @@ new class extends Component
             AutomationAction::SetAssignee => $value === '' ? null : $this->idOf($key, array_keys($this->userNames), false),
             AutomationAction::Notify => $this->idOf($key, array_keys($this->userNames), false),
             AutomationAction::SetStatus => $this->idOf($key, array_keys($this->statusNames), false),
+            AutomationAction::Complete => null,
             AutomationAction::AddTag => $this->idOf($key, array_keys($this->tagNames), false),
             AutomationAction::ShiftDueDate => $this->days($key, $value),
             AutomationAction::Comment => $this->text($key, $value),
@@ -385,6 +386,7 @@ new class extends Component
 
         return match ($rule->trigger) {
             AutomationTrigger::StatusChanged => __('When the status changes to “:name”', ['name' => $name($this->statusNames)]),
+            AutomationTrigger::Completed => __('When the task is completed'),
             AutomationTrigger::TagAdded => __('When the tag “:name” is added', ['name' => $name($this->tagNames)]),
             AutomationTrigger::FieldSet => $rule->trigger_field_value === null
                 ? __('When “:field” gets a value', ['field' => $this->fields->get((int) $rule->trigger_value)->name ?? '–'])
@@ -420,6 +422,7 @@ new class extends Component
         return array_map(fn (array $step) => match ($step['type']) {
             AutomationAction::SetAssignee => $step['value'] === null ? __('Remove the assignee') : __('Set the assignee to :name', ['name' => $this->userNames[$step['value']] ?? '–']),
             AutomationAction::SetStatus => __('Set the status to “:name”', ['name' => $this->statusNames[$step['value']] ?? '–']),
+            AutomationAction::Complete => __('Mark the task as done'),
             AutomationAction::AddTag => __('Add the tag “:name”', ['name' => $this->tagNames[$step['value']] ?? '–']),
             AutomationAction::ShiftDueDate => trans_choice('Move the due date by :count day|Move the due date by :count days', abs((int) $step['value']), ['count' => (int) $step['value']]),
             AutomationAction::Comment => __('Comment: “:text”', ['text' => Str::limit((string) $step['value'], 80)]),
@@ -453,7 +456,7 @@ new class extends Component
     <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start">
         <div class="min-w-0 flex-1">
             <flux:heading level="1" size="xl" class="mb-1">{{ __('Automations') }}</flux:heading>
-            <flux:text>{{ __('A rule does something on a task as soon as it changes, for example set the assignee when the status becomes “Done”. Changes made by a rule are shown in the history under the rule’s name; rules do not trigger each other.') }}</flux:text>
+            <flux:text>{{ __('A rule does something on a task as soon as it changes, for example set the assignee when the task is completed. Changes made by a rule are shown in the history under the rule’s name; rules do not trigger each other.') }}</flux:text>
         </div>
         <flux:button variant="primary" icon="plus" wire:click="openForm">{{ __('New automation') }}</flux:button>
     </div>
@@ -498,18 +501,20 @@ new class extends Component
             <div class="space-y-3">
                 <flux:heading>{{ __('When') }}</flux:heading>
                 {{-- A field trigger takes three things in a row: the trigger, the field and the value --}}
-                <div @class(['grid gap-3', 'sm:grid-cols-3' => $trigger === 'field_set', 'sm:grid-cols-2' => $trigger !== 'field_set'])>
+                <div @class(['grid gap-3', 'sm:grid-cols-3' => $trigger === 'field_set', 'sm:grid-cols-2' => $trigger !== 'field_set' && $trigger !== 'completed'])>
                     <flux:select variant="listbox" wire:model.live="trigger" aria-label="{{ __('When') }}">
                         @foreach (\App\Enums\AutomationTrigger::cases() as $case)
                             <flux:select.option value="{{ $case->value }}">{{ $case->label() }}</flux:select.option>
                         @endforeach
                     </flux:select>
 
-                    <flux:select variant="listbox" wire:model.live="triggerValue" :placeholder="match ($trigger) { 'assignee_changed' => __('Anyone'), 'field_set' => __('Choose a field …'), default => __('Choose …') }" clearable aria-label="{{ $trigger === 'field_set' ? __('Field') : __('Value') }}">
-                        @foreach ($this->triggerChoices() as $id => $label)
-                            <flux:select.option value="{{ $id }}" wire:key="trigger-{{ $trigger }}-{{ $id }}">{{ $label }}</flux:select.option>
-                        @endforeach
-                    </flux:select>
+                    @if (\App\Enums\AutomationTrigger::tryFrom($trigger)?->takesValue() ?? true)
+                        <flux:select variant="listbox" wire:model.live="triggerValue" :placeholder="match ($trigger) { 'assignee_changed' => __('Anyone'), 'field_set' => __('Choose a field …'), default => __('Choose …') }" clearable aria-label="{{ $trigger === 'field_set' ? __('Field') : __('Value') }}">
+                            @foreach ($this->triggerChoices() as $id => $label)
+                                <flux:select.option value="{{ $id }}" wire:key="trigger-{{ $trigger }}-{{ $id }}">{{ $label }}</flux:select.option>
+                            @endforeach
+                        </flux:select>
+                    @endif
 
                     {{-- The value, entered like on the task; left empty, any value counts. Until a field is chosen the column stays empty. --}}
                     @if ($trigger === 'field_set')
@@ -562,6 +567,7 @@ new class extends Component
                             <div class="min-w-0 flex-1">
                                 @switch($action['type'])
                                     @case('')
+                                    @case('complete')
                                         @break
                                     @case('set_assignee')
                                     @case('notify')

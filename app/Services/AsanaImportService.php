@@ -122,11 +122,6 @@ class AsanaImportService
 
     private int $defaultStatusId = 0;
 
-    private int $doneStatusId = 0;
-
-    /** @var array<int, bool> The ids of all done statuses of the project (it may have several). */
-    private array $doneStatusIds = [];
-
     /** @var array<int, CustomField> Field here by Asana field id. */
     private array $fields = [];
 
@@ -727,8 +722,6 @@ class AsanaImportService
         }
 
         $this->defaultStatusId = $this->project->defaultStatus()->id;
-        $this->doneStatusId = $this->project->doneStatus()->id;
-        $this->doneStatusIds = $this->project->statuses()->where('is_done', true)->pluck('id')->mapWithKeys(fn (mixed $id) => [(int) $id => true])->all();
     }
 
     private function isDefaultSection(string $name): bool
@@ -757,35 +750,29 @@ class AsanaImportService
             'name' => $name,
             'color' => Color::next($statuses->count()),
             'position' => TaskStatus::nextPositionIn($this->project->statuses()->reorder()),
-            'is_done' => false,
         ]);
 
         $this->remembered('status', $key, $status->id);
-
-        // New statuses go before the done ones
-        $order = $statuses->where('is_done', false)->pluck('id')->push($status->id)->merge($statuses->where('is_done', true)->pluck('id'))->all();
-        TaskStatus::writePositions($order, $statuses->pluck('position', 'id')->all());
 
         return $status;
     }
 
     /**
      * A new project starts with the standard statuses; with sections of its own it keeps only what is used: the first
-     * standard one for tasks without a section (and subtasks), the sections in their order, the done ones last.
+     * standard one for tasks without a section (and subtasks), then the sections in their order.
      *
      * @param  Plan  $plan
      */
     private function tidyStatuses(array $plan): void
     {
         $statuses = $this->project->statuses()->get();
-        $open = $statuses->where('is_done', false);
         $sectionIds = collect($this->statusBySection)->unique()->values()->all();
         $keepFirst = $this->usesDefaultStatus($plan['tasks']);
-        $first = $open->first();
+        $first = $statuses->first();
         $keep = collect($keepFirst && $first !== null ? [$first->id] : [])->merge($sectionIds)->unique()->values()->all();
 
-        $this->project->statuses()->whereIn('id', $open->pluck('id')->diff($keep)->all())->delete();
-        TaskStatus::writePositions([...$keep, ...$statuses->where('is_done', true)->pluck('id')->all()], $statuses->pluck('position', 'id')->all());
+        $this->project->statuses()->whereIn('id', $statuses->pluck('id')->diff($keep)->all())->delete();
+        TaskStatus::writePositions($keep, $statuses->pluck('position', 'id')->all());
     }
 
     /**
@@ -1155,19 +1142,14 @@ class AsanaImportService
     }
 
     /**
-     * Asana has no status for a subtask (it is only open or completed), so an open one follows its task, unless that
-     * is done: then it stays at the start rather than being counted as finished.
+     * Asana has no status for a subtask (it is only open or completed), so a subtask follows its task.
      *
      * @param  Node  $node
      */
     private function statusFor(array $node, ?Task $parent): int
     {
-        if ($node['completed']) {
-            return $this->doneStatusId;
-        }
-
         if ($parent instanceof Task) {
-            return isset($this->doneStatusIds[$parent->status_id]) ? $this->defaultStatusId : $parent->status_id;
+            return $parent->status_id;
         }
 
         return $node['section'] !== null ? ($this->statusBySection[$node['section']] ?? $this->defaultStatusId) : $this->defaultStatusId;

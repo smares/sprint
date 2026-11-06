@@ -1,0 +1,1 @@
+{{ $completed ? "Erledigt" : "Wieder geöffnet" }}: {!! $title !!}

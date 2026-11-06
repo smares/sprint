@@ -7,6 +7,7 @@ use App\Models\Task;
 use App\Models\TaskStatus;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -24,11 +25,11 @@ class TaskStatusesTest extends TestCase
         $this->project = Project::factory()->create();
     }
 
-    public function test_new_projects_start_with_three_default_statuses(): void
+    public function test_new_projects_start_with_two_default_statuses_and_no_done_status(): void
     {
-        $this->assertSame(['Offen', 'In Arbeit', 'Erledigt'], $this->project->statuses->pluck('name')->all());
+        $this->assertSame(['Offen', 'In Arbeit'], $this->project->statuses->pluck('name')->all());
         $this->assertSame('Offen', $this->project->defaultStatus()->name);
-        $this->assertSame('Erledigt', $this->project->doneStatus()->name);
+        $this->assertFalse(Schema::hasColumn('task_statuses', 'is_done'));
     }
 
     public function test_statuses_are_separate_per_project(): void
@@ -60,8 +61,7 @@ class TaskStatusesTest extends TestCase
         $component->set('newName', 'Im Test')->call('add')->assertHasNoErrors();
 
         $status = $this->project->statuses()->where('name', 'Im Test')->firstOrFail();
-        $this->assertFalse($status->is_done);
-        $this->assertSame(3, $status->position);
+        $this->assertSame(2, $status->position);
     }
 
     public function test_status_can_be_renamed_and_recolored(): void
@@ -110,37 +110,24 @@ class TaskStatusesTest extends TestCase
             ->assertStatus(404);
     }
 
-    public function test_last_done_status_cannot_be_made_open(): void
+    public function test_the_status_settings_have_no_done_option_any_more(): void
     {
-        $done = $this->project->doneStatus();
+        $page = Livewire::test('project-statuses', ['project' => $this->project]);
 
-        Livewire::test('project-statuses', ['project' => $this->project])
-            ->set("done.{$done->id}", false)
-            ->assertSet("done.{$done->id}", true);
-
-        $this->assertTrue($done->fresh()->is_done);
+        // Neither a checkbox for it nor a form property that could carry it
+        $page->assertDontSeeHtml('type="checkbox"')->assertDontSeeHtml('done.')->assertSet('names', $this->project->statuses->pluck('name', 'id')->all());
+        $this->assertArrayNotHasKey('done', $page->instance()->all());
     }
 
-    public function test_last_open_status_cannot_be_made_done(): void
+    public function test_finishing_a_task_leaves_it_in_its_status_whatever_the_statuses_are_called(): void
     {
-        [$open, $inProgress] = [$this->project->statuses[0], $this->project->statuses[1]];
+        $custom = TaskStatus::factory()->for($this->project)->create(['name' => 'Erledigt', 'position' => 5]);
+        $task = Task::factory()->for($this->project)->create(['status_id' => $custom->id]);
 
-        $component = Livewire::test('project-statuses', ['project' => $this->project])
-            ->set("done.{$open->id}", true);
+        $task->markDone();
 
-        $component->set("done.{$inProgress->id}", true)->assertSet("done.{$inProgress->id}", false);
-
-        $this->assertFalse($inProgress->fresh()->is_done);
-    }
-
-    public function test_second_done_status_can_be_added(): void
-    {
-        $extra = TaskStatus::factory()->for($this->project)->create();
-
-        Livewire::test('project-statuses', ['project' => $this->project])
-            ->set("done.{$extra->id}", true);
-
-        $this->assertTrue($extra->fresh()->is_done);
+        $this->assertTrue($task->fresh()->isDone());
+        $this->assertSame($custom->id, $task->fresh()->status_id);
     }
 
     public function test_deleting_a_status_moves_its_tasks_to_the_replacement(): void
@@ -216,15 +203,16 @@ class TaskStatusesTest extends TestCase
         $this->assertDatabaseHas('task_statuses', ['id' => $inProgress->id]);
     }
 
-    public function test_last_done_status_cannot_be_deleted(): void
+    public function test_the_last_status_cannot_be_deleted(): void
     {
-        $done = $this->project->doneStatus();
+        $this->project->statuses()->skip(1)->firstOrFail()->delete();
+        $last = $this->project->statuses()->sole();
 
         Livewire::test('project-statuses', ['project' => $this->project])
-            ->call('confirmDelete', $done->id)
+            ->call('confirmDelete', $last->id)
             ->assertSet('deletingId', '');
 
-        $this->assertDatabaseHas('task_statuses', ['id' => $done->id]);
+        $this->assertDatabaseHas('task_statuses', ['id' => $last->id]);
     }
 
     public function test_board_and_task_page_use_the_custom_statuses(): void
@@ -236,7 +224,7 @@ class TaskStatusesTest extends TestCase
         $this->get(route('tasks.show', $task))->assertOk()->assertSee('Im Test');
     }
 
-    public function test_task_can_be_set_to_a_custom_status_and_toggle_done_uses_done_statuses(): void
+    public function test_task_can_be_set_to_a_custom_status_and_toggle_done_leaves_it_there(): void
     {
         $custom = TaskStatus::factory()->for($this->project)->create(['name' => 'Im Test', 'position' => 5]);
         $task = Task::factory()->for($this->project)->create();
@@ -250,9 +238,11 @@ class TaskStatusesTest extends TestCase
 
         $task->fresh()->toggleDone();
         $this->assertTrue($task->fresh()->isDone());
+        $this->assertSame($custom->id, $task->fresh()->status_id);
 
         $task->fresh()->toggleDone();
-        $this->assertSame($this->project->defaultStatus()->id, $task->fresh()->status_id);
+        $this->assertFalse($task->fresh()->isDone());
+        $this->assertSame($custom->id, $task->fresh()->status_id);
     }
 
     public function test_changes_are_announced_once_the_modal_closes_and_the_board_picks_them_up(): void

@@ -67,7 +67,7 @@ class EnglishInterfaceTest extends TestCase
     {
         $this->assertEnglish(route('projects.index'), ['Website relaunch']);
         $this->assertEnglish(route('projects.show', $this->project), ['Write the offer', 'Open']);
-        $this->assertEnglish(route('projects.show', $this->project).'?status=all');
+        $this->assertEnglish(route('projects.show', $this->project).'?done=all');
         $this->assertEnglish(route('projects.board', $this->project));
         $this->assertEnglish(route('projects.calendar', $this->project));
         $this->assertEnglish(route('projects.timeline', $this->project));
@@ -113,16 +113,16 @@ class EnglishInterfaceTest extends TestCase
         $task = Task::where('title', 'Write the offer')->firstOrFail();
         $this->assertSame('weekly', $task->recurrenceLabel());
 
-        $task->update(['status_id' => $this->project->doneStatus()->id, 'title' => 'Write the final offer']);
+        $task->update(['completed_at' => now(), 'title' => 'Write the final offer']);
 
-        $this->assertEnglish(route('tasks.show', $task), ['changed the status from', 'changed the title']);
+        $this->assertEnglish(route('tasks.show', $task), ['completed the task', 'changed the title']);
     }
 
     public function test_new_projects_get_english_defaults_for_english_creators(): void
     {
         $project = Project::factory()->create();
 
-        $this->assertSame(['Open', 'In progress', 'Done'], $project->statuses()->pluck('name')->all());
+        $this->assertSame(['Open', 'In progress'], $project->statuses()->pluck('name')->all());
         $this->assertSame('Priority', $project->customFields()->firstOrFail()->name);
     }
 }

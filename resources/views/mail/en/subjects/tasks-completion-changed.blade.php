@@ -1,0 +1,1 @@
+{{ $completed ? "Completed" : "Reopened" }}: {{ $count }} tasks

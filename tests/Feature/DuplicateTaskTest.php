@@ -46,7 +46,7 @@ class DuplicateTaskTest extends TestCase
         $helper = User::factory()->create();
         $tag = Tag::factory()->for($this->project)->create();
         $priority = $this->project->customFields()->firstOrFail();
-        $original = $this->original(['status_id' => $this->project->doneStatus()->id]);
+        $original = $this->original(['completed_at' => now()]);
         $original->collaborators()->attach($helper);
         $original->tags()->attach($tag);
         $original->fieldValues()->create(['custom_field_id' => $priority->id, 'option_id' => $priority->options->first()->id]);

@@ -25,9 +25,6 @@ new class extends Component
     /** @var array<int|string, string> */
     public array $colors = [];
 
-    /** @var array<int|string, bool> */
-    public array $done = [];
-
     public bool $dirty = false;
 
     public string $deletingId = '';
@@ -62,7 +59,6 @@ new class extends Component
     {
         $this->names = $this->statuses->pluck('name', 'id')->all();
         $this->colors = $this->statuses->pluck('color', 'id')->all();
-        $this->done = $this->statuses->pluck('is_done', 'id')->all();
     }
 
     private function statusOrFail(int|string $id): TaskStatus
@@ -103,15 +99,11 @@ new class extends Component
     }
 
     /**
-     * A project needs at least one open and one done status.
+     * A project needs at least one status: new tasks start in the first one.
      */
-    private function keepsBothKinds(int $changedId, ?bool $becomesDone): bool
+    private function hasAnotherStatus(TaskStatus $status): bool
     {
-        $others = $this->project->statuses()->whereKeyNot($changedId)->get();
-        $hasOpen = $others->contains(fn (TaskStatus $status) => ! $status->is_done) || $becomesDone === false;
-        $hasDone = $others->contains(fn (TaskStatus $status) => $status->is_done) || $becomesDone === true;
-
-        return $hasOpen && $hasDone;
+        return $this->project->statuses()->whereKeyNot($status->id)->exists();
     }
 
     public function add(): void
@@ -159,22 +151,6 @@ new class extends Component
         $this->confirmSaved();
     }
 
-    public function updatedDone(bool $value, string $id): void
-    {
-        $status = $this->statusOrFail($id);
-
-        if (! $this->keepsBothKinds($status->id, $value)) {
-            $this->done[$id] = $status->is_done;
-            Flux::toast(variant: 'danger', text: __('At least one open and one done status are required.'));
-
-            return;
-        }
-
-        $status->update(['is_done' => $value]);
-        $this->changed();
-        $this->confirmSaved();
-    }
-
     public function move(int|string $id, int $position): void
     {
         $this->statusOrFail($id)->moveTo($position);
@@ -186,8 +162,8 @@ new class extends Component
     {
         $status = $this->statusOrFail($id);
 
-        if (! $this->keepsBothKinds($status->id, null)) {
-            Flux::toast(variant: 'danger', text: __('At least one open and one done status are required.'));
+        if (! $this->hasAnotherStatus($status)) {
+            Flux::toast(variant: 'danger', text: __('A project needs at least one status.'));
 
             return;
         }
@@ -200,7 +176,7 @@ new class extends Component
     {
         $status = $this->statusOrFail($this->deletingId);
 
-        abort_unless($this->keepsBothKinds($status->id, null), 422);
+        abort_unless($this->hasAnotherStatus($status), 422);
 
         $needsReplacement = $status->tasks()->exists();
 
@@ -214,7 +190,6 @@ new class extends Component
 
         if ($needsReplacement) {
             $status->tasks()->update(['status_id' => $this->replacementId]);
-            $this->project->statuses()->findOrFail($this->replacementId)->syncCompletedAt();
         }
 
         $status->delete();
@@ -231,19 +206,18 @@ new class extends Component
         <div class="space-y-6">
             <div>
                 <flux:heading size="lg">{{ __('Status') }}</flux:heading>
-                <flux:text class="mt-1">{{ __('The order determines the columns on the board. New tasks start in the first status that does not count as done.') }}</flux:text>
+                <flux:text class="mt-1">{{ __('The order determines the columns on the board. New tasks start in the first status.') }}</flux:text>
             </div>
 
             <ul class="relative max-h-96 space-y-2 overflow-y-auto" wire:sort="move" wire:sort:config="{{ \App\Sortable::CONFIG }}">
                 @foreach ($this->statuses as $status)
                     <li wire:key="status-{{ $status->id }}" wire:sort:item="{{ $status->id }}" class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
-                        {{-- On phones color, "done" and delete move to a second line instead of squeezing the name --}}
+                        {{-- On phones color and delete move to a second line instead of squeezing the name --}}
                         <div class="flex flex-wrap items-center gap-3">
                             <flux:icon.bars-2 variant="micro" class="shrink-0 text-zinc-400" />
                             <x-color-badge size="sm" :color="$status->color" class="shrink-0" title="{{ __('Tasks with this status') }}">{{ $status->top_level_count }}</x-color-badge>
                             <flux:input size="sm" wire:model.live.blur="names.{{ $status->id }}" aria-label="{{ __('Name') }}" class="min-w-36 flex-1" />
                             <flux:color-picker type="button" size="sm" class="w-32 shrink-0" with-confirmation :swatches="\App\Color::swatches()" wire:model.live="colors.{{ $status->id }}" aria-label="{{ __('Color') }}" />
-                            <flux:checkbox wire:model.live="done.{{ $status->id }}" :label="__('Done')" />
                             <flux:button size="xs" variant="ghost" icon="trash" wire:click="confirmDelete({{ $status->id }})" aria-label="{{ __('Delete status') }}" tooltip="{{ __('Delete status') }}" />
                         </div>
 

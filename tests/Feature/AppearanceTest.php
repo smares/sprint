@@ -52,7 +52,7 @@ class AppearanceTest extends TestCase
         }
         Task::factory()->for($this->project)->done()->create(['due_date' => '2026-10-12']);
 
-        $html = Livewire::test('pages::projects.show', ['project' => $this->project])->set('statusFilter', 'all')->html();
+        $html = Livewire::test('pages::projects.show', ['project' => $this->project])->set('doneFilter', 'all')->html();
 
         $this->assertSame(1, substr_count($html, 'data-due="red"'));
         $this->assertSame(2, substr_count($html, 'data-due="amber"'));

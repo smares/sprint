@@ -78,7 +78,7 @@ class CsvExportImportTest extends TestCase
         $this->assertSame('Kind', $second['title']);
         $this->assertSame((string) $parent->id, $second['parent_id']);
         $this->assertSame(now()->toDateString(), $second['completed']);
-        $this->assertSame('Erledigt', $second['status']);
+        $this->assertSame('Offen', $second['status']);
     }
 
     public function test_subtasks_follow_their_parents_in_the_export(): void
@@ -172,10 +172,35 @@ class CsvExportImportTest extends TestCase
         $this->assertCount(2, $plan['tasks']);
         $this->assertSame('2026-12-24', $plan['tasks'][0]['due_date']);
         $this->assertSame(['Alpha', 'Beta'], $plan['tasks'][0]['new_tags']);
-        $this->assertSame($this->project->doneStatus()->id, $plan['tasks'][1]['status_id']);
+        $this->assertSame($this->project->defaultStatus()->id, $plan['tasks'][1]['status_id']);
         $this->assertNull($plan['tasks'][0]['completed_at']);
         $this->assertSame('2026-02-01', $plan['tasks'][1]['completed_at']);
         $this->assertSame('title:planung', $plan['tasks'][1]['parent_ref']);
+    }
+
+    public function test_the_completed_column_finishes_a_task_with_the_given_day_or_today_and_leaves_the_status_alone(): void
+    {
+        $this->travelTo('2026-10-08 10:00');
+        $plan = $this->plan("title,status,completed\nA,In Arbeit,2026-09-01\nB,,ja\nC,,01.10.2026\nD,,nein\nE,,false\nF,,0\nG,,\nH,In Arbeit,\n");
+
+        $this->assertSame([], $plan['errors']);
+        $this->assertSame(['2026-09-01', '2026-10-08', '2026-10-01', null, null, null, null, null], array_column($plan['tasks'], 'completed_at'));
+
+        app(TaskCsvService::class)->import($this->project, $this->user, $plan['tasks']);
+
+        $task = fn (string $title) => Task::where('title', $title)->firstOrFail();
+        $this->assertTrue($task('A')->isDone());
+        $this->assertSame('2026-09-01', $task('A')->completed_at->toDateString());
+        $this->assertSame('In Arbeit', $task('A')->status->name);
+        $this->assertSame('Offen', $task('B')->status->name);
+        $this->assertSame('2026-10-08', $task('B')->completed_at->toDateString());
+        $this->assertSame('2026-10-01', $task('C')->completed_at->toDateString());
+
+        foreach (['D', 'E', 'F', 'G', 'H'] as $title) {
+            $this->assertFalse($task($title)->isDone(), $title);
+        }
+
+        $this->assertSame('In Arbeit', $task('H')->status->name);
     }
 
     public function test_the_plan_reports_bad_rows_and_ignored_values(): void

@@ -77,14 +77,18 @@ class QuickAddTaskTest extends TestCase
 
     public function test_the_filters_of_the_list_decide_what_a_new_task_gets(): void
     {
-        $done = $this->project->doneStatus();
+        $progress = $this->project->statuses[1];
         $tag = Tag::factory()->for($this->project)->create(['name' => 'Bug']);
         $other = User::factory()->create();
         $this->project->setRole($other, ProjectRole::Editor);
         $outsider = User::factory()->create();
 
-        $this->list()->set('statusFilter', (string) $done->id)->call('quickAdd', 'Schon erledigt');
-        $this->assertSame($done->id, Task::query()->where('title', 'Schon erledigt')->sole()->status_id);
+        $this->list()->set('statusFilter', (string) $progress->id)->call('quickAdd', 'Schon begonnen');
+        $this->assertSame($progress->id, Task::query()->where('title', 'Schon begonnen')->sole()->status_id);
+
+        // The done filter does not finish a new task; it is only announced as hidden
+        $this->list()->set('doneFilter', 'done')->call('quickAdd', 'Noch offen');
+        $this->assertFalse(Task::query()->where('title', 'Noch offen')->sole()->isDone());
 
         $this->list()->set('assigneeFilter', 'me')->call('quickAdd', 'Meine');
         $this->assertSame($this->editor->id, Task::query()->where('title', 'Meine')->sole()->assignee_id);

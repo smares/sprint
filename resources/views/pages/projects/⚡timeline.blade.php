@@ -1,6 +1,7 @@
 <?php
 
 use App\Concerns\EditsTasksInBulk;
+use App\Concerns\FiltersDoneTasks;
 use App\Concerns\RefreshesOnTaskChanges;
 use App\Concerns\ShowsProject;
 use App\Models\Project;
@@ -17,7 +18,7 @@ use Livewire\Component;
 
 new class extends Component
 {
-    use EditsTasksInBulk, RefreshesOnTaskChanges, ShowsProject;
+    use EditsTasksInBulk, FiltersDoneTasks, RefreshesOnTaskChanges, ShowsProject;
 
     /** Days shown at once. */
     public const DAYS = 42;
@@ -29,6 +30,10 @@ new class extends Component
 
     #[Url]
     public string $from = '';
+
+    /** What the timeline does with finished tasks: open, all (they stand dimmed) or done. */
+    #[Url(as: 'done')]
+    public string $doneFilter = 'all';
 
     /**
      * A bar was dragged: moved as a whole, or one of its edges stretched or shrunk.
@@ -94,15 +99,18 @@ new class extends Component
     #[Computed]
     public function rows(): Collection
     {
-        return $this->project->tasks()
+        $query = $this->project->tasks()
             ->topLevel()
             ->withoutSections()
             ->overlapping($this->start, $this->end)
-            ->with(['status', 'blockers.status'])
+            ->with(['status', 'blockers'])
             ->orderByRaw('coalesce(start_date, due_date)')
             ->orderBy('position')
-            ->orderBy('id')
-            ->get()
+            ->orderBy('id');
+
+        $this->applyDoneFilter($query);
+
+        return $query->get()
             ->map(fn (Task $task) => [
                 'task' => $task,
                 'first' => max(0, (int) $this->start->diffInDays($task->spanStart()->startOfDay(), false)) + 1,
@@ -119,6 +127,7 @@ new class extends Component
     public function outside(): array
     {
         $tasks = $this->project->tasks()->topLevel()->withoutSections();
+        $this->applyDoneFilter($tasks);
 
         $undated = (clone $tasks)->whereNull('start_date')->whereNull('due_date')->count();
         $dated = (clone $tasks)->where(fn ($q) => $q->whereNotNull('start_date')->orWhereNotNull('due_date'))->count();
@@ -127,7 +136,7 @@ new class extends Component
     }
 
     /**
-     * The timeline has no filters: every top-level task of the project can be selected.
+     * The tasks the timeline shows (the open or finished ones it is set to) can be selected.
      */
     protected function datesNeededToShowTask(): array
     {
@@ -136,7 +145,19 @@ new class extends Component
 
     protected function filteredTasks(): HasMany
     {
-        return $this->project->tasks()->topLevel();
+        $tasks = $this->project->tasks()->topLevel();
+        $this->applyDoneFilter($tasks);
+
+        return $tasks;
+    }
+
+    /**
+     * Another choice of finished tasks shows other tasks, so what was selected no longer fits.
+     */
+    public function updatedDoneFilter(): void
+    {
+        $this->selected = [];
+        unset($this->rows, $this->outside);
     }
 
     protected function forgetTasksAfterBulk(): void
@@ -168,6 +189,8 @@ new class extends Component
         <flux:button icon="chevron-right" wire:click="later" aria-label="{{ __('Later') }}" tooltip="{{ __('Later') }}" />
         <flux:button wire:click="today">{{ __('Today') }}</flux:button>
         <flux:text class="ms-2 whitespace-nowrap">{{ $this->start->isoFormat('L') }} – {{ $this->end->isoFormat('L') }}</flux:text>
+
+        <x-done-filter :options="$this->doneFilterOptions()" :current="$doneFilter" />
 
         @if ($offersSelecting)
             <x-selection-toggle instant class="ms-auto max-sm:hidden" x-show="! $wire.selecting" />
@@ -260,7 +283,7 @@ new class extends Component
             @endif
             @if ($this->outside['undated'] > 0)
                 {{ trans_choice('{1} :count task has no date.|[2,*] :count tasks have no date.', $this->outside['undated']) }}
-                <flux:link variant="ghost" :href="route('projects.show', [$project, 'dates' => 'none', 'status' => 'all'])" wire:navigate>{{ __('Show them in the list') }}</flux:link>
+                <flux:link variant="ghost" :href="route('projects.show', [$project, 'dates' => 'none', 'done' => 'all'])" wire:navigate>{{ __('Show them in the list') }}</flux:link>
             @endif
         </flux:text>
     @endif

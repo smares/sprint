@@ -160,7 +160,7 @@ class BulkTaskActionsTest extends TestCase
     {
         $a = $this->task('Eins');
 
-        $this->list([$a])->set('statusFilter', 'all')->assertSet('selected', []);
+        $this->list([$a])->set('doneFilter', 'all')->assertSet('selected', []);
         $this->list([$a])->call('resetFilters')->assertSet('selected', []);
         $this->list([$a])->call('clearFilter', 'assignee')->assertSet('selected', []);
     }
@@ -168,10 +168,13 @@ class BulkTaskActionsTest extends TestCase
     public function test_only_tasks_that_are_still_shown_by_the_filters_count(): void
     {
         $open = $this->task('Offen');
-        $done = $this->task('Fertig', ['status_id' => $this->project->doneStatus()->id]);
+        $done = Task::factory()->for($this->project)->done()->create(['title' => 'Fertig']);
 
         $page = $this->list([$open, $done]);
         $this->assertSame([$open->id], $page->instance()->selectedIds);
+
+        $page->set('doneFilter', 'all')->set('selected', [(string) $open->id, (string) $done->id]);
+        $this->assertEqualsCanonicalizing([$open->id, $done->id], $page->instance()->selectedIds);
     }
 
     public function test_foreign_subtasks_and_headings_cannot_be_selected(): void
@@ -202,7 +205,83 @@ class BulkTaskActionsTest extends TestCase
         $this->assertTrue($a->fresh()->isDone());
         $this->assertTrue($b->fresh()->isDone());
         $this->assertFalse($c->fresh()->isDone());
-        $this->assertContains('hat den Status von „Offen“ auf „Erledigt“ geändert', $a->activities()->get()->map->sentence()->all());
+        $this->assertContains('hat die Aufgabe erledigt', $a->activities()->get()->map->sentence()->all());
+    }
+
+    public function test_completing_leaves_the_status_alone_and_skips_tasks_that_are_done_already(): void
+    {
+        $inWork = $this->project->statuses()->where('name', 'In Arbeit')->firstOrFail();
+        $a = $this->task('Eins');
+        $b = $this->task('Zwei', ['status_id' => $inWork->id]);
+        $finished = Task::factory()->for($this->project)->done()->create(['title' => 'Fertig', 'completed_at' => '2026-10-01 12:00:00']);
+        $statusOfA = $a->status_id;
+
+        $this->list([$a, $b, $finished])->set('doneFilter', 'all')->set('selected', [(string) $a->id, (string) $b->id, (string) $finished->id])->call('bulkComplete');
+
+        $this->assertSame($statusOfA, $a->fresh()->status_id);
+        $this->assertSame($inWork->id, $b->fresh()->status_id);
+        $this->assertTrue($a->fresh()->isDone());
+        $this->assertTrue($b->fresh()->isDone());
+        $this->assertSame('2026-10-01 12:00:00', $finished->fresh()->completed_at->toDateTimeString());
+        $this->assertNotContains('hat die Aufgabe erledigt', $finished->activities()->get()->map->sentence()->all());
+    }
+
+    public function test_selected_tasks_can_be_reopened_and_keep_their_status(): void
+    {
+        $inWork = $this->project->statuses()->where('name', 'In Arbeit')->firstOrFail();
+        $a = $this->task('Eins', ['completed_at' => '2026-10-01 12:00:00', 'status_id' => $inWork->id]);
+        $b = $this->task('Zwei', ['completed_at' => '2026-10-02 12:00:00']);
+        $c = $this->task('Drei', ['completed_at' => '2026-10-03 12:00:00']);
+
+        $this->list([$a, $b])->set('doneFilter', 'all')->set('selected', [(string) $a->id, (string) $b->id])->call('bulkReopen')
+            ->assertSet('selecting', false)->assertSet('selected', [])
+            ->assertDispatched('toast-show', fn (string $event, array $params) => ($params['slots']['text'] ?? null) === '2 Aufgaben wieder geöffnet.');
+
+        $this->assertFalse($a->fresh()->isDone());
+        $this->assertFalse($b->fresh()->isDone());
+        $this->assertTrue($c->fresh()->isDone());
+        $this->assertSame($inWork->id, $a->fresh()->status_id);
+        $this->assertContains('hat die Aufgabe wieder geöffnet', $a->activities()->get()->map->sentence()->all());
+    }
+
+    public function test_reopening_skips_open_tasks_without_a_log_entry_and_names_one_task_in_the_toast(): void
+    {
+        $open = $this->task('Offen');
+        $done = $this->task('Fertig', ['completed_at' => '2026-10-01 12:00:00']);
+
+        $this->list()->set('doneFilter', 'all')->set('selected', [(string) $open->id])->call('bulkReopen')
+            ->assertDispatched('toast-show', fn (string $event, array $params) => ($params['slots']['text'] ?? null) === 'Eine Aufgabe wieder geöffnet.');
+        $this->assertNotContains('hat die Aufgabe wieder geöffnet', $open->activities()->get()->map->sentence()->all());
+
+        $this->list()->set('doneFilter', 'all')->set('selected', [(string) $open->id, (string) $done->id])->call('bulkReopen');
+        $this->assertNotContains('hat die Aufgabe wieder geöffnet', $open->activities()->get()->map->sentence()->all());
+        $this->assertContains('hat die Aufgabe wieder geöffnet', $done->activities()->get()->map->sentence()->all());
+    }
+
+    public function test_reopening_needs_a_selection_and_the_right_to_change_the_tasks(): void
+    {
+        $task = $this->task('Fertig', ['completed_at' => '2026-10-01 12:00:00']);
+
+        $this->list()->set('doneFilter', 'all')->call('bulkReopen')->assertHasErrors('selected');
+        $this->assertTrue($task->fresh()->isDone());
+
+        $viewer = User::factory()->create();
+        $this->project->setRole($viewer, ProjectRole::Viewer);
+        Livewire::actingAs($viewer)->test('pages::projects.show', ['project' => $this->project])->set('doneFilter', 'all')->set('selecting', true)->set('selected', [(string) $task->id])->call('bulkReopen')->assertForbidden();
+        $this->assertTrue($task->fresh()->isDone());
+        $this->actingAs($this->user);
+
+        $page = $this->list([$task])->set('doneFilter', 'all');
+        $this->project->update(['archived_at' => now()]);
+        $page->call('bulkReopen')->assertForbidden();
+        $this->assertTrue($task->fresh()->isDone());
+    }
+
+    public function test_the_selection_bar_offers_to_reopen(): void
+    {
+        $task = $this->task('Eins');
+
+        $this->list([$task])->assertSee('Wieder öffnen')->assertSeeHtml('wire:click="bulkReopen"');
     }
 
     public function test_status_assignee_and_due_date_are_changed_together_and_the_rest_stays(): void
@@ -232,7 +311,7 @@ class BulkTaskActionsTest extends TestCase
         $this->project->setRole($anna, ProjectRole::Editor);
         $task = $this->task('Eins', ['assignee_id' => $anna->id, 'due_date' => '2026-12-01']);
 
-        $this->list([$task])->set('bulkStatus', (string) $this->project->doneStatus()->id)->call('applyBulkChanges');
+        $this->list([$task])->set('bulkStatus', (string) $this->project->statuses()->skip(1)->firstOrFail()->id)->call('applyBulkChanges');
 
         $task->refresh();
         $this->assertSame($anna->id, $task->assignee_id);
@@ -296,7 +375,7 @@ class BulkTaskActionsTest extends TestCase
         $task = $this->task('Eins');
 
         $this->list([$task])->call('applyBulkChanges')->assertHasErrors('bulkStatus');
-        $this->list()->set('bulkStatus', (string) $this->project->doneStatus()->id)->call('applyBulkChanges')->assertHasErrors('selected');
+        $this->list()->set('bulkStatus', (string) $this->project->statuses()->skip(1)->firstOrFail()->id)->call('applyBulkChanges')->assertHasErrors('selected');
         $this->list()->call('bulkComplete')->assertHasErrors('selected');
 
         $this->assertFalse($task->fresh()->isDone());

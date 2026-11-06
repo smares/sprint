@@ -10,6 +10,7 @@ namespace App\Enums;
 enum AutomationTrigger: string
 {
     case StatusChanged = 'status_changed';
+    case Completed = 'completed';
     case AssigneeChanged = 'assignee_changed';
     case TagAdded = 'tag_added';
     case FieldSet = 'field_set';
@@ -35,10 +36,19 @@ enum AutomationTrigger: string
     {
         return match ($this) {
             self::StatusChanged => ActivityType::StatusChanged,
+            self::Completed => ActivityType::Completed,
             self::AssigneeChanged => ActivityType::AssigneeChanged,
             self::TagAdded => ActivityType::TagsAdded,
             self::FieldSet => ActivityType::FieldChanged,
         };
+    }
+
+    /**
+     * Whether the trigger is narrowed down by a value at all (the status, person, tag or field), or fires for every change.
+     */
+    public function takesValue(): bool
+    {
+        return $this !== self::Completed;
     }
 
     /**
@@ -53,6 +63,7 @@ enum AutomationTrigger: string
     {
         return match ($this) {
             self::StatusChanged => __('Status changes to'),
+            self::Completed => __('Task is completed'),
             self::AssigneeChanged => __('Assignee changes to'),
             self::TagAdded => __('Tag is added'),
             self::FieldSet => __('Field gets a value'),

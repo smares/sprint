@@ -2,6 +2,7 @@
 
 use App\Concerns\AssignsTasks;
 use App\Concerns\EditsTasksInBulk;
+use App\Concerns\FiltersDoneTasks;
 use App\Concerns\ManagesSavedViews;
 use App\Concerns\RefreshesOnTaskChanges;
 use App\Concerns\QuickAddsTasks;
@@ -30,6 +31,7 @@ use Livewire\Component;
 
 new class extends Component
 {
+    use FiltersDoneTasks;
     use ShowsProject;
     use AssignsTasks;
     use EditsTasksInBulk;
@@ -45,8 +47,13 @@ new class extends Component
 
     public Project $project;
 
+    /** The id of a status, or '' for all of them. */
     #[Url(as: 'status')]
-    public string $statusFilter = 'open';
+    public string $statusFilter = '';
+
+    /** What the list does with finished tasks: open (the default), all or done. */
+    #[Url(as: 'done')]
+    public string $doneFilter = 'open';
 
     #[Locked]
     public int $limit = self::PAGE_SIZE;
@@ -160,7 +167,8 @@ new class extends Component
         return $this->project->tasks()
             ->topLevel()
             ->unless($this->showsHeadings(), fn ($q) => $q->withoutSections())
-            ->when($this->statusFilter === 'open', fn ($q) => $q->open())
+            ->when($this->doneFilter === 'open', fn ($q) => $q->open())
+            ->when($this->doneFilter === 'done', fn ($q) => $q->done())
             ->when(ctype_digit($this->statusFilter), fn ($q) => $q->where('status_id', (int) $this->statusFilter))
             ->when($this->assigneeFilter === 'me', fn ($q) => $q->where('assignee_id', auth()->id()))
             ->when(ctype_digit($this->assigneeFilter), fn ($q) => $q->where('assignee_id', (int) $this->assigneeFilter))
@@ -212,7 +220,7 @@ new class extends Component
      */
     protected function showsHeadings(): bool
     {
-        return ! $this->sortActive && $this->activeFilters->isEmpty() && in_array($this->statusFilter, ['open', 'all'], true);
+        return ! $this->sortActive && $this->activeFilters->isEmpty() && $this->statusFilter === '' && $this->doneFilter !== 'done';
     }
 
     /**
@@ -238,7 +246,7 @@ new class extends Component
     public function tasks(): Collection
     {
         return $this->filteredTasks()
-            ->with(['assignee', 'collaborators', 'tags', 'status', 'blockers.status', 'fieldValues'])
+            ->with(['assignee', 'collaborators', 'tags', 'status', 'blockers', 'fieldValues'])
             ->tap(function ($q) {
                 foreach ($this->sortTerms() as [$sql, $bindings]) {
                     $q->orderByRaw($sql, $bindings);
@@ -307,11 +315,11 @@ new class extends Component
      */
     public function updated(string $name): void
     {
-        if (in_array(explode('.', $name)[0], ['statusFilter', 'assigneeFilter', 'collaboratorFilter', 'tagFilter', 'dateFilter', 'fieldFilters', 'sortBy', 'sortDirection'], true)) {
+        if (in_array(explode('.', $name)[0], ['statusFilter', 'doneFilter', 'assigneeFilter', 'collaboratorFilter', 'tagFilter', 'dateFilter', 'fieldFilters', 'sortBy', 'sortDirection'], true)) {
             $this->limit = self::PAGE_SIZE;
         }
 
-        if (in_array(explode('.', $name)[0], ['statusFilter', 'assigneeFilter', 'collaboratorFilter', 'tagFilter', 'dateFilter', 'fieldFilters'], true)) {
+        if (in_array(explode('.', $name)[0], ['statusFilter', 'doneFilter', 'assigneeFilter', 'collaboratorFilter', 'tagFilter', 'dateFilter', 'fieldFilters'], true)) {
             $this->selected = [];
         }
     }
@@ -395,6 +403,10 @@ new class extends Component
             $filters->push(['key' => 'assignee', 'label' => $user->name]);
         }
 
+        if (ctype_digit($this->statusFilter) && ($status = $this->statuses->firstWhere('id', (int) $this->statusFilter))) {
+            $filters->push(['key' => 'status', 'label' => __('Status').': '.$status->name]);
+        }
+
         if ($this->collaboratorFilterUsers !== []) {
             $filters->push(['key' => 'collaborators', 'label' => __('Collaborators').': '.implode(', ', $this->collaboratorFilterUsers)]);
         }
@@ -418,21 +430,12 @@ new class extends Component
         return $filters;
     }
 
-    #[Computed]
-    public function statusFilterLabel(): string
-    {
-        return match (true) {
-            $this->statusFilter === 'open' => __('Open tasks'),
-            $this->statusFilter === 'all' => __('All statuses'),
-            default => $this->statuses->firstWhere('id', (int) $this->statusFilter)?->name ?? __('Open tasks'),
-        };
-    }
-
     public function clearFilter(string $key): void
     {
         $this->selected = [];
 
         match (true) {
+            $key === 'status' => $this->statusFilter = '',
             $key === 'assignee' => $this->assigneeFilter = '',
             $key === 'collaborators' => $this->collaboratorFilter = [],
             $key === 'tag' => $this->tagFilter = '',
@@ -453,18 +456,19 @@ new class extends Component
     protected function savedViewQueryProperties(): array
     {
         return [
-            'status' => 'statusFilter', 'assignee' => 'assigneeFilter', 'with' => 'collaboratorFilter', 'tag' => 'tagFilter',
+            'status' => 'statusFilter', 'done' => 'doneFilter', 'assignee' => 'assigneeFilter', 'with' => 'collaboratorFilter', 'tag' => 'tagFilter',
             'dates' => 'dateFilter', 'f' => 'fieldFilters', 'sort' => 'sortBy', 'dir' => 'sortDirection',
         ];
     }
 
     /**
-     * @return array{status: string, assignee: string, collaborators: list<string>, tag: string, dates: string, fields: array<int|string, string>, sort: string, direction: string}
+     * @return array{status: string, done: string, assignee: string, collaborators: list<string>, tag: string, dates: string, fields: array<int|string, string>, sort: string, direction: string}
      */
     protected function currentViewSettings(): array
     {
         return [
             'status' => $this->statusFilter,
+            'done' => $this->validDoneFilter($this->doneFilter, 'open'),
             'assignee' => $this->assigneeFilter,
             'collaborators' => $this->validCollaboratorValues($this->collaboratorFilter),
             'tag' => $this->tagFilter,
@@ -484,8 +488,11 @@ new class extends Component
     {
         $this->selected = [];
 
-        $status = (string) ($settings['status'] ?? 'open');
-        $this->statusFilter = in_array($status, ['open', 'all'], true) || ($this->statuses->contains('id', (int) $status) && ctype_digit($status)) ? $status : 'open';
+        // A view saved before finishing was separate from the status held "open" or "all" as its status, or the one status it showed
+        // (finished tasks included)
+        $status = (string) ($settings['status'] ?? '');
+        $this->statusFilter = ctype_digit($status) && $this->statuses->contains('id', (int) $status) ? $status : '';
+        $this->doneFilter = $this->validDoneFilter($settings['done'] ?? (in_array($status, ['open', 'all'], true) ? $status : ($this->statusFilter !== '' ? 'all' : null)), 'open');
 
         $assignee = (string) ($settings['assignee'] ?? '');
         $this->assigneeFilter = $assignee === 'me' || ($assignee !== '' && ctype_digit($assignee) && $this->assignableUsers->contains('id', (int) $assignee)) ? $assignee : '';
@@ -515,7 +522,8 @@ new class extends Component
     public function resetFilters(): void
     {
         $this->selected = [];
-        $this->statusFilter = 'open';
+        $this->statusFilter = '';
+        $this->doneFilter = 'open';
         $this->assigneeFilter = '';
         $this->collaboratorFilter = [];
         $this->tagFilter = '';
@@ -559,6 +567,8 @@ new class extends Component
     <x-project-header :project="$project" active="list" :presence="$this->presenceChannel()" />
 
     <div class="mb-4 flex flex-wrap items-center gap-2">
+        <x-done-filter :options="$this->doneFilterOptions()" :current="$doneFilter" />
+
         <flux:modal.trigger name="filters">
             <flux:button icon="funnel">
                 {{ __('Filter') }}
@@ -571,8 +581,6 @@ new class extends Component
         <flux:modal.trigger name="saved-views">
             <flux:button icon="bookmark">{{ __('Views') }} @if ($this->savedViews->isNotEmpty()) <flux:badge size="sm" inset="top bottom">{{ $this->savedViews->count() }}</flux:badge> @endif</flux:button>
         </flux:modal.trigger>
-
-        <flux:badge size="sm" color="zinc">{{ $this->statusFilterLabel }}</flux:badge>
 
         @foreach ($this->activeFilters as $filter)
             {{-- A long label (the names of many collaborators) wraps inside the chip; on one line it would widen the page on a phone --}}
@@ -612,8 +620,7 @@ new class extends Component
             <flux:heading size="lg">{{ __('Filter') }}</flux:heading>
 
             <flux:select variant="listbox" wire:model.live="statusFilter" :label="__('Status')">
-                <flux:select.option value="open">{{ __('Open') }}</flux:select.option>
-                <flux:select.option value="all">{{ __('All') }}</flux:select.option>
+                <flux:select.option value="">{{ __('All statuses') }}</flux:select.option>
                 @foreach ($this->statuses as $status)
                     <flux:select.option value="{{ $status->id }}">{{ $status->name }}</flux:select.option>
                 @endforeach
@@ -669,11 +676,11 @@ new class extends Component
 
     @if ($this->tasks->isEmpty())
         {{-- Why the list is empty decides what helps: a new project, filters that match nothing, or everything done --}}
-        @if ($this->activeFilters->isEmpty() && $statusFilter === 'open' && ! $project->tasks()->exists())
+        @if ($this->activeFilters->isEmpty() && $statusFilter === '' && $doneFilter === 'open' && ! $project->tasks()->exists())
             <x-empty-state icon="clipboard-document-list" :heading="__('No tasks yet')" :text="$this->canEdit ? __('Create the first task with “New task” or right below.') : null" />
-        @elseif ($this->activeFilters->isEmpty() && $statusFilter === 'open')
+        @elseif ($this->activeFilters->isEmpty() && $statusFilter === '' && $doneFilter === 'open')
             <x-empty-state emoji="🎉" :heading="__('All done')" :text="__('Every task in this project is done.')">
-                <flux:button wire:click="$set('statusFilter', 'all')">{{ __('Show done tasks') }}</flux:button>
+                <flux:button wire:click="$set('doneFilter', 'all')">{{ __('Show done tasks') }}</flux:button>
             </x-empty-state>
         @else
             <x-empty-state icon="funnel" :heading="__('No tasks')" :text="__('Nothing to do here with these filters.')">
@@ -725,7 +732,7 @@ new class extends Component
                             @continue
                         @endif
                         @php($number++)
-                        <flux:table.row wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" class="cursor-pointer" :wire:sort:item="$draggable ? $task->id : null">
+                        <flux:table.row wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" :class="'cursor-pointer'.($task->isDone() ? ' opacity-60 hover:opacity-100 focus-within:opacity-100' : '')" :wire:sort:item="$draggable ? $task->id : null">
                             <flux:table.cell :class="$pinnedDone">
                                 <div class="flex items-center gap-3">
                                     <x-task-done-button :task="$task" :editable="$this->canEdit" />

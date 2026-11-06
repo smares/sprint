@@ -42,13 +42,13 @@ class InboxTest extends TestCase
         $this->actingAs($this->other);
 
         Comment::factory()->create(['task_id' => $this->task->id, 'user_id' => $this->other->id, 'body' => 'Bitte prüfen']);
-        $this->task->update(['status_id' => $this->project->doneStatus()->id]);
+        $this->task->markDone();
         Comment::factory()->create(['task_id' => $this->task->id, 'user_id' => $this->other->id, 'body' => 'Hallo @['.$this->me->name.'](user:'.$this->me->id.')']);
 
         $summaries = $this->me->notifications()->get()->map(fn (DatabaseNotification $notification) => InboxTextService::sentence($notification))->all();
 
         $this->assertContains('Otto hat kommentiert', $summaries);
-        $this->assertContains('Otto hat den Status von „Offen“ auf „Erledigt“ geändert', $summaries);
+        $this->assertContains('Otto hat die Aufgabe erledigt', $summaries);
         $this->assertContains('Otto hat dich in einem Kommentar erwähnt', $summaries);
         $this->assertTrue($this->me->notifications()->where('data->task_id', $this->task->id)->exists());
     }

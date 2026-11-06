@@ -14,7 +14,7 @@ class TaskFactory extends Factory
 {
     public function done(): static
     {
-        return $this->afterMaking(fn (Task $task) => $task->status_id = $task->project->doneStatus()->id);
+        return $this->state(['completed_at' => now()]);
     }
 
     public function inProgress(): static

@@ -101,6 +101,7 @@ class Automation extends Model
 
         $triggered = match ($this->trigger) {
             AutomationTrigger::StatusChanged => $task->status_id === $this->trigger_value,
+            AutomationTrigger::Completed => true,
             AutomationTrigger::AssigneeChanged => $this->trigger_value === null || $task->assignee_id === $this->trigger_value,
             AutomationTrigger::TagAdded => in_array($this->trigger_value, $data['ids'] ?? [], true),
             AutomationTrigger::FieldSet => $this->fieldGetsTheValue($data),

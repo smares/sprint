@@ -81,7 +81,7 @@ class ProjectBoardTest extends TestCase
         $foreign = Task::factory()->create();
 
         Livewire::test('pages::projects.board', ['project' => $project])
-            ->call('moveTask', $foreign->id, 0, (string) $project->doneStatus()->id)
+            ->call('moveTask', $foreign->id, 0, (string) $project->statuses()->latest('position')->firstOrFail()->id)
             ->assertStatus(404);
 
         $this->assertSame($foreign->project->defaultStatus()->id, $foreign->refresh()->status_id);

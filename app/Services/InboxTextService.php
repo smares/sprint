@@ -6,8 +6,10 @@ use App\Notifications\AutomationNotice;
 use App\Notifications\ReactionReceived;
 use App\Notifications\TaskAssigned;
 use App\Notifications\TaskCommented;
+use App\Notifications\TaskCompletionChanged;
 use App\Notifications\TaskDueTomorrow;
 use App\Notifications\TasksAssigned;
+use App\Notifications\TasksCompletionChanged;
 use App\Notifications\TasksStatusChanged;
 use App\Notifications\TaskStatusChanged;
 use App\Notifications\UserMentioned;
@@ -28,6 +30,8 @@ class InboxTextService
             $notification->type === TaskCommented::class => TaskCommented::sentence($data),
             $notification->type === TaskStatusChanged::class => TaskStatusChanged::sentence($data),
             $notification->type === TasksStatusChanged::class => TasksStatusChanged::sentence($data),
+            $notification->type === TaskCompletionChanged::class => TaskCompletionChanged::sentence($data),
+            $notification->type === TasksCompletionChanged::class => TasksCompletionChanged::sentence($data),
             $notification->type === TaskAssigned::class => TaskAssigned::sentence($data),
             $notification->type === TasksAssigned::class => TasksAssigned::sentence($data),
             $notification->type === UserMentioned::class => UserMentioned::sentence($data),

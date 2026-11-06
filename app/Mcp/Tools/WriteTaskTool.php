@@ -79,7 +79,7 @@ abstract class WriteTaskTool extends SprintTool
         }
 
         if (array_key_exists('done', $given) && $given['done'] !== null) {
-            $columns['completed_at'] = $given['done'] ? ($task?->completed_at ?? now()) : null;
+            $columns['completed_at'] = $given['done'] ? ($task->completed_at ?? now()) : null;
         }
 
         if (array_key_exists('assignee', $given)) {

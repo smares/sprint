@@ -98,6 +98,8 @@ class Task extends Model
 
         try {
             app(RealtimeService::class)->bundling($changes);
+
+            /** @var array<int, array{user: User, changes?: list<array{task: self, from: string, to: string}>, completions?: list<array{task: self, completed: bool}>}> $bundled */
             $bundled = self::$bundledStatusChanges;
             $assigned = self::$bundledAssignments;
         } finally {

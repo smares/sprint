@@ -112,7 +112,11 @@ class TaskStatusesTest extends TestCase
 
     public function test_the_status_settings_have_no_done_option_any_more(): void
     {
-        Livewire::test('project-statuses', ['project' => $this->project])->assertDontSee('Erledigt');
+        $page = Livewire::test('project-statuses', ['project' => $this->project]);
+
+        // Neither a checkbox for it nor a form property that could carry it
+        $page->assertDontSeeHtml('type="checkbox"')->assertDontSeeHtml('done.')->assertSet('names', $this->project->statuses->pluck('name', 'id')->all());
+        $this->assertArrayNotHasKey('done', $page->instance()->all());
     }
 
     public function test_finishing_a_task_leaves_it_in_its_status_whatever_the_statuses_are_called(): void

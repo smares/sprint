@@ -10,6 +10,7 @@ enum AutomationAction: string
 {
     case SetAssignee = 'set_assignee';
     case SetStatus = 'set_status';
+    case Complete = 'complete';
     case AddTag = 'add_tag';
     case SetField = 'set_field';
     case ShiftDueDate = 'shift_due_date';
@@ -21,6 +22,7 @@ enum AutomationAction: string
         return match ($this) {
             self::SetAssignee => __('Set the assignee'),
             self::SetStatus => __('Set the status'),
+            self::Complete => __('Mark as done'),
             self::AddTag => __('Add a tag'),
             self::SetField => __('Set a field'),
             self::ShiftDueDate => __('Move the due date by days'),

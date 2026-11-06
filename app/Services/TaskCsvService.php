@@ -300,7 +300,7 @@ class TaskCsvService
     }
 
     /**
-     * The named status; without one, done or open depending on the "completed" column.
+     * The named status; without one, the first.
      *
      * @param  Collection<int, TaskStatus>  $statuses
      * @param  Closure(string): void  $warn
@@ -314,9 +314,7 @@ class TaskCsvService
             $warn('unknown-status:'.$name);
         }
 
-        $completed = ($row['completed'] ?? '') !== '' && ! in_array(mb_strtolower($row['completed']), ['no', 'nein', 'false', '0'], true);
-
-        return $status?->id ?? ($completed ? $statuses->firstWhere('is_done', true)?->id : null) ?? $statuses->firstWhere('is_done', false)?->id;
+        return $status?->id ?? $statuses->first()?->id;
     }
 
     /**
@@ -359,8 +357,11 @@ class TaskCsvService
     {
         $dates = ['start_date' => null, 'due_date' => null];
 
-        // "completed" may hold the day it was done (our export, Asana's "Completed At") or just a yes
-        $completedAt = $this->parseDate(trim($row['completed'] ?? ''));
+        // "completed" may hold the day it was done (our export, Asana's "Completed At") or just a yes; empty or a no leaves the task open
+        $completed = trim($row['completed'] ?? '');
+        $completedAt = $completed === '' || in_array(mb_strtolower($completed), ['no', 'nein', 'false', '0'], true)
+            ? null
+            : ($this->parseDate($completed) ?? now()->toDateString());
 
         foreach (array_keys($dates) as $column) {
             if (($row[$column] ?? '') !== '') {

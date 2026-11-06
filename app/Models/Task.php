@@ -156,8 +156,6 @@ class Task extends Model
             $task->status_id ??= $task->project->defaultStatus()->id;
         });
 
-        // The completion time follows the status: set when the task becomes done, kept while it moves between done
-        // statuses, cleared when it is reopened
         static::saving(function (self $task) {
             if ($task->exists && $task->isDirty('due_date') && $task->due_date === null) {
                 $task->repeat_unit = null;
@@ -165,11 +163,6 @@ class Task extends Model
             }
 
             $task->keepRepeatDayInSync();
-
-            if (! $task->exists || $task->isDirty('status_id')) {
-                $done = (bool) $task->statusById($task->status_id)?->is_done;
-                $task->completed_at = $done ? ($task->completed_at ?? now()) : null;
-            }
         });
 
         static::created(function (self $task) {
@@ -216,7 +209,7 @@ class Task extends Model
 
             $task->logChanges($old);
 
-            if ($task->wasChanged('status_id') && $task->isDone() && ! $old?->is_done) {
+            if ($task->wasJustCompleted()) {
                 app(CelebrationService::class)->taskCompleted();
             }
 
@@ -224,25 +217,34 @@ class Task extends Model
                 $task->announceAssignee();
             }
 
-            if ($task->wasChanged('status_id')) {
+            // Moving between statuses and finishing or reopening are told alike: as the status changing, where done and open are
+            // the two states of the flag
+            $changes = array_filter([
+                $task->wasChanged('status_id') ? ['from' => $old?->name ?? '–', 'to' => $task->status->name] : null,
+                $task->wasChanged('completed_at') ? ($task->wasJustCompleted() ? ['from' => __('Open'), 'to' => __('Done')] : ['from' => __('Done'), 'to' => __('Open')]) : null,
+            ]);
+
+            if ($changes !== []) {
                 foreach ($task->usersToNotify($actor) as $recipient) {
                     // Told about the assignment already
                     if ($recipient->id === $task->announcedAssigneeId) {
                         continue;
                     }
 
-                    $change = ['task' => $task, 'from' => $old?->name ?? '–', 'to' => $task->status->name];
+                    foreach ($changes as $change) {
+                        $change['task'] = $task;
 
-                    if (self::$bundledStatusChanges === null || $automation !== null) {
-                        Notification::send($recipient, new TaskStatusChanged($task, $change['from'], $change['to'], $actorName));
-                    } else {
-                        self::$bundledStatusChanges[$recipient->id]['user'] = $recipient;
-                        self::$bundledStatusChanges[$recipient->id]['changes'][] = $change;
+                        if (self::$bundledStatusChanges === null || $automation !== null) {
+                            Notification::send($recipient, new TaskStatusChanged($task, $change['from'], $change['to'], $actorName));
+                        } else {
+                            self::$bundledStatusChanges[$recipient->id]['user'] = $recipient;
+                            self::$bundledStatusChanges[$recipient->id]['changes'][] = $change;
+                        }
                     }
                 }
             }
 
-            if ($task->wasChanged('status_id') && $task->isDone() && $task->repeat_unit !== null) {
+            if ($task->wasJustCompleted() && $task->repeat_unit !== null) {
                 $task->spawnNextOccurrence();
             }
 
@@ -289,19 +291,39 @@ class Task extends Model
         return $this->belongsTo(TaskStatus::class, 'status_id');
     }
 
+    /**
+     * Whether the task is finished. That is a flag of the task itself (the time it was completed), not a status: a finished
+     * task stays in its status.
+     */
     public function isDone(): bool
     {
-        return (bool) $this->status?->is_done;
+        return $this->completed_at !== null;
     }
 
     /**
-     * Switch between the project's done status and its default open status.
+     * Whether the last save finished the task (it was open before).
+     */
+    public function wasJustCompleted(): bool
+    {
+        return $this->wasChanged('completed_at') && $this->completed_at !== null && $this->getOriginal('completed_at') === null;
+    }
+
+    /**
+     * Finish the task, or open it again when it is finished. The status stays as it is.
      */
     public function toggleDone(): void
     {
-        $this->update([
-            'status_id' => $this->isDone() ? $this->project->defaultStatus()->id : $this->project->doneStatus()->id,
-        ]);
+        $this->update(['completed_at' => $this->isDone() ? null : now()]);
+    }
+
+    /**
+     * Finish the task (nothing happens when it is finished already).
+     */
+    public function markDone(): void
+    {
+        if (! $this->isDone()) {
+            $this->update(['completed_at' => now()]);
+        }
     }
 
     /**
@@ -1047,8 +1069,7 @@ class Task extends Model
                 $level = $level->concat(self::query()
                     ->whereIn('parent_id', $parentIds)
                     ->withoutSections()
-                    ->with('status:id,is_done')
-                    ->get(['id', 'parent_id', 'status_id']));
+                    ->get(['id', 'parent_id', 'completed_at']));
             }
 
             $childrenByParent = $childrenByParent->union($level->groupBy('parent_id'));
@@ -1094,6 +1115,10 @@ class Task extends Model
                 'from' => $oldStatus?->name ?? '–',
                 'to' => $this->loadMissing('status')->status->name,
             ]);
+        }
+
+        if ($this->wasChanged('completed_at')) {
+            $this->logActivity($this->wasJustCompleted() ? ActivityType::Completed : ActivityType::Reopened);
         }
 
         if ($this->wasChanged('assignee_id')) {
@@ -1270,23 +1295,23 @@ class Task extends Model
     }
 
     /**
-     * Tasks whose status is not a done status.
+     * Tasks that are not finished.
      *
      * @param  Builder<static>  $query
      */
     protected function scopeOpen(Builder $query): void
     {
-        $query->whereIn('tasks.status_id', TaskStatus::query()->where('is_done', false)->select('id'));
+        $query->whereNull('tasks.completed_at');
     }
 
     /**
-     * Tasks whose status is a done status.
+     * Tasks that are finished.
      *
      * @param  Builder<static>  $query
      */
     protected function scopeDone(Builder $query): void
     {
-        $query->whereIn('tasks.status_id', TaskStatus::query()->where('is_done', true)->select('id'));
+        $query->whereNotNull('tasks.completed_at');
     }
 
     /**

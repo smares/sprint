@@ -95,7 +95,7 @@ class ProjectStatisticsService
             ->orderByRaw('coalesce(status_changed_at, created_at)')
             ->orderBy('id')
             ->limit($limit)
-            ->with(['status', 'assignee', 'blockers.status'])
+            ->with(['status', 'assignee', 'blockers'])
             ->get()
             ->each(fn (Task $task) => $task->setAttribute('in_status_since', Carbon::parse($task->getAttribute('status_changed_at') ?? $task->created_at)));
     }

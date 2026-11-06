@@ -67,12 +67,7 @@ trait SelectsTasks
 
         Task::bundlingStatusNotifications(function () use ($tasks) {
             foreach ($tasks as $task) {
-                // From the statuses loaded with the project, not one query per task
-                $done = ($task->project->statuses->firstWhere('is_done', true) ?? $task->project->doneStatus())->id;
-
-                if ($task->status_id !== $done) {
-                    $task->update(['status_id' => $done]);
-                }
+                $task->markDone();
             }
         });
 

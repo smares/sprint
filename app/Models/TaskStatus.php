@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['project_id', 'name', 'color', 'position', 'is_done'])]
+#[Fillable(['project_id', 'name', 'color', 'position'])]
 class TaskStatus extends Model
 {
     /** The longest name (in characters). */
@@ -23,44 +23,21 @@ class TaskStatus extends Model
 
     use HasPosition;
 
-    protected static function booted(): void
-    {
-        static::updated(function (self $status) {
-            if ($status->wasChanged('is_done')) {
-                $status->syncCompletedAt();
-            }
-        });
-    }
-
     protected function casts(): array
     {
-        return ['is_done' => 'boolean', 'color' => ColorCast::class];
-    }
-
-    /**
-     * Gives the tasks in this status the completion time that fits it (now for done tasks that have none, none for
-     * open ones), after the status became done or open, or after tasks were moved here without saving each one.
-     */
-    public function syncCompletedAt(): void
-    {
-        if ($this->is_done) {
-            $this->tasks()->whereNull('completed_at')->update(['completed_at' => now()]);
-        } else {
-            $this->tasks()->whereNotNull('completed_at')->update(['completed_at' => null]);
-        }
+        return ['color' => ColorCast::class];
     }
 
     /**
      * The statuses every new project starts with.
      *
-     * @return list<array{name: string, color: string, position: int, is_done: bool}>
+     * @return list<array{name: string, color: string, position: int}>
      */
     public static function defaults(): array
     {
         return [
-            ['name' => __('Open'), 'color' => '#71717a', 'position' => 0, 'is_done' => false],
-            ['name' => __('In progress'), 'color' => '#3b82f6', 'position' => 1, 'is_done' => false],
-            ['name' => __('Done'), 'color' => '#22c55e', 'position' => 2, 'is_done' => true],
+            ['name' => __('Open'), 'color' => '#71717a', 'position' => 0],
+            ['name' => __('In progress'), 'color' => '#3b82f6', 'position' => 1],
         ];
     }
 

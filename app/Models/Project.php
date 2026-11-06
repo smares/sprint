@@ -329,19 +329,11 @@ class Project extends Model
     }
 
     /**
-     * The status new tasks start with: the first one that does not count as done.
+     * The status new tasks start with: the first one.
      */
     public function defaultStatus(): TaskStatus
     {
-        return $this->statuses()->where('is_done', false)->firstOrFail();
-    }
-
-    /**
-     * The status a task gets when it is marked as done.
-     */
-    public function doneStatus(): TaskStatus
-    {
-        return $this->statuses()->where('is_done', true)->firstOrFail();
+        return $this->statuses()->firstOrFail();
     }
 
     /**

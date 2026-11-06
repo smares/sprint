@@ -24,7 +24,6 @@ class TaskStatusFactory extends Factory
             'name' => fake()->unique()->word(),
             'color' => fake()->randomElement(Color::hexes()),
             'position' => 10,
-            'is_done' => false,
         ];
     }
 }

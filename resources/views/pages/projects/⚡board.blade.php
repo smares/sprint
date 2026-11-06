@@ -2,6 +2,7 @@
 
 use App\Concerns\AssignsTasks;
 use App\Concerns\EditsTasksInBulk;
+use App\Concerns\FiltersDoneTasks;
 use App\Concerns\ManagesSavedViews;
 use App\Concerns\RefreshesOnTaskChanges;
 use App\Concerns\QuickAddsTasks;
@@ -19,6 +20,7 @@ use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 new class extends Component
@@ -26,6 +28,7 @@ new class extends Component
     use ShowsProject;
     use AssignsTasks;
     use EditsTasksInBulk;
+    use FiltersDoneTasks;
     use RefreshesOnTaskChanges;
     use ManagesSavedViews;
     use QuickAddsTasks;
@@ -38,6 +41,10 @@ new class extends Component
     public array $columnLimits = [];
 
     public Project $project;
+
+    /** What the board does with finished tasks: open, all (they stand dimmed in their column) or done. */
+    #[Url(as: 'done')]
+    public string $doneFilter = 'all';
 
     #[On('statuses-changed')]
     public function statusesChanged(): void
@@ -57,10 +64,9 @@ new class extends Component
         $order = collect($terms)->pluck(0)->push('tasks.position', 'tasks.id')->implode(', ');
         $bindings = collect($terms)->pluck(1)->flatten(1)->all();
 
-        $ranked = $this->project->tasks()
-            ->topLevel()
-            ->withoutSections()
-            ->select('tasks.*')
+        $ranked = $this->project->tasks()->topLevel()->withoutSections();
+        $this->applyDoneFilter($ranked);
+        $ranked->select('tasks.*')
             ->selectRaw("row_number() over (partition by status_id order by {$order}) as column_rank", $bindings);
 
         $tasks = Task::query()
@@ -70,7 +76,7 @@ new class extends Component
                     $query->orWhere(fn ($column) => $column->where('status_id', $status->id)->where('column_rank', '<=', $this->columnLimit($status->id)));
                 }
             })
-            ->with(['assignee', 'collaborators', 'tags', 'status', 'blockers.status', 'fieldValues'])
+            ->with(['assignee', 'collaborators', 'tags', 'status', 'blockers', 'fieldValues'])
             ->orderBy('column_rank')
             ->get()
             ->loadCount(['comments', 'attachments'])
@@ -89,19 +95,25 @@ new class extends Component
     #[Computed]
     public function columnTotals(): array
     {
-        $counts = $this->project->tasks()->topLevel()->withoutSections()->selectRaw('status_id, count(*) as total')->groupBy('status_id')->pluck('total', 'status_id');
+        $shown = $this->project->tasks()->topLevel()->withoutSections();
+        $this->applyDoneFilter($shown);
+        $counts = $shown->selectRaw('status_id, count(*) as total')->groupBy('status_id')->pluck('total', 'status_id');
 
         return $this->statuses->mapWithKeys(fn (TaskStatus $status) => [$status->id => (int) ($counts[$status->id] ?? 0)])->all();
     }
 
     private function columnQuery(int $statusId): HasMany
     {
-        return $this->project->tasks()
+        $column = $this->project->tasks()
             ->topLevel()
             ->withoutSections()
             ->where('status_id', $statusId)
             ->orderBy('position')
             ->orderBy('id');
+
+        $this->applyDoneFilter($column);
+
+        return $column;
     }
 
     private function columnLimit(int $statusId): int
@@ -110,11 +122,14 @@ new class extends Component
     }
 
     /**
-     * The board has no filters: every top-level task of the project can be selected.
+     * The tasks the board shows (those of the open or finished kind it is set to) can be selected.
      */
     protected function filteredTasks(): HasMany
     {
-        return $this->project->tasks()->topLevel();
+        $tasks = $this->project->tasks()->topLevel();
+        $this->applyDoneFilter($tasks);
+
+        return $tasks;
     }
 
     protected function forgetTasksAfterBulk(): void
@@ -200,17 +215,17 @@ new class extends Component
      */
     protected function savedViewQueryProperties(): array
     {
-        return ['sort' => 'sortBy', 'dir' => 'sortDirection'];
+        return ['sort' => 'sortBy', 'dir' => 'sortDirection', 'done' => 'doneFilter'];
     }
 
     /**
-     * The board has no filters: a saved view is a sort order.
+     * A saved view of the board is a sort order and what it shows of the finished tasks.
      *
-     * @return array{sort: string, direction: string}
+     * @return array{sort: string, direction: string, done: string}
      */
     protected function currentViewSettings(): array
     {
-        return ['sort' => $this->isSorted() ? $this->sortBy : '', 'direction' => $this->direction()];
+        return ['sort' => $this->isSorted() ? $this->sortBy : '', 'direction' => $this->direction(), 'done' => $this->validDoneFilter($this->doneFilter, 'all')];
     }
 
     /**
@@ -218,7 +233,18 @@ new class extends Component
      */
     protected function applyViewSettings(array $settings): void
     {
+        $this->selected = [];
+        $this->doneFilter = $this->validDoneFilter($settings['done'] ?? null, 'all');
         $this->applySavedSort($settings);
+        $this->sorted();
+    }
+
+    /**
+     * Another choice of finished tasks starts again at the first cards of each column.
+     */
+    public function updatedDoneFilter(): void
+    {
+        $this->selected = [];
         $this->sorted();
     }
 
@@ -319,6 +345,8 @@ new class extends Component
             <flux:button icon="x-mark" wire:click="resetSort" class="max-sm:size-10!" aria-label="{{ __('Reset') }}" tooltip="{{ __('Reset') }}" />
         @endif
 
+        <x-done-filter :options="$this->doneFilterOptions()" :current="$doneFilter" />
+
         <flux:modal.trigger name="saved-views">
             <flux:button icon="bookmark">{{ __('Views') }} @if ($this->savedViews->isNotEmpty()) <flux:badge size="sm" inset="top bottom">{{ $this->savedViews->count() }}</flux:badge> @endif</flux:button>
         </flux:modal.trigger>
@@ -329,7 +357,7 @@ new class extends Component
     </div>
 
     <x-saved-views-modal :views="$this->savedViews" :defaults="$this->savedViewDefaults" :can-manage="$this->canManage"
-        :description="__('A view remembers the sorting of the board.')" :save-label="__('Save current sorting as')" :placeholder="__('e.g. By due date')" />
+        :description="__('A view remembers the sorting of the board and which tasks it shows.')" :save-label="__('Save current view as')" :placeholder="__('e.g. By due date')" />
 
     {{-- Columns can be collapsed to a narrow strip with the status upright (data-collapsed, see app.css), remembered per
          project for the person; a click on the strip opens the column again. --}}
@@ -360,7 +388,7 @@ new class extends Component
                         wire:sort:config="{{ \App\Sortable::unlessSelecting($this->sortActive ? \App\Sortable::CONFIG_MOVE_ONLY : \App\Sortable::CONFIG) }}"
                     >
                         @foreach ($this->columns[$status->id] as $task)
-                            <flux:kanban.card wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" class="board-card cursor-pointer" :wire:sort:item="$this->canEdit ? $task->id : null">
+                            <flux:kanban.card wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" :class="'board-card cursor-pointer'.($task->isDone() ? ' opacity-60 hover:opacity-100 focus-within:opacity-100' : '')" :wire:sort:item="$this->canEdit ? $task->id : null">
                                 <div class="flex items-start gap-2">
                                     <x-task-done-button :task="$task" :editable="$this->canEdit" compact />
                                     {{-- Drawn for every card but made only while selecting (in the browser, at once, before the server answers) --}}

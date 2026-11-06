@@ -104,13 +104,13 @@ class ProjectsAndTasksTest extends TestCase
     public function test_the_new_task_dialog_can_start_with_a_status_and_due_date(): void
     {
         $project = Project::factory()->create();
-        $done = $project->doneStatus();
+        $done = $project->statuses()->skip(1)->firstOrFail();
 
         Livewire::test('task-create', ['project' => $project])
             ->dispatch('new-task', statusId: $done->id, dueDate: '2026-11-03')
             ->assertSet('statusId', (string) $done->id)
             ->assertSet('dueDate', '2026-11-03')
-            ->set('title', 'Schon fertig')
+            ->set('title', 'Gleich losgelegt')
             ->call('create')
             ->assertHasNoErrors()
             ->assertDispatched('task-created');
@@ -135,16 +135,19 @@ class ProjectsAndTasksTest extends TestCase
         $this->assertNull($task->description);
     }
 
-    public function test_toggle_done_flips_status(): void
+    public function test_toggle_done_flips_completed_at_and_keeps_the_status(): void
     {
         $task = Task::factory()->create();
+        $statusId = $task->status_id;
 
         $component = Livewire::test('pages::projects.show', ['project' => $task->project])
             ->call('toggleDone', $task->id);
-        $this->assertSame($task->project->doneStatus()->id, $task->fresh()->status_id);
+        $this->assertNotNull($task->fresh()->completed_at);
+        $this->assertSame($statusId, $task->fresh()->status_id);
 
         $component->call('toggleDone', $task->id);
-        $this->assertSame($task->project->defaultStatus()->id, $task->fresh()->status_id);
+        $this->assertNull($task->fresh()->completed_at);
+        $this->assertSame($statusId, $task->fresh()->status_id);
     }
 
     public function test_toggle_done_cannot_touch_tasks_of_other_projects(): void
@@ -159,25 +162,37 @@ class ProjectsAndTasksTest extends TestCase
         $this->assertSame($other->project->defaultStatus()->id, $other->fresh()->status_id);
     }
 
-    public function test_task_list_filters_by_status_and_assignee(): void
+    public function test_task_list_filters_by_done_status_and_assignee(): void
     {
         $project = Project::factory()->create();
-        Task::factory()->for($project)->create(['title' => 'Offene Aufgabe']);
-        Task::factory()->for($project)->done()->create(['title' => 'Fertige Aufgabe']);
+        $inProgress = $project->statuses()->skip(1)->firstOrFail();
+        Task::factory()->for($project)->create(['title' => 'Frisches Ding']);
+        Task::factory()->for($project)->done()->create(['title' => 'Abgehaktes Ding']);
+        Task::factory()->for($project)->inProgress()->create(['title' => 'Laufendes Ding']);
+        Task::factory()->for($project)->inProgress()->done()->create(['title' => 'Laufend und fertig']);
         Task::factory()->for($project)->create(['title' => 'Meine Aufgabe', 'assignee_id' => $this->user->id]);
 
         Livewire::test('pages::projects.show', ['project' => $project])
-            ->assertSee('Offene Aufgabe')
-            ->assertDontSee('Fertige Aufgabe')
-            ->set('statusFilter', 'all')
-            ->assertSee('Fertige Aufgabe')
-            ->set('statusFilter', (string) $project->doneStatus()->id)
-            ->assertSee('Fertige Aufgabe')
-            ->assertDontSee('Offene Aufgabe')
-            ->set('statusFilter', 'all')
+            ->assertSet('doneFilter', 'open')
+            ->assertSet('statusFilter', '')
+            ->assertSee('Frisches Ding')
+            ->assertSee('Laufendes Ding')
+            ->assertDontSee('Abgehaktes Ding')
+            ->set('doneFilter', 'all')
+            ->assertSee('Abgehaktes Ding')
+            ->set('statusFilter', (string) $inProgress->id)
+            ->assertSee('Laufendes Ding')
+            ->assertSee('Laufend und fertig')
+            ->assertDontSee('Frisches Ding')
+            ->set('doneFilter', 'done')
+            ->assertSee('Laufend und fertig')
+            ->assertDontSee('Laufendes Ding')
+            ->set('statusFilter', '')
+            ->assertSee('Abgehaktes Ding')
+            ->set('doneFilter', 'all')
             ->set('assigneeFilter', 'me')
             ->assertSee('Meine Aufgabe')
-            ->assertDontSee('Offene Aufgabe');
+            ->assertDontSee('Frisches Ding');
     }
 
     public function test_task_can_be_edited(): void

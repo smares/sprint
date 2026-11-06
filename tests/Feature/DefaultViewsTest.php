@@ -50,7 +50,7 @@ class DefaultViewsTest extends TestCase
             'name' => $name,
             'view' => $kind,
             'is_default' => $default,
-            'filters' => ['sort' => $sort, 'direction' => 'desc'] + ($kind === SavedFilter::LIST ? ['status' => 'all', 'assignee' => '', 'tag' => '', 'fields' => []] : []),
+            'filters' => ['sort' => $sort, 'direction' => 'desc'] + ($kind === SavedFilter::LIST ? ['status' => '', 'done' => 'all', 'assignee' => '', 'tag' => '', 'fields' => []] : []),
         ]);
     }
 
@@ -62,7 +62,7 @@ class DefaultViewsTest extends TestCase
         $mine = SavedFilter::where('name', 'Bald fällig')->firstOrFail();
         $this->assertSame(SavedFilter::BOARD, $mine->view);
         $this->assertSame($this->editor->id, $mine->user_id);
-        $this->assertSame(['sort' => 'due', 'direction' => 'desc'], $mine->filters);
+        $this->assertSame(['sort' => 'due', 'direction' => 'desc', 'done' => 'all'], $mine->filters);
         $this->assertTrue(SavedFilter::where('name', 'Alphabetisch')->firstOrFail()->isShared());
 
         // the other person sees the shared one, not the private one
@@ -94,13 +94,14 @@ class DefaultViewsTest extends TestCase
         $this->savedView(SavedFilter::LIST, 'Liste für alle', 'due', shared: true, default: true);
 
         $this->board()->assertSet('sortBy', 'title');
-        $this->list()->assertSet('sortBy', 'due')->assertSet('statusFilter', 'all');
+        $this->list()->assertSet('sortBy', 'due')->assertSet('statusFilter', '')->assertSet('doneFilter', 'all');
 
         // what the address says comes before the default, setting by setting; the rest of the default stays
         $this->board(query: ['sort' => 'due'])->assertSet('sortBy', 'due')->assertSet('sortDirection', 'desc');
         $this->board(query: ['dir' => 'asc'])->assertSet('sortBy', 'title')->assertSet('sortDirection', 'asc');
         $this->board(query: ['sort' => ''])->assertSet('sortBy', '');
-        $this->list(query: ['status' => 'open'])->assertSet('statusFilter', 'open')->assertSet('sortBy', 'due');
+        $this->list(query: ['done' => 'done'])->assertSet('doneFilter', 'done')->assertSet('sortBy', 'due');
+        $this->list(query: ['status' => 'open'])->assertSet('statusFilter', '')->assertSet('sortBy', 'due');
     }
 
     /**
@@ -109,7 +110,7 @@ class DefaultViewsTest extends TestCase
     public static function listAddressKeys(): array
     {
         return [
-            'status' => ['status', 'statusFilter'], 'assignee' => ['assignee', 'assigneeFilter'], 'tag' => ['tag', 'tagFilter'],
+            'status' => ['status', 'statusFilter'], 'done' => ['done', 'doneFilter'], 'assignee' => ['assignee', 'assigneeFilter'], 'tag' => ['tag', 'tagFilter'],
             'dates' => ['dates', 'dateFilter'], 'sort' => ['sort', 'sortBy'], 'dir' => ['dir', 'sortDirection'],
         ];
     }
@@ -118,7 +119,7 @@ class DefaultViewsTest extends TestCase
     public function test_every_setting_of_the_address_of_the_list_comes_before_the_default(string $key, string $property): void
     {
         $this->savedView(SavedFilter::LIST, 'Für alle', 'due', shared: true, default: true);
-        $value = ['status' => 'open', 'assignee' => 'me', 'tag' => '', 'dates' => 'overdue', 'sort' => 'title', 'dir' => 'asc'][$key];
+        $value = ['status' => (string) $this->project->statuses()->firstOrFail()->id, 'done' => 'done', 'assignee' => 'me', 'tag' => '', 'dates' => 'overdue', 'sort' => 'title', 'dir' => 'asc'][$key];
 
         $this->list(query: [$key => $value])->assertSet($property, $value);
     }
@@ -126,10 +127,10 @@ class DefaultViewsTest extends TestCase
     public function test_a_default_of_the_list_leaves_out_what_no_longer_exists(): void
     {
         $this->savedView(SavedFilter::LIST, 'Alt', 'field:99999', shared: true, default: true)->update(['filters' => [
-            'status' => '99999', 'assignee' => '99999', 'tag' => '99999', 'fields' => ['99999' => '1', '7' => ['x']], 'sort' => 'field:99999', 'direction' => 'desc',
+            'status' => '99999', 'done' => 'open', 'assignee' => '99999', 'tag' => '99999', 'fields' => ['99999' => '1', '7' => ['x']], 'sort' => 'field:99999', 'direction' => 'desc',
         ]]);
 
-        $this->list()->assertSet('statusFilter', 'open')->assertSet('assigneeFilter', '')->assertSet('tagFilter', '')
+        $this->list()->assertSet('statusFilter', '')->assertSet('doneFilter', 'open')->assertSet('assigneeFilter', '')->assertSet('tagFilter', '')
             ->assertSet('fieldFilters', [])->assertSet('sortBy', '');
     }
 

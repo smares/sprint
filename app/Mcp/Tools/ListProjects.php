@@ -43,7 +43,7 @@ class ListProjects extends SprintTool
             'description' => $project->description,
             'archived' => $project->archived_at !== null,
             'your_role' => $project->roleFor($user)?->value,
-            'statuses' => $project->statuses->map(fn ($status) => ['name' => $status->name, 'is_done' => $status->is_done])->all(),
+            'statuses' => $project->statuses->map(fn ($status) => ['name' => $status->name])->all(),
             'tags' => $project->tags->pluck('name')->sort()->values()->all(),
             'members' => $members[$project->id] ?? [],
             'custom_fields' => $project->customFields->map(fn (CustomField $field) => [

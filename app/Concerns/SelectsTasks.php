@@ -67,16 +67,24 @@ trait SelectsTasks
 
         Task::bundlingStatusNotifications(function () use ($tasks) {
             foreach ($tasks as $task) {
-                // From the statuses loaded with the project, not one query per task
-                $done = ($task->project->statuses->firstWhere('is_done', true) ?? $task->project->doneStatus())->id;
-
-                if ($task->status_id !== $done) {
-                    $task->update(['status_id' => $done]);
-                }
+                $task->markDone();
             }
         });
 
         $this->finishBulk(trans_choice('{1} One task completed.|[0,*] :count tasks completed.', $tasks->count()));
+    }
+
+    public function bulkReopen(): void
+    {
+        $tasks = $this->selectedTasks();
+
+        Task::bundlingStatusNotifications(function () use ($tasks) {
+            foreach ($tasks as $task) {
+                $task->reopen();
+            }
+        });
+
+        $this->finishBulk(trans_choice('{1} One task reopened.|[0,*] :count tasks reopened.', $tasks->count()));
     }
 
     public function bulkDelete(): void

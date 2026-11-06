@@ -13,7 +13,7 @@ use Laravel\Mcp\Server\Attributes\Name;
 use Laravel\Mcp\Server\Tools\Annotations\IsIdempotent;
 
 #[Name('update-task')]
-#[Description('Changes a task. Only the fields you pass are changed; everything else stays. Handing the task to somebody else makes the previous assignee a collaborator. To finish a task set the status to the project\'s done status. Returns the task afterwards.')]
+#[Description('Changes a task. Only the fields you pass are changed; everything else stays. Handing the task to somebody else makes the previous assignee a collaborator. To finish a task pass done=true (it stays in its status). Returns the task afterwards.')]
 #[IsIdempotent]
 class UpdateTask extends WriteTaskTool
 {

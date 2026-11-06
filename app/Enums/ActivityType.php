@@ -10,6 +10,8 @@ enum ActivityType: string
     case Created = 'created';
     case Duplicated = 'duplicated';
     case StatusChanged = 'status_changed';
+    case Completed = 'completed';
+    case Reopened = 'reopened';
     case AssigneeChanged = 'assignee_changed';
     case DueDateChanged = 'due_date_changed';
     case StartDateChanged = 'start_date_changed';
@@ -40,6 +42,8 @@ enum ActivityType: string
             self::Created => 'plus',
             self::Duplicated => 'document-duplicate',
             self::StatusChanged => 'arrow-path',
+            self::Completed => 'check-circle',
+            self::Reopened => 'arrow-uturn-left',
             self::AssigneeChanged, self::CollaboratorsAdded, self::CollaboratorsRemoved => 'user',
             self::DueDateChanged, self::StartDateChanged => 'calendar',
             self::TitleChanged, self::DescriptionChanged => 'pencil',
@@ -53,7 +57,7 @@ enum ActivityType: string
     }
 
     /**
-     * The sentence after the person's name, e.g. "changed the status from “Open” to “Done”".
+     * The sentence after the person's name, e.g. "changed the status from “Open” to “In progress”".
      *
      * @param  array<string, mixed>  $data
      */
@@ -67,6 +71,8 @@ enum ActivityType: string
             self::Created => __('created the task'),
             self::Duplicated => __('duplicated the task'),
             self::StatusChanged => __('changed the status from “:from” to “:to”', ['from' => $from, 'to' => $to]),
+            self::Completed => __('completed the task'),
+            self::Reopened => __('reopened the task'),
             self::AssigneeChanged => __('changed the assignee from :from to :to', ['from' => $from, 'to' => $to]),
             self::DueDateChanged => __('changed the due date from :from to :to', ['from' => $from, 'to' => $to]),
             self::StartDateChanged => __('changed the start date from :from to :to', ['from' => $from, 'to' => $to]),

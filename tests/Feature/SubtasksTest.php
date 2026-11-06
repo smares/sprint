@@ -94,8 +94,8 @@ class SubtasksTest extends TestCase
     public function test_progress_counts_all_descendants(): void
     {
         $root = $this->task();
-        $child = $this->task(['parent_id' => $root->id, 'status_id' => $this->project->doneStatus()->id]);
-        $this->task(['parent_id' => $child->id, 'status_id' => $this->project->doneStatus()->id]);
+        $child = $this->task(['parent_id' => $root->id, 'completed_at' => now()]);
+        $this->task(['parent_id' => $child->id, 'completed_at' => now()]);
         $this->task(['parent_id' => $child->id]);
 
         $progress = $this->project->subtaskProgress([$root->id, $child->id]);
@@ -181,7 +181,7 @@ class SubtasksTest extends TestCase
     public function test_list_and_board_show_only_top_level_tasks_with_progress(): void
     {
         $root = $this->task(['title' => 'Hauptaufgabe']);
-        $this->task(['title' => 'Kleiner Schritt', 'parent_id' => $root->id, 'status_id' => $this->project->doneStatus()->id]);
+        $this->task(['title' => 'Kleiner Schritt', 'parent_id' => $root->id, 'completed_at' => now()]);
         $this->task(['title' => 'Noch ein Schritt', 'parent_id' => $root->id]);
 
         $this->get(route('projects.show', $this->project))
@@ -194,7 +194,7 @@ class SubtasksTest extends TestCase
     {
         $root = $this->task(['title' => 'Oben']);
         $child = $this->task(['title' => 'Mitte', 'parent_id' => $root->id]);
-        $this->task(['title' => 'Unten', 'parent_id' => $child->id, 'status_id' => $this->project->doneStatus()->id]);
+        $this->task(['title' => 'Unten', 'parent_id' => $child->id, 'completed_at' => now()]);
 
         $this->get(route('tasks.show', $child))->assertOk()->assertSee('Oben')->assertSee('1 von 1 erledigt');
     }

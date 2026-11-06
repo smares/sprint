@@ -127,6 +127,7 @@ class AutomationService
         match ($action) {
             AutomationAction::SetAssignee => $this->setAssignee($task, $value === null ? null : $this->viewer($task, (int) $value), $value === null),
             AutomationAction::SetStatus => $this->setStatus($task, (int) $value),
+            AutomationAction::Complete => $task->markDone(),
             AutomationAction::AddTag => $this->addTag($task, $project->tags()->find((int) $value)),
             AutomationAction::SetField => $this->setField($rule, $task, is_array($value) ? $value : []),
             AutomationAction::ShiftDueDate => $this->shiftDueDate($task, (int) $value),
@@ -239,7 +240,7 @@ class AutomationService
      */
     private function carryOver(Task $current, Task $original): void
     {
-        foreach (['status_id', 'assignee_id', 'due_date'] as $attribute) {
+        foreach (['status_id', 'assignee_id', 'due_date', 'completed_at'] as $attribute) {
             $original->setAttribute($attribute, $current->getAttribute($attribute));
             $original->syncOriginalAttribute($attribute);
         }

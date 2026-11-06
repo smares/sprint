@@ -202,7 +202,7 @@ class BoardSortingTest extends TestCase
 
     public function test_a_card_moved_into_another_column_while_sorted_goes_first_in_its_manual_order(): void
     {
-        $other = $this->project->statuses()->where('is_done', false)->where('id', '!=', $this->statusId)->first()
+        $other = $this->project->statuses()->where('id', '!=', $this->statusId)->first()
             ?? $this->project->statuses()->create(['name' => 'Läuft', 'position' => 9]);
         $a = $this->task('Anton', ['position' => 0]);
         $c = Task::factory()->for($this->project)->create(['title' => 'Cäsar', 'position' => 1, 'status_id' => $other->id]);

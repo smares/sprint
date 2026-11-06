@@ -51,7 +51,7 @@ class TaskCreatedToastTest extends TestCase
 
     public function test_the_list_says_when_the_filters_hide_the_new_task(): void
     {
-        $task = $this->created(['status_id' => $this->project->doneStatus()->id]);
+        $task = $this->created(['completed_at' => now()]);
 
         Livewire::actingAs($this->anna)->test('pages::projects.show', ['project' => $this->project])
             ->dispatch('task-created', taskId: $task->id)

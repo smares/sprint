@@ -123,8 +123,9 @@ class McpServerTest extends TestCase
         Project::factory()->create(['name' => 'Fremd']);
 
         $this->tool(ListProjects::class)->assertOk()
-            ->assertSee(['Website', 'Bug', 'Offen', 'Erledigt', 'Priorität', 'Hoch', 'ich@example.com', 'editor'])
-            ->assertDontSee('Fremd')->assertDontSee($archived->name);
+            ->assertSee(['Website', 'Bug', 'Offen', 'In Arbeit', 'Priorität', 'Hoch', 'ich@example.com', 'editor'])
+            ->assertDontSee('Fremd')->assertDontSee($archived->name)
+            ->assertDontSee('is_done');
 
         $this->tool(ListProjects::class, ['include_archived' => true])->assertSee($archived->name);
     }
@@ -300,7 +301,7 @@ class McpServerTest extends TestCase
     public function test_bad_names_are_refused_with_a_hint_and_nothing_is_saved(): void
     {
         $this->tool(CreateTask::class, ['project_id' => $this->project->id, 'title' => 'A', 'status' => 'Gibtsnicht'])
-            ->assertHasErrors(['Unknown status "Gibtsnicht". Available: Offen, In Arbeit, Erledigt.']);
+            ->assertHasErrors(['Unknown status "Gibtsnicht". Available: Offen, In Arbeit.']);
         $this->tool(CreateTask::class, ['project_id' => $this->project->id, 'title' => 'B', 'assignee' => 'niemand@example.com'])
             ->assertSee('is not an active member');
         $this->tool(CreateTask::class, ['project_id' => $this->project->id, 'title' => 'C', 'tags' => ['Nix']])->assertSee('Unknown tag "Nix"');
@@ -357,16 +358,66 @@ class McpServerTest extends TestCase
         $task = Task::factory()->for($this->project)->create(['title' => 'Alt', 'description' => 'Bleibt', 'assignee_id' => $anna->id, 'due_date' => '2026-12-01']);
         $task->tags()->attach($tag);
 
-        $this->tool(UpdateTask::class, ['task_id' => $task->id, 'title' => 'Neu', 'status' => 'Erledigt'])->assertOk()->assertSee(['Neu', 'Erledigt']);
+        $this->tool(UpdateTask::class, ['task_id' => $task->id, 'title' => 'Neu', 'status' => 'In Arbeit'])->assertOk()->assertSee(['Neu', 'In Arbeit']);
 
         $task->refresh();
         $this->assertSame('Neu', $task->title);
         $this->assertSame('Bleibt', $task->description);
         $this->assertSame($anna->id, $task->assignee_id);
         $this->assertSame('2026-12-01', $task->due_date->toDateString());
-        $this->assertTrue($task->isDone());
+        $this->assertSame('In Arbeit', $task->status->name);
+        $this->assertFalse($task->isDone());
         $this->assertSame([$tag->id], $task->tags()->pluck('tags.id')->all());
-        $this->assertContains('hat den Status von „Offen“ auf „Erledigt“ geändert', $task->activities()->get()->map->sentence()->all());
+        $this->assertContains('hat den Status von „Offen“ auf „In Arbeit“ geändert', $task->activities()->get()->map->sentence()->all());
+    }
+
+    public function test_done_finishes_a_task_without_moving_it_and_false_opens_it_again(): void
+    {
+        $task = Task::factory()->for($this->project)->inProgress()->create();
+        $status = $task->status_id;
+
+        $this->tool(UpdateTask::class, ['task_id' => $task->id, 'done' => true])->assertOk()->assertSee('"done":true');
+        $task->refresh();
+        $this->assertTrue($task->isDone());
+        $this->assertSame($status, $task->status_id);
+        $this->assertContains('hat die Aufgabe erledigt', $task->activities()->get()->map->sentence()->all());
+
+        $completedAt = $task->completed_at;
+        $this->travel(3)->hours();
+        $this->tool(UpdateTask::class, ['task_id' => $task->id, 'done' => true, 'title' => 'Noch mal'])->assertOk();
+        $this->assertTrue($task->fresh()->completed_at->equalTo($completedAt));
+
+        $this->tool(UpdateTask::class, ['task_id' => $task->id, 'done' => false])->assertOk()->assertSee('"done":false');
+        $task->refresh();
+        $this->assertFalse($task->isDone());
+        $this->assertNull($task->completed_at);
+        $this->assertSame($status, $task->status_id);
+    }
+
+    public function test_a_status_alone_does_not_finish_or_reopen_a_task(): void
+    {
+        $done = Task::factory()->for($this->project)->done()->create();
+        $open = Task::factory()->for($this->project)->create();
+
+        $this->tool(UpdateTask::class, ['task_id' => $done->id, 'status' => 'Offen'])->assertOk();
+        $this->tool(UpdateTask::class, ['task_id' => $open->id, 'status' => 'In Arbeit'])->assertOk();
+
+        $this->assertTrue($done->fresh()->isDone());
+        $this->assertFalse($open->fresh()->isDone());
+    }
+
+    public function test_a_task_can_be_created_as_done_and_stays_in_the_given_status(): void
+    {
+        $this->tool(CreateTask::class, ['project_id' => $this->project->id, 'title' => 'Schon fertig', 'status' => 'In Arbeit', 'done' => true])
+            ->assertOk()->assertSee('"done":true');
+        $this->tool(CreateTask::class, ['project_id' => $this->project->id, 'title' => 'Noch offen', 'done' => false])->assertOk();
+        $this->tool(CreateTask::class, ['project_id' => $this->project->id, 'title' => 'Ohne Angabe'])->assertOk();
+
+        $finished = Task::where('title', 'Schon fertig')->firstOrFail();
+        $this->assertTrue($finished->isDone());
+        $this->assertSame('In Arbeit', $finished->status->name);
+        $this->assertFalse(Task::where('title', 'Noch offen')->firstOrFail()->isDone());
+        $this->assertFalse(Task::where('title', 'Ohne Angabe')->firstOrFail()->isDone());
     }
 
     public function test_updating_can_clear_and_replace_things(): void

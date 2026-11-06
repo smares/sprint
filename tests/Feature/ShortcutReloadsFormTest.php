@@ -45,8 +45,8 @@ class ShortcutReloadsFormTest extends TestCase
             'project_id' => $this->project->id,
             'created_by' => $this->anna->id,
             'name' => 'Review',
-            'trigger' => AutomationTrigger::StatusChanged,
-            'trigger_value' => $this->project->doneStatus()->id,
+            'trigger' => AutomationTrigger::Completed,
+            'trigger_value' => null,
             'actions' => [['type' => AutomationAction::SetAssignee->value, 'value' => $this->rita->id]],
         ]);
     }
@@ -88,8 +88,8 @@ class ShortcutReloadsFormTest extends TestCase
             'project_id' => $this->project->id,
             'created_by' => $this->anna->id,
             'name' => 'Kommentar',
-            'trigger' => AutomationTrigger::StatusChanged,
-            'trigger_value' => $this->project->doneStatus()->id,
+            'trigger' => AutomationTrigger::Completed,
+            'trigger_value' => null,
             'actions' => [['type' => AutomationAction::Comment->value, 'value' => 'Erledigt']],
         ]);
 
@@ -147,7 +147,7 @@ class ShortcutReloadsFormTest extends TestCase
             'name' => 'Erledigt',
             'trigger' => AutomationTrigger::AssigneeChanged,
             'trigger_value' => $this->rita->id,
-            'actions' => [['type' => AutomationAction::SetStatus->value, 'value' => $this->project->doneStatus()->id]],
+            'actions' => [['type' => AutomationAction::SetStatus->value, 'value' => $this->project->statuses()->skip(1)->firstOrFail()->id]],
         ]);
         $this->actingAs($this->rita);
 
@@ -162,7 +162,7 @@ class ShortcutReloadsFormTest extends TestCase
             'name' => 'Nur für Anna',
             'trigger' => AutomationTrigger::AssigneeChanged,
             'trigger_value' => $this->anna->id,
-            'actions' => [['type' => AutomationAction::SetStatus->value, 'value' => $this->project->doneStatus()->id]],
+            'actions' => [['type' => AutomationAction::SetStatus->value, 'value' => $this->project->statuses()->skip(1)->firstOrFail()->id]],
         ]);
         $this->actingAs($this->rita);
 

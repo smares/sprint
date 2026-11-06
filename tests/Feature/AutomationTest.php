@@ -15,6 +15,8 @@ use App\Models\Task;
 use App\Models\User;
 use App\Notifications\AutomationNotice;
 use App\Notifications\TaskCommented;
+use App\Notifications\TaskCompletionChanged;
+use App\Notifications\TasksCompletionChanged;
 use App\Notifications\TaskStatusChanged;
 use App\Services\InboxTextService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -71,18 +73,18 @@ class AutomationTest extends TestCase
         return Task::factory()->for($this->project)->create($attributes);
     }
 
-    private function done(): int
+    private function progress(): int
     {
-        return $this->project->doneStatus()->id;
+        return $this->project->statuses()->skip(1)->firstOrFail()->id;
     }
 
     public function test_a_status_trigger_sets_the_assignee_and_records_it_under_the_rule_name(): void
     {
-        $this->rule(AutomationTrigger::StatusChanged, $this->done(), [['type' => AutomationAction::SetAssignee, 'value' => $this->anna->id]], ['name' => 'Fertig an Anna']);
+        $this->rule(AutomationTrigger::StatusChanged, $this->progress(), [['type' => AutomationAction::SetAssignee, 'value' => $this->anna->id]], ['name' => 'Fertig an Anna']);
         $task = $this->task(['assignee_id' => null]);
 
         $this->actingAs($this->bernd);
-        $task->update(['status_id' => $this->done()]);
+        $task->update(['status_id' => $this->progress()]);
 
         $this->assertSame($this->anna->id, $task->fresh()->assignee_id);
 
@@ -97,11 +99,11 @@ class AutomationTest extends TestCase
 
     public function test_the_task_that_triggered_the_rule_is_brought_up_to_date(): void
     {
-        $this->rule(AutomationTrigger::StatusChanged, $this->done(), [['type' => AutomationAction::SetAssignee, 'value' => $this->anna->id], ['type' => AutomationAction::ShiftDueDate, 'value' => 3]]);
+        $this->rule(AutomationTrigger::StatusChanged, $this->progress(), [['type' => AutomationAction::SetAssignee, 'value' => $this->anna->id], ['type' => AutomationAction::ShiftDueDate, 'value' => 3]]);
         $task = $this->task(['assignee_id' => null, 'due_date' => null]);
 
         $this->actingAs($this->bernd);
-        $task->update(['status_id' => $this->done()]);
+        $task->update(['status_id' => $this->progress()]);
 
         $this->assertSame($this->anna->id, $task->assignee_id);
         $this->assertSame('2026-10-11', $task->due_date->toDateString());
@@ -197,13 +199,13 @@ class AutomationTest extends TestCase
         $effort = CustomField::factory()->for($this->project)->create(['name' => 'Aufwand', 'type' => CustomFieldType::Number]);
         $task = $this->task();
         $task->setFieldValue($effort, ['option_id' => null, 'value' => '5']);
-        $this->rule(AutomationTrigger::StatusChanged, $this->done(), [
+        $this->rule(AutomationTrigger::Completed, null, [
             ['type' => AutomationAction::SetField, 'value' => ['field' => $priority->id, 'value' => (string) $high->id]],
             ['type' => AutomationAction::SetField, 'value' => ['field' => $effort->id, 'value' => null]],
         ], ['name' => 'Abschluss']);
 
         $this->actingAs($this->bernd);
-        $task->update(['status_id' => $this->done()]);
+        $task->markDone();
 
         $this->assertSame($high->id, $task->fieldValues()->where('custom_field_id', $priority->id)->value('option_id'));
         $this->assertFalse($task->fieldValues()->where('custom_field_id', $effort->id)->exists());
@@ -264,11 +266,11 @@ class AutomationTest extends TestCase
     {
         $checked = Tag::factory()->for($this->project)->create(['name' => 'geprüft']);
         $mine = Tag::factory()->for($this->project)->create(['name' => 'Kunde']);
-        $this->rule(AutomationTrigger::StatusChanged, $this->done(), [['type' => AutomationAction::AddTag, 'value' => $checked->id]]);
+        $this->rule(AutomationTrigger::StatusChanged, $this->progress(), [['type' => AutomationAction::AddTag, 'value' => $checked->id]]);
         $task = $this->task();
 
         Livewire::actingAs($this->bernd)->test('pages::tasks.show', ['task' => $task])
-            ->set('statusId', (string) $this->done())
+            ->set('statusId', (string) $this->progress())
             ->set('tagIds', [(string) $mine->id])
             ->call('save')->assertHasNoErrors()
             ->assertSet('tagIds', [(string) $checked->id, (string) $mine->id]);
@@ -279,14 +281,14 @@ class AutomationTest extends TestCase
     public function test_conditions_must_hold_after_the_change(): void
     {
         $bug = Tag::factory()->for($this->project)->create();
-        $this->rule(AutomationTrigger::StatusChanged, $this->done(), [['type' => AutomationAction::SetAssignee, 'value' => $this->anna->id]], ['conditions' => ['tag_id' => $bug->id]]);
+        $this->rule(AutomationTrigger::StatusChanged, $this->progress(), [['type' => AutomationAction::SetAssignee, 'value' => $this->anna->id]], ['conditions' => ['tag_id' => $bug->id]]);
         $plain = $this->task();
         $tagged = $this->task();
         $tagged->tags()->attach($bug);
 
         $this->actingAs($this->bernd);
-        $plain->update(['status_id' => $this->done()]);
-        $tagged->update(['status_id' => $this->done()]);
+        $plain->update(['status_id' => $this->progress()]);
+        $tagged->update(['status_id' => $this->progress()]);
 
         $this->assertNull($plain->fresh()->assignee_id);
         $this->assertSame($this->anna->id, $tagged->fresh()->assignee_id);
@@ -295,12 +297,12 @@ class AutomationTest extends TestCase
     public function test_rules_do_not_trigger_each_other(): void
     {
         $tag = Tag::factory()->for($this->project)->create();
-        $this->rule(AutomationTrigger::StatusChanged, $this->done(), [['type' => AutomationAction::AddTag, 'value' => $tag->id]]);
+        $this->rule(AutomationTrigger::StatusChanged, $this->progress(), [['type' => AutomationAction::AddTag, 'value' => $tag->id]]);
         $this->rule(AutomationTrigger::TagAdded, $tag->id, [['type' => AutomationAction::Comment, 'value' => 'Kette']]);
         $task = $this->task();
 
         $this->actingAs($this->bernd);
-        $task->update(['status_id' => $this->done()]);
+        $task->update(['status_id' => $this->progress()]);
 
         $this->assertSame(1, $task->tags()->count());
         $this->assertSame(0, $task->comments()->count());
@@ -309,7 +311,7 @@ class AutomationTest extends TestCase
     public function test_the_other_actions_set_status_tag_due_date_and_write_a_comment_in_the_rules_name(): void
     {
         Notification::fake();
-        $review = $this->project->statuses()->where('is_done', false)->get()->last();
+        $review = $this->project->statuses()->get()->last();
         $tag = Tag::factory()->for($this->project)->create(['name' => 'geprüft']);
         $this->rule(AutomationTrigger::AssigneeChanged, $this->anna->id, [
             ['type' => AutomationAction::SetStatus, 'value' => $review->id],
@@ -337,7 +339,7 @@ class AutomationTest extends TestCase
     public function test_status_notifications_name_the_rule_and_skip_the_person_who_triggered_it(): void
     {
         Notification::fake();
-        $review = $this->project->statuses()->where('is_done', false)->get()->last();
+        $review = $this->project->statuses()->get()->last();
         $this->rule(AutomationTrigger::AssigneeChanged, $this->anna->id, [['type' => AutomationAction::SetStatus, 'value' => $review->id]], ['name' => 'Übergabe']);
         $task = $this->task(['assignee_id' => $this->bernd->id]);
         $task->collaborators()->attach($this->bernd);
@@ -351,14 +353,14 @@ class AutomationTest extends TestCase
 
     public function test_notify_puts_an_entry_in_the_inbox_of_another_person_only(): void
     {
-        $this->rule(AutomationTrigger::StatusChanged, $this->done(), [
+        $this->rule(AutomationTrigger::Completed, null, [
             ['type' => AutomationAction::Notify, 'value' => $this->anna->id],
             ['type' => AutomationAction::Notify, 'value' => $this->bernd->id],
         ], ['name' => 'Bescheid']);
         $task = $this->task();
 
         $this->actingAs($this->bernd);
-        $task->update(['status_id' => $this->done()]);
+        $task->markDone();
 
         $this->assertSame(0, $this->bernd->notifications()->where('type', AutomationNotice::class)->count());
         $notice = $this->anna->notifications()->where('type', AutomationNotice::class)->sole();
@@ -369,14 +371,14 @@ class AutomationTest extends TestCase
     public function test_people_without_access_to_the_project_are_not_assigned_or_notified(): void
     {
         $outsider = User::factory()->create();
-        $this->rule(AutomationTrigger::StatusChanged, $this->done(), [
+        $this->rule(AutomationTrigger::StatusChanged, $this->progress(), [
             ['type' => AutomationAction::SetAssignee, 'value' => $outsider->id],
             ['type' => AutomationAction::Notify, 'value' => $outsider->id],
         ]);
         $task = $this->task();
 
         $this->actingAs($this->bernd);
-        $task->update(['status_id' => $this->done()]);
+        $task->update(['status_id' => $this->progress()]);
 
         $this->assertNull($task->fresh()->assignee_id);
         $this->assertSame(0, $outsider->notifications()->count());
@@ -386,27 +388,27 @@ class AutomationTest extends TestCase
     {
         $foreign = Project::factory()->create();
         $foreignTag = Tag::factory()->for($foreign)->create();
-        $this->rule(AutomationTrigger::StatusChanged, $this->done(), [
+        $this->rule(AutomationTrigger::StatusChanged, $this->progress(), [
             ['type' => AutomationAction::AddTag, 'value' => $foreignTag->id],
             ['type' => AutomationAction::SetStatus, 'value' => $foreign->defaultStatus()->id],
         ]);
         $task = $this->task();
 
         $this->actingAs($this->bernd);
-        $task->update(['status_id' => $this->done()]);
+        $task->update(['status_id' => $this->progress()]);
 
         $this->assertSame(0, $task->tags()->count());
-        $this->assertSame($this->done(), $task->fresh()->status_id);
+        $this->assertSame($this->progress(), $task->fresh()->status_id);
     }
 
     public function test_a_rule_switches_itself_off_when_its_creator_may_no_longer_edit(): void
     {
-        $rule = $this->rule(AutomationTrigger::StatusChanged, $this->done(), [['type' => AutomationAction::SetAssignee, 'value' => $this->anna->id]]);
+        $rule = $this->rule(AutomationTrigger::StatusChanged, $this->progress(), [['type' => AutomationAction::SetAssignee, 'value' => $this->anna->id]]);
         $this->project->setRole($this->owner, ProjectRole::Viewer);
         $task = $this->task();
 
         $this->actingAs($this->bernd);
-        $task->update(['status_id' => $this->done()]);
+        $task->update(['status_id' => $this->progress()]);
 
         $this->assertNull($task->fresh()->assignee_id);
         $this->assertFalse($rule->fresh()->enabled);
@@ -414,49 +416,49 @@ class AutomationTest extends TestCase
 
     public function test_disabled_rules_and_rules_of_other_projects_do_not_run(): void
     {
-        $this->rule(AutomationTrigger::StatusChanged, $this->done(), [['type' => AutomationAction::SetAssignee, 'value' => $this->anna->id]], ['enabled' => false]);
+        $this->rule(AutomationTrigger::StatusChanged, $this->progress(), [['type' => AutomationAction::SetAssignee, 'value' => $this->anna->id]], ['enabled' => false]);
         $other = Project::factory()->create();
         $other->setRole($this->owner, ProjectRole::Admin);
         Automation::factory()->create([
             'project_id' => $other->id,
             'created_by' => $this->owner->id,
             'trigger' => AutomationTrigger::StatusChanged,
-            'trigger_value' => $this->done(),
+            'trigger_value' => $this->progress(),
             'actions' => [['type' => AutomationAction::SetAssignee->value, 'value' => $this->anna->id]],
         ]);
         $task = $this->task();
 
         $this->actingAs($this->bernd);
-        $task->update(['status_id' => $this->done()]);
+        $task->update(['status_id' => $this->progress()]);
 
         $this->assertNull($task->fresh()->assignee_id);
     }
 
     public function test_a_broken_action_does_not_stop_the_save_or_the_next_actions(): void
     {
-        $this->rule(AutomationTrigger::StatusChanged, $this->done(), [
+        $this->rule(AutomationTrigger::Completed, null, [
             ['type' => AutomationAction::ShiftDueDate, 'value' => 'abc'],
             ['type' => AutomationAction::Comment, 'value' => 'Weiter'],
         ]);
         $task = $this->task();
 
         $this->actingAs($this->bernd);
-        $task->update(['status_id' => $this->done()]);
+        $task->markDone();
 
-        $this->assertSame($this->done(), $task->fresh()->status_id);
+        $this->assertTrue($task->fresh()->isDone());
         $this->assertSame(1, $task->comments()->count());
     }
 
     public function test_the_task_page_shows_the_rule_as_author_with_the_person_who_triggered_it(): void
     {
-        $this->rule(AutomationTrigger::StatusChanged, $this->done(), [
+        $this->rule(AutomationTrigger::Completed, null, [
             ['type' => AutomationAction::SetAssignee, 'value' => $this->anna->id],
             ['type' => AutomationAction::Comment, 'value' => 'Danke fürs Erledigen'],
         ], ['name' => 'Fertig an Anna']);
         $task = $this->task(['assignee_id' => null]);
 
         $this->actingAs($this->bernd);
-        $task->update(['status_id' => $this->done()]);
+        $task->markDone();
 
         $this->get(route('tasks.show', $task))->assertOk()
             ->assertSee('Automatisierung „Fertig an Anna“', false)
@@ -468,11 +470,11 @@ class AutomationTest extends TestCase
 
     public function test_the_entry_keeps_the_name_when_the_rule_is_deleted(): void
     {
-        $rule = $this->rule(AutomationTrigger::StatusChanged, $this->done(), [['type' => AutomationAction::SetAssignee, 'value' => $this->anna->id]], ['name' => 'Alte Regel']);
+        $rule = $this->rule(AutomationTrigger::StatusChanged, $this->progress(), [['type' => AutomationAction::SetAssignee, 'value' => $this->anna->id]], ['name' => 'Alte Regel']);
         $task = $this->task();
 
         $this->actingAs($this->bernd);
-        $task->update(['status_id' => $this->done()]);
+        $task->update(['status_id' => $this->progress()]);
         $rule->delete();
 
         $entry = $task->activities()->where('type', ActivityType::AssigneeChanged)->sole();
@@ -482,11 +484,11 @@ class AutomationTest extends TestCase
 
     public function test_moving_the_due_date_back_keeps_the_start_before_it(): void
     {
-        $this->rule(AutomationTrigger::StatusChanged, $this->done(), [['type' => AutomationAction::ShiftDueDate, 'value' => -5]]);
+        $this->rule(AutomationTrigger::StatusChanged, $this->progress(), [['type' => AutomationAction::ShiftDueDate, 'value' => -5]]);
         $task = $this->task(['start_date' => '2026-10-12', 'due_date' => '2026-10-15']);
 
         $this->actingAs($this->owner);
-        $task->update(['status_id' => $this->done()]);
+        $task->update(['status_id' => $this->progress()]);
 
         $task->refresh();
         $this->assertSame('2026-10-10', $task->due_date->toDateString());
@@ -495,11 +497,11 @@ class AutomationTest extends TestCase
 
     public function test_a_task_without_due_date_is_due_the_given_days_from_today(): void
     {
-        $this->rule(AutomationTrigger::StatusChanged, $this->done(), [['type' => AutomationAction::ShiftDueDate, 'value' => 3]]);
+        $this->rule(AutomationTrigger::StatusChanged, $this->progress(), [['type' => AutomationAction::ShiftDueDate, 'value' => 3]]);
         $task = $this->task(['start_date' => null, 'due_date' => null]);
 
         $this->actingAs($this->owner);
-        $task->update(['status_id' => $this->done()]);
+        $task->update(['status_id' => $this->progress()]);
 
         $this->assertSame('2026-10-11', $task->fresh()->due_date->toDateString());
     }
@@ -511,7 +513,7 @@ class AutomationTest extends TestCase
         $this->actingAs($this->owner);
 
         DB::enableQueryLog();
-        $task->update(['status_id' => $this->done()]);
+        $task->update(['status_id' => $this->progress()]);
         $automationQueries = collect(DB::getQueryLog())->filter(fn (array $query) => str_contains($query['query'], '"automations"'));
 
         $this->assertCount(1, $automationQueries);
@@ -520,14 +522,120 @@ class AutomationTest extends TestCase
 
     public function test_an_automation_that_assigns_a_collaborator_takes_them_off_the_collaborators(): void
     {
-        $this->rule(AutomationTrigger::StatusChanged, $this->done(), [['type' => AutomationAction::SetAssignee, 'value' => $this->anna->id]]);
+        $this->rule(AutomationTrigger::StatusChanged, $this->progress(), [['type' => AutomationAction::SetAssignee, 'value' => $this->anna->id]]);
         $task = $this->task(['assignee_id' => null]);
         $task->collaborators()->attach($this->anna);
 
         $this->actingAs($this->bernd);
-        $task->update(['status_id' => $this->done()]);
+        $task->update(['status_id' => $this->progress()]);
 
         $this->assertSame($this->anna->id, $task->fresh()->assignee_id);
         $this->assertSame(0, $task->collaborators()->count());
+    }
+
+    public function test_a_completed_trigger_fires_when_the_task_is_finished_and_not_when_it_is_reopened(): void
+    {
+        $this->rule(AutomationTrigger::Completed, null, [['type' => AutomationAction::Comment, 'value' => 'Geschafft']], ['name' => 'Abschluss']);
+        $task = $this->task();
+
+        $this->actingAs($this->bernd);
+        $task->update(['status_id' => $this->progress()]);
+        $this->assertSame(0, $task->comments()->count());
+
+        $task->toggleDone();
+        $this->assertSame(['Geschafft'], $task->comments()->pluck('body')->all());
+
+        $task->toggleDone();
+        $this->assertFalse($task->fresh()->isDone());
+        $this->assertSame(1, $task->comments()->count());
+
+        $task->toggleDone();
+        $this->assertSame(2, $task->comments()->count());
+    }
+
+    public function test_a_task_that_is_created_finished_or_finished_again_does_not_fire_the_completed_trigger_twice(): void
+    {
+        $this->rule(AutomationTrigger::Completed, null, [['type' => AutomationAction::Comment, 'value' => 'Geschafft']]);
+        $task = $this->task();
+
+        $this->actingAs($this->bernd);
+        $task->markDone();
+        $task->markDone();
+
+        $this->assertSame(1, $task->comments()->count());
+    }
+
+    public function test_the_complete_action_finishes_the_task_without_moving_it(): void
+    {
+        $this->rule(AutomationTrigger::AssigneeChanged, $this->anna->id, [['type' => AutomationAction::Complete, 'value' => null]], ['name' => 'Gleich erledigt']);
+        $task = $this->task(['assignee_id' => null, 'status_id' => $this->progress()]);
+
+        $this->actingAs($this->bernd);
+        $task->update(['assignee_id' => $this->anna->id]);
+
+        $task->refresh();
+        $this->assertTrue($task->isDone());
+        $this->assertSame($this->progress(), $task->status_id);
+
+        $entry = $task->activities()->where('type', ActivityType::Completed)->sole();
+        $this->assertNull($entry->user_id);
+        $this->assertSame('Automatisierung „Gleich erledigt“', $entry->actorName());
+    }
+
+    public function test_the_task_that_triggered_a_complete_rule_says_it_is_done_without_loading_it_again(): void
+    {
+        $this->rule(AutomationTrigger::AssigneeChanged, $this->anna->id, [['type' => AutomationAction::Complete, 'value' => null]]);
+        $task = $this->task(['assignee_id' => null]);
+
+        $this->actingAs($this->bernd);
+        $task->assignTo($this->anna);
+
+        $this->assertTrue($task->isDone());
+        $this->assertSame([], $task->getDirty());
+        $this->assertTrue($task->fresh()->completed_at->equalTo($task->completed_at));
+    }
+
+    public function test_a_rule_completing_a_task_tells_the_people_in_its_own_name_and_is_never_bundled(): void
+    {
+        $this->rule(AutomationTrigger::AssigneeChanged, $this->anna->id, [['type' => AutomationAction::Complete, 'value' => null]], ['name' => 'Gleich erledigt']);
+        $first = $this->task(['assignee_id' => $this->bernd->id]);
+        $second = $this->task(['assignee_id' => $this->bernd->id]);
+        foreach ([$first, $second] as $task) {
+            $task->collaborators()->attach($this->bernd);
+        }
+        Notification::fake();
+
+        $this->actingAs($this->owner);
+        Task::bundlingStatusNotifications(function () use ($first, $second) {
+            $first->assignTo($this->anna);
+            $second->assignTo($this->anna);
+        });
+
+        Notification::assertSentToTimes($this->bernd, TaskCompletionChanged::class, 2);
+        Notification::assertSentTo($this->bernd, TaskCompletionChanged::class, fn (TaskCompletionChanged $notification) => $notification->completed && $notification->changedBy === 'Automatisierung „Gleich erledigt“');
+        Notification::assertNotSentTo($this->bernd, TasksCompletionChanged::class);
+    }
+
+    public function test_the_complete_action_keeps_the_time_of_a_task_that_is_finished_already(): void
+    {
+        $this->rule(AutomationTrigger::AssigneeChanged, null, [['type' => AutomationAction::Complete, 'value' => null]]);
+        $task = $this->task(['assignee_id' => null]);
+        $task->markDone();
+        $completedAt = $task->fresh()->completed_at;
+
+        $this->travel(2)->hours();
+        $this->actingAs($this->bernd);
+        $task->update(['assignee_id' => $this->anna->id]);
+
+        $this->assertTrue($task->fresh()->completed_at->equalTo($completedAt));
+        $this->assertSame(1, $task->activities()->where('type', ActivityType::Completed)->count());
+    }
+
+    public function test_the_completed_trigger_takes_no_value(): void
+    {
+        $this->assertFalse(AutomationTrigger::Completed->takesValue());
+        $this->assertTrue(AutomationTrigger::StatusChanged->takesValue());
+        $this->assertTrue(AutomationTrigger::TagAdded->takesValue());
+        $this->assertSame(ActivityType::Completed, AutomationTrigger::Completed->activityType());
     }
 }

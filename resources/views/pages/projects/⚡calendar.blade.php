@@ -1,6 +1,7 @@
 <?php
 
 use App\Concerns\EditsTasksInBulk;
+use App\Concerns\FiltersDoneTasks;
 use App\Concerns\RefreshesOnTaskChanges;
 use App\Concerns\ShowsProject;
 use App\Models\Project;
@@ -16,7 +17,7 @@ use Livewire\Component;
 
 new class extends Component
 {
-    use EditsTasksInBulk, RefreshesOnTaskChanges, ShowsProject;
+    use EditsTasksInBulk, FiltersDoneTasks, RefreshesOnTaskChanges, ShowsProject;
 
     /** How many tasks a day shows before "+ n more". */
     public const TASKS_PER_DAY = 3;
@@ -25,6 +26,10 @@ new class extends Component
 
     #[Url]
     public string $month = '';
+
+    /** What the calendar does with finished tasks: open, all (they stand dimmed) or done. */
+    #[Url(as: 'done')]
+    public string $doneFilter = 'all';
 
     #[Computed]
     public function monthStart(): Carbon
@@ -85,14 +90,17 @@ new class extends Component
         $from = $this->monthStart->copy()->startOfWeek();
         $to = $this->monthStart->copy()->endOfMonth()->endOfWeek()->startOfDay();
 
-        $tasks = $this->project->tasks()
+        $query = $this->project->tasks()
             ->topLevel()
             ->withoutSections()
             ->overlapping($from, $to)
             ->with('status')
             ->orderBy('position')
-            ->orderBy('id')
-            ->get();
+            ->orderBy('id');
+
+        $this->applyDoneFilter($query);
+
+        $tasks = $query->get();
 
         $weeks = [];
 
@@ -115,16 +123,19 @@ new class extends Component
     #[Computed]
     public function undated(): int
     {
-        return $this->project->tasks()
+        $query = $this->project->tasks()
             ->topLevel()
             ->withoutSections()
             ->whereNull('start_date')
-            ->whereNull('due_date')
-            ->count();
+            ->whereNull('due_date');
+
+        $this->applyDoneFilter($query);
+
+        return $query->count();
     }
 
     /**
-     * The calendar has no filters: every top-level task of the project can be selected.
+     * The tasks the calendar shows (the open or finished ones it is set to) can be selected.
      */
     protected function datesNeededToShowTask(): array
     {
@@ -133,7 +144,19 @@ new class extends Component
 
     protected function filteredTasks(): HasMany
     {
-        return $this->project->tasks()->topLevel();
+        $tasks = $this->project->tasks()->topLevel();
+        $this->applyDoneFilter($tasks);
+
+        return $tasks;
+    }
+
+    /**
+     * Another choice of finished tasks shows other tasks, so what was selected no longer fits.
+     */
+    public function updatedDoneFilter(): void
+    {
+        $this->selected = [];
+        unset($this->weeks, $this->undated);
     }
 
     protected function forgetTasksAfterBulk(): void
@@ -165,6 +188,8 @@ new class extends Component
         <flux:button icon="chevron-right" wire:click="nextMonth" aria-label="{{ __('Next month') }}" tooltip="{{ __('Next month') }}" />
         <flux:button wire:click="today">{{ __('Today') }}</flux:button>
         <flux:heading size="lg" class="ms-2">{{ $this->monthStart->isoFormat('MMMM YYYY') }}</flux:heading>
+
+        <x-done-filter :options="$this->doneFilterOptions()" :current="$doneFilter" />
 
         @if ($offersSelecting)
             <x-selection-toggle instant class="ms-auto max-sm:hidden" x-show="! $wire.selecting" />
@@ -278,7 +303,7 @@ new class extends Component
     @if ($this->undated > 0)
         <flux:text class="mt-4">
             {{ trans_choice('{1} :count task has no date and therefore does not appear in the calendar.|[2,*] :count tasks have no date and therefore do not appear in the calendar.', $this->undated) }}
-            <flux:link variant="ghost" :href="route('projects.show', [$project, 'dates' => 'none', 'status' => 'all'])" wire:navigate>{{ __('Show them in the list') }}</flux:link>
+            <flux:link variant="ghost" :href="route('projects.show', [$project, 'dates' => 'none', 'done' => 'all'])" wire:navigate>{{ __('Show them in the list') }}</flux:link>
         </flux:text>
     @endif
 

@@ -10,6 +10,7 @@ use App\Models\Automation;
 use App\Models\CustomField;
 use App\Models\Project;
 use App\Models\Tag;
+use App\Models\TaskStatus;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Exceptions\MethodNotFoundException;
@@ -47,9 +48,14 @@ class AutomationPageTest extends TestCase
         return Livewire::actingAs($this->manager)->test('pages::projects.automations', ['project' => $this->project]);
     }
 
+    private function progress(): TaskStatus
+    {
+        return $this->project->statuses()->skip(1)->firstOrFail();
+    }
+
     private function fill(Testable $page, array $actions, string $trigger = 'status_changed', ?string $triggerValue = null): Testable
     {
-        return $page->set('name', 'Übergabe')->set('trigger', $trigger)->set('triggerValue', $triggerValue ?? (string) $this->project->doneStatus()->id)->set('actions', $actions);
+        return $page->set('name', 'Übergabe')->set('trigger', $trigger)->set('triggerValue', $triggerValue ?? (string) $this->progress()->id)->set('actions', $actions);
     }
 
     public function test_only_managers_open_the_page(): void
@@ -82,7 +88,7 @@ class AutomationPageTest extends TestCase
         $this->assertSame($this->project->id, $rule->project_id);
         $this->assertSame($this->manager->id, $rule->created_by);
         $this->assertSame(AutomationTrigger::StatusChanged, $rule->trigger);
-        $this->assertSame($this->project->doneStatus()->id, $rule->trigger_value);
+        $this->assertSame($this->progress()->id, $rule->trigger_value);
         $this->assertSame(['tag_id' => $tag->id], $rule->conditions);
         $this->assertEquals([
             ['type' => 'set_assignee', 'value' => $this->anna->id],
@@ -104,7 +110,7 @@ class AutomationPageTest extends TestCase
             'trigger_value' => $tag->id,
             'conditions' => ['assignee_id' => $this->anna->id],
             'actions' => [
-                ['type' => AutomationAction::SetStatus->value, 'value' => $this->project->doneStatus()->id],
+                ['type' => AutomationAction::SetStatus->value, 'value' => $this->progress()->id],
                 ['type' => AutomationAction::ShiftDueDate->value, 'value' => 7],
                 ['type' => AutomationAction::SetAssignee->value, 'value' => null],
             ],
@@ -114,7 +120,7 @@ class AutomationPageTest extends TestCase
             ->assertSee('Übergabe')
             ->assertSee('Wenn das Tag „Bug“ hinzugefügt wird')
             ->assertSee('die zuständige Person Anna ist')
-            ->assertSee('Status auf „'.$this->project->doneStatus()->name.'“ setzen')
+            ->assertSee('Status auf „'.$this->progress()->name.'“ setzen')
             ->assertSee('Fälligkeit um 7 Tage verschieben')
             ->assertSee('Zuständige Person entfernen')
             ->assertSee('Handelt mit den Rechten von Olaf');
@@ -231,14 +237,14 @@ class AutomationPageTest extends TestCase
             'created_by' => $this->anna->id,
             'name' => 'Alt',
             'trigger' => AutomationTrigger::StatusChanged,
-            'trigger_value' => $this->project->doneStatus()->id,
+            'trigger_value' => $this->progress()->id,
             'actions' => [['type' => AutomationAction::ShiftDueDate->value, 'value' => 3]],
         ]);
 
         $this->page()
             ->call('openForm', $rule->id)
             ->assertSet('name', 'Alt')
-            ->assertSet('triggerValue', (string) $this->project->doneStatus()->id)
+            ->assertSet('triggerValue', (string) $this->progress()->id)
             ->assertSet('actions', [['type' => 'shift_due_date', 'value' => '3', 'field' => '']])
             ->set('name', 'Neu')
             ->call('save')
@@ -301,7 +307,7 @@ class AutomationPageTest extends TestCase
     {
         $page = $this->page()->call('openForm')->assertSet('actions', [['type' => '', 'value' => '', 'field' => '']]);
 
-        $page->set('name', 'Ohne Aktion')->set('triggerValue', (string) $this->project->doneStatus()->id)
+        $page->set('name', 'Ohne Aktion')->set('triggerValue', (string) $this->progress()->id)
             ->call('save')->assertHasErrors('actions.0.type');
 
         $this->assertSame(0, Automation::count());
@@ -322,5 +328,37 @@ class AutomationPageTest extends TestCase
                 $this->addToAssertionCount(1);
             }
         }
+    }
+
+    public function test_a_rule_that_reacts_to_completion_takes_no_value(): void
+    {
+        $page = $this->page()->call('openForm')->set('trigger', 'completed');
+        $this->fill($page, [['type' => 'comment', 'value' => 'Danke']], 'completed', (string) $this->progress()->id)
+            ->call('save')->assertHasNoErrors()
+            ->assertSee('Wenn die Aufgabe erledigt wird');
+
+        $rule = Automation::query()->sole();
+        $this->assertSame(AutomationTrigger::Completed, $rule->trigger);
+        $this->assertNull($rule->trigger_value);
+        $this->assertNull($rule->trigger_field_value);
+    }
+
+    public function test_a_rule_can_mark_the_task_as_done_and_needs_no_value_for_it(): void
+    {
+        $page = $this->page()->call('openForm');
+        $this->fill($page, [['type' => 'complete', 'value' => '']])->call('save')->assertHasNoErrors()
+            ->assertSee('Aufgabe als erledigt markieren');
+
+        $rule = Automation::query()->sole();
+        $this->assertSame(AutomationTrigger::StatusChanged, $rule->trigger);
+        $this->assertSame($this->progress()->id, $rule->trigger_value);
+        $this->assertSame([['type' => 'complete', 'value' => null]], $rule->actions);
+
+        $page->call('openForm', $rule->id)->assertSet('actions', [['type' => 'complete', 'value' => '', 'field' => '']]);
+    }
+
+    public function test_the_trigger_menu_offers_completion_and_the_action_menu_marking_as_done(): void
+    {
+        $this->page()->call('openForm')->assertSee('Aufgabe wird erledigt')->assertSee('Als erledigt markieren');
     }
 }

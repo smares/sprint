@@ -55,7 +55,7 @@ class ProjectStatisticsTest extends TestCase
 
         $this->travelTo('2026-10-06 09:00');
         Task::factory()->for($this->project)->create();
-        $early->update(['status_id' => $this->project->doneStatus()->id]);
+        $early->markDone();
         $this->travelTo('2026-10-08 10:00:00');
 
         $flow = app(ProjectStatisticsService::class)->weeklyFlow($this->project, 3);
@@ -98,7 +98,7 @@ class ProjectStatisticsTest extends TestCase
         $this->travelTo($createdAt);
         $task = Task::factory()->for($this->project)->create(['due_date' => $dueDate]);
         $this->travelTo(now()->addMinutes((int) round($days * 1440)));
-        $task->update(['status_id' => $this->project->doneStatus()->id]);
+        $task->markDone();
         $this->travelTo('2026-10-08 10:00:00');
 
         return $task;
@@ -133,7 +133,7 @@ class ProjectStatisticsTest extends TestCase
         $task = $this->completed('2026-10-05 08:00', 2.4, '2026-10-07');
         $this->assertSame(100, app(ProjectStatisticsService::class)->recentCycle($this->project, 30)['on_time']);
 
-        $task->update(['status_id' => $this->project->defaultStatus()->id]);
+        $task->toggleDone();
         $recent = app(ProjectStatisticsService::class)->recentCycle($this->project, 30);
         $this->assertSame(0, $recent['completed']);
         $this->assertNull($recent['on_time']);

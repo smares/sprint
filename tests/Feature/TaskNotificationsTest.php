@@ -6,6 +6,7 @@ use App\Models\Comment;
 use App\Models\Task;
 use App\Models\User;
 use App\Notifications\TaskCommented;
+use App\Notifications\TaskCompletionChanged;
 use App\Notifications\TaskStatusChanged;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
@@ -98,18 +99,19 @@ class TaskNotificationsTest extends TestCase
         $project = $this->task->project;
 
         Livewire::test('pages::projects.show', ['project' => $project])->call('toggleDone', $this->task->id);
-        Notification::assertSentToTimes($this->assignee, TaskStatusChanged::class, 1);
+        Notification::assertSentToTimes($this->assignee, TaskCompletionChanged::class, 1);
+        Notification::assertNotSentTo($this->assignee, TaskStatusChanged::class);
 
         Livewire::test('pages::projects.board', ['project' => $project])
             ->call('moveTask', $this->task->id, 0, (string) $project->statuses[1]->id);
-        Notification::assertSentToTimes($this->assignee, TaskStatusChanged::class, 2);
+        Notification::assertSentToTimes($this->assignee, TaskStatusChanged::class, 1);
     }
 
     public function test_section_headings_never_notify(): void
     {
         $section = Task::factory()->for($this->task->project)->create(['assignee_id' => $this->assignee->id, 'is_section' => true]);
 
-        $section->update(['status_id' => $this->task->project->doneStatus()->id]);
+        $section->markDone();
 
         Notification::assertNothingSent();
     }

@@ -52,7 +52,7 @@ class TaskDependenciesTest extends TestCase
 
         $this->assertTrue($task->isBlocked());
 
-        $blocker->update(['status_id' => $this->project->doneStatus()->id]);
+        $blocker->markDone();
 
         $this->assertFalse($task->fresh()->isBlocked());
     }

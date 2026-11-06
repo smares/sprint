@@ -153,7 +153,7 @@ class TaskAssignmentNotificationsTest extends TestCase
     {
         $task = $this->task();
 
-        $task->update(['assignee_id' => $this->anna->id, 'status_id' => $this->project->doneStatus()->id]);
+        $task->update(['assignee_id' => $this->anna->id, 'completed_at' => now()]);
 
         Notification::assertSentToTimes($this->anna, TaskAssigned::class, 1);
         Notification::assertNotSentTo($this->anna, TaskStatusChanged::class);

@@ -191,7 +191,7 @@ class AsanaImportTest extends TestCase
         Http::assertSent(fn (Request $request) => $request->hasHeader('Authorization', 'Bearer secret-token'));
     }
 
-    public function test_an_open_subtask_follows_the_status_of_its_task_unless_that_is_done(): void
+    public function test_a_subtask_follows_the_status_of_its_task_whether_it_is_done_or_not(): void
     {
         foreach ($this->routes['projects/100/tasks'] as &$raw) {
             $raw['num_subtasks'] = $raw['gid'] === '1004' ? 1 : $raw['num_subtasks'];
@@ -205,11 +205,26 @@ class AsanaImportTest extends TestCase
 
         $backlog = Task::where('title', 'Konzept')->firstOrFail()->status;
         $this->assertSame($backlog->id, Task::where('title', 'Detail')->firstOrFail()->status_id);
-        $this->assertTrue(Task::where('title', 'Skizzen')->firstOrFail()->status->is_done);
+        $this->assertSame($backlog->id, Task::where('title', 'Skizzen')->firstOrFail()->status_id);
+        $this->assertTrue(Task::where('title', 'Skizzen')->firstOrFail()->isDone());
 
-        // "Fertig" is done, so its open subtask is not counted as done with it
-        $this->assertTrue(Task::where('title', 'Fertig')->firstOrFail()->status->is_done);
-        $this->assertFalse(Task::where('title', 'Rest')->firstOrFail()->status->is_done);
+        // "Fertig" is done, but its open subtask is not counted as done with it; both stay in the status of the section
+        $this->assertSame($backlog->id, Task::where('title', 'Fertig')->firstOrFail()->status_id);
+        $this->assertTrue(Task::where('title', 'Fertig')->firstOrFail()->isDone());
+        $this->assertSame($backlog->id, Task::where('title', 'Rest')->firstOrFail()->status_id);
+        $this->assertFalse(Task::where('title', 'Rest')->firstOrFail()->isDone());
+    }
+
+    public function test_a_completed_task_without_a_section_stays_in_the_first_status(): void
+    {
+        $this->routes['projects/100/tasks'][] = $this->task('1008', 'Ohne Spalte', ['completed' => true, 'completed_at' => '2026-10-04T08:00:00.000Z']);
+
+        $this->import(['projects' => ['100']])->assertSuccessful();
+
+        $task = Task::where('title', 'Ohne Spalte')->firstOrFail();
+        $this->assertSame(__('Open'), $task->status->name);
+        $this->assertTrue($task->isDone());
+        $this->assertSame('2026-10-04', $task->completed_at->toDateString());
     }
 
     public function test_a_comment_without_text_is_reported_and_not_taken_over(): void
@@ -244,8 +259,8 @@ class AsanaImportTest extends TestCase
         $this->assertSame('#22c55e', $website->color);
         $this->assertEqualsCanonicalizing([$this->anna->id, $this->ben->id, $this->admin->id], $website->members()->pluck('users.id')->map(fn ($id) => (int) $id)->all());
 
-        // Sections become statuses between the first standard one and the done one
-        $this->assertSame([__('Open'), 'Backlog', 'Doing', __('Done')], $website->statuses()->pluck('name')->all());
+        // Sections become statuses after the first standard one
+        $this->assertSame([__('Open'), 'Backlog', 'Doing'], $website->statuses()->pluck('name')->all());
 
         $concept = Task::where('title', 'Konzept')->firstOrFail();
         $this->assertSame($website->id, $concept->project_id);
@@ -266,7 +281,12 @@ class AsanaImportTest extends TestCase
         $this->assertSame('2026-10-01', $subtask->completed_at->toDateString());
         $this->assertSame($this->ben->id, $subtask->assignee_id);
 
-        $this->assertSame(__('Done'), Task::where('title', 'Fertig')->firstOrFail()->status->name);
+        // A completed task keeps the status of its section and is finished
+        $finished = Task::where('title', 'Fertig')->firstOrFail();
+        $this->assertSame('Backlog', $finished->status->name);
+        $this->assertTrue($finished->isDone());
+        $this->assertSame('2026-10-03', $finished->completed_at->toDateString());
+        $this->assertFalse($concept->isDone());
         $this->assertSame('Doing', Task::where('title', 'Umsetzung')->firstOrFail()->status->name);
 
         // The existing priority field is used by its name; new fields and options are created
@@ -293,7 +313,7 @@ class AsanaImportTest extends TestCase
         $this->assertSame(['Newsletter'], $marketing->tasks()->pluck('title')->all());
 
         // A project without sections of its own keeps the standard statuses; a milestone gets a tag
-        $this->assertSame([__('Open'), __('In progress'), __('Done')], $marketing->statuses()->pluck('name')->all());
+        $this->assertSame([__('Open'), __('In progress')], $marketing->statuses()->pluck('name')->all());
         $this->assertEqualsCanonicalizing([__('Milestone'), 'design'], $marketing->tags()->pluck('name')->all());
     }
 
@@ -384,7 +404,7 @@ class AsanaImportTest extends TestCase
 
         $website = Project::where('name', 'Website')->firstOrFail();
 
-        $this->assertSame([__('Open'), __('In progress'), __('Done')], $website->statuses()->pluck('name')->all());
+        $this->assertSame([__('Open'), __('In progress')], $website->statuses()->pluck('name')->all());
         $this->assertSame(['Backlog', 'Konzept', 'Fertig', 'Doing', 'Umsetzung'], $website->tasks()->topLevel()->orderBy('position')->pluck('title')->all());
         $this->assertSame(['Backlog', 'Doing'], $website->tasks()->where('is_section', true)->orderBy('position')->pluck('title')->all());
         $this->assertSame(__('Open'), Task::where('title', 'Konzept')->firstOrFail()->status->name);

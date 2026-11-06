@@ -90,7 +90,7 @@ new class extends Component
                     $query->orWhere(fn (Builder $column) => $column->whereRaw('coalesce(board_column, 0) = ?', [$key])->where('column_rank', '<=', $this->columnLimit($key)));
                 }
             })
-            ->with(['project', 'parent', 'status', 'tags', 'blockers.status'])
+            ->with(['project', 'parent', 'status', 'tags', 'blockers'])
             ->orderBy('column_rank')
             ->get()
             ->groupBy(fn (Task $task) => (int) ($task->board_column ?? self::UNSORTED));

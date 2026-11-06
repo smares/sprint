@@ -26,7 +26,7 @@ new class extends Component
     public function tasks(): Collection
     {
         return $this->mine()
-            ->with(['project', 'parent', 'status', 'tags', 'blockers.status'])
+            ->with(['project', 'parent', 'status', 'tags', 'blockers'])
             ->orderByRaw('due_date is null')
             ->orderBy('due_date')
             ->orderBy('id')

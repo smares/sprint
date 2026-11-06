@@ -24,7 +24,8 @@ abstract class WriteTaskTool extends SprintTool
     {
         return [
             'description' => $schema->string()->description('Markdown text. Mention people with @[Name](user:ID). Empty string clears it.'),
-            'status' => $schema->string()->description('Name of a status of the project, e.g. "Open" or "Done".'),
+            'status' => $schema->string()->description('Name of a status of the project (the column on the board), e.g. "In progress". Finishing a task does not change it.'),
+            'done' => $schema->boolean()->description('true finishes the task, false opens it again. It stays in its status.'),
             'assignee' => $schema->string()->description('E-mail address of a project member. Empty string unassigns.'),
             'due_date' => $schema->string()->description('Date as YYYY-MM-DD. Empty string clears it.'),
             'start_date' => $schema->string()->description('Date as YYYY-MM-DD. Must not be after the due date. Empty string clears it.'),
@@ -42,6 +43,7 @@ abstract class WriteTaskTool extends SprintTool
         return [
             'description' => ['nullable', 'string', 'max:'.Task::MAX_DESCRIPTION_LENGTH],
             'status' => ['nullable', 'string', 'max:255'],
+            'done' => ['nullable', 'boolean'],
             'assignee' => ['nullable', 'string', 'max:255'],
             'due_date' => ['nullable', 'date_format:Y-m-d'],
             'start_date' => ['nullable', 'date_format:Y-m-d'],
@@ -74,6 +76,10 @@ abstract class WriteTaskTool extends SprintTool
         if (! empty($given['status'])) {
             $columns['status_id'] = $project->statuses->first(fn ($status) => mb_strtolower($status->name) === mb_strtolower($given['status']))?->id
                 ?? throw new ToolFailure("Unknown status \"{$given['status']}\". Available: ".$project->statuses->pluck('name')->implode(', ').'.');
+        }
+
+        if (array_key_exists('done', $given) && $given['done'] !== null) {
+            $columns['completed_at'] = $given['done'] ? ($task->completed_at ?? now()) : null;
         }
 
         if (array_key_exists('assignee', $given)) {

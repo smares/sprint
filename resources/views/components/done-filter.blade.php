@@ -3,7 +3,7 @@
 {{-- What a view does with finished tasks, as a menu in the toolbar like the one for the sort order: open tasks only, all of them
      or the finished ones only. The page keeps the choice in the property named by `model` (see App\Concerns\FiltersDoneTasks). --}}
 <flux:dropdown align="start">
-    <flux:button icon="check-circle">{{ $options[$current] ?? $options['all'] }}</flux:button>
+    <flux:button icon="check-circle" aria-label="{{ __('Tasks') }}: {{ $options[$current] ?? $options['all'] }}">{{ $options[$current] ?? $options['all'] }}</flux:button>
 
     <flux:menu>
         <flux:menu.radio.group wire:model.live="{{ $model }}">

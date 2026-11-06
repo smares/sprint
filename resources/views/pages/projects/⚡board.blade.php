@@ -61,7 +61,8 @@ new class extends Component
         // One query for all columns: number the tasks within each status and keep the first n per column.
         // The chosen order (if any) comes before the manual one (it settles the ties only if there is none: the terms end with the newest first)
         $terms = $this->sortTerms();
-        $order = collect($terms)->pluck(0)->push('tasks.position', 'tasks.id')->implode(', ');
+        // Finished tasks stand at the end of their column, so open work is not pushed behind "Load more" by what is done
+        $order = collect($terms)->pluck(0)->prepend('(tasks.completed_at is not null)')->push('tasks.position', 'tasks.id')->implode(', ');
         $bindings = collect($terms)->pluck(1)->flatten(1)->all();
 
         $ranked = $this->project->tasks()->topLevel()->withoutSections();
@@ -108,6 +109,7 @@ new class extends Component
             ->topLevel()
             ->withoutSections()
             ->where('status_id', $statusId)
+            ->orderByRaw('(tasks.completed_at is not null)')
             ->orderBy('position')
             ->orderBy('id');
 
@@ -225,7 +227,7 @@ new class extends Component
      */
     protected function currentViewSettings(): array
     {
-        return ['sort' => $this->isSorted() ? $this->sortBy : '', 'direction' => $this->direction(), 'done' => $this->doneFilter];
+        return ['sort' => $this->isSorted() ? $this->sortBy : '', 'direction' => $this->direction(), 'done' => $this->validDoneFilter($this->doneFilter, 'all')];
     }
 
     /**
@@ -388,7 +390,7 @@ new class extends Component
                         wire:sort:config="{{ \App\Sortable::unlessSelecting($this->sortActive ? \App\Sortable::CONFIG_MOVE_ONLY : \App\Sortable::CONFIG) }}"
                     >
                         @foreach ($this->columns[$status->id] as $task)
-                            <flux:kanban.card wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" :class="'board-card cursor-pointer'.($task->isDone() ? ' opacity-60 hover:opacity-100' : '')" :wire:sort:item="$this->canEdit ? $task->id : null">
+                            <flux:kanban.card wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" :class="'board-card cursor-pointer'.($task->isDone() ? ' opacity-60 hover:opacity-100 focus-within:opacity-100' : '')" :wire:sort:item="$this->canEdit ? $task->id : null">
                                 <div class="flex items-start gap-2">
                                     <x-task-done-button :task="$task" :editable="$this->canEdit" compact />
                                     {{-- Drawn for every card but made only while selecting (in the browser, at once, before the server answers) --}}

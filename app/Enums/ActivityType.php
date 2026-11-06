@@ -57,7 +57,7 @@ enum ActivityType: string
     }
 
     /**
-     * The sentence after the person's name, e.g. "changed the status from “Open” to “Done”".
+     * The sentence after the person's name, e.g. "changed the status from “Open” to “In progress”".
      *
      * @param  array<string, mixed>  $data
      */

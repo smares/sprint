@@ -9,7 +9,9 @@ use App\Enums\CustomFieldType;
 use App\Enums\RepeatMode;
 use App\Enums\RepeatUnit;
 use App\Notifications\TaskAssigned;
+use App\Notifications\TaskCompletionChanged;
 use App\Notifications\TasksAssigned;
+use App\Notifications\TasksCompletionChanged;
 use App\Notifications\TasksStatusChanged;
 use App\Notifications\TaskStatusChanged;
 use App\Notifications\UserMentioned;
@@ -65,9 +67,10 @@ class Task extends Model
     private const int MAX_CATCH_UP_STEPS = 1000;
 
     /**
-     * While tasks are changed in bulk: status changes per recipient, to be sent as one message.
+     * While tasks are changed in bulk: status changes and tasks finished or opened again per recipient, to be sent as one
+     * message each.
      *
-     * @var array<int, array{user: User, changes: list<array{task: Task, from: string, to: string}>}>|null
+     * @var array<int, array{user: User, changes?: list<array{task: Task, from: string, to: string}>, completions?: list<array{task: Task, completed: bool}>}>|null
      */
     private static ?array $bundledStatusChanges = null;
 
@@ -111,18 +114,33 @@ class Task extends Model
         }
 
         foreach ($bundled as $entry) {
-            if (count($entry['changes']) === 1) {
-                ['task' => $task, 'from' => $from, 'to' => $to] = $entry['changes'][0];
+            $changes = $entry['changes'] ?? [];
+
+            if (count($changes) === 1) {
+                ['task' => $task, 'from' => $from, 'to' => $to] = $changes[0];
 
                 Notification::send($entry['user'], new TaskStatusChanged($task, $from, $to, $actorName));
-
-                continue;
+            } elseif ($changes !== []) {
+                Notification::send($entry['user'], new TasksStatusChanged(
+                    array_map(fn (array $change) => ['id' => $change['task']->id, 'title' => $change['task']->title, 'project' => $change['task']->project->name, 'from' => $change['from'], 'to' => $change['to']], $changes),
+                    $actorName,
+                ));
             }
 
-            Notification::send($entry['user'], new TasksStatusChanged(
-                array_map(fn (array $change) => ['id' => $change['task']->id, 'title' => $change['task']->title, 'project' => $change['task']->project->name, 'from' => $change['from'], 'to' => $change['to']], $entry['changes']),
-                $actorName,
-            ));
+            // Those finished and those opened again are two messages, each one for all its tasks
+            foreach ([true, false] as $completed) {
+                $tasks = array_column(array_filter($entry['completions'] ?? [], fn (array $completion) => $completion['completed'] === $completed), 'task');
+
+                if (count($tasks) === 1) {
+                    Notification::send($entry['user'], new TaskCompletionChanged($tasks[0], $completed, $actorName));
+                } elseif ($tasks !== []) {
+                    Notification::send($entry['user'], new TasksCompletionChanged(
+                        array_map(fn (self $task) => ['id' => $task->id, 'title' => $task->title, 'project' => $task->project->name], $tasks),
+                        $completed,
+                        $actorName,
+                    ));
+                }
+            }
         }
     }
 
@@ -217,28 +235,36 @@ class Task extends Model
                 $task->announceAssignee();
             }
 
-            // Moving between statuses and finishing or reopening are told alike: as the status changing, where done and open are
-            // the two states of the flag
-            $changes = array_filter([
-                $task->wasChanged('status_id') ? ['from' => $old?->name ?? '–', 'to' => $task->status->name] : null,
-                $task->wasChanged('completed_at') ? ($task->wasJustCompleted() ? ['from' => __('Open'), 'to' => __('Done')] : ['from' => __('Done'), 'to' => __('Open')]) : null,
-            ]);
+            // A move to another status and finishing or reopening are two kinds of news, told on their own
+            $statusChange = $task->wasChanged('status_id') ? ['from' => $old?->name ?? '–', 'to' => $task->status->name] : null;
+            $completionChanged = $task->wasChanged('completed_at');
 
-            if ($changes !== []) {
+            if ($statusChange !== null || $completionChanged) {
                 foreach ($task->usersToNotify($actor) as $recipient) {
                     // Told about the assignment already
                     if ($recipient->id === $task->announcedAssigneeId) {
                         continue;
                     }
 
-                    foreach ($changes as $change) {
-                        $change['task'] = $task;
+                    $bundled = self::$bundledStatusChanges !== null && $automation === null;
 
-                        if (self::$bundledStatusChanges === null || $automation !== null) {
-                            Notification::send($recipient, new TaskStatusChanged($task, $change['from'], $change['to'], $actorName));
+                    if ($bundled) {
+                        self::$bundledStatusChanges[$recipient->id]['user'] = $recipient;
+                    }
+
+                    if ($statusChange !== null) {
+                        if ($bundled) {
+                            self::$bundledStatusChanges[$recipient->id]['changes'][] = $statusChange + ['task' => $task];
                         } else {
-                            self::$bundledStatusChanges[$recipient->id]['user'] = $recipient;
-                            self::$bundledStatusChanges[$recipient->id]['changes'][] = $change;
+                            Notification::send($recipient, new TaskStatusChanged($task, $statusChange['from'], $statusChange['to'], $actorName));
+                        }
+                    }
+
+                    if ($completionChanged) {
+                        if ($bundled) {
+                            self::$bundledStatusChanges[$recipient->id]['completions'][] = ['task' => $task, 'completed' => $task->wasJustCompleted()];
+                        } else {
+                            Notification::send($recipient, new TaskCompletionChanged($task, $task->wasJustCompleted(), $actorName));
                         }
                     }
                 }
@@ -314,6 +340,16 @@ class Task extends Model
     public function toggleDone(): void
     {
         $this->update(['completed_at' => $this->isDone() ? null : now()]);
+    }
+
+    /**
+     * Open the task again (nothing happens when it is open already).
+     */
+    public function reopen(): void
+    {
+        if ($this->isDone()) {
+            $this->update(['completed_at' => null]);
+        }
     }
 
     /**

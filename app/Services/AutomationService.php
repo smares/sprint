@@ -240,7 +240,7 @@ class AutomationService
      */
     private function carryOver(Task $current, Task $original): void
     {
-        foreach (['status_id', 'assignee_id', 'due_date'] as $attribute) {
+        foreach (['status_id', 'assignee_id', 'due_date', 'completed_at'] as $attribute) {
             $original->setAttribute($attribute, $current->getAttribute($attribute));
             $original->syncOriginalAttribute($attribute);
         }

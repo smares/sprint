@@ -152,16 +152,39 @@ class MakeDoneAFlagOfTasksMigrationTest extends TestCase
         $this->assertEquals([['type' => 'set_status', 'value' => $this->doneStatusId]], $rule->fresh()->actions);
     }
 
-    public function test_going_back_marks_the_last_status_of_each_project_as_done(): void
+    public function test_going_back_gives_each_project_a_done_status_again_and_moves_the_finished_tasks_into_it(): void
     {
         $other = Project::factory()->create();
+        $finished = Task::factory()->for($this->project)->create(['status_id' => $this->openStatusId, 'completed_at' => now()]);
+        $open = Task::factory()->for($this->project)->create(['status_id' => $this->openStatusId]);
         $migration = $this->migration();
         $migration->up();
 
         $migration->down();
 
         $this->assertTrue(Schema::hasColumn('task_statuses', 'is_done'));
-        $this->assertSame([$this->otherDoneStatusId], DB::table('task_statuses')->where('project_id', $this->project->id)->where('is_done', true)->pluck('id')->map(fn ($id) => (int) $id)->all());
-        $this->assertSame([$other->statuses()->get()->last()->id], DB::table('task_statuses')->where('project_id', $other->id)->where('is_done', true)->pluck('id')->map(fn ($id) => (int) $id)->all());
+
+        // A status with the name of a done status is the one; a project without gets a new one at its end
+        $this->assertSame([$this->doneStatusId], DB::table('task_statuses')->where('project_id', $this->project->id)->where('is_done', true)->pluck('id')->map(fn ($id) => (int) $id)->all());
+        $created = DB::table('task_statuses')->where('project_id', $other->id)->where('is_done', true)->first();
+        $this->assertSame('Done', $created->name);
+        $this->assertSame($other->statuses()->get()->last()->id, (int) $created->id);
+
+        $this->assertSame($this->doneStatusId, $finished->fresh()->status_id);
+        $this->assertSame($this->openStatusId, $open->fresh()->status_id);
+    }
+
+    public function test_going_back_turns_the_rules_for_finishing_into_rules_for_the_done_status(): void
+    {
+        $waiting = $this->rule('Wenn erledigt', AutomationTrigger::Completed, null, [['type' => 'complete', 'value' => null], ['type' => 'comment', 'value' => 'Danke']]);
+        $migration = $this->migration();
+        $migration->up();
+
+        $migration->down();
+
+        $rule = DB::table('automations')->where('id', $waiting->id)->first();
+        $this->assertSame('status_changed', $rule->trigger);
+        $this->assertSame($this->doneStatusId, (int) $rule->trigger_value);
+        $this->assertEquals([['type' => 'set_status', 'value' => $this->doneStatusId], ['type' => 'comment', 'value' => 'Danke']], json_decode($rule->actions, true));
     }
 }

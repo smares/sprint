@@ -20,6 +20,7 @@
 
         <div class="flex flex-wrap items-center gap-2">
             <flux:button size="sm" icon="check" wire:click="bulkComplete" x-bind:disabled="$wire.selected.length === 0">{{ __('Mark as done') }}</flux:button>
+            <flux:button size="sm" icon="arrow-uturn-left" wire:click="bulkReopen" x-bind:disabled="$wire.selected.length === 0">{{ __('Reopen') }}</flux:button>
 
             @if ($change)
                 {{-- The dialog is part of the page once the server has answered the start of the selection; ask for it first, so a quick click is not lost --}}

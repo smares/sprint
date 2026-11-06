@@ -74,6 +74,19 @@ trait SelectsTasks
         $this->finishBulk(trans_choice('{1} One task completed.|[0,*] :count tasks completed.', $tasks->count()));
     }
 
+    public function bulkReopen(): void
+    {
+        $tasks = $this->selectedTasks();
+
+        Task::bundlingStatusNotifications(function () use ($tasks) {
+            foreach ($tasks as $task) {
+                $task->reopen();
+            }
+        });
+
+        $this->finishBulk(trans_choice('{1} One task reopened.|[0,*] :count tasks reopened.', $tasks->count()));
+    }
+
     public function bulkDelete(): void
     {
         $tasks = $this->selectedTasks();

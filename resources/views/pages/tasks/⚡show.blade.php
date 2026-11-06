@@ -1440,7 +1440,7 @@ new class extends Component
             <x-task-field :label="__('Done')" icon="check-circle">
                 <div class="flex min-h-8 items-center gap-2">
                     <x-task-done-button :task="$task" :editable="$this->canEdit" action="toggleDoneByShortcut" />
-                    <flux:text size="sm">{{ $task->isDone() ? __('Done on :date', ['date' => auth()->user()->inTimezone($task->completed_at)->isoFormat('L')]) : __('Open') }}</flux:text>
+                    <flux:text size="sm">{{ $task->isDone() ? __('Done on :date', ['date' => auth()->user()->inTimezone($task->completed_at)->isoFormat('L')]) : __('Not yet') }}</flux:text>
                 </div>
             </x-task-field>
 

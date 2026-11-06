@@ -403,6 +403,10 @@ new class extends Component
             $filters->push(['key' => 'assignee', 'label' => $user->name]);
         }
 
+        if (ctype_digit($this->statusFilter) && ($status = $this->statuses->firstWhere('id', (int) $this->statusFilter))) {
+            $filters->push(['key' => 'status', 'label' => __('Status').': '.$status->name]);
+        }
+
         if ($this->collaboratorFilterUsers !== []) {
             $filters->push(['key' => 'collaborators', 'label' => __('Collaborators').': '.implode(', ', $this->collaboratorFilterUsers)]);
         }
@@ -426,20 +430,12 @@ new class extends Component
         return $filters;
     }
 
-    #[Computed]
-    public function shownLabel(): string
-    {
-        $status = ctype_digit($this->statusFilter) ? $this->statuses->firstWhere('id', (int) $this->statusFilter)?->name : null;
-        $shown = $this->doneFilterOptions()[$this->doneFilter] ?? __('All tasks');
-
-        return $status === null ? $shown : "{$shown} · {$status}";
-    }
-
     public function clearFilter(string $key): void
     {
         $this->selected = [];
 
         match (true) {
+            $key === 'status' => $this->statusFilter = '',
             $key === 'assignee' => $this->assigneeFilter = '',
             $key === 'collaborators' => $this->collaboratorFilter = [],
             $key === 'tag' => $this->tagFilter = '',
@@ -472,7 +468,7 @@ new class extends Component
     {
         return [
             'status' => $this->statusFilter,
-            'done' => $this->doneFilter,
+            'done' => $this->validDoneFilter($this->doneFilter, 'open'),
             'assignee' => $this->assigneeFilter,
             'collaborators' => $this->validCollaboratorValues($this->collaboratorFilter),
             'tag' => $this->tagFilter,
@@ -571,6 +567,8 @@ new class extends Component
     <x-project-header :project="$project" active="list" :presence="$this->presenceChannel()" />
 
     <div class="mb-4 flex flex-wrap items-center gap-2">
+        <x-done-filter :options="$this->doneFilterOptions()" :current="$doneFilter" />
+
         <flux:modal.trigger name="filters">
             <flux:button icon="funnel">
                 {{ __('Filter') }}
@@ -583,8 +581,6 @@ new class extends Component
         <flux:modal.trigger name="saved-views">
             <flux:button icon="bookmark">{{ __('Views') }} @if ($this->savedViews->isNotEmpty()) <flux:badge size="sm" inset="top bottom">{{ $this->savedViews->count() }}</flux:badge> @endif</flux:button>
         </flux:modal.trigger>
-
-        <flux:badge size="sm" color="zinc">{{ $this->shownLabel }}</flux:badge>
 
         @foreach ($this->activeFilters as $filter)
             {{-- A long label (the names of many collaborators) wraps inside the chip; on one line it would widen the page on a phone --}}
@@ -622,12 +618,6 @@ new class extends Component
     <flux:modal name="filters" class="w-full max-w-md">
         <div class="space-y-5">
             <flux:heading size="lg">{{ __('Filter') }}</flux:heading>
-
-            <flux:select variant="listbox" wire:model.live="doneFilter" :label="__('Tasks')">
-                @foreach ($this->doneFilterOptions() as $value => $label)
-                    <flux:select.option value="{{ $value }}">{{ $label }}</flux:select.option>
-                @endforeach
-            </flux:select>
 
             <flux:select variant="listbox" wire:model.live="statusFilter" :label="__('Status')">
                 <flux:select.option value="">{{ __('All statuses') }}</flux:select.option>
@@ -742,7 +732,7 @@ new class extends Component
                             @continue
                         @endif
                         @php($number++)
-                        <flux:table.row wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" :class="'cursor-pointer'.($task->isDone() ? ' opacity-60 hover:opacity-100' : '')" :wire:sort:item="$draggable ? $task->id : null">
+                        <flux:table.row wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" :class="'cursor-pointer'.($task->isDone() ? ' opacity-60 hover:opacity-100 focus-within:opacity-100' : '')" :wire:sort:item="$draggable ? $task->id : null">
                             <flux:table.cell :class="$pinnedDone">
                                 <div class="flex items-center gap-3">
                                     <x-task-done-button :task="$task" :editable="$this->canEdit" />

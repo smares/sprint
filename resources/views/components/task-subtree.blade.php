@@ -26,7 +26,7 @@
                     @else
                         <a href="{{ route('tasks.show', $subtask) }}" wire:navigate @class(['hover:underline', 'line-through text-zinc-400' => $subtask->isDone()])>{{ $subtask->title }}</a>
                     @endif
-                    {{-- Status, person and due date like in the lists, but quieter: the status only when it says more than open or done --}}
+                    {{-- Status, person and due date like in the lists, but quieter: the status only when it is not the first one --}}
                     <div class="ms-auto flex shrink-0 items-center gap-2">
                         @if (! $subtask->isDone() && $subtask->status && $subtask->status->position > 0)
                             <x-status-badge :status="$subtask->status" class="max-sm:hidden" />

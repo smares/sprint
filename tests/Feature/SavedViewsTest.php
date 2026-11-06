@@ -10,6 +10,7 @@ use App\Models\Task;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class SavedViewsTest extends TestCase
@@ -42,7 +43,7 @@ class SavedViewsTest extends TestCase
         $option = $priority->options->firstWhere('name', 'Hoch');
 
         $this->list()
-            ->set('statusFilter', 'all')->set('assigneeFilter', 'me')->set('tagFilter', (string) $tag->id)
+            ->set('doneFilter', 'all')->set('assigneeFilter', 'me')->set('tagFilter', (string) $tag->id)
             ->set("fieldFilters.{$priority->id}", (string) $option->id)->call('sort', 'due')
             ->set('saveName', '  Meine dringenden  ')->call('saveCurrentView')->assertHasNoErrors()->assertSet('saveName', '');
 
@@ -51,7 +52,7 @@ class SavedViewsTest extends TestCase
         $this->assertSame($this->editor->id, $saved->user_id);
         $this->assertFalse($saved->isShared());
         $this->assertSame([
-            'status' => 'all', 'assignee' => 'me', 'collaborators' => [], 'tag' => (string) $tag->id, 'dates' => '',
+            'status' => '', 'done' => 'all', 'assignee' => 'me', 'collaborators' => [], 'tag' => (string) $tag->id, 'dates' => '',
             'fields' => [(string) $priority->id => (string) $option->id], 'sort' => 'due', 'direction' => 'asc',
         ], $saved->filters);
     }
@@ -62,20 +63,58 @@ class SavedViewsTest extends TestCase
         $priority = $this->project->customFields()->firstOrFail();
         $option = $priority->options->firstWhere('name', 'Hoch');
         SavedFilter::factory()->for($this->project)->create(['user_id' => $this->editor->id, 'filters' => [
-            'status' => 'all', 'assignee' => 'me', 'tag' => (string) $tag->id,
+            'status' => '', 'done' => 'done', 'assignee' => 'me', 'tag' => (string) $tag->id,
             'fields' => [(string) $priority->id => (string) $option->id], 'sort' => 'title', 'direction' => 'desc',
         ]]);
 
         $this->list()->call('applyView', SavedFilter::first()->id)
-            ->assertSet('statusFilter', 'all')->assertSet('assigneeFilter', 'me')->assertSet('tagFilter', (string) $tag->id)
+            ->assertSet('statusFilter', '')->assertSet('doneFilter', 'done')->assertSet('assigneeFilter', 'me')->assertSet('tagFilter', (string) $tag->id)
             ->assertSet("fieldFilters.{$priority->id}", (string) $option->id)->assertSet('sortBy', 'title')->assertSet('sortDirection', 'desc');
+    }
+
+    public function test_the_done_filter_and_the_status_are_saved_and_restored(): void
+    {
+        $status = $this->project->statuses()->skip(1)->firstOrFail();
+
+        $this->list()->set('doneFilter', 'done')->set('statusFilter', (string) $status->id)->set('saveName', 'Fertig')->call('saveCurrentView')->assertHasNoErrors();
+
+        $saved = SavedFilter::firstOrFail();
+        $this->assertSame('done', $saved->filters['done']);
+        $this->assertSame((string) $status->id, $saved->filters['status']);
+
+        $this->list()->call('applyView', $saved->id)->assertSet('doneFilter', 'done')->assertSet('statusFilter', (string) $status->id)
+            ->call('resetFilters')->assertSet('doneFilter', 'open')->assertSet('statusFilter', '');
+    }
+
+    /**
+     * @return array<string, array{string, string, string}>
+     */
+    public static function legacyStatuses(): array
+    {
+        return ['all' => ['all', '', 'all'], 'open' => ['open', '', 'open'], 'nothing' => ['', '', 'open']];
+    }
+
+    #[DataProvider('legacyStatuses')]
+    public function test_a_view_saved_before_done_was_a_flag_keeps_its_meaning(string $legacy, string $status, string $done): void
+    {
+        $saved = SavedFilter::factory()->for($this->project)->create(['user_id' => $this->editor->id, 'filters' => ['status' => $legacy, 'assignee' => '', 'tag' => '', 'fields' => [], 'sort' => '', 'direction' => 'asc']]);
+
+        $this->list()->call('applyView', $saved->id)->assertSet('statusFilter', $status)->assertSet('doneFilter', $done);
+    }
+
+    public function test_a_legacy_view_with_one_status_shows_that_status_with_all_its_tasks(): void
+    {
+        $status = $this->project->statuses()->skip(1)->firstOrFail();
+        $saved = SavedFilter::factory()->for($this->project)->create(['user_id' => $this->editor->id, 'filters' => ['status' => (string) $status->id, 'assignee' => '', 'tag' => '', 'fields' => [], 'sort' => '', 'direction' => 'asc']]);
+
+        $this->list()->call('applyView', $saved->id)->assertSet('statusFilter', (string) $status->id)->assertSet('doneFilter', 'all');
     }
 
     public function test_applying_starts_at_the_first_page_and_shows_the_matching_tasks(): void
     {
         Task::factory()->for($this->project)->create(['title' => 'Meins', 'assignee_id' => $this->editor->id]);
         Task::factory()->for($this->project)->create(['title' => 'Fremd']);
-        $saved = SavedFilter::factory()->for($this->project)->create(['user_id' => $this->editor->id, 'filters' => ['status' => 'open', 'assignee' => 'me', 'tag' => '', 'fields' => [], 'sort' => '', 'direction' => 'asc']]);
+        $saved = SavedFilter::factory()->for($this->project)->create(['user_id' => $this->editor->id, 'filters' => ['status' => '', 'done' => 'open', 'assignee' => 'me', 'tag' => '', 'fields' => [], 'sort' => '', 'direction' => 'asc']]);
 
         $this->list()->assertSee('Fremd')->call('applyView', $saved->id)->assertSee('Meins')->assertDontSee('Fremd');
     }
@@ -83,11 +122,11 @@ class SavedViewsTest extends TestCase
     public function test_entries_that_no_longer_exist_are_skipped(): void
     {
         $saved = SavedFilter::factory()->for($this->project)->create(['user_id' => $this->editor->id, 'filters' => [
-            'status' => '99999', 'assignee' => '99999', 'tag' => '99999', 'fields' => ['99999' => '1'], 'sort' => 'field:99999', 'direction' => 'sideways',
+            'status' => '99999', 'done' => 'open', 'assignee' => '99999', 'tag' => '99999', 'fields' => ['99999' => '1'], 'sort' => 'field:99999', 'direction' => 'sideways',
         ]]);
 
         $this->list()->call('applyView', $saved->id)
-            ->assertSet('statusFilter', 'open')->assertSet('assigneeFilter', '')->assertSet('tagFilter', '')
+            ->assertSet('statusFilter', '')->assertSet('doneFilter', 'open')->assertSet('assigneeFilter', '')->assertSet('tagFilter', '')
             ->assertSet('fieldFilters', [])->assertSet('sortBy', '')->assertSet('sortDirection', 'asc');
     }
 
@@ -96,10 +135,10 @@ class SavedViewsTest extends TestCase
         $otherStatus = Project::factory()->create()->statuses()->first();
         $otherTag = Tag::factory()->for(Project::factory()->create())->create();
         $saved = SavedFilter::factory()->for($this->project)->create(['user_id' => $this->editor->id, 'filters' => [
-            'status' => (string) $otherStatus->id, 'assignee' => '', 'tag' => (string) $otherTag->id, 'fields' => [], 'sort' => '', 'direction' => 'asc',
+            'status' => (string) $otherStatus->id, 'done' => 'open', 'assignee' => '', 'tag' => (string) $otherTag->id, 'fields' => [], 'sort' => '', 'direction' => 'asc',
         ]]);
 
-        $this->list()->call('applyView', $saved->id)->assertSet('statusFilter', 'open')->assertSet('tagFilter', '');
+        $this->list()->call('applyView', $saved->id)->assertSet('statusFilter', '')->assertSet('doneFilter', 'open')->assertSet('tagFilter', '');
     }
 
     public function test_views_are_private_unless_a_manager_shares_them(): void
@@ -132,7 +171,7 @@ class SavedViewsTest extends TestCase
 
     public function test_saving_under_the_same_name_updates_the_view(): void
     {
-        $this->list()->set('statusFilter', 'all')->set('saveName', 'Meine')->call('saveCurrentView');
+        $this->list()->set('doneFilter', 'all')->set('saveName', 'Meine')->call('saveCurrentView');
         $this->list()->set('assigneeFilter', 'me')->set('saveName', 'Meine')->call('saveCurrentView');
 
         $this->assertSame(1, SavedFilter::count());
@@ -177,7 +216,7 @@ class SavedViewsTest extends TestCase
         $viewer = User::factory()->create();
         $this->project->setRole($viewer, ProjectRole::Viewer);
 
-        $this->list($viewer)->set('statusFilter', 'all')->set('saveName', 'Alles')->call('saveCurrentView')->assertHasNoErrors();
+        $this->list($viewer)->set('doneFilter', 'all')->set('saveName', 'Alles')->call('saveCurrentView')->assertHasNoErrors();
 
         $this->assertSame($viewer->id, SavedFilter::firstOrFail()->user_id);
     }

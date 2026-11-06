@@ -10,6 +10,7 @@ use App\Models\Project;
 use App\Models\Tag;
 use App\Models\Task;
 use App\Models\User;
+use App\Notifications\TaskCompletionChanged;
 use App\Notifications\TaskStatusChanged;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -424,7 +425,7 @@ class RecurringTasksTest extends TestCase
         $this->assertSame(2, Task::where('title', 'Wochenbericht')->count());
     }
 
-    public function test_finishing_via_the_checkbox_notifies_with_the_right_statuses(): void
+    public function test_finishing_via_the_checkbox_notifies_about_the_completion(): void
     {
         Notification::fake();
         $person = User::factory()->admin()->create();
@@ -432,7 +433,8 @@ class RecurringTasksTest extends TestCase
 
         Livewire::test('pages::projects.show', ['project' => $this->project])->call('toggleDone', $task->id);
 
-        Notification::assertSentTo($person, TaskStatusChanged::class, fn (TaskStatusChanged $notification) => $notification->oldStatus === 'Offen' && $notification->newStatus === 'Erledigt');
+        Notification::assertSentTo($person, TaskCompletionChanged::class, fn (TaskCompletionChanged $notification) => $notification->completed);
+        Notification::assertNotSentTo($person, TaskStatusChanged::class);
     }
 
     public function test_the_activity_log_tells_what_happened(): void

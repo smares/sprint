@@ -49,6 +49,13 @@ class DoneOnTaskPageTest extends TestCase
         $this->assertSame($status, $this->task->fresh()->status_id);
     }
 
+    public function test_the_done_row_says_not_yet_while_the_task_is_open(): void
+    {
+        Livewire::test('pages::tasks.show', ['task' => $this->task])->assertSee('Noch nicht')->assertDontSee('Erledigt am')
+            ->call('toggleDoneByShortcut')->assertDontSee('Noch nicht')->assertSee('Erledigt am')
+            ->call('toggleDoneByShortcut')->assertSee('Noch nicht');
+    }
+
     public function test_the_done_row_names_the_day_on_the_clock_of_the_person(): void
     {
         $this->travelTo(now()->setDate(2026, 11, 6)->setTime(20, 30));

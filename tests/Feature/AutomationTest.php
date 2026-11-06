@@ -15,6 +15,8 @@ use App\Models\Task;
 use App\Models\User;
 use App\Notifications\AutomationNotice;
 use App\Notifications\TaskCommented;
+use App\Notifications\TaskCompletionChanged;
+use App\Notifications\TasksCompletionChanged;
 use App\Notifications\TaskStatusChanged;
 use App\Services\InboxTextService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -578,6 +580,40 @@ class AutomationTest extends TestCase
         $entry = $task->activities()->where('type', ActivityType::Completed)->sole();
         $this->assertNull($entry->user_id);
         $this->assertSame('Automatisierung „Gleich erledigt“', $entry->actorName());
+    }
+
+    public function test_the_task_that_triggered_a_complete_rule_says_it_is_done_without_loading_it_again(): void
+    {
+        $this->rule(AutomationTrigger::AssigneeChanged, $this->anna->id, [['type' => AutomationAction::Complete, 'value' => null]]);
+        $task = $this->task(['assignee_id' => null]);
+
+        $this->actingAs($this->bernd);
+        $task->assignTo($this->anna);
+
+        $this->assertTrue($task->isDone());
+        $this->assertSame([], $task->getDirty());
+        $this->assertTrue($task->fresh()->completed_at->equalTo($task->completed_at));
+    }
+
+    public function test_a_rule_completing_a_task_tells_the_people_in_its_own_name_and_is_never_bundled(): void
+    {
+        $this->rule(AutomationTrigger::AssigneeChanged, $this->anna->id, [['type' => AutomationAction::Complete, 'value' => null]], ['name' => 'Gleich erledigt']);
+        $first = $this->task(['assignee_id' => $this->bernd->id]);
+        $second = $this->task(['assignee_id' => $this->bernd->id]);
+        foreach ([$first, $second] as $task) {
+            $task->collaborators()->attach($this->bernd);
+        }
+        Notification::fake();
+
+        $this->actingAs($this->owner);
+        Task::bundlingStatusNotifications(function () use ($first, $second) {
+            $first->assignTo($this->anna);
+            $second->assignTo($this->anna);
+        });
+
+        Notification::assertSentToTimes($this->bernd, TaskCompletionChanged::class, 2);
+        Notification::assertSentTo($this->bernd, TaskCompletionChanged::class, fn (TaskCompletionChanged $notification) => $notification->completed && $notification->changedBy === 'Automatisierung „Gleich erledigt“');
+        Notification::assertNotSentTo($this->bernd, TasksCompletionChanged::class);
     }
 
     public function test_the_complete_action_keeps_the_time_of_a_task_that_is_finished_already(): void

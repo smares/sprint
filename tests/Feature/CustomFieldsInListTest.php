@@ -235,7 +235,11 @@ class CustomFieldsInListTest extends TestCase
         $page = $this->list()->assertSee('Offene Aufgaben');
         $page->set('doneFilter', 'all')->assertSee('Alle Aufgaben');
         $page->set('doneFilter', 'done')->assertSee('Erledigte Aufgaben');
-        $page->set('statusFilter', (string) $status->id)->assertSee('Erledigte Aufgaben · In Arbeit');
+
+        $page->set('statusFilter', (string) $status->id)->assertSee('Status: In Arbeit');
+        $this->assertSame(['Status: In Arbeit'], $page->instance()->activeFilters->pluck('label')->all());
+
+        $page->call('clearFilter', 'status')->assertSet('statusFilter', '')->assertDontSee('Status: In Arbeit');
     }
 
     public function test_the_filter_count_only_counts_non_default_filters(): void

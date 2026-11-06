@@ -9,7 +9,7 @@ use App\Models\Task;
 use App\Models\User;
 use App\Notifications\DailyDigest;
 use App\Notifications\TaskCommented;
-use App\Notifications\TaskStatusChanged;
+use App\Notifications\TaskCompletionChanged;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
@@ -93,7 +93,7 @@ class PlannedAbsenceTest extends TestCase
         Comment::factory()->for($task)->create(['user_id' => auth()->id(), 'body' => 'Bitte ansehen']);
         $task->markDone();
 
-        foreach ([TaskCommented::class, TaskStatusChanged::class] as $notification) {
+        foreach ([TaskCommented::class, TaskCompletionChanged::class] as $notification) {
             Notification::assertSentTo($away, $notification, fn ($sent, array $channels) => $channels === ['database']);
             Notification::assertSentTo($present, $notification, fn ($sent, array $channels) => $channels === ['mail', 'database']);
         }

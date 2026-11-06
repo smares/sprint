@@ -8,6 +8,7 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
 use App\Notifications\TaskCommented;
+use App\Notifications\TaskCompletionChanged;
 use App\Notifications\TaskStatusChanged;
 use App\Notifications\UserMentioned;
 use App\Services\InboxTextService;
@@ -178,7 +179,7 @@ class LocalizationTest extends TestCase
         Notification::fake();
         $task->markDone();
 
-        Notification::assertSentTo($english, TaskStatusChanged::class, fn ($notification, $channels, $notifiable) => $notification->locale === 'en' || $notifiable->preferredLocale() === 'en');
+        Notification::assertSentTo($english, TaskCompletionChanged::class, fn ($notification, $channels, $notifiable) => $notification->locale === 'en' || $notifiable->preferredLocale() === 'en');
         $this->assertSame('en', $english->preferredLocale());
     }
 

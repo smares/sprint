@@ -48,7 +48,7 @@ class InboxTest extends TestCase
         $summaries = $this->me->notifications()->get()->map(fn (DatabaseNotification $notification) => InboxTextService::sentence($notification))->all();
 
         $this->assertContains('Otto hat kommentiert', $summaries);
-        $this->assertContains('Otto hat den Status von „Offen“ auf „Erledigt“ geändert', $summaries);
+        $this->assertContains('Otto hat die Aufgabe erledigt', $summaries);
         $this->assertContains('Otto hat dich in einem Kommentar erwähnt', $summaries);
         $this->assertTrue($this->me->notifications()->where('data->task_id', $this->task->id)->exists());
     }

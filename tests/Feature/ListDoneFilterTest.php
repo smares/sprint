@@ -77,18 +77,35 @@ class ListDoneFilterTest extends TestCase
             ->assertSee('Delta laufend fertig')->assertDontSee('Beta laufend');
     }
 
-    public function test_the_label_names_what_is_shown(): void
+    public function test_the_done_menu_sits_in_the_toolbar_and_names_what_is_shown(): void
+    {
+        $page = $this->list()->assertSee('Offene Aufgaben')->assertSee('Alle Aufgaben')->assertSee('Erledigte Aufgaben')
+            ->assertSeeHtml('aria-label="Aufgaben: Offene Aufgaben"');
+
+        $page->set('doneFilter', 'done')->assertSeeHtml('aria-label="Aufgaben: Erledigte Aufgaben"');
+        $page->set('doneFilter', 'all')->assertSeeHtml('aria-label="Aufgaben: Alle Aufgaben"');
+    }
+
+    public function test_the_filter_modal_has_no_select_for_the_done_filter_any_more(): void
+    {
+        $html = $this->list()->html();
+
+        $this->assertSame(1, substr_count($html, 'wire:model.live="doneFilter"'), 'only the toolbar menu is bound to the done filter');
+        $this->assertSame(1, substr_count($html, 'wire:model.live="statusFilter"'));
+    }
+
+    public function test_the_status_filter_shows_as_a_chip_that_removes_it(): void
     {
         $inProgress = $this->project->statuses()->skip(1)->firstOrFail();
 
-        $page = $this->list();
-        $this->assertSame('Offene Aufgaben', $page->instance()->shownLabel);
+        $page = $this->list()->set('doneFilter', 'all')->set('statusFilter', (string) $inProgress->id);
 
-        $page->set('doneFilter', 'done')->set('statusFilter', (string) $inProgress->id);
-        $this->assertSame("Erledigte Aufgaben · {$inProgress->name}", $page->instance()->shownLabel);
+        $this->assertSame(["Status: {$inProgress->name}"], $page->instance()->activeFilters->pluck('label')->all());
+        $this->assertSame('status', $page->instance()->activeFilters->first()['key']);
+        $page->assertSee("Status: {$inProgress->name}")->assertSee('Beta laufend')->assertDontSee('Alpha frisch');
 
-        $page->set('statusFilter', '')->set('doneFilter', 'all');
-        $this->assertSame('Alle Aufgaben', $page->instance()->shownLabel);
+        $page->call('clearFilter', 'status')->assertSet('statusFilter', '')->assertSet('doneFilter', 'all')->assertSee('Alpha frisch');
+        $this->assertSame(0, $page->instance()->activeFilters->count());
     }
 
     public function test_the_address_takes_the_done_filter(): void

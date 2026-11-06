@@ -160,7 +160,7 @@ class BulkTaskActionsTest extends TestCase
     {
         $a = $this->task('Eins');
 
-        $this->list([$a])->set('statusFilter', 'all')->assertSet('selected', []);
+        $this->list([$a])->set('doneFilter', 'all')->assertSet('selected', []);
         $this->list([$a])->call('resetFilters')->assertSet('selected', []);
         $this->list([$a])->call('clearFilter', 'assignee')->assertSet('selected', []);
     }
@@ -168,10 +168,13 @@ class BulkTaskActionsTest extends TestCase
     public function test_only_tasks_that_are_still_shown_by_the_filters_count(): void
     {
         $open = $this->task('Offen');
-        $done = $this->task('Fertig', ['status_id' => $this->project->doneStatus()->id]);
+        $done = Task::factory()->for($this->project)->done()->create(['title' => 'Fertig']);
 
         $page = $this->list([$open, $done]);
         $this->assertSame([$open->id], $page->instance()->selectedIds);
+
+        $page->set('doneFilter', 'all')->set('selected', [(string) $open->id, (string) $done->id]);
+        $this->assertEqualsCanonicalizing([$open->id, $done->id], $page->instance()->selectedIds);
     }
 
     public function test_foreign_subtasks_and_headings_cannot_be_selected(): void
@@ -202,7 +205,25 @@ class BulkTaskActionsTest extends TestCase
         $this->assertTrue($a->fresh()->isDone());
         $this->assertTrue($b->fresh()->isDone());
         $this->assertFalse($c->fresh()->isDone());
-        $this->assertContains('hat den Status von „Offen“ auf „Erledigt“ geändert', $a->activities()->get()->map->sentence()->all());
+        $this->assertContains('hat die Aufgabe erledigt', $a->activities()->get()->map->sentence()->all());
+    }
+
+    public function test_completing_leaves_the_status_alone_and_skips_tasks_that_are_done_already(): void
+    {
+        $inWork = $this->project->statuses()->where('name', 'In Arbeit')->firstOrFail();
+        $a = $this->task('Eins');
+        $b = $this->task('Zwei', ['status_id' => $inWork->id]);
+        $finished = Task::factory()->for($this->project)->done()->create(['title' => 'Fertig', 'completed_at' => '2026-10-01 12:00:00']);
+        $statusOfA = $a->status_id;
+
+        $this->list([$a, $b, $finished])->set('doneFilter', 'all')->set('selected', [(string) $a->id, (string) $b->id, (string) $finished->id])->call('bulkComplete');
+
+        $this->assertSame($statusOfA, $a->fresh()->status_id);
+        $this->assertSame($inWork->id, $b->fresh()->status_id);
+        $this->assertTrue($a->fresh()->isDone());
+        $this->assertTrue($b->fresh()->isDone());
+        $this->assertSame('2026-10-01 12:00:00', $finished->fresh()->completed_at->toDateTimeString());
+        $this->assertNotContains('hat die Aufgabe erledigt', $finished->activities()->get()->map->sentence()->all());
     }
 
     public function test_status_assignee_and_due_date_are_changed_together_and_the_rest_stays(): void
@@ -232,7 +253,7 @@ class BulkTaskActionsTest extends TestCase
         $this->project->setRole($anna, ProjectRole::Editor);
         $task = $this->task('Eins', ['assignee_id' => $anna->id, 'due_date' => '2026-12-01']);
 
-        $this->list([$task])->set('bulkStatus', (string) $this->project->doneStatus()->id)->call('applyBulkChanges');
+        $this->list([$task])->set('bulkStatus', (string) $this->project->statuses()->skip(1)->firstOrFail()->id)->call('applyBulkChanges');
 
         $task->refresh();
         $this->assertSame($anna->id, $task->assignee_id);
@@ -296,7 +317,7 @@ class BulkTaskActionsTest extends TestCase
         $task = $this->task('Eins');
 
         $this->list([$task])->call('applyBulkChanges')->assertHasErrors('bulkStatus');
-        $this->list()->set('bulkStatus', (string) $this->project->doneStatus()->id)->call('applyBulkChanges')->assertHasErrors('selected');
+        $this->list()->set('bulkStatus', (string) $this->project->statuses()->skip(1)->firstOrFail()->id)->call('applyBulkChanges')->assertHasErrors('selected');
         $this->list()->call('bulkComplete')->assertHasErrors('selected');
 
         $this->assertFalse($task->fresh()->isDone());

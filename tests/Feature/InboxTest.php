@@ -42,7 +42,7 @@ class InboxTest extends TestCase
         $this->actingAs($this->other);
 
         Comment::factory()->create(['task_id' => $this->task->id, 'user_id' => $this->other->id, 'body' => 'Bitte prüfen']);
-        $this->task->update(['status_id' => $this->project->doneStatus()->id]);
+        $this->task->markDone();
         Comment::factory()->create(['task_id' => $this->task->id, 'user_id' => $this->other->id, 'body' => 'Hallo @['.$this->me->name.'](user:'.$this->me->id.')']);
 
         $summaries = $this->me->notifications()->get()->map(fn (DatabaseNotification $notification) => InboxTextService::sentence($notification))->all();

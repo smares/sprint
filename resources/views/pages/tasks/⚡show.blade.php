@@ -200,14 +200,17 @@ new class extends Component
             return;
         }
 
-        $before = $this->storedStateRulesChange(AutomationTrigger::StatusChanged);
+        // Only finishing can fire a rule; the status stays as it is, so what was chosen in the form and not saved yet stays too
+        $finishes = ! $this->task->isDone();
+        $before = $finishes ? $this->storedStateRulesChange(AutomationTrigger::Completed) : null;
 
         $this->task->toggleDone();
-        $this->statusId = (string) $this->task->status_id;
         $this->fillRepeatRule();
         $this->announceChange();
 
-        $this->askToReloadWhenRulesChangedTask($before, AutomationTrigger::StatusChanged, ['status']);
+        if ($finishes) {
+            $this->askToReloadWhenRulesChangedTask($before, AutomationTrigger::Completed, []);
+        }
     }
 
     /**
@@ -1431,6 +1434,14 @@ new class extends Component
                         <flux:select.option value="{{ $status->id }}">{{ $status->name }}</flux:select.option>
                     @endforeach
                 </flux:select>
+            </x-task-field>
+
+            {{-- Finishing is not a status: the check saves at once, like the "e" key, and leaves the form as it is --}}
+            <x-task-field :label="__('Done')" icon="check-circle">
+                <div class="flex min-h-8 items-center gap-2">
+                    <x-task-done-button :task="$task" :editable="$this->canEdit" action="toggleDoneByShortcut" />
+                    <flux:text size="sm">{{ $task->isDone() ? __('Done on :date', ['date' => auth()->user()->inTimezone($task->completed_at)->isoFormat('L')]) : __('Open') }}</flux:text>
+                </div>
             </x-task-field>
 
             <x-task-field :label="__('Assignee')" icon="user" lazy="people">

@@ -23,6 +23,9 @@ trait FiltersDoneTasks
         if (property_exists($this, 'statusFilter') && in_array($this->statusFilter, ['open', 'all'], true)) {
             if (! request()->query->has('done')) {
                 $this->doneFilter = $this->statusFilter;
+
+                // The address says it, so a default saved view does not take it back (ManagesSavedViews keeps what the address names)
+                request()->query->set('done', $this->doneFilter);
             }
 
             $this->statusFilter = '';

@@ -299,6 +299,7 @@
     "Do not disturb saved.": "„Bitte nicht stören“ gespeichert.",
     "Do you want to stop receiving emails about “:task” (:project), :name?": "Möchtest du keine E-Mails mehr zu „:task“ (:project) bekommen, :name?",
     "Done": "Erledigt",
+    "Done on :date": "Erledigt am :date",
     "Done on time": "Termintreue",
     "Done only": "Nur erledigte",
     "Done tasks": "Erledigte Aufgaben",

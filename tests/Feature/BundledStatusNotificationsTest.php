@@ -111,7 +111,7 @@ class BundledStatusNotificationsTest extends TestCase
         Notification::assertNotSentTo($this->bert, TasksStatusChanged::class);
         Notification::assertNotSentTo($this->bert, TaskStatusChanged::class);
 
-        $this->bulk([$a, $b])->set('bulkStatus', (string) $this->project->doneStatus()->id)->call('applyBulkChanges');
+        $this->bulk([$a, $b])->set('bulkStatus', (string) $this->project->statuses()->skip(1)->firstOrFail()->id)->call('applyBulkChanges');
         Notification::assertSentToTimes($this->bert, TasksStatusChanged::class, 1);
     }
 
@@ -120,10 +120,46 @@ class BundledStatusNotificationsTest extends TestCase
         $task = $this->task('Eins');
         Notification::fake();
 
-        $task->update(['status_id' => $this->project->doneStatus()->id]);
+        $task->toggleDone();
 
-        Notification::assertSentTo($this->anna, TaskStatusChanged::class);
+        Notification::assertSentTo($this->anna, TaskStatusChanged::class, fn (TaskStatusChanged $notification) => $notification->oldStatus === 'Offen' && $notification->newStatus === 'Erledigt' && $notification->changedBy === 'Otto');
         Notification::assertNotSentTo($this->anna, TasksStatusChanged::class);
+    }
+
+    public function test_reopening_a_task_tells_that_it_is_open_again(): void
+    {
+        $task = $this->task('Eins', ['completed_at' => now()]);
+        Notification::fake();
+
+        $task->toggleDone();
+
+        Notification::assertSentTo($this->anna, TaskStatusChanged::class, fn (TaskStatusChanged $notification) => $notification->oldStatus === 'Erledigt' && $notification->newStatus === 'Offen');
+    }
+
+    public function test_a_real_status_change_sends_its_own_message_and_finishing_does_not_change_the_status(): void
+    {
+        $task = $this->task('Eins');
+        $inWork = $this->project->statuses()->skip(1)->firstOrFail();
+        Notification::fake();
+
+        $task->update(['status_id' => $inWork->id]);
+
+        Notification::assertSentToTimes($this->anna, TaskStatusChanged::class, 1);
+        Notification::assertSentTo($this->anna, TaskStatusChanged::class, fn (TaskStatusChanged $notification) => $notification->newStatus === $inWork->name && $notification->oldStatus !== 'Erledigt');
+
+        $task->update(['status_id' => $this->project->defaultStatus()->id, 'completed_at' => now()]);
+
+        Notification::assertSentToTimes($this->anna, TaskStatusChanged::class, 3);
+    }
+
+    public function test_the_actor_is_not_told_about_finishing(): void
+    {
+        $task = $this->task('Eins', ['assignee_id' => $this->actor->id]);
+        Notification::fake();
+
+        $task->toggleDone();
+
+        Notification::assertNothingSent();
     }
 
     public function test_a_failure_during_bundling_does_not_swallow_later_notifications(): void
@@ -138,7 +174,7 @@ class BundledStatusNotificationsTest extends TestCase
         } catch (RuntimeException) {
         }
 
-        $task->update(['status_id' => $this->project->doneStatus()->id]);
+        $task->toggleDone();
 
         Notification::assertSentTo($this->anna, TaskStatusChanged::class);
     }

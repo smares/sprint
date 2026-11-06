@@ -34,7 +34,9 @@ class CelebrationTest extends TestCase
 
     private function task(bool $done = false): Task
     {
-        return Task::factory()->for($this->project)->create(['status_id' => $done ? $this->project->doneStatus()->id : $this->project->defaultStatus()->id]);
+        $factory = Task::factory()->for($this->project);
+
+        return ($done ? $factory->done() : $factory)->create();
     }
 
     public function test_completing_a_task_on_the_project_page_sends_the_unicorn(): void
@@ -132,7 +134,7 @@ class CelebrationTest extends TestCase
             'created_by' => $creator->id,
             'trigger' => AutomationTrigger::AssigneeChanged,
             'trigger_value' => null,
-            'actions' => [['type' => AutomationAction::SetStatus->value, 'value' => $this->project->doneStatus()->id]],
+            'actions' => [['type' => AutomationAction::Complete->value, 'value' => null]],
         ]);
         $task = $this->task();
 

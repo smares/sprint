@@ -376,35 +376,35 @@ class RecurringTasksTest extends TestCase
         $this->assertTrue($heading->fresh()->is_section);
     }
 
-    public function test_it_works_from_the_list_the_board_and_the_task_page(): void
+    public function test_it_works_from_the_list_the_task_page_and_the_subtask_checkbox(): void
     {
         $viaList = $this->recurring(['title' => 'Liste']);
         Livewire::test('pages::projects.show', ['project' => $this->project])->call('toggleDone', $viaList->id);
 
-        $viaBoard = $this->recurring(['title' => 'Board']);
-        Livewire::test('pages::projects.board', ['project' => $this->project])
-            ->call('moveTask', $viaBoard->id, 0, (string) $this->project->doneStatus()->id);
-
         $viaPage = $this->recurring(['title' => 'Seite']);
-        Livewire::test('pages::tasks.show', ['task' => $viaPage])
-            ->set('statusId', (string) $this->project->doneStatus()->id)->call('save');
+        Livewire::test('pages::tasks.show', ['task' => $viaPage])->dispatch('shortcut-toggle-done');
 
-        foreach (['Liste', 'Board', 'Seite'] as $title) {
+        $viaSubtaskCheckbox = $this->recurring(['title' => 'Unteraufgabe']);
+        $parent = Task::factory()->for($this->project)->create();
+        $viaSubtaskCheckbox->update(['parent_id' => $parent->id]);
+        Livewire::test('pages::tasks.show', ['task' => $parent])->call('toggleSubtask', $viaSubtaskCheckbox->id);
+
+        foreach (['Liste', 'Seite', 'Unteraufgabe'] as $title) {
             $this->assertSame(2, Task::where('title', $title)->count(), $title);
         }
     }
 
-    public function test_the_form_does_not_write_the_rule_back_after_finishing_on_the_task_page(): void
+    public function test_moving_a_task_to_another_status_does_not_finish_it_or_repeat_it(): void
     {
         $task = $this->recurring();
 
         Livewire::test('pages::tasks.show', ['task' => $task])
-            ->set('statusId', (string) $this->project->doneStatus()->id)->call('save')
-            ->assertSet('repeatUnit', '')
-            ->set('description', 'Nachgetragen')->call('save')->assertHasNoErrors();
+            ->set('statusId', (string) $this->project->statuses()->skip(1)->firstOrFail()->id)->call('save')
+            ->assertHasNoErrors();
 
-        $this->assertNull($task->fresh()->repeat_unit);
-        $this->assertSame(2, Task::where('title', 'Wochenbericht')->count());
+        $this->assertFalse($task->fresh()->isDone());
+        $this->assertNotNull($task->fresh()->repeat_unit);
+        $this->assertSame(1, Task::where('title', 'Wochenbericht')->count());
     }
 
     public function test_the_form_does_not_write_the_rule_back_after_finishing_with_the_shortcut(): void

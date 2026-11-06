@@ -55,7 +55,7 @@ class WorkloadTest extends TestCase
         $this->due($this->anna, '2026-11-01', ['title' => 'Letzter Tag']);
         $this->due($this->anna, '2026-11-02', ['title' => 'Zu weit']);
         $this->due($this->anna, null, ['title' => 'Irgendwann']);
-        $this->due($this->anna, '2026-10-09', ['title' => 'Erledigt'])->update(['status_id' => $this->project->doneStatus()->id]);
+        $this->due($this->anna, '2026-10-09', ['title' => 'Erledigt'])->markDone();
         $this->due($this->anna, '2026-10-09', ['title' => 'Abschnitt', 'is_section' => true]);
 
         $load = app(WorkloadService::class)->forPeople(new Collection([$this->anna]), $this->me)[$this->anna->id];

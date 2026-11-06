@@ -109,7 +109,7 @@ class TaskNotificationsTest extends TestCase
     {
         $section = Task::factory()->for($this->task->project)->create(['assignee_id' => $this->assignee->id, 'is_section' => true]);
 
-        $section->update(['status_id' => $this->task->project->doneStatus()->id]);
+        $section->markDone();
 
         Notification::assertNothingSent();
     }

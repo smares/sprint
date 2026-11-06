@@ -496,7 +496,7 @@ new class extends Component
         // (finished tasks included)
         $status = (string) ($settings['status'] ?? '');
         $this->statusFilter = ctype_digit($status) && $this->statuses->contains('id', (int) $status) ? $status : '';
-        $this->doneFilter = $this->validDoneFilter($settings['done'] ?? (in_array($status, ['open', 'all'], true) ? $status : (ctype_digit($status) ? 'all' : null)), 'open');
+        $this->doneFilter = $this->validDoneFilter($settings['done'] ?? (in_array($status, ['open', 'all'], true) ? $status : ($this->statusFilter !== '' ? 'all' : null)), 'open');
 
         $assignee = (string) ($settings['assignee'] ?? '');
         $this->assigneeFilter = $assignee === 'me' || ($assignee !== '' && ctype_digit($assignee) && $this->assignableUsers->contains('id', (int) $assignee)) ? $assignee : '';

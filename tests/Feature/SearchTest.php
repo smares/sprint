@@ -175,7 +175,7 @@ class SearchTest extends TestCase
     {
         $other = Project::factory()->create();
         $this->task('Plan offen');
-        $this->task('Plan fertig', ['status_id' => $this->project->doneStatus()->id]);
+        $this->task('Plan fertig', ['completed_at' => now()]);
         $this->task('Plan meins', ['assignee_id' => $this->user->id]);
         $collab = $this->task('Plan geteilt');
         $collab->collaborators()->attach($this->user);
@@ -199,7 +199,7 @@ class SearchTest extends TestCase
         Comment::factory()->create(['task_id' => $commented->id, 'user_id' => $this->user->id, 'body' => 'Kunde wünscht Rückruf']);
         $attached = $this->task('Unterlagen');
         Attachment::factory()->create(['task_id' => $attached->id, 'name' => 'Steuer.pdf']);
-        $this->task('Plan fertig', ['status_id' => $this->project->doneStatus()->id]);
+        $this->task('Plan fertig', ['completed_at' => now()]);
         $this->task('Plan 100% sicher_');
 
         $this->assertSame(['Angebot schreiben'], $this->titles('angebot'));
@@ -261,7 +261,7 @@ class SearchTest extends TestCase
     {
         $this->task('Budget planen', ['assignee_id' => $this->user->id]);
         $this->task('Allgemeines', ['description' => 'Wir müssen über das Budget der Abteilung sprechen']);
-        $this->task('Budget erledigt', ['status_id' => $this->project->doneStatus()->id]);
+        $this->task('Budget erledigt', ['completed_at' => now()]);
 
         Livewire::test('pages::search')
             ->assertSee('Gib einen Suchbegriff ein')

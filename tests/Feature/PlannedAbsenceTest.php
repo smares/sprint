@@ -91,7 +91,7 @@ class PlannedAbsenceTest extends TestCase
         $this->actingAs(User::factory()->admin()->create());
 
         Comment::factory()->for($task)->create(['user_id' => auth()->id(), 'body' => 'Bitte ansehen']);
-        $task->update(['status_id' => $task->project->doneStatus()->id]);
+        $task->markDone();
 
         foreach ([TaskCommented::class, TaskStatusChanged::class] as $notification) {
             Notification::assertSentTo($away, $notification, fn ($sent, array $channels) => $channels === ['database']);

@@ -48,7 +48,8 @@ class KeyboardShortcutsTest extends TestCase
     {
         $page = Livewire::test('pages::tasks.show', ['task' => $this->task, 'panel' => true]);
 
-        $page->dispatch('shortcut-toggle-done')->assertDispatched('task-changed')->assertSet('statusId', (string) $this->project->doneStatus()->id);
+        $page->dispatch('shortcut-toggle-done')->assertDispatched('task-changed')
+            ->assertSet('statusId', (string) $this->task->status_id);
         $this->assertTrue($this->task->fresh()->isDone());
 
         $page->dispatch('shortcut-toggle-done');

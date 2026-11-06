@@ -216,7 +216,7 @@ class SelectionInViewsTest extends TestCase
             $this->assertFalse($inViewed->fresh()->isDone());
             $this->assertFalse($notMine->fresh()->isDone());
 
-            $mine->fresh()->update(['status_id' => $this->project->defaultStatus()->id]);
+            $mine->fresh()->update(['completed_at' => null]);
         }
     }
 

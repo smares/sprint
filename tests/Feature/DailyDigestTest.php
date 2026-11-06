@@ -74,7 +74,7 @@ class DailyDigestTest extends TestCase
 
     public function test_finished_tasks_headings_muted_tasks_and_archived_projects_are_left_out(): void
     {
-        $this->task('Erledigt', '2026-10-07', ['status_id' => $this->project->doneStatus()->id]);
+        $this->task('Erledigt', '2026-10-07', ['completed_at' => now()]);
         $this->task('Überschrift', '2026-10-07', ['is_section' => true]);
         $this->task('Stumm', '2026-10-07')->setMutedBy($this->user, true);
         $archived = Project::factory()->create();

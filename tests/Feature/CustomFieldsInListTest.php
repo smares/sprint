@@ -208,7 +208,8 @@ class CustomFieldsInListTest extends TestCase
         $tag = Tag::factory()->for($this->project)->create(['name' => 'Kunde A']);
 
         $page = $this->list()
-            ->assertSet('statusFilter', 'open')
+            ->assertSet('statusFilter', '')
+            ->assertSet('doneFilter', 'open')
             ->set('assigneeFilter', 'me')
             ->set("fieldFilters.{$this->priority->id}", (string) $option->id)
             ->set('tagFilter', (string) $tag->id);
@@ -223,22 +224,23 @@ class CustomFieldsInListTest extends TestCase
         $page->call('clearFilter', 'assignee')->assertSet('assigneeFilter', '');
         $this->assertSame(0, $page->instance()->activeFilters->count());
 
-        $page->set('statusFilter', 'all')->set('assigneeFilter', 'me')->call('resetFilters')
-            ->assertSet('statusFilter', 'open')->assertSet('assigneeFilter', '')->assertSet('fieldFilters', []);
+        $page->set('doneFilter', 'all')->set('statusFilter', (string) $this->project->defaultStatus()->id)->set('assigneeFilter', 'me')->call('resetFilters')
+            ->assertSet('statusFilter', '')->assertSet('doneFilter', 'open')->assertSet('assigneeFilter', '')->assertSet('fieldFilters', []);
     }
 
     public function test_the_status_chip_names_the_current_status_filter(): void
     {
         $status = $this->project->statuses()->where('name', 'In Arbeit')->firstOrFail();
 
-        $page = $this->list()->assertSee('Offene');
-        $page->set('statusFilter', 'all')->assertSee('Alle Status');
-        $page->set('statusFilter', (string) $status->id)->assertSee('In Arbeit');
+        $page = $this->list()->assertSee('Offene Aufgaben');
+        $page->set('doneFilter', 'all')->assertSee('Alle Aufgaben');
+        $page->set('doneFilter', 'done')->assertSee('Erledigte Aufgaben');
+        $page->set('statusFilter', (string) $status->id)->assertSee('Erledigte Aufgaben · In Arbeit');
     }
 
     public function test_the_filter_count_only_counts_non_default_filters(): void
     {
-        $this->assertSame(0, $this->list()->set('statusFilter', 'all')->instance()->activeFilters->count());
+        $this->assertSame(0, $this->list()->set('doneFilter', 'all')->instance()->activeFilters->count());
         $this->assertSame(1, $this->list()->set('assigneeFilter', 'me')->instance()->activeFilters->count());
     }
 }

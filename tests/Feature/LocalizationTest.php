@@ -176,7 +176,7 @@ class LocalizationTest extends TestCase
         $this->actingAs($author);
 
         Notification::fake();
-        $task->update(['status_id' => $project->doneStatus()->id]);
+        $task->markDone();
 
         Notification::assertSentTo($english, TaskStatusChanged::class, fn ($notification, $channels, $notifiable) => $notification->locale === 'en' || $notifiable->preferredLocale() === 'en');
         $this->assertSame('en', $english->preferredLocale());

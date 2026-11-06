@@ -60,7 +60,7 @@ class PaginationTest extends TestCase
         $this->tasks(120);
         $list = Livewire::test('pages::projects.show', ['project' => $this->project])->call('loadMore')->assertSee('100 von 120');
 
-        $list->set('statusFilter', 'all')->assertSee('50 von 120');
+        $list->set('doneFilter', 'all')->assertSee('50 von 120');
         $list->call('loadMore')->call('sort', 'title')->assertSee('50 von 120');
         $list->call('loadMore')->set('assigneeFilter', 'me')->assertDontSee('Mehr laden');
         $list->call('loadMore')->call('resetFilters')->assertSee('50 von 120');
@@ -69,12 +69,13 @@ class PaginationTest extends TestCase
     public function test_the_total_follows_the_filters(): void
     {
         $this->tasks(60);
-        $this->tasks(70, ['status_id' => $this->project->doneStatus()->id, 'title' => 'Erledigt']);
+        $this->tasks(70, ['completed_at' => now(), 'title' => 'Erledigt']);
 
         $open = Livewire::test('pages::projects.show', ['project' => $this->project]);
         $this->assertSame(60, $open->instance()->totalTasks);
 
-        $this->assertSame(130, $open->set('statusFilter', 'all')->instance()->totalTasks);
+        $this->assertSame(130, $open->set('doneFilter', 'all')->instance()->totalTasks);
+        $this->assertSame(70, $open->set('doneFilter', 'done')->instance()->totalTasks);
     }
 
     public function test_the_page_size_cannot_be_raised_from_the_browser(): void

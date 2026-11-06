@@ -251,7 +251,109 @@ class CalendarAndTimelineTest extends TestCase
         $this->get(route('projects.calendar', $this->project))->assertOk()
             ->assertSeeInOrder(['Di, 20.10.2026', 'Termin'])
             ->assertSee('In der Liste zeigen')
-            ->assertSee(route('projects.show', [$this->project, 'dates' => 'none', 'status' => 'all']));
+            ->assertSee(route('projects.show', [$this->project, 'dates' => 'none', 'done' => 'all']));
+    }
+
+    private function doneAndOpenTasks(): void
+    {
+        $this->task('Offene Sache', '2026-10-08', '2026-10-09');
+        $this->task('Fertige Sache', '2026-10-08', '2026-10-09', ['completed_at' => now()]);
+        $this->task('Offen ohne Datum', null, null);
+        $this->task('Fertig ohne Datum', null, null, ['completed_at' => now()]);
+        $this->task('Fertig ohne Datum 2', null, null, ['completed_at' => now()]);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function calendarTitles(mixed $calendar): array
+    {
+        return collect($calendar->instance()->weeks)->flatten(1)->flatMap(fn ($day) => $day['tasks']->pluck('title'))->unique()->sort()->values()->all();
+    }
+
+    public function test_the_calendar_shows_all_tasks_by_default_and_the_done_filter_limits_them(): void
+    {
+        $this->doneAndOpenTasks();
+
+        $calendar = Livewire::test('pages::projects.calendar', ['project' => $this->project])->assertSet('doneFilter', 'all');
+        $this->assertSame(['Fertige Sache', 'Offene Sache'], $this->calendarTitles($calendar));
+        $this->assertSame(3, $calendar->instance()->undated);
+
+        $calendar->set('doneFilter', 'open');
+        $this->assertSame(['Offene Sache'], $this->calendarTitles($calendar));
+        $this->assertSame(1, $calendar->instance()->undated);
+
+        $calendar->set('doneFilter', 'done');
+        $this->assertSame(['Fertige Sache'], $this->calendarTitles($calendar));
+        $this->assertSame(2, $calendar->instance()->undated);
+    }
+
+    public function test_the_calendar_offers_the_done_filter_and_the_address_sets_it(): void
+    {
+        $this->doneAndOpenTasks();
+
+        $this->get(route('projects.calendar', $this->project))->assertOk()
+            ->assertSee('Alle Aufgaben')->assertSee('Offene Aufgaben')->assertSee('Erledigte Aufgaben')
+            ->assertSee('Offene Sache')->assertSee('Fertige Sache');
+        $this->get(route('projects.calendar', [$this->project, 'done' => 'open']))->assertOk()
+            ->assertSee('Offene Sache')->assertDontSee('Fertige Sache');
+        $this->get(route('projects.calendar', [$this->project, 'done' => 'done']))->assertOk()
+            ->assertSee('Fertige Sache')->assertDontSee('Offene Sache');
+    }
+
+    public function test_done_tasks_stand_dimmed_and_struck_through_in_the_calendar(): void
+    {
+        $this->task('Offene Sache', '2026-10-08', '2026-10-08');
+        $this->task('Fertige Sache', '2026-10-09', '2026-10-09', ['completed_at' => now()]);
+
+        $html = Livewire::test('pages::projects.calendar', ['project' => $this->project])->html();
+
+        $this->assertMatchesRegularExpression('/line-through opacity-60[^>]*>Fertige Sache</', $html);
+        $this->assertDoesNotMatchRegularExpression('/line-through opacity-60[^>]*>Offene Sache</', $html);
+    }
+
+    public function test_the_calendar_links_undated_tasks_to_the_list_with_all_of_them(): void
+    {
+        $this->task('Fertig ohne Datum', null, null, ['completed_at' => now()]);
+
+        Livewire::test('pages::projects.calendar', ['project' => $this->project])->set('doneFilter', 'done')
+            ->assertSee('In der Liste zeigen')
+            ->assertSeeHtml('done=all');
+        Livewire::test('pages::projects.calendar', ['project' => $this->project])->set('doneFilter', 'open')
+            ->assertDontSee('In der Liste zeigen');
+    }
+
+    public function test_the_timeline_shows_all_tasks_by_default_and_the_done_filter_limits_them(): void
+    {
+        $this->doneAndOpenTasks();
+        $this->task('Weit weg offen', '2027-03-01', '2027-03-02');
+        $this->task('Weit weg fertig', '2027-03-01', '2027-03-02', ['completed_at' => now()]);
+
+        $timeline = Livewire::test('pages::projects.timeline', ['project' => $this->project])->assertSet('doneFilter', 'all');
+        $this->assertEqualsCanonicalizing(['Offene Sache', 'Fertige Sache'], $timeline->instance()->rows->pluck('task.title')->all());
+        $this->assertSame(['dated' => 2, 'undated' => 3], $timeline->instance()->outside);
+
+        $timeline->set('doneFilter', 'open');
+        $this->assertSame(['Offene Sache'], $timeline->instance()->rows->pluck('task.title')->all());
+        $this->assertSame(['dated' => 1, 'undated' => 1], $timeline->instance()->outside);
+
+        $timeline->set('doneFilter', 'done');
+        $this->assertSame(['Fertige Sache'], $timeline->instance()->rows->pluck('task.title')->all());
+        $this->assertSame(['dated' => 1, 'undated' => 2], $timeline->instance()->outside);
+    }
+
+    public function test_the_timeline_offers_the_done_filter_and_links_undated_tasks_with_all_of_them(): void
+    {
+        $this->doneAndOpenTasks();
+
+        $this->get(route('projects.timeline', $this->project))->assertOk()
+            ->assertSee('Alle Aufgaben')->assertSee('Offene Aufgaben')->assertSee('Erledigte Aufgaben')
+            ->assertSee('In der Liste zeigen')
+            ->assertSee(route('projects.show', [$this->project, 'dates' => 'none', 'done' => 'all']));
+        $this->get(route('projects.timeline', [$this->project, 'done' => 'open']))->assertOk()
+            ->assertSee('Offene Sache')->assertDontSee('Fertige Sache');
+        $this->get(route('projects.timeline', [$this->project, 'done' => 'done']))->assertOk()
+            ->assertSee('Fertige Sache')->assertDontSee('Offene Sache');
     }
 
     public function test_every_view_links_to_the_other_views_in_the_sidebar(): void

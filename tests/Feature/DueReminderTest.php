@@ -58,7 +58,7 @@ class DueReminderTest extends TestCase
     public function test_done_muted_archived_and_unwanted_ones_are_left_out(): void
     {
         Notification::fake();
-        $this->taskDue('2026-10-09', ['status_id' => $this->project->doneStatus()->id]);
+        $this->taskDue('2026-10-09', ['completed_at' => now()]);
         $this->taskDue('2026-10-09', ['is_section' => true]);
         $muted = $this->taskDue('2026-10-09');
         $muted->notificationMutes()->attach($this->anna);

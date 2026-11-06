@@ -33,7 +33,7 @@ RUN --mount=type=bind,from=composer,source=/usr/bin/composer,target=/usr/bin/com
     composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-interaction --no-progress
 
 # Front-end assets; Tailwind reads the Flux styles and Blade views from vendor.
-FROM mirror.gcr.io/library/node:26-bookworm-slim@sha256:28147155d47dc31abe0a46e0d12b59b2fb3d0a2dcc5dc65fce76a074180b16fe AS assets
+FROM mirror.gcr.io/library/node:26-bookworm-slim@sha256:bc0a2afd3b74ce12222fc8bab99271e66257f021078f5f4a5d687a77d280c1d9 AS assets
 
 WORKDIR /app
 

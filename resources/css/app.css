@@ -559,7 +559,11 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
 }
 
 tr[data-task-id],
+/* The card is the reference of what is positioned absolutely inside it (the hidden text of a due date, sr-only). Without it
+   such an element refers to the board and is neither cut off by the list of cards that scrolls nor moves with it: it stays
+   where it would stand unscrolled, far below the board for a card far down a long column, and the board scrolls there. */
 .board-card {
+    position: relative;
     animation: task-fade-in 0.25s ease;
 }
 

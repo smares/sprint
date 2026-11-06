@@ -61,8 +61,7 @@ new class extends Component
         // One query for all columns: number the tasks within each status and keep the first n per column.
         // The chosen order (if any) comes before the manual one (it settles the ties only if there is none: the terms end with the newest first)
         $terms = $this->sortTerms();
-        // Finished tasks stand at the end of their column, so open work is not pushed behind "Load more" by what is done
-        $order = collect($terms)->pluck(0)->prepend('(tasks.completed_at is not null)')->push('tasks.position', 'tasks.id')->implode(', ');
+        $order = collect($terms)->pluck(0)->push('tasks.position', 'tasks.id')->implode(', ');
         $bindings = collect($terms)->pluck(1)->flatten(1)->all();
 
         $ranked = $this->project->tasks()->topLevel()->withoutSections();
@@ -109,7 +108,6 @@ new class extends Component
             ->topLevel()
             ->withoutSections()
             ->where('status_id', $statusId)
-            ->orderByRaw('(tasks.completed_at is not null)')
             ->orderBy('position')
             ->orderBy('id');
 

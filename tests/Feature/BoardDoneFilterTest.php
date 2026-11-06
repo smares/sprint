@@ -153,40 +153,40 @@ class BoardDoneFilterTest extends TestCase
         $this->assertFalse($moved->fresh()->isDone());
     }
 
-    public function test_finished_cards_come_after_open_ones_and_each_group_keeps_its_manual_order(): void
+    public function test_finished_and_open_cards_stand_in_one_manual_order(): void
     {
         $this->task('Offen C')->update(['position' => 3]);
         $this->task('Fertig A', true)->update(['position' => 0]);
         $this->task('Offen A')->update(['position' => 1]);
         $this->task('Fertig B', true)->update(['position' => 2]);
-        $this->task('Offen B')->update(['position' => 4]);
 
         $board = $this->board()->assertSet('doneFilter', 'all');
 
-        $this->assertSame(['Offen A', 'Offen C', 'Offen B', 'Fertig A', 'Fertig B'], $this->column($board, $this->openId));
-        $this->assertSame(['Offen A', 'Offen C', 'Offen B'], $this->column($board->set('doneFilter', 'open'), $this->openId));
+        $this->assertSame(['Fertig A', 'Offen A', 'Fertig B', 'Offen C'], $this->column($board, $this->openId));
+        $this->assertSame(['Offen A', 'Offen C'], $this->column($board->set('doneFilter', 'open'), $this->openId));
         $this->assertSame(['Fertig A', 'Fertig B'], $this->column($board->set('doneFilter', 'done'), $this->openId));
     }
 
-    public function test_finishing_a_card_moves_it_behind_the_open_ones_of_its_column(): void
+    public function test_finishing_or_reopening_a_card_does_not_reorder_its_column(): void
     {
         $first = $this->task('Eins');
         $this->task('Zwei');
+        $this->task('Drei');
         $first->update(['position' => 0]);
 
         $board = $this->board();
         $first->refresh()->toggleDone();
         $board->dispatch('task-changed');
 
-        $this->assertSame(['Zwei', 'Eins'], $this->column($board, $this->openId));
+        $this->assertSame(['Eins', 'Zwei', 'Drei'], $this->column($board, $this->openId));
 
         $first->refresh()->toggleDone();
         $board->dispatch('task-changed');
 
-        $this->assertSame(['Eins', 'Zwei'], $this->column($board, $this->openId));
+        $this->assertSame(['Eins', 'Zwei', 'Drei'], $this->column($board, $this->openId));
     }
 
-    public function test_a_dropped_card_lands_among_the_shown_cards_when_finished_ones_are_there_too(): void
+    public function test_a_dropped_card_lands_where_it_was_dropped_with_finished_cards_in_the_column(): void
     {
         $this->task('Eins', false, $this->progressId)->update(['position' => 1]);
         $this->task('Erledigt', true, $this->progressId)->update(['position' => 0]);
@@ -194,55 +194,36 @@ class BoardDoneFilterTest extends TestCase
         $moved = $this->task('Gezogen');
 
         $board = $this->board()->assertSet('doneFilter', 'all');
-        $this->assertSame(['Eins', 'Zwei', 'Erledigt'], $this->column($board, $this->progressId));
+        $this->assertSame(['Erledigt', 'Eins', 'Zwei'], $this->column($board, $this->progressId));
 
-        $board->call('moveTask', $moved->id, 1, (string) $this->progressId);
+        $board->call('moveTask', $moved->id, 2, (string) $this->progressId);
 
         $this->assertSame($this->progressId, $moved->fresh()->status_id);
-        $this->assertSame(['Eins', 'Gezogen', 'Zwei', 'Erledigt'], $this->column($board, $this->progressId));
+        $this->assertSame(['Erledigt', 'Eins', 'Gezogen', 'Zwei'], $this->column($board, $this->progressId));
         $this->assertFalse($moved->fresh()->isDone());
 
-        $other = $this->task('Ganz vorn');
-        $board->call('moveTask', $other->id, 0, (string) $this->progressId);
-
-        $this->assertSame(['Ganz vorn', 'Eins', 'Gezogen', 'Zwei', 'Erledigt'], $this->column($board, $this->progressId));
-    }
-
-    public function test_dropping_a_finished_card_in_the_middle_keeps_the_open_cards_in_front(): void
-    {
-        $this->task('Eins', false, $this->progressId)->update(['position' => 0]);
-        $this->task('Zwei', false, $this->progressId)->update(['position' => 1]);
         $done = $this->task('Fertig', true);
+        $board->call('moveTask', $done->id, 0, (string) $this->progressId);
 
-        $board = $this->board()->call('moveTask', $done->id, 1, (string) $this->progressId);
-
-        $this->assertSame($this->progressId, $done->fresh()->status_id);
+        $this->assertSame(['Fertig', 'Erledigt', 'Eins', 'Gezogen', 'Zwei'], $this->column($board, $this->progressId));
         $this->assertTrue($done->fresh()->isDone());
-        $this->assertSame(['Eins', 'Zwei', 'Fertig'], $this->column($board, $this->progressId));
     }
 
-    public function test_loading_more_counts_the_open_cards_first(): void
+    public function test_loading_more_pages_through_open_and_finished_cards_alike(): void
     {
-        foreach (range(1, 35) as $i) {
-            $this->task(sprintf('Offen %02d', $i));
-        }
         foreach (range(1, 40) as $i) {
-            $this->task(sprintf('Fertig %02d', $i), true);
+            $this->task(sprintf('Fertig %02d', $i), true)->update(['position' => $i]);
+        }
+        foreach (range(1, 35) as $i) {
+            $this->task(sprintf('Offen %02d', $i))->update(['position' => 100 + $i]);
         }
 
         $board = $this->board()->assertSee('Mehr laden (30 von 75)');
-        $titles = $this->column($board, $this->openId);
-        $this->assertCount(30, $titles);
-        $this->assertSame(array_fill(0, 30, 'Offen'), array_map(fn (string $title) => explode(' ', $title)[0], $titles));
-        $board->assertDontSee('Fertig 01');
+        $this->assertCount(30, $this->column($board, $this->openId));
+        $this->assertSame('Fertig 30', $this->column($board, $this->openId)[29]);
 
         $board->call('loadMoreInColumn', $this->openId);
-        $titles = $this->column($board, $this->openId);
-        $this->assertCount(60, $titles);
-        $this->assertSame(35, count(array_filter($titles, fn (string $title) => str_starts_with($title, 'Offen'))));
-        $this->assertSame('Offen 35', $titles[34]);
-        $this->assertSame('Fertig 01', $titles[35]);
-        $this->assertSame('Fertig 25', $titles[59]);
+        $this->assertCount(60, $this->column($board, $this->openId));
     }
 
     public function test_the_address_sets_the_filter(): void

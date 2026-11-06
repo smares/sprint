@@ -51,7 +51,7 @@ class TaskCompletionNotificationsTest extends TestCase
         $task->markDone();
 
         Notification::assertSentToTimes($this->reader, TaskCompletionChanged::class, 1);
-        Notification::assertSentTo($this->reader, TaskCompletionChanged::class, fn (TaskCompletionChanged $notification) => $notification->completed === true && $notification->changedBy === 'Otto' && $notification->task->is($task));
+        Notification::assertSentTo($this->reader, TaskCompletionChanged::class, fn (TaskCompletionChanged $notification) => $notification->completed && $notification->changedBy === 'Otto' && $notification->task->is($task));
         Notification::assertNotSentTo($this->actor, TaskCompletionChanged::class);
         Notification::assertNotSentTo($this->reader, TaskStatusChanged::class);
         Notification::assertCount(1);

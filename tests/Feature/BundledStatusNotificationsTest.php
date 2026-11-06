@@ -70,7 +70,7 @@ class BundledStatusNotificationsTest extends TestCase
         Notification::assertNotSentTo($this->anna, TaskStatusChanged::class);
         Notification::assertNotSentTo($this->actor, TasksCompletionChanged::class);
         Notification::assertSentTo($this->anna, TasksCompletionChanged::class, fn (TasksCompletionChanged $notification) => count($notification->tasks) === 3
-            && $notification->completed === true
+            && $notification->completed
             && $notification->changedBy === 'Otto'
             && array_column($notification->tasks, 'title') === ['Eins', 'Zwei', 'Drei']
             && $notification->tasks[0]['project'] === 'Website');
@@ -200,7 +200,7 @@ class BundledStatusNotificationsTest extends TestCase
 
         $task->toggleDone();
 
-        Notification::assertSentTo($this->anna, TaskCompletionChanged::class, fn (TaskCompletionChanged $notification) => $notification->completed === true && $notification->task->is($task) && $notification->changedBy === 'Otto');
+        Notification::assertSentTo($this->anna, TaskCompletionChanged::class, fn (TaskCompletionChanged $notification) => $notification->completed && $notification->task->is($task) && $notification->changedBy === 'Otto');
         Notification::assertNotSentTo($this->anna, TasksCompletionChanged::class);
         Notification::assertNotSentTo($this->anna, TaskStatusChanged::class);
     }

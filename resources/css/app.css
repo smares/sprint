@@ -311,7 +311,7 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
         display: none;
     }
 
-    &[data-enabled='false'] {
+    &[data-mode='off'] {
         display: none;
     }
 
@@ -424,8 +424,8 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
 /* While tasks are selected the bar floats over the bottom of the window, and the view keeps its size. Where the page scrolls as a
    whole (phones, low windows) or even on large windows (My tasks) it has room below the last row or card; where the columns of a
    board, the table of the list or the timeline scroll for themselves, what they show gets that room at its end, so the last card
-   or row can be scrolled clear of the bar. (The calendar has no such scroll area, its weeks share the height: it keeps the room
-   reserved, see the class on its root.) */
+   or row can be scrolled clear of the bar. (The calendar has no such scroll area, its weeks share the height and fill the view to its bottom edge: the bar floats over
+   the lower part of the last week there, and no room is reserved, which would leave a gap under the weeks.) */
 [data-bar-floats] {
     padding-bottom: 10rem;
 }
@@ -442,7 +442,7 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
 
     [data-bar-floats] [data-fills-height] > [data-flux-kanban] > [data-flux-kanban-column] > div:not([data-collapsed]) [data-flux-kanban-column-cards],
     [data-bar-floats] [data-fills-height] ui-table-scroll-area,
-    [data-bar-floats] [data-fills-height] > [data-scroll-edges]:not([data-flux-kanban]) {
+    [data-bar-floats] [data-fills-height] > [data-scroll-edges]:not([data-flux-kanban], :has([data-calendar-month])) {
         padding-bottom: 4rem;
     }
 }

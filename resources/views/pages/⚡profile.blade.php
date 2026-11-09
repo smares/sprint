@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\AmbientBackground;
 use App\Models\User;
 use App\Models\UserAvatar;
 use App\Notifications\TestPush;
@@ -56,7 +57,7 @@ new class extends Component
 
     public bool $celebrations = true;
 
-    public bool $ambientBackground = true;
+    public string $ambientBackground = 'animated';
 
     public bool $joinOwnTasks = true;
 
@@ -104,7 +105,7 @@ new class extends Component
         $this->digest = auth()->user()->digest_enabled;
         $this->reminders = auth()->user()->reminders_enabled;
         $this->celebrations = auth()->user()->celebrations_enabled;
-        $this->ambientBackground = auth()->user()->ambient_background_enabled;
+        $this->ambientBackground = auth()->user()->ambient_background->value;
         $this->joinOwnTasks = auth()->user()->join_own_tasks;
         $this->locale = auth()->user()->preferredLocale();
         $this->timezone = (string) auth()->user()->timezone;
@@ -249,14 +250,22 @@ new class extends Component
         Flux::toast(variant: 'success', text: $value ? __('Celebrations turned on.') : __('Celebrations turned off.'));
     }
 
-    public function updatedAmbientBackground(bool $value): void
+    public function updatedAmbientBackground(string $value): void
     {
-        auth()->user()->update(['ambient_background_enabled' => $value]);
+        $mode = AmbientBackground::tryFrom($value);
+
+        if ($mode === null) {
+            $this->ambientBackground = auth()->user()->ambient_background->value;
+
+            return;
+        }
+
+        auth()->user()->update(['ambient_background' => $mode]);
 
         // The background is kept across page changes (see ambient.js), so it is told, not reloaded
-        $this->dispatch('ambient-background', enabled: $value);
+        $this->dispatch('ambient-background', mode: $mode->value);
 
-        Flux::toast(variant: 'success', text: $value ? __('Animated background turned on.') : __('Animated background turned off.'));
+        Flux::toast(variant: 'success', text: __('Background: :mode.', ['mode' => $mode->label()]));
     }
 
     /**
@@ -533,7 +542,11 @@ new class extends Component
 
             <flux:switch wire:model.live="celebrations" :label="__('Celebrate completed tasks')" :description="__('Now and then a unicorn flies across the screen when you complete a task. Not shown if your device is set to reduce motion.')" />
 
-            <flux:switch wire:model.live="ambientBackground" :label="__('Animated background')" :description="__('Soft waves and patches of color behind the pages. Not shown if your device is set to reduce motion (then one still picture remains).')" />
+            <flux:radio.group wire:model.live="ambientBackground" variant="segmented" :label="__('Background')" :description="__('Soft waves and patches of color behind the pages. If your device is set to reduce motion, nothing moves in the animated setting either.')">
+                @foreach (AmbientBackground::cases() as $mode)
+                    <flux:radio :value="$mode->value" :label="$mode->label()" />
+                @endforeach
+            </flux:radio.group>
 
             <flux:separator />
 

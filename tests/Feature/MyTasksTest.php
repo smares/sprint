@@ -77,6 +77,23 @@ class MyTasksTest extends TestCase
         $this->assertFalse($hidden->fresh()->isDone());
     }
 
+    public function test_completing_in_bulk_leaves_out_tasks_of_read_only_projects(): void
+    {
+        $editable = $this->mine();
+        $readOnly = Project::factory()->create();
+        $readOnly->setRole($this->user, ProjectRole::Viewer);
+        $watched = $this->mine([], $readOnly);
+
+        Livewire::test('pages::tasks.mine')
+            ->set('selecting', true)
+            ->set('selected', [(string) $editable->id, (string) $watched->id])
+            ->call('bulkComplete')
+            ->assertHasNoErrors();
+
+        $this->assertTrue($editable->fresh()->isDone());
+        $this->assertFalse($watched->fresh()->isDone());
+    }
+
     public function test_a_task_opens_in_the_flyout_but_never_one_from_a_hidden_project(): void
     {
         $task = $this->mine(['title' => 'Im Flyout']);

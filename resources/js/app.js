@@ -1241,3 +1241,22 @@ const watchScrollEdges = () => {
 
 watchScrollEdges()
 document.addEventListener('livewire:navigated', watchScrollEdges)
+
+// The background drift (.ambient in app.css) follows the clock: its phase is the time of day modulo the length of its loop, so it
+// neither starts over when the page is loaded again nor when Livewire puts the persisted element back after a page change
+const syncAmbientDrift = () => {
+    const drift = document.querySelector('.ambient')
+
+    if (! drift) {
+        return
+    }
+
+    const loop = parseFloat(getComputedStyle(drift).animationDuration) * 1000
+
+    if (loop > 0) {
+        drift.getAnimations().forEach((animation) => { animation.currentTime = Date.now() % loop })
+    }
+}
+
+syncAmbientDrift()
+document.addEventListener('livewire:navigated', syncAmbientDrift)

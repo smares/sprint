@@ -15,9 +15,9 @@ class TaskCheckCellTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const CELL = 'inline-grid shrink-0 place-items-center size-6 max-sm:size-10';
+    private const CELL = 'grid shrink-0 place-items-center size-6 max-sm:size-10';
 
-    private const COMPACT_CELL = 'inline-grid shrink-0 place-items-center size-6"';
+    private const COMPACT_CELL = 'grid shrink-0 place-items-center size-6"';
 
     private const SHOWN_WITH_THE_DONE_BUTTON = '<span class="contents" x-show="! $wire.selecting">';
 
@@ -283,6 +283,7 @@ class TaskCheckCellTest extends TestCase
             'project board' => ['pages::projects.board'],
             'my tasks list' => ['pages::tasks.mine'],
             'my tasks board' => ['pages::tasks.mine-board'],
+            'timeline' => ['pages::projects.timeline'],
         ];
     }
 
@@ -308,11 +309,11 @@ class TaskCheckCellTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/\sdata-bar-floats[\s>]/', $page->call('stopSelecting')->html());
     }
 
-    public function test_the_calendar_and_the_timeline_still_make_room_with_padding_classes(): void
+    public function test_the_calendar_still_makes_room_with_padding_classes(): void
     {
         $this->task(['title' => 'Eine']);
 
-        foreach (['pages::projects.calendar', 'pages::projects.timeline'] as $view) {
+        foreach (['pages::projects.calendar'] as $view) {
             $page = $this->page($view);
 
             $this->assertDoesNotMatchRegularExpression('/\sdata-bar-floats[\s>]/', $page->html(), $view);

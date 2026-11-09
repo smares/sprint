@@ -172,8 +172,8 @@ new class extends Component
 };
 ?>
 
-{{-- While selecting, room for the bar at the bottom: two rows on phones, one row from sm on --}}
-<div @class(['pb-40 sm:pb-16' => $selecting]) x-bind:class="{ 'pb-40 sm:pb-16': $wire.selecting }" data-wide>
+{{-- While selecting the bar floats over the bottom of the window; what that needs of the page is in app.css (data-bar-floats) --}}
+<div @if ($selecting) data-bar-floats @endif x-bind:data-bar-floats="$wire.selecting" data-wide>
     @php
         $offersSelecting = $this->canEdit && $this->rows->isNotEmpty();
     @endphp

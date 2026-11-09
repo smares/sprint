@@ -700,7 +700,7 @@ new class extends Component
                     {{-- One column for the round check and, while selecting, the box: both in the cell of one size (x-task-check-cell); the
                          head shows the box that selects all visible tasks then --}}
                     <flux:table.column :class="'w-12 min-w-12 max-sm:w-16 max-sm:min-w-16 '.$pinnedDone">
-                        <span class="inline-grid size-6 place-items-center max-sm:size-10">
+                        <span class="grid size-6 place-items-center max-sm:size-10">
                             <span class="sr-only" @if ($this->canEdit) x-show="! $wire.selecting" @endif>{{ __('Done') }}</span>
                             @if ($this->canEdit)
                                 <span class="flex size-6 items-center justify-center" x-show="$wire.selecting" x-cloak>

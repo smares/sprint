@@ -171,7 +171,7 @@ new class extends Component
 };
 ?>
 
-{{-- While selecting, room for the bar at the bottom: two rows on phones, one row from sm on --}}
+{{-- While selecting, room for the bar at the bottom (three rows on phones, one from sm on). The calendar cannot let the bar float: its weeks share the height and nothing scrolls, so the bar would cover the last week --}}
 <div @class(['pb-40 sm:pb-16' => $selecting]) x-bind:class="{ 'pb-40 sm:pb-16': $wire.selecting }" data-wide>
     @php
         $offersSelecting = $this->canEdit && collect($this->weeks)->flatten(1)->contains(fn ($day) => $day['tasks']->isNotEmpty());

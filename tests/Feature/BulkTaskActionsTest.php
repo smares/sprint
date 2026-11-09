@@ -154,7 +154,7 @@ class BulkTaskActionsTest extends TestCase
 
         // The box of the header stands in a 24px box, like the boxes of the rows (which share a cell with the done button)
         $this->assertMatchesRegularExpression('/size-6 items-center justify-center"[^>]*x-show="\$wire\.selecting"[^>]*>\s*<ui-checkbox[^>]*aria-label="Alle sichtbaren Aufgaben auswählen"/', $html);
-        $this->assertStringContainsString('inline-grid shrink-0 place-items-center size-6 max-sm:size-10', $html);
+        $this->assertStringContainsString('grid shrink-0 place-items-center size-6 max-sm:size-10', $html);
     }
 
     public function test_changing_the_filters_forgets_the_selection(): void

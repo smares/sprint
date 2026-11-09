@@ -421,40 +421,15 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
     }
 }
 
-/* While tasks are selected the bar floats over the bottom of the window, and the view keeps its size. Where the page scrolls as a
-   whole (phones, low windows) or even on large windows (My tasks) it has room below the last row or card; where the columns of a
-   board, the table of the list or the timeline scroll for themselves, what they show gets that room at its end, so the last card
-   or row can be scrolled clear of the bar. (The calendar has no such scroll area, its weeks share the height and fill the view to its bottom edge: the bar floats over
-   the lower part of the last week there, and no room is reserved, which would leave a gap under the weeks.) */
-[data-bar-floats] {
-    padding-bottom: 10rem;
-
-    /* A short page still reaches the bottom of the window, and the bar (sticky, at the end of the page, pushed down by its auto margin) belongs there */
+/* While tasks are selected the bar of actions has its place at the end of the page (see x-selection-bar), in the same way in every
+   view: the page is a column and the bar its last element. Where the view fills the window (list, board, calendar, timeline) it
+   becomes that much shorter, so nothing is covered and no list, column or week gets room of its own; where the page scrolls as a
+   whole, the bar follows the window's edge (sticky) until the end of the page is reached and rests below the last row there. On a page
+   shorter than the window, the column still reaches the window's bottom, so the bar belongs there. */
+[data-bar-docked] {
     display: flex;
     flex-direction: column;
     min-height: 100%;
-}
-
-@media (width >= 40rem) and (height >= 40rem) {
-    [data-bar-floats] {
-        padding-bottom: 0;
-    }
-
-    /* The note under a view that fills the window (calendar, timeline) stays readable above the bar */
-    [data-bar-floats] [data-bar-spare] {
-        padding-bottom: 4.5rem;
-    }
-
-    /* A page that scrolls as a whole although the window is large (My tasks) */
-    [data-bar-floats]:not(:has([data-fills-height])) {
-        padding-bottom: 5rem;
-    }
-
-    [data-bar-floats] [data-fills-height] > [data-flux-kanban] > [data-flux-kanban-column] > div:not([data-collapsed]) [data-flux-kanban-column-cards],
-    [data-bar-floats] [data-fills-height] ui-table-scroll-area,
-    [data-bar-floats] [data-fills-height] > [data-scroll-edges]:not([data-flux-kanban], :has([data-calendar-month])) {
-        padding-bottom: 4rem;
-    }
 }
 
 /* A collapsed board column: a narrow strip as high as the board with the expand button on top and the dot, status and count

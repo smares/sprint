@@ -1245,7 +1245,7 @@ document.addEventListener('livewire:navigated', watchScrollEdges)
 
 startAmbientBackground()
 
-// The room the floating selection bar needs at the end of a list (data-bar-floats, see app.css) goes away with the selection. A
+// The room the bar of selected tasks takes (data-bar-docked, see app.css) goes away with the selection, and the views grow again. A
 // list that was scrolled to its end then stands further down than it can be (some browsers, Safari above all, clamp that only when
 // the next scroll happens and show an empty strip in the meantime), so the places are put back at once.
 const clampScrollPositions = (root) => {
@@ -1262,9 +1262,9 @@ const clampScrollPositions = (root) => {
 
 new MutationObserver((records) => {
     records.forEach((record) => {
-        if (! record.target.hasAttribute('data-bar-floats')) {
+        if (! record.target.hasAttribute('data-bar-docked')) {
             clampScrollPositions(record.target)
             requestAnimationFrame(() => clampScrollPositions(record.target))
         }
     })
-}).observe(document.documentElement, { subtree: true, attributes: true, attributeFilter: ['data-bar-floats'] })
+}).observe(document.documentElement, { subtree: true, attributes: true, attributeFilter: ['data-bar-docked'] })

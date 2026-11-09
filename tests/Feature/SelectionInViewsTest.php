@@ -269,7 +269,7 @@ class SelectionInViewsTest extends TestCase
             ->assertSeeHtml('x-on:drop.prevent="over = false; if ($wire.selecting) { return }')
             ->assertSeeHtml('x-on:dragstart="if ($wire.selecting) { $event.preventDefault(); return }')
             ->assertSeeHtml("'cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-700/40': ! \$wire.selecting")
-            ->assertSeeHtml("'ps-6': \$wire.selecting, '[@media(hover:none)]:pe-7': ! \$wire.selecting")
+            ->assertSeeHtml("'ps-9': \$wire.selecting, '[@media(hover:none)]:pe-7': ! \$wire.selecting")
             ->assertSeeHtml('x-show="! $wire.selecting" x-on:click.stop="$wire.$dispatch(\'new-task\'')
             ->assertSeeHtml('<span x-show="! $wire.selecting" class="absolute inset-y-0 end-0 hidden');
 

@@ -4,11 +4,11 @@
      keeps the selection in `selected` (see EditsTasksInBulk and ListsMyTasks); `change` offers the dialog x-bulk-edit-modal. A slot named `extra`
      adds a button after the count. A page that sets `selecting` in the browser first (see the `instant` toggle) draws the bar always and shows it
      with x-show; ending sets `selecting` in the browser at once, too. --}}
-{{-- The bar stays within the content, not within the window: it sits at the end of the page and sticks to the bottom edge of the window
-     (a sticky box without height, the bar itself rises out of it), so it is centered over the content and never lies under the sidebar --}}
-<div {{ $attributes->class('pointer-events-none sticky bottom-4 z-30 mt-auto h-0 shrink-0') }}>
-    <div class="absolute inset-x-0 bottom-0 flex justify-center px-4">
-    <div class="pointer-events-auto flex w-full max-w-xl flex-col gap-2 rounded-xl border border-zinc-200 bg-white p-2 shadow-lg sm:w-auto sm:max-w-full sm:flex-row sm:items-center dark:border-zinc-700 dark:bg-zinc-800">
+{{-- The bar has its place at the end of the page, within the content (centered over it, never under the sidebar), and sticks to the
+     bottom edge of the window while the end of the page is further down. It takes room of its own there, so it covers nothing --}}
+<div {{ $attributes->class('pointer-events-none sticky bottom-4 z-30 mt-auto shrink-0 pt-3') }}>
+    <div class="flex justify-center px-4">
+        <div class="pointer-events-auto flex w-full max-w-xl flex-col gap-2 rounded-xl border border-zinc-200 bg-white p-2 shadow-lg sm:w-auto sm:max-w-full sm:flex-row sm:items-center dark:border-zinc-700 dark:bg-zinc-800">
         <div class="flex items-center gap-2">
             <flux:text class="px-2 font-medium" role="status">{!! __(':count selected', ['count' => '<span x-text="$wire.selected.length">0</span>']) !!}</flux:text>
 

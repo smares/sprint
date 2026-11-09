@@ -172,8 +172,8 @@ new class extends Component
 };
 ?>
 
-{{-- While selecting the bar floats over the bottom of the window; what that needs of the page is in app.css (data-bar-floats) --}}
-<div @if ($selecting) data-bar-floats @endif x-bind:data-bar-floats="$wire.selecting" data-wide>
+{{-- While selecting the bar of actions is the last element of the page, which becomes that much shorter (see data-bar-docked in app.css) --}}
+<div @if ($selecting) data-bar-docked @endif x-bind:data-bar-docked="$wire.selecting" data-wide>
     @php
         $offersSelecting = $this->canEdit && $this->rows->isNotEmpty();
     @endphp
@@ -275,7 +275,7 @@ new class extends Component
     @endif
 
     @if ($this->outside['dated'] > 0 || $this->outside['undated'] > 0)
-        <flux:text class="mt-4" data-bar-spare>
+        <flux:text class="mt-4">
             @if ($this->outside['dated'] > 0)
                 {{ trans_choice('{1} :count task is outside these weeks.|[2,*] :count tasks are outside these weeks.', $this->outside['dated']) }}
             @endif

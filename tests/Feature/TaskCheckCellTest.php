@@ -300,31 +300,20 @@ class TaskCheckCellTest extends TestCase
      * @dataProvider viewsThatMakeRoomForTheBar
      */
     #[DataProvider('viewsThatMakeRoomForTheBar')]
-    public function test_the_page_marks_itself_while_the_bar_floats_over_it(string $view): void
+    public function test_the_page_marks_itself_while_the_bar_has_its_place_at_its_end(string $view): void
     {
         $this->task(['title' => 'Eine']);
 
         $page = $this->page($view);
-        $root = '/wire:name="'.preg_quote($view, '/').'"\s+data-bar-floats\s/';
+        $root = '/wire:name="'.preg_quote($view, '/').'"\s+data-bar-docked\s/';
 
-        $this->assertDoesNotMatchRegularExpression('/\sdata-bar-floats[\s>]/', $page->html());
-        $this->assertStringContainsString('x-bind:data-bar-floats="$wire.selecting"', $page->html());
-        $this->assertStringNotContainsString('pb-40', $page->html());
+        $this->assertDoesNotMatchRegularExpression('/\sdata-bar-docked[\s>]/', $page->html());
+        $this->assertStringContainsString('x-bind:data-bar-docked="$wire.selecting"', $page->html());
 
         $selecting = $page->call('startSelecting')->html();
         $this->assertMatchesRegularExpression($root, $selecting);
-        $this->assertStringNotContainsString('pb-40 sm:pb-16', $selecting);
 
-        $this->assertDoesNotMatchRegularExpression('/\sdata-bar-floats[\s>]/', $page->call('stopSelecting')->html());
-    }
-
-    public function test_the_note_under_the_calendar_and_the_timeline_can_be_kept_clear_of_the_bar(): void
-    {
-        Task::factory()->for($this->project)->create(['start_date' => null, 'due_date' => null, 'title' => 'Ohne Datum']);
-
-        foreach (['pages::projects.calendar', 'pages::projects.timeline'] as $view) {
-            $this->assertStringContainsString('data-bar-spare', $this->page($view)->html(), $view);
-        }
+        $this->assertDoesNotMatchRegularExpression('/\sdata-bar-docked[\s>]/', $page->call('stopSelecting')->html());
     }
 
     public function test_the_quick_add_rows_stay_in_place_but_are_invisible_while_selecting(): void

@@ -556,8 +556,8 @@ new class extends Component
 };
 ?>
 
-{{-- While selecting the bar floats over the bottom of the window; what that needs of the page is in app.css (data-bar-floats) --}}
-<div @if ($selecting) data-bar-floats @endif x-bind:data-bar-floats="$wire.selecting" data-wide>
+{{-- While selecting the bar of actions is the last element of the page, which becomes that much shorter (see data-bar-docked in app.css) --}}
+<div @if ($selecting) data-bar-docked @endif x-bind:data-bar-docked="$wire.selecting" data-wide>
     <x-project-header :project="$project" active="list" :presence="$this->presenceChannel()" />
 
     <div class="mb-4 flex flex-wrap items-center gap-2">
@@ -777,7 +777,7 @@ new class extends Component
     @endif
 
     @if ($this->canEdit)
-        {{-- Not gone while selecting but invisible, so the list keeps its size (the bar floats over this place) --}}
+        {{-- Not gone while selecting but invisible, so the list keeps its size (the bar has its place below) --}}
         <x-quick-add class="mt-2" x-bind:class="{ 'invisible': $wire.selecting }" />
     @endif
 

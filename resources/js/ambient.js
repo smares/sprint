@@ -130,8 +130,8 @@ export const startAmbientBackground = () => {
 
     const palette = () => (document.documentElement.classList.contains('dark') ? palettes.dark : palettes.light)
     const render = () => draw(canvas, context, palette(), Date.now() / 1000)
-    const enabled = () => layer.dataset.enabled !== 'false'
-    const canRun = () => enabled() && ! document.hidden && ! reducedMotion.matches && ! forcedColors.matches
+    const mode = () => layer.dataset.mode ?? 'animated'
+    const canRun = () => mode() === 'animated' && ! document.hidden && ! reducedMotion.matches && ! forcedColors.matches
 
     const tick = (now) => {
         frame = 0
@@ -152,7 +152,7 @@ export const startAmbientBackground = () => {
         cancelAnimationFrame(frame)
         frame = 0
 
-        if (! enabled() || document.hidden || forcedColors.matches) {
+        if (mode() === 'off' || document.hidden || forcedColors.matches) {
             return
         }
 
@@ -173,7 +173,7 @@ export const startAmbientBackground = () => {
 
     // The switch in the profile (a Livewire event, which Livewire also sends to the window)
     const switched = (event) => {
-        layer.dataset.enabled = String(event.detail?.enabled ?? event.detail?.[0]?.enabled ?? true)
+        layer.dataset.mode = event.detail?.mode ?? event.detail?.[0]?.mode ?? 'animated'
         restart()
     }
 

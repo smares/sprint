@@ -292,6 +292,7 @@ class TaskCheckCellTest extends TestCase
             'my tasks list' => ['pages::tasks.mine'],
             'my tasks board' => ['pages::tasks.mine-board'],
             'timeline' => ['pages::projects.timeline'],
+            'calendar' => ['pages::projects.calendar'],
         ];
     }
 
@@ -315,20 +316,6 @@ class TaskCheckCellTest extends TestCase
         $this->assertStringNotContainsString('pb-40 sm:pb-16', $selecting);
 
         $this->assertDoesNotMatchRegularExpression('/\sdata-bar-floats[\s>]/', $page->call('stopSelecting')->html());
-    }
-
-    public function test_the_calendar_still_makes_room_with_padding_classes(): void
-    {
-        $this->task(['title' => 'Eine']);
-
-        foreach (['pages::projects.calendar'] as $view) {
-            $page = $this->page($view);
-
-            $this->assertDoesNotMatchRegularExpression('/\sdata-bar-floats[\s>]/', $page->html(), $view);
-            $this->assertStringContainsString("x-bind:class=\"{ 'pb-40 sm:pb-16': \$wire.selecting }\"", $page->html(), $view);
-            $this->assertMatchesRegularExpression('/class="pb-40 sm:pb-16"/', $page->call('startSelecting')->html(), $view);
-            $this->assertDoesNotMatchRegularExpression('/\sdata-bar-floats[\s>]/', $page->html(), $view);
-        }
     }
 
     public function test_the_quick_add_rows_stay_in_place_but_are_invisible_while_selecting(): void

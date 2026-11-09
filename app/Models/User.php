@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\AmbientBackground;
 use App\Enums\MineView;
 use App\Enums\ProjectView;
 use App\Notifications\EmailChanged;
@@ -32,7 +33,7 @@ use Laravel\Sanctum\HasApiTokens;
 use NotificationChannels\WebPush\HasPushSubscriptions;
 use SensitiveParameter;
 
-#[Fillable(['name', 'email', 'password', 'is_admin', 'locale', 'timezone', 'deactivated_at', 'digest_enabled', 'reminders_enabled', 'celebrations_enabled', 'ambient_background_enabled', 'join_own_tasks', 'absent_from', 'absent_until', 'quiet_from', 'quiet_until', 'quiet_days'])]
+#[Fillable(['name', 'email', 'password', 'is_admin', 'locale', 'timezone', 'deactivated_at', 'digest_enabled', 'reminders_enabled', 'celebrations_enabled', 'ambient_background', 'join_own_tasks', 'absent_from', 'absent_until', 'quiet_from', 'quiet_until', 'quiet_days'])]
 #[Hidden(['password', 'remember_token', 'two_factor_secret', 'two_factor_recovery_codes', 'interface'])]
 class User extends Authenticatable implements HasLocalePreference, PasskeyUser
 {
@@ -87,7 +88,7 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
     /**
      * @var array<string, mixed>
      */
-    protected $attributes = ['digest_enabled' => true, 'reminders_enabled' => true, 'celebrations_enabled' => true, 'ambient_background_enabled' => true, 'join_own_tasks' => true];
+    protected $attributes = ['digest_enabled' => true, 'reminders_enabled' => true, 'celebrations_enabled' => true, 'ambient_background' => 'animated', 'join_own_tasks' => true];
 
     /**
      * Get the attributes that should be cast.
@@ -105,7 +106,7 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
             'digest_enabled' => 'boolean',
             'reminders_enabled' => 'boolean',
             'celebrations_enabled' => 'boolean',
-            'ambient_background_enabled' => 'boolean',
+            'ambient_background' => AmbientBackground::class,
             'join_own_tasks' => 'boolean',
             'avatar_updated_at' => 'datetime',
             'absent_from' => 'date',

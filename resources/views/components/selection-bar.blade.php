@@ -4,7 +4,10 @@
      keeps the selection in `selected` (see EditsTasksInBulk and ListsMyTasks); `change` offers the dialog x-bulk-edit-modal. A slot named `extra`
      adds a button after the count. A page that sets `selecting` in the browser first (see the `instant` toggle) draws the bar always and shows it
      with x-show; ending sets `selecting` in the browser at once, too. --}}
-<div {{ $attributes->class('pointer-events-none fixed inset-x-0 bottom-4 z-30 flex justify-center px-4') }}>
+{{-- The bar stays within the content, not within the window: it sits at the end of the page and sticks to the bottom edge of the window
+     (a sticky box without height, the bar itself rises out of it), so it is centered over the content and never lies under the sidebar --}}
+<div {{ $attributes->class('pointer-events-none sticky bottom-4 z-30 h-0 shrink-0') }}>
+    <div class="absolute inset-x-0 bottom-0 flex justify-center px-4">
     <div class="pointer-events-auto flex w-full max-w-xl flex-col gap-2 rounded-xl border border-zinc-200 bg-white p-2 shadow-lg sm:w-auto sm:max-w-full sm:flex-row sm:items-center dark:border-zinc-700 dark:bg-zinc-800">
         <div class="flex items-center gap-2">
             <flux:text class="px-2 font-medium" role="status">{!! __(':count selected', ['count' => '<span x-text="$wire.selected.length">0</span>']) !!}</flux:text>
@@ -31,5 +34,6 @@
 
             <div class="max-sm:hidden"><flux:button size="sm" variant="ghost" icon="x-mark" x-on:click="$wire.selecting = false; $wire.selected = []; $wire.stopSelecting().then(() => $nextTick(() => [...document.querySelectorAll('[data-selection-toggle] button')].find((button) => button.offsetParent !== null)?.focus()))" aria-label="{{ __('End selection') }}" tooltip="{{ __('End selection') }}" /></div>
         </div>
+    </div>
     </div>
 </div>

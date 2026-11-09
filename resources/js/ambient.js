@@ -108,7 +108,8 @@ const draw = (canvas, context, palette, time) => {
 let stop = null
 
 export const startAmbientBackground = () => {
-    const canvas = document.querySelector('.ambient canvas')
+    const layer = document.querySelector('.ambient')
+    const canvas = layer?.querySelector('canvas')
 
     if (! canvas || canvas.dataset.running) {
         return
@@ -129,7 +130,8 @@ export const startAmbientBackground = () => {
 
     const palette = () => (document.documentElement.classList.contains('dark') ? palettes.dark : palettes.light)
     const render = () => draw(canvas, context, palette(), Date.now() / 1000)
-    const canRun = () => ! document.hidden && ! reducedMotion.matches && ! forcedColors.matches
+    const enabled = () => layer.dataset.enabled !== 'false'
+    const canRun = () => enabled() && ! document.hidden && ! reducedMotion.matches && ! forcedColors.matches
 
     const tick = (now) => {
         frame = 0
@@ -150,7 +152,7 @@ export const startAmbientBackground = () => {
         cancelAnimationFrame(frame)
         frame = 0
 
-        if (document.hidden || forcedColors.matches) {
+        if (! enabled() || document.hidden || forcedColors.matches) {
             return
         }
 
@@ -169,9 +171,16 @@ export const startAmbientBackground = () => {
         restart()
     }
 
+    // The switch in the profile (a Livewire event, which Livewire also sends to the window)
+    const switched = (event) => {
+        layer.dataset.enabled = String(event.detail?.enabled ?? event.detail?.[0]?.enabled ?? true)
+        restart()
+    }
+
     const appearance = new MutationObserver(restart)
 
     appearance.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    window.addEventListener('ambient-background', switched)
     window.addEventListener('resize', resize)
     document.addEventListener('visibilitychange', restart)
     reducedMotion.addEventListener('change', restart)
@@ -180,6 +189,7 @@ export const startAmbientBackground = () => {
     stop = () => {
         cancelAnimationFrame(frame)
         appearance.disconnect()
+        window.removeEventListener('ambient-background', switched)
         window.removeEventListener('resize', resize)
         document.removeEventListener('visibilitychange', restart)
         reducedMotion.removeEventListener('change', restart)

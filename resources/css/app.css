@@ -311,6 +311,10 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
         display: none;
     }
 
+    &[data-enabled='false'] {
+        display: none;
+    }
+
     & > canvas {
         display: block;
         width: 100%;

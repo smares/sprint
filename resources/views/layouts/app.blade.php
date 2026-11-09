@@ -32,7 +32,7 @@
     <body class="min-h-screen bg-zinc-50 dark:bg-zinc-900">
         {{-- Soft patches of color and a fan of slow waves behind the pages, drawn by resources/js/ambient.js; kept across page changes --}}
         @persist('ambient')
-            <div class="ambient" aria-hidden="true"><canvas></canvas></div>
+            <div class="ambient" aria-hidden="true" data-enabled="{{ (auth()->user()?->ambient_background_enabled ?? true) ? 'true' : 'false' }}"><canvas></canvas></div>
         @endpersist
 
         {{-- The first thing the keyboard reaches: jumps over the sidebar to the content; visible only while focused --}}

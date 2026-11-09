@@ -428,6 +428,11 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
    the lower part of the last week there, and no room is reserved, which would leave a gap under the weeks.) */
 [data-bar-floats] {
     padding-bottom: 10rem;
+
+    /* A short page still reaches the bottom of the window, and the bar (sticky, at the end of the page, pushed down by its auto margin) belongs there */
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
 }
 
 @media (width >= 40rem) and (height >= 40rem) {

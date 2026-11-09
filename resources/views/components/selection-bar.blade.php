@@ -6,7 +6,7 @@
      with x-show; ending sets `selecting` in the browser at once, too. --}}
 {{-- The bar stays within the content, not within the window: it sits at the end of the page and sticks to the bottom edge of the window
      (a sticky box without height, the bar itself rises out of it), so it is centered over the content and never lies under the sidebar --}}
-<div {{ $attributes->class('pointer-events-none sticky bottom-4 z-30 h-0 shrink-0') }}>
+<div {{ $attributes->class('pointer-events-none sticky bottom-4 z-30 mt-auto h-0 shrink-0') }}>
     <div class="absolute inset-x-0 bottom-0 flex justify-center px-4">
     <div class="pointer-events-auto flex w-full max-w-xl flex-col gap-2 rounded-xl border border-zinc-200 bg-white p-2 shadow-lg sm:w-auto sm:max-w-full sm:flex-row sm:items-center dark:border-zinc-700 dark:bg-zinc-800">
         <div class="flex items-center gap-2">

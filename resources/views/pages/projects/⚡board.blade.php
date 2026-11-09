@@ -310,7 +310,8 @@ new class extends Component
 };
 ?>
 
-<div @class(['pb-40' => $selecting]) x-bind:class="{ 'pb-40': $wire.selecting }" data-wide>
+{{-- While selecting the bar floats over the bottom of the window; what that needs of the board is in app.css (data-board-selecting) --}}
+<div @if ($selecting) data-board-selecting @endif x-bind:data-board-selecting="$wire.selecting" data-wide>
     @php
         $offersSelecting = $this->canEdit && array_sum($this->columnTotals) > 0;
     @endphp
@@ -362,7 +363,7 @@ new class extends Component
     {{-- Columns can be collapsed to a narrow strip with the status upright (data-collapsed, see app.css), remembered per
          project for the person; a click on the strip opens the column again. --}}
     <div class="scroll-shadows" data-fills-height>
-        <flux:kanban class="relative items-start overflow-x-auto overflow-y-hidden pb-4 max-sm:snap-x max-sm:snap-mandatory" data-scroll-edges
+        <flux:kanban class="relative items-start overflow-x-auto pb-4 sm:pb-1 max-sm:snap-x max-sm:snap-mandatory" data-scroll-edges
             x-data="{ collapsed: window.sprintInterface?.board_collapsed?.[{{ $project->id }}] ?? {{ json_encode(auth()->user()->collapsedColumns($project->id)) }}, toggle(id) { this.collapsed = this.collapsed.includes(id) ? this.collapsed.filter((other) => other !== id) : [...this.collapsed, id]; saveInterface({ board_collapsed: { {{ $project->id }}: { [id]: this.collapsed.includes(id) } } }) } }">
             @foreach ($this->statuses as $status)
                 {{-- The status color as a line along the top of the column and a dot before its name --}}

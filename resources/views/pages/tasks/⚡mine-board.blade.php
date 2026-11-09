@@ -237,7 +237,8 @@ new class extends Component
 };
 ?>
 
-<div @class(['pb-40' => $selecting]) x-bind:class="{ 'pb-40': $wire.selecting }" data-wide>
+{{-- While selecting the bar floats over the bottom of the window; what that needs of the board is in app.css (data-board-selecting) --}}
+<div @if ($selecting) data-board-selecting @endif x-bind:data-board-selecting="$wire.selecting" data-wide>
     <div class="mb-6 flex items-center justify-between gap-3">
         <flux:heading level="1" size="xl">{{ __('My tasks') }}</flux:heading>
         @if (array_sum($this->columnTotals) > 0)
@@ -258,7 +259,7 @@ new class extends Component
          follows the due dates), every other column keeps the order the cards were dragged into. As on the project board, a column
          can be collapsed to a narrow strip (data-collapsed, see app.css), remembered for the person; a click on the strip opens it. --}}
     <div class="scroll-shadows" data-fills-height data-move-targets="{{ json_encode(collect([['id' => 0, 'name' => __('Unsorted')]])->concat($this->personalColumns->map(fn ($column) => ['id' => $column->id, 'name' => $column->name]))->values()->all()) }}">
-        <flux:kanban class="relative items-start overflow-x-auto overflow-y-hidden pb-4 max-sm:snap-x max-sm:snap-mandatory" data-scroll-edges
+        <flux:kanban class="relative items-start overflow-x-auto pb-4 sm:pb-1 max-sm:snap-x max-sm:snap-mandatory" data-scroll-edges
             x-data="{ collapsed: window.sprintInterface?.mine_board_collapsed ?? {{ json_encode(auth()->user()->collapsedColumns()) }}, toggle(id) { this.collapsed = this.collapsed.includes(id) ? this.collapsed.filter((other) => other !== id) : [...this.collapsed, id]; saveInterface({ mine_board_collapsed: { [id]: this.collapsed.includes(id) } }) } }">
             @foreach ([0 => __('Unsorted')] + $this->personalColumns->pluck('name', 'id')->all() as $key => $name)
                 @php

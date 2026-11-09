@@ -152,8 +152,9 @@ class BulkTaskActionsTest extends TestCase
         $this->assertMatchesRegularExpression('/x-show="\$wire\.selected\.length (<|&lt;) 60"/', $html);
         $this->assertStringContainsString('Alle 60 auswählen', $html);
 
-        // The box of the header is in the same 24px box as the boxes of the rows
-        $this->assertMatchesRegularExpression('/size-6 shrink-0 items-center justify-center"[^>]*>\s*<ui-checkbox[^>]*aria-label="Alle sichtbaren Aufgaben auswählen"/', $html);
+        // The box of the header stands in a 24px box, like the boxes of the rows (which share a cell with the done button)
+        $this->assertMatchesRegularExpression('/size-6 items-center justify-center"[^>]*x-show="\$wire\.selecting"[^>]*>\s*<ui-checkbox[^>]*aria-label="Alle sichtbaren Aufgaben auswählen"/', $html);
+        $this->assertStringContainsString('inline-grid shrink-0 place-items-center size-6 max-sm:size-10', $html);
     }
 
     public function test_changing_the_filters_forgets_the_selection(): void
@@ -443,17 +444,19 @@ class BulkTaskActionsTest extends TestCase
         $page->call('stopSelecting')->assertSeeHtml('wire:key="select-page-off"')->assertSet('selected', []);
     }
 
-    public function test_unticking_everything_ends_the_selection(): void
+    public function test_unticking_everything_does_not_end_the_selection_but_the_bar_does(): void
     {
-        $this->task('Eins');
+        $one = $this->task('Eins');
         $this->task('Zwei');
 
-        Livewire::test('pages::projects.show', ['project' => $this->project])
+        $page = Livewire::test('pages::projects.show', ['project' => $this->project])
             ->call('togglePage')->assertSet('selecting', true)->assertCount('selected', 2)
-            ->call('togglePage')->assertSet('selecting', false)->assertSet('selected', []);
+            ->set('selected', [(string) $one->id])
+            ->set('selected', [])->assertSet('selecting', true);
 
-        $html = Livewire::test('pages::projects.show', ['project' => $this->project])->html();
-        $this->assertStringContainsString('if ($wire.selected.length === 0) { $wire.selecting = false; $wire.stopSelecting() }', $html);
+        $this->assertStringNotContainsString('{ $wire.selecting = false; $wire.stopSelecting() }', $page->html());
+
+        $page->set('selected', [(string) $one->id])->call('stopSelecting')->assertSet('selecting', false)->assertSet('selected', []);
     }
 
     public function test_assigning_in_bulk_takes_the_new_assignee_off_the_collaborators(): void

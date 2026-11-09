@@ -78,7 +78,9 @@ class CustomFieldsInListTest extends TestCase
         $table = substr($html, $start, strpos($html, '</table>', $start) - $start);
 
         $this->assertStringNotContainsString('hidden" data-flux-c', $table);
-        $this->assertSame(2, substr_count($table, 'pinned-column sm:start-20'));
+        $this->assertSame(2, substr_count($table, 'pinned-column sm:start-12'));
+        $this->assertStringNotContainsString('sm:start-20', $table);
+        $this->assertStringContainsString('w-12 min-w-12 max-sm:w-16 max-sm:min-w-16', $table);
         $this->assertSame(2, substr_count($table, 'sm:sticky sm:start-0'));
     }
 

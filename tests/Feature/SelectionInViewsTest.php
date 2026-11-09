@@ -48,10 +48,11 @@ class SelectionInViewsTest extends TestCase
         $this->task(['title' => 'Auswahl']);
 
         foreach ($this->views() as $view) {
-            // The boxes are drawn for every task in advance (in a template), the browser makes them at once; the server follows
+            // The boxes are drawn for every task in advance (hidden, in the cell of the done button), the browser shows them at once; the server follows
             Livewire::test($view, ['project' => $this->project])
                 ->assertSee('Auswählen')
-                ->assertSeeHtml('x-if="$wire.selecting"')
+                ->assertDontSeeHtml('x-if="$wire.selecting"')
+                ->assertSeeHtml('<span class="contents" x-show="$wire.selecting" x-cloak>')
                 ->assertSeeHtml('aria-label="Aufgabe auswählen: ')
                 ->assertSeeHtml('$wire.selecting = true; $wire.$refresh()')
                 ->call('startSelecting')
@@ -97,7 +98,8 @@ class SelectionInViewsTest extends TestCase
 
         foreach (['pages::projects.board' => ['project' => $this->project], 'pages::tasks.mine-board' => []] as $view => $parameters) {
             Livewire::test($view, $parameters)
-                ->assertSeeHtml('x-if="$wire.selecting"')
+                ->assertDontSeeHtml('x-if="$wire.selecting"')
+                ->assertSeeHtml('<span class="contents" x-show="$wire.selecting" x-cloak>')
                 ->assertSeeHtml('aria-label="Aufgabe auswählen: Auswahl"')
                 ->assertSeeHtml('$wire.selecting = true; $wire.$refresh()')
                 ->assertSeeHtml('x-show="$wire.selecting"')
@@ -113,7 +115,7 @@ class SelectionInViewsTest extends TestCase
         $this->task(['title' => 'Nur lesen'], $readOnly);
 
         Livewire::test('pages::projects.board', ['project' => $readOnly])
-            ->assertDontSeeHtml('x-if="$wire.selecting"')
+            ->assertDontSeeHtml('x-show="$wire.selecting" x-cloak')
             ->assertDontSeeHtml('Auswahl beenden')
             ->set('selecting', true)
             ->assertDontSeeHtml('Auswahl beenden');

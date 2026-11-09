@@ -442,7 +442,7 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
 
     [data-bar-floats] [data-fills-height] > [data-flux-kanban] > [data-flux-kanban-column] > div:not([data-collapsed]) [data-flux-kanban-column-cards],
     [data-bar-floats] [data-fills-height] ui-table-scroll-area,
-    [data-bar-floats] [data-fills-height] > [data-scroll-edges] {
+    [data-bar-floats] [data-fills-height] > [data-scroll-edges]:not([data-flux-kanban]) {
         padding-bottom: 4rem;
     }
 }

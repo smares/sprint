@@ -56,6 +56,8 @@ new class extends Component
 
     public bool $celebrations = true;
 
+    public bool $ambientBackground = true;
+
     public bool $joinOwnTasks = true;
 
     public string $locale = '';
@@ -102,6 +104,7 @@ new class extends Component
         $this->digest = auth()->user()->digest_enabled;
         $this->reminders = auth()->user()->reminders_enabled;
         $this->celebrations = auth()->user()->celebrations_enabled;
+        $this->ambientBackground = auth()->user()->ambient_background_enabled;
         $this->joinOwnTasks = auth()->user()->join_own_tasks;
         $this->locale = auth()->user()->preferredLocale();
         $this->timezone = (string) auth()->user()->timezone;
@@ -244,6 +247,16 @@ new class extends Component
         auth()->user()->update(['celebrations_enabled' => $value]);
 
         Flux::toast(variant: 'success', text: $value ? __('Celebrations turned on.') : __('Celebrations turned off.'));
+    }
+
+    public function updatedAmbientBackground(bool $value): void
+    {
+        auth()->user()->update(['ambient_background_enabled' => $value]);
+
+        // The background is kept across page changes (see ambient.js), so it is told, not reloaded
+        $this->dispatch('ambient-background', enabled: $value);
+
+        Flux::toast(variant: 'success', text: $value ? __('Animated background turned on.') : __('Animated background turned off.'));
     }
 
     /**
@@ -519,6 +532,8 @@ new class extends Component
             <flux:switch wire:model.live="joinOwnTasks" :label="__('Join tasks I create')" :description="__('A task you create adds you as a collaborator, so you hear about comments, status changes and reminders like the others. Only for new tasks that someone else is assigned to or nobody is: turning this off does not remove you from existing tasks, and you can mute any task.')" />
 
             <flux:switch wire:model.live="celebrations" :label="__('Celebrate completed tasks')" :description="__('Now and then a unicorn flies across the screen when you complete a task. Not shown if your device is set to reduce motion.')" />
+
+            <flux:switch wire:model.live="ambientBackground" :label="__('Animated background')" :description="__('Soft waves and patches of color behind the pages. Not shown if your device is set to reduce motion (then one still picture remains).')" />
 
             <flux:separator />
 

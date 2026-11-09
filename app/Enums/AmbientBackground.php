@@ -19,4 +19,13 @@ enum AmbientBackground: string
             self::Off => __('Off'),
         };
     }
+
+    public function icon(): string
+    {
+        return match ($this) {
+            self::Animated => 'sparkles',
+            self::Still => 'photo',
+            self::Off => 'eye-slash',
+        };
+    }
 }

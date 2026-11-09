@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Enums\AmbientBackground;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Livewire\Livewire;
 use Tests\TestCase;
 
 class AmbientBackgroundTest extends TestCase
@@ -41,39 +40,42 @@ class AmbientBackgroundTest extends TestCase
         $this->assertStringContainsString("import { startAmbientBackground } from './ambient.js'", file_get_contents(resource_path('js/app.js')));
     }
 
-    public function test_the_background_is_animated_by_default_and_a_person_can_choose_still_or_off_in_the_profile(): void
+    public function test_the_background_is_animated_by_default_and_the_choice_in_the_user_menu_is_kept_with_the_interface(): void
     {
         $user = User::factory()->create();
 
-        $this->assertSame(AmbientBackground::Animated, $user->fresh()->ambient_background);
+        $this->assertSame(AmbientBackground::Animated, $user->ambientBackground());
         $this->actingAs($user)->get(route('profile'))->assertOk()->assertSeeHtml('data-mode="animated"');
 
-        Livewire::actingAs($user)->test('pages::profile')
-            ->assertSet('ambientBackground', 'animated')
-            ->set('ambientBackground', 'still')
-            ->assertDispatched('ambient-background', mode: 'still')
-            ->set('ambientBackground', 'off')
-            ->assertDispatched('ambient-background', mode: 'off');
+        foreach (['still', 'off'] as $mode) {
+            $this->actingAs($user)->patchJson(route('interface.update'), ['ambient' => $mode])->assertOk();
 
-        $this->assertSame(AmbientBackground::Off, $user->fresh()->ambient_background);
-        $this->actingAs($user->fresh())->get(route('profile'))->assertOk()->assertSeeHtml('data-mode="off"');
+            $this->assertSame($mode, $user->fresh()->ambientBackground()->value);
+            $this->actingAs($user->fresh())->get(route('profile'))->assertOk()->assertSeeHtml('data-mode="'.$mode.'"');
+        }
 
-        Livewire::actingAs($user)->test('pages::profile')
-            ->assertSet('ambientBackground', 'off')
-            ->set('ambientBackground', 'animated');
-
-        $this->assertSame(AmbientBackground::Animated, $user->fresh()->ambient_background);
+        $this->actingAs($user)->patchJson(route('interface.update'), ['ambient' => 'animated'])->assertOk();
+        $this->assertSame(AmbientBackground::Animated, $user->fresh()->ambientBackground());
     }
 
-    public function test_an_unknown_choice_changes_nothing(): void
+    public function test_an_unknown_choice_is_refused_and_changes_nothing(): void
     {
-        $user = User::factory()->create(['ambient_background' => AmbientBackground::Still]);
+        $user = User::factory()->create();
+        $user->rememberInterface(['ambient' => 'still']);
 
-        Livewire::actingAs($user)->test('pages::profile')
-            ->set('ambientBackground', 'confetti')
-            ->assertSet('ambientBackground', 'still')
-            ->assertNotDispatched('ambient-background');
+        $this->actingAs($user)->patchJson(route('interface.update'), ['ambient' => 'confetti'])->assertUnprocessable();
 
-        $this->assertSame(AmbientBackground::Still, $user->fresh()->ambient_background);
+        $this->assertSame(AmbientBackground::Still, $user->fresh()->ambientBackground());
+    }
+
+    public function test_the_user_menu_offers_the_three_choices_like_the_appearance(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->get(route('profile'))->assertOk()
+            ->assertSeeHtml('saveInterface({ ambient: mode })')
+            ->assertSeeHtml('value="animated"')
+            ->assertSeeHtml('value="still"')
+            ->assertSeeHtml('value="off"');
     }
 }

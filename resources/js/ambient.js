@@ -171,7 +171,7 @@ export const startAmbientBackground = () => {
         restart()
     }
 
-    // The switch in the profile (a Livewire event, which Livewire also sends to the window)
+    // The choice in the user menu (see user-menu.blade.php)
     const switched = (event) => {
         layer.dataset.mode = event.detail?.mode ?? event.detail?.[0]?.mode ?? 'animated'
         restart()

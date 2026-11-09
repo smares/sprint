@@ -520,7 +520,6 @@ new class extends Component
 
             <flux:switch wire:model.live="celebrations" :label="__('Celebrate completed tasks')" :description="__('Now and then a unicorn flies across the screen when you complete a task. Not shown if your device is set to reduce motion.')" />
 
-
             <flux:separator />
 
             {{-- The state of this browser is only known in the browser, see pushToggle in app.js --}}

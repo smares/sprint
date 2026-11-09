@@ -200,7 +200,7 @@ class TaskCheckCellTest extends TestCase
         $html = $this->page('pages::projects.show')->html();
 
         $this->assertMatchesRegularExpression('/<div[^>]*x-show="! \$wire\.selecting"[^>]*data-selection-toggle>/', $html);
-        $this->assertStringContainsString('$wire.selecting = true; $nextTick(', $html);
+        $this->assertStringContainsString('$wire.selecting = true; $wire.selected = []; $nextTick(', $html);
         $this->assertStringContainsString('Auswählen', $html);
         $this->assertLessThan(strpos($html, 'aria-label="Weitere Aktionen"'), strpos($html, 'x-show="! $wire.selecting"'));
         $this->assertStringNotContainsString('ends-when-empty', $html);
@@ -316,7 +316,35 @@ class TaskCheckCellTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/\sdata-bar-docked[\s>]/', $page->call('stopSelecting')->html());
     }
 
-    public function test_the_quick_add_rows_stay_in_place_but_are_invisible_while_selecting(): void
+    /**
+     * @dataProvider viewsThatMakeRoomForTheBar
+     */
+    #[DataProvider('viewsThatMakeRoomForTheBar')]
+    public function test_the_bar_is_drawn_for_everyone_who_may_edit_as_the_last_part_of_the_page(string $view): void
+    {
+        $this->task(['title' => 'Eine']);
+
+        $html = $this->squashed($this->page($view)->html());
+
+        // The bar is a sticky box of the page itself (not fixed to the window), where the page's flex column pushes it down (mt-auto)
+        $this->assertMatchesRegularExpression('/<div[^>]*pointer-events-none sticky bottom-4[^>]* mt-auto [^>]*data-selection-bar/', $html, $view);
+        $this->assertStringNotContainsString('fixed inset-x-0 bottom-4', $html, $view);
+    }
+
+    public function test_no_directive_is_left_uncompiled_in_the_attributes_of_the_boxes_and_the_bar(): void
+    {
+        $this->task(['title' => 'Eine']);
+
+        // Blade does not compile directives inside the attributes of a component tag: they would reach the browser as text
+        foreach (['pages::projects.show', 'pages::projects.board', 'pages::projects.calendar', 'pages::projects.timeline'] as $view) {
+            $html = $this->page($view)->html();
+
+            $this->assertStringNotContainsString('@js(', $html, $view);
+            $this->assertStringNotContainsString('@json(', $html, $view);
+        }
+    }
+
+    public function test_the_quick_add_rows_are_hidden_while_selecting_so_no_column_keeps_room_for_them(): void
     {
         $this->task(['title' => 'Eine']);
         $quickAdd = '/<div\s+x-data="\{\s*adding: false.*?\n\s*\}"\s*([^>]*)>/s';
@@ -329,8 +357,8 @@ class TaskCheckCellTest extends TestCase
                 $this->assertGreaterThan(0, preg_match_all($quickAdd, $html, $matches), $view);
 
                 foreach ($matches[1] as $attributes) {
-                    $this->assertStringContainsString("x-bind:class=\"{ 'invisible': \$wire.selecting }\"", $attributes, $view);
-                    $this->assertStringNotContainsString('x-show', $attributes, $view);
+                    $this->assertStringContainsString('x-show="! $wire.selecting"', $attributes, $view);
+                    $this->assertStringNotContainsString('invisible', $attributes, $view);
                 }
             }
         }

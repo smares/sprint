@@ -441,6 +441,18 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
     display: flex;
     flex-direction: column;
     min-height: 100%;
+
+    /* The page's own room below (2rem, 1rem where the view fills the window) is taken into account, so the bar rests 1rem above the
+       bottom edge of the window wherever it ends up */
+    & > [data-selection-bar] {
+        margin-bottom: -1rem;
+    }
+
+    @media (width >= 40rem) and (height >= 40rem) {
+        &:has([data-fills-height]) > [data-selection-bar] {
+            margin-bottom: 0;
+        }
+    }
 }
 
 /* A collapsed board column: a narrow strip as high as the board with the expand button on top and the dot, status and count

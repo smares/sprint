@@ -8,7 +8,7 @@
      x-selection-bar), so the boxes do not wait for it to draw the whole page again, and nothing is drawn again when one starts and
      ends the selection. --}}
 @php($start = $instant
-    ? '$wire.selecting = true; $nextTick(() => [...document.querySelectorAll(\'[data-select-box] ui-checkbox\')].find((box) => (box.checkVisibility?.({ visibilityProperty: true }) ?? box.offsetParent !== null))?.focus())'
+    ? '$wire.selecting = true; $wire.selected = []; $nextTick(() => [...document.querySelectorAll(\'[data-select-box] ui-checkbox\')].find((box) => (box.checkVisibility?.({ visibilityProperty: true }) ?? box.offsetParent !== null))?.focus())'
     : '$wire.startSelecting().then(() => $nextTick(() => [...document.querySelectorAll(\'[data-select-box] ui-checkbox\')].find((box) => (box.checkVisibility?.({ visibilityProperty: true }) ?? box.offsetParent !== null))?.focus()))')
 <div {{ $attributes->class('shrink-0') }} data-selection-toggle>
     <div class="sm:hidden"><flux:button icon="clipboard-document-check" square x-on:click="{{ $start }}" class="max-sm:size-10!" aria-label="{{ __('Select') }}" tooltip="{{ __('Select') }}" /></div>

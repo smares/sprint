@@ -31,5 +31,13 @@ return new class extends Migration
         Schema::table('users', function (Blueprint $table) {
             $table->string('ambient_background', 16)->default('animated');
         });
+
+        DB::table('users')->whereNotNull('interface')->get(['id', 'interface'])->each(function (object $row): void {
+            $mode = json_decode($row->interface, true)['ambient'] ?? null;
+
+            if (in_array($mode, ['still', 'off'], true)) {
+                DB::table('users')->where('id', $row->id)->update(['ambient_background' => $mode]);
+            }
+        });
     }
 };

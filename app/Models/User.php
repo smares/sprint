@@ -148,7 +148,7 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
 
     /**
      * What the person has arranged in the interface, which follows them from one device to the next: the appearance, the
-     * sidebar, the collapsed board columns, the view of "My tasks" they used last, the view they used last in each project (last_views) and the saved view of a project that opens by default (default_views).
+     * background, the sidebar, the collapsed board columns, the view of "My tasks" they used last, the view they used last in each project (last_views) and the saved view of a project that opens by default (default_views).
      *
      * @return array{rev?: int, appearance?: string, ambient?: string, sidebar_collapsed?: bool, mine_view?: string, last_views?: array<int|string, string>, board_collapsed?: array<int|string, list<int>>, mine_board_collapsed?: list<int>, default_views?: array<int|string, array<string, int>>}
      */

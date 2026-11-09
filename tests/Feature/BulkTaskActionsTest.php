@@ -436,12 +436,12 @@ class BulkTaskActionsTest extends TestCase
         // One box for the whole time: it follows `selected` (x-effect), so nothing set by hand outlives the selection
         $page = Livewire::test('pages::projects.show', ['project' => $this->project])
             ->assertSeeHtml('wire:key="select-'.$task->id.'-on"')
-            ->assertSeeHtml('$wire.selecting = true; $nextTick(')
-            ->assertSeeHtml('wire:key="select-page-off"');
+            ->assertSeeHtml('$wire.selecting = true; $wire.selected = []; $nextTick(')
+            ->assertSeeHtml('wire:key="select-page"');
 
-        $page->call('startSelecting')->assertSeeHtml('wire:key="select-page-on"');
+        $page->call('startSelecting')->assertSeeHtml('wire:key="select-page"');
 
-        $page->call('stopSelecting')->assertSeeHtml('wire:key="select-page-off"')->assertSet('selected', []);
+        $page->call('stopSelecting')->assertSeeHtml('wire:key="select-page"')->assertSet('selected', []);
     }
 
     public function test_unticking_everything_does_not_end_the_selection_but_the_bar_does(): void
@@ -493,5 +493,27 @@ class BulkTaskActionsTest extends TestCase
         $this->list([$task])->set('bulkDueDate', '2026-12-15')->call('applyBulkChanges')->assertHasNoErrors();
 
         $this->assertSame(15, $task->fresh()->repeat_day);
+    }
+
+    public function test_the_dialog_opens_empty_after_an_earlier_try_that_was_not_finished(): void
+    {
+        $task = $this->task('Eine');
+
+        $page = $this->list([$task])
+            ->set('selecting', true)
+            ->set('selected', [(string) $task->id])
+            ->set('bulkStatus', (string) $this->project->statuses()->skip(1)->firstOrFail()->id)
+            ->set('bulkClearDueDate', true)
+            ->call('openBulkEdit');
+
+        $page->assertSet('bulkStatus', '')->assertSet('bulkClearDueDate', false)->assertSet('bulkAddTags', [])->assertHasNoErrors();
+    }
+
+    public function test_only_someone_who_may_edit_the_project_can_open_the_dialog(): void
+    {
+        $viewer = User::factory()->create();
+        $this->project->setRole($viewer, ProjectRole::Viewer);
+
+        Livewire::actingAs($viewer)->test('pages::projects.show', ['project' => $this->project])->call('openBulkEdit')->assertForbidden();
     }
 }

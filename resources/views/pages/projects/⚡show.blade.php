@@ -704,7 +704,7 @@ new class extends Component
                             <span class="sr-only" @if ($this->canEdit) x-show="! $wire.selecting" @endif>{{ __('Done') }}</span>
                             @if ($this->canEdit)
                                 <span class="flex size-6 items-center justify-center" x-show="$wire.selecting" x-cloak>
-                                    <flux:checkbox wire:key="select-page-{{ $selecting ? 'on' : 'off' }}" :checked="$selecting && $this->tasks->isNotEmpty() && $this->tasks->pluck('id')->diff($this->selectedIds)->isEmpty()" wire:click="togglePage" aria-label="{{ __('Select all visible tasks') }}" />
+                                    <flux:checkbox aria-label="{{ __('Select all visible tasks') }}" wire:key="select-page" x-effect="const shown = {{ \Illuminate\Support\Js::from($this->tasks->pluck('id')->map(fn ($id) => (string) $id)->all()) }}; $el.checked = shown.length > 0 && shown.every((id) => $wire.selected.map(String).includes(id))" wire:click="togglePage" />
                                 </span>
                             @endif
                         </span>
@@ -744,7 +744,7 @@ new class extends Component
                             </flux:table.cell>
                             {{-- Assignee first, then collaborators, as on the board; names and absences show on hover --}}
                             <flux:table.cell>
-                                <x-assignee-picker :task="$task" :editable="$this->canEdit && ! $selecting" />
+                                <x-assignee-picker :task="$task" :editable="$this->canEdit" />
                             </flux:table.cell>
                             <flux:table.cell>
                                 <x-task-due :task="$task" />
@@ -777,8 +777,7 @@ new class extends Component
     @endif
 
     @if ($this->canEdit)
-        {{-- Not gone while selecting but invisible, so the list keeps its size (the bar has its place below) --}}
-        <x-quick-add class="mt-2" x-bind:class="{ 'invisible': $wire.selecting }" />
+        <x-quick-add class="mt-2" x-show="! $wire.selecting" />
     @endif
 
     {{-- The bar is always there for who may edit, shown as soon as the browser selects; the dialog needs what the server knows --}}

@@ -77,6 +77,19 @@ trait EditsTasksInBulk
         ];
     }
 
+    /**
+     * The dialog for changing the selected tasks opens empty: what was entered before, or the errors of an earlier try, stay behind.
+     * The browser starts and ends a selection on its own, so this is where the server sees the selection for the first time.
+     */
+    public function openBulkEdit(): void
+    {
+        Gate::authorize('edit', $this->project);
+
+        $this->reset('bulkStatus', 'bulkAssignee', 'bulkDueDate', 'bulkClearDueDate', 'bulkAddTags', 'bulkRemoveTags');
+        $this->resetErrorBag();
+        unset($this->bulkChoices);
+    }
+
     protected function selectionEnded(): void
     {
         unset($this->bulkChoices);

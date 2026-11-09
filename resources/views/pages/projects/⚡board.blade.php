@@ -451,7 +451,7 @@ new class extends Component
                     </flux:kanban.column.cards>
 
                     @if ($this->canEdit)
-                        <x-quick-add :status-id="$status->id" class="mt-1 px-2 pb-2" x-bind:class="{ 'invisible': $wire.selecting }" />
+                        <x-quick-add :status-id="$status->id" class="mt-1 px-2 pb-2" x-show="! $wire.selecting" />
                     @endif
                 </flux:kanban.column>
             @endforeach

@@ -1,4 +1,4 @@
-// What a person arranged in the interface (appearance, sidebar, collapsed board columns) lives on the server, so a second
+// What a person arranged in the interface (appearance, background, sidebar, collapsed board columns) lives on the server, so a second
 // device shows the same (InterfaceController). The layout seeds the keys Flux keeps in localStorage from it on every page,
 // this file reports changes back. Only what changed is sent, so a device that has not seen another one's change does not
 // take it back.

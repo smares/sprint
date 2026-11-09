@@ -7,34 +7,35 @@
      next request (an action of the bar, the dialog), so switching back and forth costs no page to be drawn again. --}}
 {{-- The bar has its place at the end of the page, within the content (centered over it, never under the sidebar), and sticks to the
      bottom edge of the window while the end of the page is further down. It takes room of its own there, so it covers nothing --}}
-<div {{ $attributes->class('pointer-events-none sticky bottom-4 z-30 mt-auto shrink-0 pt-3') }}>
+<div {{ $attributes->class('pointer-events-none sticky bottom-4 z-30 mt-auto shrink-0 pt-3') }} data-selection-bar>
     <div class="flex justify-center px-4">
         <div class="pointer-events-auto flex w-full max-w-xl flex-col gap-2 rounded-xl border border-zinc-200 bg-white p-2 shadow-lg sm:w-auto sm:max-w-full sm:flex-row sm:items-center dark:border-zinc-700 dark:bg-zinc-800">
-        <div class="flex items-center gap-2">
-            <flux:text class="px-2 font-medium" role="status">{!! __(':count selected', ['count' => '<span x-text="$wire.selected.length">0</span>']) !!}</flux:text>
+            <div class="flex items-center gap-2">
+                <flux:text class="px-2 font-medium" role="status">{!! __(':count selected', ['count' => '<span x-text="$wire.selected.length">0</span>']) !!}</flux:text>
 
-            @error('selected')
-                <flux:text class="text-red-600 dark:text-red-400" role="alert">{{ $message }}</flux:text>
-            @enderror
+                @error('selected')
+                    <flux:text class="text-red-600 dark:text-red-400" role="alert">{{ $message }}</flux:text>
+                @enderror
 
-            {{ $extra ?? '' }}
+                {{ $extra ?? '' }}
 
-            <div class="ms-auto sm:hidden"><flux:button size="sm" variant="ghost" icon="x-mark" x-on:click="$wire.selecting = false; $wire.selected = []; $nextTick(() => [...document.querySelectorAll('[data-selection-toggle] button')].find((button) => button.offsetParent !== null)?.focus())" aria-label="{{ __('End selection') }}" tooltip="{{ __('End selection') }}" /></div>
+                <div class="ms-auto sm:hidden"><flux:button size="sm" variant="ghost" icon="x-mark" x-on:click="$wire.selecting = false; $wire.selected = []; $nextTick(() => [...document.querySelectorAll('[data-selection-toggle] button')].find((button) => button.offsetParent !== null)?.focus())" aria-label="{{ __('End selection') }}" tooltip="{{ __('End selection') }}" /></div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+                <flux:button size="sm" icon="check" wire:click="bulkComplete" x-bind:disabled="$wire.selected.length === 0">{{ __('Mark as done') }}</flux:button>
+                <flux:button size="sm" icon="arrow-uturn-left" wire:click="bulkReopen" x-bind:disabled="$wire.selected.length === 0">{{ __('Reopen') }}</flux:button>
+
+                @if ($change)
+                    {{-- The dialog is part of the page once the server knows about the selection (it asks for it here, the start of the selection
+                         does not), and it opens empty; if the server cannot be reached, the person is told --}}
+                    <flux:button size="sm" icon="pencil-square" x-bind:disabled="$wire.selected.length === 0" x-on:click="$wire.openBulkEdit().then(() => $flux.modal('bulk-edit').show()).catch(() => window.Flux.toast({ text: {{ \Illuminate\Support\Js::from(__('The dialog could not be opened. Please try again.')) }}, variant: 'danger' }))">{{ __('Change') }}</flux:button>
+                @endif
+
+                <flux:button size="sm" variant="danger" icon="trash" wire:click="bulkDelete" wire:confirm="{{ __('Permanently delete the selected tasks including their subtasks?') }}" x-bind:disabled="$wire.selected.length === 0">{{ __('Delete') }}</flux:button>
+
+                <div class="max-sm:hidden"><flux:button size="sm" variant="ghost" icon="x-mark" x-on:click="$wire.selecting = false; $wire.selected = []; $nextTick(() => [...document.querySelectorAll('[data-selection-toggle] button')].find((button) => button.offsetParent !== null)?.focus())" aria-label="{{ __('End selection') }}" tooltip="{{ __('End selection') }}" /></div>
+            </div>
         </div>
-
-        <div class="flex flex-wrap items-center gap-2">
-            <flux:button size="sm" icon="check" wire:click="bulkComplete" x-bind:disabled="$wire.selected.length === 0">{{ __('Mark as done') }}</flux:button>
-            <flux:button size="sm" icon="arrow-uturn-left" wire:click="bulkReopen" x-bind:disabled="$wire.selected.length === 0">{{ __('Reopen') }}</flux:button>
-
-            @if ($change)
-                {{-- The dialog is part of the page once the server has answered the start of the selection; ask for it first, so a quick click is not lost --}}
-                <flux:button size="sm" icon="pencil-square" x-bind:disabled="$wire.selected.length === 0" x-on:click="$wire.$refresh().then(() => $flux.modal('bulk-edit').show())">{{ __('Change') }}</flux:button>
-            @endif
-
-            <flux:button size="sm" variant="danger" icon="trash" wire:click="bulkDelete" wire:confirm="{{ __('Permanently delete the selected tasks including their subtasks?') }}" x-bind:disabled="$wire.selected.length === 0">{{ __('Delete') }}</flux:button>
-
-            <div class="max-sm:hidden"><flux:button size="sm" variant="ghost" icon="x-mark" x-on:click="$wire.selecting = false; $wire.selected = []; $nextTick(() => [...document.querySelectorAll('[data-selection-toggle] button')].find((button) => button.offsetParent !== null)?.focus())" aria-label="{{ __('End selection') }}" tooltip="{{ __('End selection') }}" /></div>
-        </div>
-    </div>
     </div>
 </div>

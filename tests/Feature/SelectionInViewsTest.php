@@ -60,7 +60,7 @@ class SelectionInViewsTest extends TestCase
                 ->assertSee('Auswählen')
                 ->assertSeeHtml('<span class="contents" x-show="$wire.selecting" x-cloak>')
                 ->assertSeeHtml('aria-label="Aufgabe auswählen: ')
-                ->assertSeeHtml('$wire.selecting = true; $wire.$refresh()')
+                ->assertSeeHtml('$wire.selecting = true; $wire.selected = []; $nextTick(')
                 ->call('startSelecting')
                 ->assertSet('selecting', true)
                 ->assertSet('selected', [])
@@ -107,7 +107,7 @@ class SelectionInViewsTest extends TestCase
                 ->assertDontSeeHtml('x-if="$wire.selecting"')
                 ->assertSeeHtml('<span class="contents" x-show="$wire.selecting" x-cloak>')
                 ->assertSeeHtml('aria-label="Aufgabe auswählen: Auswahl"')
-                ->assertSeeHtml('$wire.selecting = true; $wire.$refresh()')
+                ->assertSeeHtml('$wire.selecting = true; $wire.selected = []; $nextTick(')
                 ->assertSeeHtml('x-show="$wire.selecting"')
                 ->assertSeeHtml('filter(event) { return $wire.selecting || event.target.closest(')
                 ->assertSeeHtml('Auswahl beenden');
@@ -269,7 +269,7 @@ class SelectionInViewsTest extends TestCase
             ->assertSeeHtml('x-on:drop.prevent="over = false; if ($wire.selecting) { return }')
             ->assertSeeHtml('x-on:dragstart="if ($wire.selecting) { $event.preventDefault(); return }')
             ->assertSeeHtml("'cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-700/40': ! \$wire.selecting")
-            ->assertSeeHtml("'ps-6': \$wire.selecting, '[@media(hover:none)]:pe-7': ! \$wire.selecting")
+            ->assertSeeHtml("'ps-9': \$wire.selecting, '[@media(hover:none)]:pe-7': ! \$wire.selecting")
             ->assertSeeHtml('x-show="! $wire.selecting" x-on:click.stop="$wire.$dispatch(\'new-task\'')
             ->assertSeeHtml('<span x-show="! $wire.selecting" class="absolute inset-y-0 end-0 hidden');
 

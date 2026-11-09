@@ -171,8 +171,8 @@ new class extends Component
 };
 ?>
 
-{{-- While selecting, the bar floats over the page (see data-bar-floats in app.css): on phones the page has room at its end to scroll clear of it; on larger windows it may cover the lower part of the last week, whose days show their tasks from the top --}}
-<div @if ($selecting) data-bar-floats @endif x-bind:data-bar-floats="$wire.selecting" data-wide>
+{{-- While selecting the bar of actions is the last element of the page, which becomes that much shorter (see data-bar-docked in app.css) --}}
+<div @if ($selecting) data-bar-docked @endif x-bind:data-bar-docked="$wire.selecting" data-wide>
     @php
         $offersSelecting = $this->canEdit && collect($this->weeks)->flatten(1)->contains(fn ($day) => $day['tasks']->isNotEmpty());
     @endphp
@@ -266,7 +266,7 @@ new class extends Component
                                        style="--badge: {{ $task->status->color }}"
                                        @if ($this->canEdit)
                                            draggable="true"
-                                           x-bind:class="{ 'ps-6': $wire.selecting, '[@media(hover:none)]:pe-7': ! $wire.selecting }"
+                                           x-bind:class="{ 'ps-9': $wire.selecting, '[@media(hover:none)]:pe-7': ! $wire.selecting }"
                                            x-on:dragstart="if ($wire.selecting) { $event.preventDefault(); return }; $event.dataTransfer.setData('text/plain', JSON.stringify({ id: {{ $task->id }}, from: '{{ $day['date']->toDateString() }}' })); $event.dataTransfer.effectAllowed = 'move'"
                                        @endif
                                        @class([

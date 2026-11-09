@@ -2,12 +2,13 @@
  * The background: soft patches of color and, over them, a fan of thin waves with small points of light running along them
  * (the same idea as the login page of Stage Force). Nothing is an image: every wave is a sum of a few sines of the position
  * across the window, the fan opens towards the left, and the time is the clock, so the picture neither starts over on a page
- * change nor on a reload. It is drawn small (at most half the size of the window, the browser scales it up, and soft shapes
- * do not mind) and at 20 frames a second, and not at all while the page is hidden. With "reduce motion" one still picture is
+ * change nor on a reload. It is drawn small (at most 40% of the size of the window, the browser scales it up, and soft shapes
+ * do not mind) and at 12 frames a second, and not at all while the page is hidden. With "reduce motion" one still picture is
  * drawn, with forced colors nothing.
  */
 
-const FRAME_MS = 1000 / 20
+// The movement is slow: a dozen pictures a second look the same as more, and every picture costs the main thread
+const FRAME_MS = 1000 / 12
 
 const palettes = {
     light: {
@@ -126,31 +127,35 @@ export const startAmbientBackground = () => {
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
     const forcedColors = window.matchMedia('(forced-colors: active)')
     let frame = 0
-    let last = 0
+    let timer = 0
 
     const palette = () => (document.documentElement.classList.contains('dark') ? palettes.dark : palettes.light)
     const render = () => draw(canvas, context, palette(), Date.now() / 1000)
     const mode = () => layer.dataset.mode ?? 'animated'
     const canRun = () => mode() === 'animated' && ! document.hidden && ! reducedMotion.matches && ! forcedColors.matches
 
-    const tick = (now) => {
-        frame = 0
+    // A timer decides when a picture is due and the frame callback draws it, so nothing runs between the pictures (a frame callback of
+    // its own would wake the page 60 times a second to do nothing)
+    const tick = () => {
+        timer = 0
 
         if (! canRun()) {
             return
         }
 
-        if (now - last >= FRAME_MS) {
-            last = now
-            render()
-        }
+        frame = requestAnimationFrame(render)
+        timer = setTimeout(tick, FRAME_MS)
+    }
 
-        frame = requestAnimationFrame(tick)
+    const cancel = () => {
+        cancelAnimationFrame(frame)
+        clearTimeout(timer)
+        frame = 0
+        timer = 0
     }
 
     const restart = () => {
-        cancelAnimationFrame(frame)
-        frame = 0
+        cancel()
 
         if (mode() === 'off' || document.hidden || forcedColors.matches) {
             return
@@ -159,19 +164,19 @@ export const startAmbientBackground = () => {
         render()
 
         if (canRun()) {
-            frame = requestAnimationFrame(tick)
+            timer = setTimeout(tick, FRAME_MS)
         }
     }
 
     const resize = () => {
-        const scale = Math.min(0.5, 960 / window.innerWidth, 540 / window.innerHeight)
+        const scale = Math.min(0.4, 640 / window.innerWidth, 360 / window.innerHeight)
 
         canvas.width = Math.max(1, Math.round(window.innerWidth * scale))
         canvas.height = Math.max(1, Math.round(window.innerHeight * scale))
         restart()
     }
 
-    // The switch in the profile (a Livewire event, which Livewire also sends to the window)
+    // The choice in the user menu (see user-menu.blade.php)
     const switched = (event) => {
         layer.dataset.mode = event.detail?.mode ?? event.detail?.[0]?.mode ?? 'animated'
         restart()
@@ -187,7 +192,7 @@ export const startAmbientBackground = () => {
     forcedColors.addEventListener('change', restart)
 
     stop = () => {
-        cancelAnimationFrame(frame)
+        cancel()
         appearance.disconnect()
         window.removeEventListener('ambient-background', switched)
         window.removeEventListener('resize', resize)
@@ -201,6 +206,19 @@ export const startAmbientBackground = () => {
     resize()
 }
 
+/** What another device chose follows on a page change (like the appearance, see followServerAppearance in interface.js). */
+const followServerChoice = () => {
+    const layer = document.querySelector('.ambient')
+    const served = window.sprintInterface?.ambient
+
+    // A change of this device that has not reached the server yet is newer than what the page brought
+    if (! layer || ! served || window.sprintHasUnsentChanges?.() || layer.dataset.mode === served) {
+        return
+    }
+
+    window.dispatchEvent(new CustomEvent('ambient-background', { detail: { mode: served } }))
+}
+
 /** The canvas is kept across page changes (@persist); should it ever be replaced, the drawing starts again on the new one. */
 document.addEventListener('livewire:navigated', () => {
     if (stop && ! document.querySelector('.ambient canvas[data-running]')) {
@@ -208,4 +226,5 @@ document.addEventListener('livewire:navigated', () => {
     }
 
     startAmbientBackground()
+    followServerChoice()
 })

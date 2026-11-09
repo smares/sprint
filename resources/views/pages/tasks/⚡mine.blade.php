@@ -74,8 +74,8 @@ new class extends Component
 };
 ?>
 
-{{-- While selecting the bar floats over the bottom of the window; what that needs of the page is in app.css (data-bar-floats) --}}
-<div @if ($selecting) data-bar-floats @endif x-bind:data-bar-floats="$wire.selecting" data-wide>
+{{-- While selecting the bar of actions is the last element of the page, which becomes that much shorter (see data-bar-docked in app.css) --}}
+<div @if ($selecting) data-bar-docked @endif x-bind:data-bar-docked="$wire.selecting" data-wide>
     <div class="mb-6 flex min-h-10 items-center justify-between gap-3">
         <flux:heading level="1" size="xl">{{ __('My tasks') }}</flux:heading>
         @if ($this->tasks->isNotEmpty())

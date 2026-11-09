@@ -1244,3 +1244,27 @@ watchScrollEdges()
 document.addEventListener('livewire:navigated', watchScrollEdges)
 
 startAmbientBackground()
+
+// The room the bar of selected tasks takes (data-bar-docked, see app.css) goes away with the selection, and the views grow again. A
+// list that was scrolled to its end then stands further down than it can be (some browsers, Safari above all, clamp that only when
+// the next scroll happens and show an empty strip in the meantime), so the places are put back at once.
+const clampScrollPositions = (root) => {
+    const scrollers = [root, document.scrollingElement, ...root.querySelectorAll('[data-flux-kanban-column-cards], ui-table-scroll-area, [data-scroll-edges]')]
+
+    scrollers.forEach((scroller) => {
+        const furthest = Math.max(0, scroller.scrollHeight - scroller.clientHeight)
+
+        if (scroller.scrollTop > furthest) {
+            scroller.scrollTop = furthest
+        }
+    })
+}
+
+new MutationObserver((records) => {
+    records.forEach((record) => {
+        if (! record.target.hasAttribute('data-bar-docked')) {
+            clampScrollPositions(record.target)
+            requestAnimationFrame(() => clampScrollPositions(record.target))
+        }
+    })
+}).observe(document.documentElement, { subtree: true, attributes: true, attributeFilter: ['data-bar-docked'] })

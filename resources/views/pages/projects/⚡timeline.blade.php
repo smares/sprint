@@ -172,8 +172,8 @@ new class extends Component
 };
 ?>
 
-{{-- While selecting the bar floats over the bottom of the window; what that needs of the page is in app.css (data-bar-floats) --}}
-<div @if ($selecting) data-bar-floats @endif x-bind:data-bar-floats="$wire.selecting" data-wide>
+{{-- While selecting the bar of actions is the last element of the page, which becomes that much shorter (see data-bar-docked in app.css) --}}
+<div @if ($selecting) data-bar-docked @endif x-bind:data-bar-docked="$wire.selecting" data-wide>
     @php
         $offersSelecting = $this->canEdit && $this->rows->isNotEmpty();
     @endphp

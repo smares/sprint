@@ -3,7 +3,7 @@
 namespace App\Enums;
 
 /**
- * What a person wants behind the pages (see resources/js/ambient.js), chosen in the profile like the appearance.
+ * What a person wants behind the pages (see resources/js/ambient.js), chosen in the user menu like the appearance.
  */
 enum AmbientBackground: string
 {
@@ -17,6 +17,15 @@ enum AmbientBackground: string
             self::Animated => __('Animated'),
             self::Still => __('Still'),
             self::Off => __('Off'),
+        };
+    }
+
+    public function icon(): string
+    {
+        return match ($this) {
+            self::Animated => 'sparkles',
+            self::Still => 'photo',
+            self::Off => 'eye-slash',
         };
     }
 }

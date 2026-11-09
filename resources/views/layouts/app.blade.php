@@ -30,9 +30,9 @@
         @fluxAppearance
     </head>
     <body class="min-h-screen bg-zinc-50 dark:bg-zinc-900">
-        {{-- Soft, slowly drifting patches of color behind the pages (see .ambient in app.css); kept across page changes so the drift does not start over --}}
+        {{-- Soft patches of color and a fan of slow waves behind the pages, drawn by resources/js/ambient.js; kept across page changes --}}
         @persist('ambient')
-            <div class="ambient" aria-hidden="true"><span></span><span></span><span></span></div>
+            <div class="ambient" aria-hidden="true"><canvas></canvas></div>
         @endpersist
 
         {{-- The first thing the keyboard reaches: jumps over the sidebar to the content; visible only while focused --}}

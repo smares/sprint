@@ -3,7 +3,8 @@
 {{-- The bar at the bottom while tasks are selected: how many, and what to do with them (mark as done, change, delete). The page
      keeps the selection in `selected` (see EditsTasksInBulk and ListsMyTasks); `change` offers the dialog x-bulk-edit-modal. A slot named `extra`
      adds a button after the count. A page that sets `selecting` in the browser first (see the `instant` toggle) draws the bar always and shows it
-     with x-show; ending sets `selecting` in the browser at once, too. --}}
+     with x-show; ending sets `selecting` in the browser at once, too. Neither asks the server: the new state goes along with the
+     next request (an action of the bar, the dialog), so switching back and forth costs no page to be drawn again. --}}
 {{-- The bar has its place at the end of the page, within the content (centered over it, never under the sidebar), and sticks to the
      bottom edge of the window while the end of the page is further down. It takes room of its own there, so it covers nothing --}}
 <div {{ $attributes->class('pointer-events-none sticky bottom-4 z-30 mt-auto shrink-0 pt-3') }}>
@@ -18,7 +19,7 @@
 
             {{ $extra ?? '' }}
 
-            <div class="ms-auto sm:hidden"><flux:button size="sm" variant="ghost" icon="x-mark" x-on:click="$wire.selecting = false; $wire.selected = []; $wire.stopSelecting().then(() => $nextTick(() => [...document.querySelectorAll('[data-selection-toggle] button')].find((button) => button.offsetParent !== null)?.focus()))" aria-label="{{ __('End selection') }}" tooltip="{{ __('End selection') }}" /></div>
+            <div class="ms-auto sm:hidden"><flux:button size="sm" variant="ghost" icon="x-mark" x-on:click="$wire.selecting = false; $wire.selected = []; $nextTick(() => [...document.querySelectorAll('[data-selection-toggle] button')].find((button) => button.offsetParent !== null)?.focus())" aria-label="{{ __('End selection') }}" tooltip="{{ __('End selection') }}" /></div>
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
@@ -32,7 +33,7 @@
 
             <flux:button size="sm" variant="danger" icon="trash" wire:click="bulkDelete" wire:confirm="{{ __('Permanently delete the selected tasks including their subtasks?') }}" x-bind:disabled="$wire.selected.length === 0">{{ __('Delete') }}</flux:button>
 
-            <div class="max-sm:hidden"><flux:button size="sm" variant="ghost" icon="x-mark" x-on:click="$wire.selecting = false; $wire.selected = []; $wire.stopSelecting().then(() => $nextTick(() => [...document.querySelectorAll('[data-selection-toggle] button')].find((button) => button.offsetParent !== null)?.focus()))" aria-label="{{ __('End selection') }}" tooltip="{{ __('End selection') }}" /></div>
+            <div class="max-sm:hidden"><flux:button size="sm" variant="ghost" icon="x-mark" x-on:click="$wire.selecting = false; $wire.selected = []; $nextTick(() => [...document.querySelectorAll('[data-selection-toggle] button')].find((button) => button.offsetParent !== null)?.focus())" aria-label="{{ __('End selection') }}" tooltip="{{ __('End selection') }}" /></div>
         </div>
     </div>
     </div>

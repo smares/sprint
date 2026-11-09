@@ -200,7 +200,7 @@ class TaskCheckCellTest extends TestCase
         $html = $this->page('pages::projects.show')->html();
 
         $this->assertMatchesRegularExpression('/<div[^>]*x-show="! \$wire\.selecting"[^>]*data-selection-toggle>/', $html);
-        $this->assertStringContainsString('$wire.selecting = true; $wire.$refresh()', $html);
+        $this->assertStringContainsString('$wire.selecting = true; $nextTick(', $html);
         $this->assertStringContainsString('Auswählen', $html);
         $this->assertLessThan(strpos($html, 'aria-label="Weitere Aktionen"'), strpos($html, 'x-show="! $wire.selecting"'));
         $this->assertStringNotContainsString('ends-when-empty', $html);

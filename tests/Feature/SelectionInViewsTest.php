@@ -60,7 +60,7 @@ class SelectionInViewsTest extends TestCase
                 ->assertSee('Auswählen')
                 ->assertSeeHtml('<span class="contents" x-show="$wire.selecting" x-cloak>')
                 ->assertSeeHtml('aria-label="Aufgabe auswählen: ')
-                ->assertSeeHtml('$wire.selecting = true; $wire.$refresh()')
+                ->assertSeeHtml('$wire.selecting = true; $nextTick(')
                 ->call('startSelecting')
                 ->assertSet('selecting', true)
                 ->assertSet('selected', [])
@@ -107,7 +107,7 @@ class SelectionInViewsTest extends TestCase
                 ->assertDontSeeHtml('x-if="$wire.selecting"')
                 ->assertSeeHtml('<span class="contents" x-show="$wire.selecting" x-cloak>')
                 ->assertSeeHtml('aria-label="Aufgabe auswählen: Auswahl"')
-                ->assertSeeHtml('$wire.selecting = true; $wire.$refresh()')
+                ->assertSeeHtml('$wire.selecting = true; $nextTick(')
                 ->assertSeeHtml('x-show="$wire.selecting"')
                 ->assertSeeHtml('filter(event) { return $wire.selecting || event.target.closest(')
                 ->assertSeeHtml('Auswahl beenden');

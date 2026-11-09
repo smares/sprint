@@ -436,7 +436,7 @@ class BulkTaskActionsTest extends TestCase
         // One box for the whole time: it follows `selected` (x-effect), so nothing set by hand outlives the selection
         $page = Livewire::test('pages::projects.show', ['project' => $this->project])
             ->assertSeeHtml('wire:key="select-'.$task->id.'-on"')
-            ->assertSeeHtml('$wire.selecting = true; $wire.$refresh()')
+            ->assertSeeHtml('$wire.selecting = true; $nextTick(')
             ->assertSeeHtml('wire:key="select-page-off"');
 
         $page->call('startSelecting')->assertSeeHtml('wire:key="select-page-on"');

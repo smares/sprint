@@ -299,7 +299,7 @@ new class extends Component
     </div>
 
     @if ($this->undated > 0)
-        <flux:text class="mt-4">
+        <flux:text class="mt-4" data-bar-spare>
             {{ trans_choice('{1} :count task has no date and therefore does not appear in the calendar.|[2,*] :count tasks have no date and therefore do not appear in the calendar.', $this->undated) }}
             <flux:link variant="ghost" :href="route('projects.show', [$project, 'dates' => 'none', 'done' => 'all'])" wire:navigate>{{ __('Show them in the list') }}</flux:link>
         </flux:text>

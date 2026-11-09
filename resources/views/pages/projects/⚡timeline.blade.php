@@ -275,7 +275,7 @@ new class extends Component
     @endif
 
     @if ($this->outside['dated'] > 0 || $this->outside['undated'] > 0)
-        <flux:text class="mt-4">
+        <flux:text class="mt-4" data-bar-spare>
             @if ($this->outside['dated'] > 0)
                 {{ trans_choice('{1} :count task is outside these weeks.|[2,*] :count tasks are outside these weeks.', $this->outside['dated']) }}
             @endif

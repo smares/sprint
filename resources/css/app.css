@@ -440,6 +440,11 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
         padding-bottom: 0;
     }
 
+    /* The note under a view that fills the window (calendar, timeline) stays readable above the bar */
+    [data-bar-floats] [data-bar-spare] {
+        padding-bottom: 4.5rem;
+    }
+
     /* A page that scrolls as a whole although the window is large (My tasks) */
     [data-bar-floats]:not(:has([data-fills-height])) {
         padding-bottom: 5rem;

@@ -318,6 +318,15 @@ class TaskCheckCellTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/\sdata-bar-floats[\s>]/', $page->call('stopSelecting')->html());
     }
 
+    public function test_the_note_under_the_calendar_and_the_timeline_can_be_kept_clear_of_the_bar(): void
+    {
+        Task::factory()->for($this->project)->create(['start_date' => null, 'due_date' => null, 'title' => 'Ohne Datum']);
+
+        foreach (['pages::projects.calendar', 'pages::projects.timeline'] as $view) {
+            $this->assertStringContainsString('data-bar-spare', $this->page($view)->html(), $view);
+        }
+    }
+
     public function test_the_quick_add_rows_stay_in_place_but_are_invisible_while_selecting(): void
     {
         $this->task(['title' => 'Eine']);

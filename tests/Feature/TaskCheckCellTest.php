@@ -67,6 +67,14 @@ class TaskCheckCellTest extends TestCase
     }
 
     /**
+     * @return array<string, array{0: string, 1: array<string, mixed>}>
+     */
+    public static function viewsWithoutCellClasses(): array
+    {
+        return array_map(fn (array $set): array => [$set[0], $set[1]], self::viewsWithCells());
+    }
+
+    /**
      * @param  array<string, mixed>  $parameters
      */
     private function page(string $view, array $parameters = [], ?Project $project = null)
@@ -116,9 +124,9 @@ class TaskCheckCellTest extends TestCase
     }
 
     /**
-     * @dataProvider viewsWithCells
+     * @dataProvider viewsWithoutCellClasses
      */
-    #[DataProvider('viewsWithCells')]
+    #[DataProvider('viewsWithoutCellClasses')]
     public function test_every_task_has_its_box_before_the_selection_and_no_template_makes_it(string $view, array $parameters): void
     {
         $this->task(['title' => 'Eins']);
@@ -139,9 +147,9 @@ class TaskCheckCellTest extends TestCase
     }
 
     /**
-     * @dataProvider viewsWithCells
+     * @dataProvider viewsWithoutCellClasses
      */
-    #[DataProvider('viewsWithCells')]
+    #[DataProvider('viewsWithoutCellClasses')]
     public function test_the_cells_do_not_change_when_the_selection_starts(string $view, array $parameters): void
     {
         $this->task(['title' => 'Still']);

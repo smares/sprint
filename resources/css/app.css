@@ -296,6 +296,115 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
     }
 }
 
+/* The background: three soft patches of color in the colors of the logo drift slowly behind the pages. Where each one is, is
+   calculated, not drawn: all depend on one number, --ambient-t, which runs from its start to the start plus 1 in five minutes, and
+   every patch moves on a Lissajous curve, x = 1/2 + a·sin(2π(fx·t + px)) and y = 1/2 + b·cos(2π(fy·t + py)) (as a fraction of the
+   window), with whole numbers for fx and fy, so that after the five minutes each patch stands where it began and the loop has no
+   seam, while the three do not move in step. Only the position (translate) changes and the patches are layers of their own
+   (will-change), so nothing is painted again; the number itself is animated on the main thread, which is cheap for three
+   elements. The phase follows the clock (see syncAmbientDrift in app.js), so the drift neither starts over on a page change nor
+   on a reload. Browsers that do not know @property keep the patches still, those without the trigonometric functions (before
+   Chrome 111, Safari 15.4, Firefox 108) leave them in the top left corner. Not at all with the setting "reduce motion" (they
+   stand still then), with forced colors and in print. */
+@property --ambient-t {
+    syntax: '<number>';
+    inherits: true;
+    initial-value: 0.15;
+}
+
+@keyframes ambient-drift {
+    from {
+        --ambient-t: 0.15;
+    }
+
+    to {
+        --ambient-t: 1.15;
+    }
+}
+
+.ambient {
+    --ambient-t: 0.15;
+    /* Kept faint: any tint darkens the page a little, and the gray secondary text must stay readable where a patch is brightest */
+    --tint-1: color-mix(in oklab, var(--color-orange-400) 12%, transparent);
+    --tint-2: color-mix(in oklab, var(--color-amber-300) 14%, transparent);
+    --tint-3: color-mix(in oklab, var(--color-rose-300) 7%, transparent);
+
+    position: fixed;
+    inset: 0;
+    z-index: -10;
+    overflow: hidden;
+    pointer-events: none;
+    user-select: none;
+    contain: strict;
+
+    @variant dark {
+        --tint-1: color-mix(in oklab, var(--color-orange-500) 11%, transparent);
+        --tint-2: color-mix(in oklab, var(--color-amber-500) 7%, transparent);
+        --tint-3: color-mix(in oklab, var(--color-orange-300) 4%, transparent);
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        animation: ambient-drift 300s linear infinite;
+    }
+
+    @media (forced-colors: active), print {
+        display: none;
+    }
+
+    & > span {
+        --x: calc(0.5 + var(--ax) * sin((var(--fx) * var(--ambient-t) + var(--px)) * 1turn));
+        --y: calc(0.5 + var(--ay) * cos((var(--fy) * var(--ambient-t) + var(--py)) * 1turn));
+
+        position: absolute;
+        inset-block-start: 0;
+        inset-inline-start: 0;
+        width: var(--size);
+        aspect-ratio: 1;
+        border-radius: 50%;
+        background: radial-gradient(closest-side, var(--tint), transparent);
+        translate: calc(var(--x) * 100vw - 50%) calc(var(--y) * 100vh - 50%);
+        will-change: translate;
+
+        /* Smaller on phones, where 80vmax would be one big cloud behind the header */
+        @media (width < 40rem) {
+            width: calc(var(--size) * 0.7);
+        }
+    }
+
+    & > span:nth-child(1) {
+        --tint: var(--tint-1);
+        --size: 80vmax;
+        --ax: 0.32;
+        --ay: 0.22;
+        --fx: 1;
+        --fy: 2;
+        --px: 0;
+        --py: 0.25;
+    }
+
+    & > span:nth-child(2) {
+        --tint: var(--tint-2);
+        --size: 66vmax;
+        --ax: 0.28;
+        --ay: 0.3;
+        --fx: 2;
+        --fy: 1;
+        --px: 0.35;
+        --py: 0.7;
+    }
+
+    & > span:nth-child(3) {
+        --tint: var(--tint-3);
+        --size: 58vmax;
+        --ax: 0.36;
+        --ay: 0.18;
+        --fx: 3;
+        --fy: 2;
+        --px: 0.6;
+        --py: 0.1;
+    }
+}
+
 /* The views of tasks (list, board, calendar, timeline, in a project and in My tasks) use the whole width of the window: wide
    tables and columns gain from it. The other pages keep the width Flux's container gives them (max-w-7xl), where lines of text
    and forms stay easy to read, and sit against the sidebar rather than in the middle, so the title stays in the same place
@@ -395,19 +504,28 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
     }
 }
 
-/* While tasks are selected the bar floats over the bottom of the window. Where the page scrolls as a whole (phones, low windows)
-   it has room below the last card; where the columns scroll for themselves, the cards of each column get that room at their end,
-   so the last card can be scrolled clear of the bar and the board keeps its whole height. */
-[data-board-selecting] {
+/* While tasks are selected the bar floats over the bottom of the window, and the view keeps its size. Where the page scrolls as a
+   whole (phones, low windows) or even on large windows (My tasks) it has room below the last row or card; where the columns of a
+   board, the table of the list or the timeline scroll for themselves, what they show gets that room at its end, so the last card
+   or row can be scrolled clear of the bar. (The calendar has no such scroll area, its weeks share the height: it keeps the room
+   reserved, see the class on its root.) */
+[data-bar-floats] {
     padding-bottom: 10rem;
 }
 
 @media (width >= 40rem) and (height >= 40rem) {
-    [data-board-selecting] {
+    [data-bar-floats] {
         padding-bottom: 0;
     }
 
-    [data-board-selecting] [data-fills-height] > [data-flux-kanban] > [data-flux-kanban-column] > div:not([data-collapsed]) [data-flux-kanban-column-cards] {
+    /* A page that scrolls as a whole although the window is large (My tasks) */
+    [data-bar-floats]:not(:has([data-fills-height])) {
+        padding-bottom: 5rem;
+    }
+
+    [data-bar-floats] [data-fills-height] > [data-flux-kanban] > [data-flux-kanban-column] > div:not([data-collapsed]) [data-flux-kanban-column-cards],
+    [data-bar-floats] [data-fills-height] ui-table-scroll-area,
+    [data-bar-floats] [data-fills-height] > [data-scroll-edges] {
         padding-bottom: 4rem;
     }
 }

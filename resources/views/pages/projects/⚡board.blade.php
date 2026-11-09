@@ -310,8 +310,8 @@ new class extends Component
 };
 ?>
 
-{{-- While selecting the bar floats over the bottom of the window; what that needs of the board is in app.css (data-board-selecting) --}}
-<div @if ($selecting) data-board-selecting @endif x-bind:data-board-selecting="$wire.selecting" data-wide>
+{{-- While selecting the bar floats over the bottom of the window; what that needs of the board is in app.css (data-bar-floats) --}}
+<div @if ($selecting) data-bar-floats @endif x-bind:data-bar-floats="$wire.selecting" data-wide>
     @php
         $offersSelecting = $this->canEdit && array_sum($this->columnTotals) > 0;
     @endphp
@@ -391,11 +391,7 @@ new class extends Component
                         @foreach ($this->columns[$status->id] as $task)
                             <flux:kanban.card wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" :class="'board-card cursor-pointer'.($task->isDone() ? ' opacity-60 hover:opacity-100 focus-within:opacity-100' : '')" :wire:sort:item="$this->canEdit ? $task->id : null">
                                 <div class="flex items-start gap-2">
-                                    <x-task-done-button :task="$task" :editable="$this->canEdit" compact />
-                                    {{-- Drawn for every card but made only while selecting (in the browser, at once, before the server answers) --}}
-                                    @if ($this->canEdit)
-                                        <template x-if="$wire.selecting"><x-task-select-box :task="$task" /></template>
-                                    @endif
+                                    <x-task-check-cell :task="$task" :editable="$this->canEdit" :selectable="$this->canEdit" compact />
                                     <div class="min-w-0 flex-1 leading-6">
                                         <x-task-title-link :task="$task" />
                                     </div>
@@ -455,7 +451,7 @@ new class extends Component
                     </flux:kanban.column.cards>
 
                     @if ($this->canEdit)
-                        <x-quick-add :status-id="$status->id" class="mt-1 px-2 pb-2" x-show="! $wire.selecting" />
+                        <x-quick-add :status-id="$status->id" class="mt-1 px-2 pb-2" x-bind:class="{ 'invisible': $wire.selecting }" />
                     @endif
                 </flux:kanban.column>
             @endforeach

@@ -172,8 +172,8 @@ new class extends Component
 };
 ?>
 
-{{-- While selecting, room for the bar at the bottom: two rows on phones, one row from sm on --}}
-<div @class(['pb-40 sm:pb-16' => $selecting]) x-bind:class="{ 'pb-40 sm:pb-16': $wire.selecting }" data-wide>
+{{-- While selecting the bar floats over the bottom of the window; what that needs of the page is in app.css (data-bar-floats) --}}
+<div @if ($selecting) data-bar-floats @endif x-bind:data-bar-floats="$wire.selecting" data-wide>
     @php
         $offersSelecting = $this->canEdit && $this->rows->isNotEmpty();
     @endphp
@@ -231,10 +231,7 @@ new class extends Component
                         @php($task = $row['task'])
                         <div wire:key="row-{{ $task->id }}" class="flex border-b border-zinc-100 last:border-b-0 dark:border-zinc-800">
                             <div class="pinned-shadow sticky start-0 z-10 flex w-32 shrink-0 sm:w-56 items-center gap-1 border-e border-zinc-200 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-800">
-                                <x-task-done-button :task="$task" :editable="$this->canEdit" compact />
-                                @if ($this->canEdit)
-                                    <template x-if="$wire.selecting"><x-task-select-box :task="$task" /></template>
-                                @endif
+                                <x-task-check-cell :task="$task" :editable="$this->canEdit" :selectable="$this->canEdit" compact />
                                 <a href="{{ route('tasks.show', $task) }}" x-on:click="$openTask($event, {{ $task->id }})" @class(['truncate text-sm hover:underline', 'line-through text-zinc-400' => $task->isDone()])>{{ $task->title }}</a>
                                 @if ($task->isBlocked())
                                     <flux:icon.lock-closed variant="micro" class="shrink-0 text-amber-500" title="{{ __('Blocked') }}" />

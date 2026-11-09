@@ -171,7 +171,7 @@ new class extends Component
 };
 ?>
 
-{{-- While selecting, room for the bar at the bottom: two rows on phones, one row from sm on --}}
+{{-- While selecting, room for the bar at the bottom (three rows on phones, one from sm on). The calendar cannot let the bar float: its weeks share the height and nothing scrolls, so the bar would cover the last week --}}
 <div @class(['pb-40 sm:pb-16' => $selecting]) x-bind:class="{ 'pb-40 sm:pb-16': $wire.selecting }" data-wide>
     @php
         $offersSelecting = $this->canEdit && collect($this->weeks)->flatten(1)->contains(fn ($day) => $day['tasks']->isNotEmpty());
@@ -206,10 +206,7 @@ new class extends Component
                 <div class="space-y-1">
                     @foreach ($day['tasks'] as $task)
                         <div wire:key="agenda-{{ $day['date']->toDateString() }}-{{ $task->id }}" class="flex items-center gap-1">
-                            <x-task-done-button :task="$task" :editable="$this->canEdit" compact />
-                            @if ($this->canEdit)
-                                <template x-if="$wire.selecting"><x-task-select-box :task="$task" /></template>
-                            @endif
+                            <x-task-check-cell :task="$task" :editable="$this->canEdit" :selectable="$this->canEdit" compact />
                             <a href="{{ route('tasks.show', $task) }}" x-on:click="$openTask($event, {{ $task->id }})" style="--badge: {{ $task->status->color }}"
                                class="color-chip block min-w-0 flex-1 truncate rounded px-2 py-1 text-sm {{ $task->isDone() ? 'line-through opacity-60' : '' }}">{{ $task->title }}</a>
                         </div>

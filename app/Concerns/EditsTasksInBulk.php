@@ -49,8 +49,8 @@ trait EditsTasksInBulk
     abstract protected function filteredTasks();
 
     /**
-     * The button of the views without checkboxes in their rows (board, calendar, timeline): from here on the tasks show
-     * a box to select them with, and the bar stays until the selection is ended, also while nothing is selected.
+     * The selection starts on the server: from here on the tasks show a box to select them with (the browser shows them at
+     * once, see x-selection-toggle), and the bar stays until the selection is ended, also while nothing is selected.
      */
     public function startSelecting(): void
     {

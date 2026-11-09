@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\AmbientBackground;
 use App\Models\User;
 use Closure;
 use Illuminate\Http\JsonResponse;
@@ -9,7 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 /**
- * Keeps what a person arranged in the interface (appearance, sidebar, collapsed columns) on the server, so that a second
+ * Keeps what a person arranged in the interface (appearance, background, sidebar, collapsed columns) on the server, so that a second
  * device shows the same. A request carries only what changed on that device; a column is sent as its own change.
  */
 class InterfaceController extends Controller
@@ -18,6 +19,7 @@ class InterfaceController extends Controller
     {
         $changes = $request->validate([
             'appearance' => ['sometimes', Rule::in(['light', 'dark', 'system'])],
+            'ambient' => ['sometimes', Rule::enum(AmbientBackground::class)],
             'sidebar_collapsed' => ['sometimes', 'boolean'],
             'board_collapsed' => ['sometimes', 'array', 'max:'.User::INTERFACE_MAX_BOARDS, $this->hasIdsAsKeys(allowZero: false)],
             'board_collapsed.*' => ['array', 'max:'.User::INTERFACE_MAX_COLUMNS, $this->hasIdsAsKeys(allowZero: true)],

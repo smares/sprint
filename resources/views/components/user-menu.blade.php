@@ -1,4 +1,4 @@
-{{-- The menu under the person's avatar (sidebar on large screens, header on phones): appearance, profile, shortcuts, log out
+{{-- The menu under the person's avatar (sidebar on large screens, header on phones): appearance, background, profile, shortcuts, log out
      and the running version. --}}
 <flux:menu class="min-w-60!">
     <div class="px-2 py-1.5">
@@ -7,6 +7,13 @@
             <flux:radio value="light" icon="sun" aria-label="{{ __('Light') }}" />
             <flux:radio value="dark" icon="moon" aria-label="{{ __('Dark') }}" />
             <flux:radio value="system" icon="computer-desktop" aria-label="{{ __('System') }}" />
+        </flux:radio.group>
+        <flux:text size="sm" class="mt-3 mb-1.5">{{ __('Background') }}</flux:text>
+        {{-- Starts from what the layer was drawn with (the server's state); a change is told to the layer (ambient.js) and kept like the appearance --}}
+        <flux:radio.group x-data="{ mode: document.querySelector('.ambient')?.dataset.mode ?? 'animated' }" x-init="$watch('mode', (mode) => { $dispatch('ambient-background', { mode }); saveInterface({ ambient: mode }) })" variant="segmented" x-model="mode" size="sm">
+            @foreach (\App\Enums\AmbientBackground::cases() as $mode)
+                <flux:radio :value="$mode->value" :icon="$mode->icon()" :aria-label="$mode->label()" />
+            @endforeach
         </flux:radio.group>
     </div>
     <flux:menu.separator />

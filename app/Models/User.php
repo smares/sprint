@@ -33,7 +33,7 @@ use Laravel\Sanctum\HasApiTokens;
 use NotificationChannels\WebPush\HasPushSubscriptions;
 use SensitiveParameter;
 
-#[Fillable(['name', 'email', 'password', 'is_admin', 'locale', 'timezone', 'deactivated_at', 'digest_enabled', 'reminders_enabled', 'celebrations_enabled', 'ambient_background', 'join_own_tasks', 'absent_from', 'absent_until', 'quiet_from', 'quiet_until', 'quiet_days'])]
+#[Fillable(['name', 'email', 'password', 'is_admin', 'locale', 'timezone', 'deactivated_at', 'digest_enabled', 'reminders_enabled', 'celebrations_enabled', 'join_own_tasks', 'absent_from', 'absent_until', 'quiet_from', 'quiet_until', 'quiet_days'])]
 #[Hidden(['password', 'remember_token', 'two_factor_secret', 'two_factor_recovery_codes', 'interface'])]
 class User extends Authenticatable implements HasLocalePreference, PasskeyUser
 {
@@ -88,7 +88,7 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
     /**
      * @var array<string, mixed>
      */
-    protected $attributes = ['digest_enabled' => true, 'reminders_enabled' => true, 'celebrations_enabled' => true, 'ambient_background' => 'animated', 'join_own_tasks' => true];
+    protected $attributes = ['digest_enabled' => true, 'reminders_enabled' => true, 'celebrations_enabled' => true, 'join_own_tasks' => true];
 
     /**
      * Get the attributes that should be cast.
@@ -106,7 +106,6 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
             'digest_enabled' => 'boolean',
             'reminders_enabled' => 'boolean',
             'celebrations_enabled' => 'boolean',
-            'ambient_background' => AmbientBackground::class,
             'join_own_tasks' => 'boolean',
             'avatar_updated_at' => 'datetime',
             'absent_from' => 'date',
@@ -151,11 +150,19 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
      * What the person has arranged in the interface, which follows them from one device to the next: the appearance, the
      * sidebar, the collapsed board columns, the view of "My tasks" they used last, the view they used last in each project (last_views) and the saved view of a project that opens by default (default_views).
      *
-     * @return array{rev?: int, appearance?: string, sidebar_collapsed?: bool, mine_view?: string, last_views?: array<int|string, string>, board_collapsed?: array<int|string, list<int>>, mine_board_collapsed?: list<int>, default_views?: array<int|string, array<string, int>>}
+     * @return array{rev?: int, appearance?: string, ambient?: string, sidebar_collapsed?: bool, mine_view?: string, last_views?: array<int|string, string>, board_collapsed?: array<int|string, list<int>>, mine_board_collapsed?: list<int>, default_views?: array<int|string, array<string, int>>}
      */
     public function interfaceState(): array
     {
         return $this->interface ?? [];
+    }
+
+    /**
+     * What this person wants behind the pages; the animated background until they choose otherwise.
+     */
+    public function ambientBackground(): AmbientBackground
+    {
+        return AmbientBackground::tryFrom($this->interfaceState()['ambient'] ?? '') ?? AmbientBackground::Animated;
     }
 
     /**

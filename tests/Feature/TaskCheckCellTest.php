@@ -15,13 +15,13 @@ class TaskCheckCellTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const CELL = 'grid shrink-0 place-items-center size-6 max-sm:size-10';
+    private const string CELL = 'grid shrink-0 place-items-center size-6 max-sm:size-10';
 
-    private const COMPACT_CELL = 'grid shrink-0 place-items-center size-6"';
+    private const string COMPACT_CELL = 'grid shrink-0 place-items-center size-6"';
 
-    private const SHOWN_WITH_THE_DONE_BUTTON = '<span class="contents" x-show="! $wire.selecting">';
+    private const string SHOWN_WITH_THE_DONE_BUTTON = '<span class="contents" x-show="! $wire.selecting">';
 
-    private const SHOWN_WHILE_SELECTING = '<span class="contents" x-show="$wire.selecting" x-cloak>';
+    private const string SHOWN_WHILE_SELECTING = '<span class="contents" x-show="$wire.selecting" x-cloak>';
 
     private User $user;
 

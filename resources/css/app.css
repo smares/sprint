@@ -296,6 +296,17 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
     }
 }
 
+/* The sidebar scrolls only up and down. Where scrollbars take room (Chrome with a mouse on a Mac, Windows), the narrow collapsed sidebar
+   would be too narrow for its icons by the width of the scrollbar and scroll sideways; the bar is left out there (it still scrolls
+   with the wheel and by touch) and nothing in the sidebar may scroll sideways. */
+[data-flux-sidebar] {
+    overflow-x: hidden;
+
+    &[data-flux-sidebar-collapsed-desktop] {
+        scrollbar-width: none;
+    }
+}
+
 /* The background (drawn by resources/js/ambient.js onto the canvas): patches of color and a fan of slow waves behind the pages.
    It is only a layer here; not at all with forced colors and in print. */
 .ambient {

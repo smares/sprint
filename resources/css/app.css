@@ -8,6 +8,37 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Tailwind 4 leaves the cursor of buttons at the arrow of the browser. What can be clicked shows the hand, everywhere and not
+   only where a component remembered to ask for it; a disabled one keeps the arrow, and a utility (cursor-e-resize, cursor-grab, ...)
+   still wins, this is the lowest layer. */
+@layer base {
+    button:not(:disabled),
+    [role='button']:not([aria-disabled='true']),
+    [role='tab'],
+    [role='menuitem']:not([aria-disabled='true']),
+    [role='option']:not([aria-disabled='true']),
+    [role='switch'],
+    [role='checkbox'],
+    [role='radio'],
+    summary,
+    select,
+    label[for],
+    input:is([type='checkbox'], [type='radio'], [type='submit'], [type='button'], [type='file']):not(:disabled),
+    ui-tab,
+    ui-option:not([disabled]),
+    ui-checkbox:not([disabled]),
+    ui-radio:not([disabled]),
+    ui-switch:not([disabled]) {
+        cursor: pointer;
+    }
+}
+
+/* The select fields of Flux set the arrow themselves (a utility class, which wins over the layer above) */
+button[role='combobox']:not(:disabled),
+ui-pillbox-trigger:not([disabled], :has(input:not([type='hidden']))) {
+    cursor: pointer;
+}
+
 @theme {
     --font-sans: ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
         'Noto Color Emoji';

@@ -307,7 +307,7 @@ new class extends Component
 
     {{-- The bar is always there for who may edit, shown as soon as the browser selects; the dialog needs what the server knows --}}
     @if ($this->canEdit)
-        <x-selection-bar x-show="$wire.selecting" x-cloak />
+        <x-selection-bar class="sm:-mb-16" x-show="$wire.selecting" x-cloak />
     @endif
 
     @if ($selecting && $this->canEdit)

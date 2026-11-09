@@ -49,9 +49,15 @@ class SelectionInViewsTest extends TestCase
 
         foreach ($this->views() as $view) {
             // The boxes are drawn for every task in advance (hidden, in the cell of the done button), the browser shows them at once; the server follows
-            Livewire::test($view, ['project' => $this->project])
+            $page = Livewire::test($view, ['project' => $this->project]);
+
+            // Only the chips of the calendar (desktop) still make their boxes in a template
+            if ($view !== 'pages::projects.calendar') {
+                $page->assertDontSeeHtml('x-if="$wire.selecting"');
+            }
+
+            $page
                 ->assertSee('Auswählen')
-                ->assertDontSeeHtml('x-if="$wire.selecting"')
                 ->assertSeeHtml('<span class="contents" x-show="$wire.selecting" x-cloak>')
                 ->assertSeeHtml('aria-label="Aufgabe auswählen: ')
                 ->assertSeeHtml('$wire.selecting = true; $wire.$refresh()')

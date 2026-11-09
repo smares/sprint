@@ -132,13 +132,6 @@ new class extends Component
             ? $current->diff($page)->values()->all()
             : $current->concat($page)->unique()->values()->all();
 
-        // Unticking the last ones ends the selection, as the bar has nothing left to act on
-        if ($this->selected === []) {
-            $this->stopSelecting();
-
-            return;
-        }
-
         unset($this->selectedIds);
     }
 

@@ -74,7 +74,8 @@ new class extends Component
 };
 ?>
 
-<div @class(['pb-40' => $selecting]) x-bind:class="{ 'pb-40': $wire.selecting }" data-wide>
+{{-- While selecting, room for the bar at the bottom: two rows on phones, one row from sm on --}}
+<div @class(['pb-40 sm:pb-16' => $selecting]) x-bind:class="{ 'pb-40 sm:pb-16': $wire.selecting }" data-wide>
     <div class="mb-6 flex items-center justify-between gap-3">
         <flux:heading level="1" size="xl">{{ __('My tasks') }}</flux:heading>
         @if ($this->tasks->isNotEmpty())

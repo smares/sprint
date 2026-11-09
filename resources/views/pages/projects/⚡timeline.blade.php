@@ -172,7 +172,8 @@ new class extends Component
 };
 ?>
 
-<div @class(['pb-40' => $selecting]) x-bind:class="{ 'pb-40': $wire.selecting }" data-wide>
+{{-- While selecting, room for the bar at the bottom: two rows on phones, one row from sm on --}}
+<div @class(['pb-40 sm:pb-16' => $selecting]) x-bind:class="{ 'pb-40 sm:pb-16': $wire.selecting }" data-wide>
     @php
         $offersSelecting = $this->canEdit && $this->rows->isNotEmpty();
     @endphp

@@ -74,9 +74,9 @@ new class extends Component
 };
 ?>
 
-{{-- While selecting, room for the bar at the bottom: two rows on phones, one row from sm on --}}
-<div @class(['pb-40 sm:pb-16' => $selecting]) x-bind:class="{ 'pb-40 sm:pb-16': $wire.selecting }" data-wide>
-    <div class="mb-6 flex items-center justify-between gap-3">
+{{-- While selecting the bar floats over the bottom of the window; what that needs of the page is in app.css (data-bar-floats) --}}
+<div @if ($selecting) data-bar-floats @endif x-bind:data-bar-floats="$wire.selecting" data-wide>
+    <div class="mb-6 flex min-h-10 items-center justify-between gap-3">
         <flux:heading level="1" size="xl">{{ __('My tasks') }}</flux:heading>
         @if ($this->tasks->isNotEmpty())
             <x-selection-toggle instant x-show="! $wire.selecting" class="max-sm:hidden" />
@@ -110,11 +110,8 @@ new class extends Component
                         <flux:table.row wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" class="cursor-pointer">
                             <flux:table.cell class="pinned-column min-w-56 whitespace-normal max-sm:min-w-[45vw]">
                                 <div class="flex items-center gap-3">
-                                    <x-task-done-button :task="$task" :editable="in_array($task->project_id, $this->editableProjectIds, true)" />
-                                    {{-- Drawn for every task but made only while selecting (in the browser, at once, before the server answers) --}}
-                                    @if (in_array($task->project_id, $this->editableProjectIds, true))
-                                        <template x-if="$wire.selecting"><x-task-select-box :task="$task" /></template>
-                                    @endif
+                                    @php($mayEdit = in_array($task->project_id, $this->editableProjectIds, true))
+                                    <x-task-check-cell :task="$task" :editable="$mayEdit" :selectable="$mayEdit" />
                                     <div class="min-w-0">
                                         <x-task-title-line :task="$task" :progress="$this->progress[$task->id] ?? null" />
                                         @if ($task->parent)

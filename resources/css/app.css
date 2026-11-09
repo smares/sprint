@@ -395,19 +395,20 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
     }
 }
 
-/* While tasks are selected the bar floats over the bottom of the window. Where the page scrolls as a whole (phones, low windows)
-   it has room below the last card; where the columns scroll for themselves, the cards of each column get that room at their end,
-   so the last card can be scrolled clear of the bar and the board keeps its whole height. */
-[data-board-selecting] {
+/* While tasks are selected the bar floats over the bottom of the window, and the view keeps its size. Where the page scrolls as a
+   whole (phones, low windows, My tasks) it has room below the last row or card; where the columns of a board or the table of the
+   list scroll for themselves, what they show gets that room at its end, so the last card or row can be scrolled clear of the bar. */
+[data-bar-floats] {
     padding-bottom: 10rem;
 }
 
 @media (width >= 40rem) and (height >= 40rem) {
-    [data-board-selecting] {
+    [data-bar-floats] {
         padding-bottom: 0;
     }
 
-    [data-board-selecting] [data-fills-height] > [data-flux-kanban] > [data-flux-kanban-column] > div:not([data-collapsed]) [data-flux-kanban-column-cards] {
+    [data-bar-floats] [data-fills-height] > [data-flux-kanban] > [data-flux-kanban-column] > div:not([data-collapsed]) [data-flux-kanban-column-cards],
+    [data-bar-floats] [data-fills-height] ui-table-scroll-area {
         padding-bottom: 4rem;
     }
 }

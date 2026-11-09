@@ -563,8 +563,8 @@ new class extends Component
 };
 ?>
 
-{{-- While selecting, room for the bar at the bottom: two rows on phones, one row from sm on --}}
-<div @class(['pb-40 sm:pb-16' => $selecting]) x-bind:class="{ 'pb-40 sm:pb-16': $wire.selecting }" data-wide>
+{{-- While selecting the bar floats over the bottom of the window; what that needs of the page is in app.css (data-bar-floats) --}}
+<div @if ($selecting) data-bar-floats @endif x-bind:data-bar-floats="$wire.selecting" data-wide>
     <x-project-header :project="$project" active="list" :presence="$this->presenceChannel()" />
 
     <div class="mb-4 flex flex-wrap items-center gap-2">
@@ -595,18 +595,24 @@ new class extends Component
             <flux:button size="sm" variant="ghost" wire:click="resetFilters">{{ __('Reset') }}</flux:button>
         @endif
 
-        <flux:dropdown align="end" class="ms-auto">
-            <flux:button icon="ellipsis-horizontal" aria-label="{{ __('More actions') }}" tooltip="{{ __('More actions') }}" />
+        <div class="ms-auto flex items-center gap-2">
+            @if ($this->canEdit && $this->tasks->isNotEmpty())
+                <x-selection-toggle instant x-show="! $wire.selecting" />
+            @endif
 
-            <flux:menu>
-                <flux:menu.item icon="arrow-down-tray" href="{{ route('projects.export', $project) }}">{{ __('Export as CSV') }}</flux:menu.item>
-                <flux:menu.item icon="arrow-down-tray" href="{{ route('projects.export', [$project, 'delimiter' => 'semicolon']) }}">{{ __('Export as CSV for Excel') }}</flux:menu.item>
-                @if ($this->canEdit)
-                    <flux:menu.separator />
-                    <flux:menu.item icon="arrow-up-tray" x-on:click="$flux.modal('project-import').show()">{{ __('Import CSV …') }}</flux:menu.item>
-                @endif
-            </flux:menu>
-        </flux:dropdown>
+            <flux:dropdown align="end">
+                <flux:button icon="ellipsis-horizontal" aria-label="{{ __('More actions') }}" tooltip="{{ __('More actions') }}" />
+
+                <flux:menu>
+                    <flux:menu.item icon="arrow-down-tray" href="{{ route('projects.export', $project) }}">{{ __('Export as CSV') }}</flux:menu.item>
+                    <flux:menu.item icon="arrow-down-tray" href="{{ route('projects.export', [$project, 'delimiter' => 'semicolon']) }}">{{ __('Export as CSV for Excel') }}</flux:menu.item>
+                    @if ($this->canEdit)
+                        <flux:menu.separator />
+                        <flux:menu.item icon="arrow-up-tray" x-on:click="$flux.modal('project-import').show()">{{ __('Import CSV …') }}</flux:menu.item>
+                    @endif
+                </flux:menu>
+            </flux:dropdown>
+        </div>
     </div>
 
     @if ($this->canEdit)
@@ -693,22 +699,22 @@ new class extends Component
              before it; on phones only the title, so it leaves room for the rest); sticky cells need a background to cover what passes underneath. --}}
         @php
             $pinnedDone = 'sm:sticky sm:start-0 sm:z-10 sm:bg-white sm:dark:bg-zinc-800';
-            $pinnedTitle = 'pinned-column sm:start-20';
+            $pinnedTitle = 'pinned-column sm:start-12';
         @endphp
         <div class="surface px-3 [--flux-bleed:0.75rem]" data-fills-height>
             <flux:table bleed container:class="scroll-shadows rounded-[inherit]">
                 <flux:table.columns sticky class="bg-white dark:bg-zinc-800">
-                    {{-- Done button first, then the selection checkbox: two things, so they get one column and some room between them --}}
-                    <flux:table.column :class="'w-20 min-w-20 max-sm:w-24 max-sm:min-w-24 '.$pinnedDone">
-                        <div class="flex items-center gap-3">
-                            <span class="w-6 shrink-0 max-sm:w-10"><span class="sr-only">{{ __('Done') }}</span></span>
+                    {{-- One column for the round check and, while selecting, the box: both in the cell of one size (x-task-check-cell); the
+                         head shows the box that selects all visible tasks then --}}
+                    <flux:table.column :class="'w-12 min-w-12 max-sm:w-16 max-sm:min-w-16 '.$pinnedDone">
+                        <span class="inline-grid size-6 place-items-center max-sm:size-10">
+                            <span class="sr-only" @if ($this->canEdit) x-show="! $wire.selecting" @endif>{{ __('Done') }}</span>
                             @if ($this->canEdit)
-                                {{-- In a box as high as a line, like the boxes of the rows (x-task-select-box), so both stand in one line --}}
-                                <span class="flex size-6 shrink-0 items-center justify-center">
+                                <span class="flex size-6 items-center justify-center" x-show="$wire.selecting" x-cloak>
                                     <flux:checkbox wire:key="select-page-{{ $selecting ? 'on' : 'off' }}" :checked="$selecting && $this->tasks->isNotEmpty() && $this->tasks->pluck('id')->diff($this->selectedIds)->isEmpty()" wire:click="togglePage" aria-label="{{ __('Select all visible tasks') }}" />
                                 </span>
                             @endif
-                        </div>
+                        </span>
                     </flux:table.column>
                     <flux:table.column :class="$pinnedTitle" sortable :sorted="$sortBy === 'title'" :direction="$sortDirection" wire:click="sort('title')">{{ __('Task') }}</flux:table.column>
                     <flux:table.column sortable :sorted="$sortBy === 'status'" :direction="$sortDirection" wire:click="sort('status')">{{ __('Status') }}</flux:table.column>
@@ -735,12 +741,7 @@ new class extends Component
                         @php($number++)
                         <flux:table.row wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" :class="'cursor-pointer'.($task->isDone() ? ' opacity-60 hover:opacity-100 focus-within:opacity-100' : '')" :wire:sort:item="$draggable ? $task->id : null">
                             <flux:table.cell :class="$pinnedDone">
-                                <div class="flex items-center gap-3">
-                                    <x-task-done-button :task="$task" :editable="$this->canEdit" />
-                                    @if ($this->canEdit)
-                                        <x-task-select-box :task="$task" ends-when-empty instant />
-                                    @endif
-                                </div>
+                                <x-task-check-cell :task="$task" :editable="$this->canEdit" :selectable="$this->canEdit" />
                             </flux:table.cell>
                             <flux:table.cell :class="'min-w-56 whitespace-normal max-sm:min-w-[45vw] '.$pinnedTitle">
                                 <x-task-title-line :task="$task" :progress="$this->progress[$task->id] ?? null" :number="$number" />
@@ -783,7 +784,8 @@ new class extends Component
     @endif
 
     @if ($this->canEdit)
-        <x-quick-add class="mt-2" x-show="! $wire.selecting" />
+        {{-- Not gone while selecting but invisible, so the list keeps its size (the bar floats over this place) --}}
+        <x-quick-add class="mt-2" x-bind:class="{ 'invisible': $wire.selecting }" />
     @endif
 
     {{-- The bar is always there for who may edit, shown as soon as the browser selects; the dialog needs what the server knows --}}

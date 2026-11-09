@@ -206,10 +206,7 @@ new class extends Component
                 <div class="space-y-1">
                     @foreach ($day['tasks'] as $task)
                         <div wire:key="agenda-{{ $day['date']->toDateString() }}-{{ $task->id }}" class="flex items-center gap-1">
-                            <x-task-done-button :task="$task" :editable="$this->canEdit" compact />
-                            @if ($this->canEdit)
-                                <template x-if="$wire.selecting"><x-task-select-box :task="$task" /></template>
-                            @endif
+                            <x-task-check-cell :task="$task" :editable="$this->canEdit" :selectable="$this->canEdit" compact />
                             <a href="{{ route('tasks.show', $task) }}" x-on:click="$openTask($event, {{ $task->id }})" style="--badge: {{ $task->status->color }}"
                                class="color-chip block min-w-0 flex-1 truncate rounded px-2 py-1 text-sm {{ $task->isDone() ? 'line-through opacity-60' : '' }}">{{ $task->title }}</a>
                         </div>

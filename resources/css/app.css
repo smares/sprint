@@ -296,6 +296,105 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
     }
 }
 
+/* The background: three soft patches of color in the colors of the logo drift slowly behind the pages. Where each one is, is
+   calculated, not drawn: all depend on one number, --ambient-t, which runs from its start to the start plus 1 in five minutes, and
+   every patch moves on a Lissajous curve, x = 1/2 + a·sin(2π(fx·t + px)) and y = 1/2 + b·cos(2π(fy·t + py)) (as a fraction of the
+   window), with whole numbers for fx and fy, so that after the five minutes each patch stands where it began and the loop has no
+   seam, while the three do not move in step. Only transforms change, so nothing is painted again, and browsers that do not know
+   @property or the trigonometric functions show the patches where they are at the start. Not at all with the setting "reduce
+   motion" (they stand still then), with forced colors and in print. */
+@property --ambient-t {
+    syntax: '<number>';
+    inherits: true;
+    initial-value: 0.15;
+}
+
+@keyframes ambient-drift {
+    from {
+        --ambient-t: 0.15;
+    }
+
+    to {
+        --ambient-t: 1.15;
+    }
+}
+
+.ambient {
+    --ambient-t: 0.15;
+    --tint-1: color-mix(in oklab, var(--color-orange-400) 28%, transparent);
+    --tint-2: color-mix(in oklab, var(--color-amber-300) 30%, transparent);
+    --tint-3: color-mix(in oklab, var(--color-rose-300) 20%, transparent);
+
+    position: fixed;
+    inset: 0;
+    z-index: -10;
+    overflow: hidden;
+    pointer-events: none;
+    user-select: none;
+    contain: strict;
+
+    @variant dark {
+        --tint-1: color-mix(in oklab, var(--color-orange-500) 22%, transparent);
+        --tint-2: color-mix(in oklab, var(--color-amber-500) 14%, transparent);
+        --tint-3: color-mix(in oklab, var(--color-rose-500) 12%, transparent);
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        animation: ambient-drift 300s linear infinite;
+    }
+
+    @media (forced-colors: active), print {
+        display: none;
+    }
+
+    & > span {
+        --x: calc(0.5 + var(--ax) * sin((var(--fx) * var(--ambient-t) + var(--px)) * 1turn));
+        --y: calc(0.5 + var(--ay) * cos((var(--fy) * var(--ambient-t) + var(--py)) * 1turn));
+
+        position: absolute;
+        inset-block-start: 0;
+        inset-inline-start: 0;
+        width: var(--size);
+        aspect-ratio: 1;
+        border-radius: 50%;
+        background: radial-gradient(closest-side, var(--tint), transparent);
+        translate: calc(var(--x) * 100vw - 50%) calc(var(--y) * 100vh - 50%);
+    }
+
+    & > span:nth-child(1) {
+        --tint: var(--tint-1);
+        --size: 80vmax;
+        --ax: 0.32;
+        --ay: 0.22;
+        --fx: 1;
+        --fy: 2;
+        --px: 0;
+        --py: 0.25;
+    }
+
+    & > span:nth-child(2) {
+        --tint: var(--tint-2);
+        --size: 66vmax;
+        --ax: 0.28;
+        --ay: 0.3;
+        --fx: 2;
+        --fy: 1;
+        --px: 0.35;
+        --py: 0.7;
+    }
+
+    & > span:nth-child(3) {
+        --tint: var(--tint-3);
+        --size: 58vmax;
+        --ax: 0.36;
+        --ay: 0.18;
+        --fx: 3;
+        --fy: 2;
+        --px: 0.6;
+        --py: 0.1;
+    }
+}
+
 /* The views of tasks (list, board, calendar, timeline, in a project and in My tasks) use the whole width of the window: wide
    tables and columns gain from it. The other pages keep the width Flux's container gives them (max-w-7xl), where lines of text
    and forms stay easy to read, and sit against the sidebar rather than in the middle, so the title stays in the same place

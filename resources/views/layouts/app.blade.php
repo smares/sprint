@@ -30,6 +30,11 @@
         @fluxAppearance
     </head>
     <body class="min-h-screen bg-zinc-50 dark:bg-zinc-900">
+        {{-- Soft, slowly drifting patches of color behind the pages (see .ambient in app.css); kept across page changes so the drift does not start over --}}
+        @persist('ambient')
+            <div class="ambient" aria-hidden="true"><span></span><span></span><span></span></div>
+        @endpersist
+
         {{-- The first thing the keyboard reaches: jumps over the sidebar to the content; visible only while focused --}}
         <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:start-3 focus:top-3 focus:z-50 focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-zinc-900 focus:shadow-lg focus:outline-2 focus:outline-offset-2 dark:focus:bg-zinc-800 dark:focus:text-white">{{ __('Skip to content') }}</a>
 

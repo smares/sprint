@@ -105,16 +105,19 @@ new class extends Component
                 $isCurrent = $project->id === $currentProjectId;
                 $views = $isCurrent ? ProjectView::links($project, ProjectView::tryFrom($currentView ?? '')) : [];
             @endphp
-            <flux:sidebar.item wire:key="sidebar-project-{{ $project->id }}" :href="route(auth()->user()->projectRoute($project), $project)" wire:navigate :current="$isCurrent && $currentView === null" data-sidebar-project="{{ $project->id }}" :badge="$project->archived_at ? __('Archived') : null">
-                <x-slot name="icon">
-                    <x-project-icon :project="$project" size="sm" />
-                </x-slot>
-                {{ $project->name }}
-            </flux:sidebar.item>
+            {{-- The current project and its views are one unit (collapsed: one pill, see x-sidebar-views) --}}
+            <div wire:key="sidebar-project-group-{{ $project->id }}" @class(['in-data-flux-sidebar-collapsed-desktop:mb-2 in-data-flux-sidebar-collapsed-desktop:rounded-lg in-data-flux-sidebar-collapsed-desktop:bg-zinc-800/5 dark:in-data-flux-sidebar-collapsed-desktop:bg-white/10' => $isCurrent])>
+                <flux:sidebar.item wire:key="sidebar-project-{{ $project->id }}" :href="route(auth()->user()->projectRoute($project), $project)" wire:navigate :current="$isCurrent && $currentView === null" data-sidebar-project="{{ $project->id }}" :badge="$project->archived_at ? __('Archived') : null">
+                    <x-slot name="icon">
+                        <x-project-icon :project="$project" size="sm" />
+                    </x-slot>
+                    {{ $project->name }}
+                </flux:sidebar.item>
 
-            @if ($isCurrent)
-                <x-sidebar-views :views="$views" :label="$project->name" />
-            @endif
+                @if ($isCurrent)
+                    <x-sidebar-views :views="$views" :label="$project->name" />
+                @endif
+            </div>
         @endforeach
     @empty
         <flux:sidebar.item icon="folder-open" :href="route('projects.index')" wire:navigate>{{ __('All projects') }}</flux:sidebar.item>

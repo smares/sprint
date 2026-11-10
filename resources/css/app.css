@@ -123,12 +123,12 @@ ui-pillbox-trigger:not([disabled], :has(input:not([type='hidden']))) {
 }
 
 :root.dark {
-    --glass-rgb: 41 37 36;
-    --glass-card-rgb: 68 64 60;
-    --glass-popover-rgb: 52 47 45;
-    --glass-a: 0.48;
-    --glass-card-a: 0.7;
-    --glass-popover-a: 0.86;
+    --glass-rgb: 28 25 23;
+    --glass-card-rgb: 47 43 40;
+    --glass-popover-rgb: 36 32 30;
+    --glass-a: 0.52;
+    --glass-card-a: 0.74;
+    --glass-popover-a: 0.88;
     --glass-border: rgb(255 255 255 / 0.14);
     --glass-edge: rgb(255 255 255 / 0.06);
     --glass-shadow: 0 1px 0 rgb(255 255 255 / 0.07) inset, 0 8px 32px -8px rgb(0 0 0 / 0.5);

@@ -80,10 +80,14 @@
 
                 <flux:sidebar.nav>
                     <flux:sidebar.item icon="folder" :href="route('projects.index')" :current="request()->routeIs('projects.index')" wire:navigate>{{ __('Projects') }}</flux:sidebar.item>
-                    <flux:sidebar.item icon="check-circle" :href="route(auth()->user()->mineTasksRoute())" wire:navigate :current="false">{{ __('My tasks') }}</flux:sidebar.item>
-                    @if ($mineView = \App\Enums\MineView::forRoute(request()->route()?->getName()))
-                        <x-sidebar-views :views="\App\Enums\MineView::links($mineView)" :label="__('My tasks')" />
-                    @endif
+                    {{-- With its views the item is one unit (collapsed: one pill, see x-sidebar-views) --}}
+                    @php($mineView = \App\Enums\MineView::forRoute(request()->route()?->getName()))
+                    <div @class(['in-data-flux-sidebar-collapsed-desktop:mb-2 in-data-flux-sidebar-collapsed-desktop:rounded-lg in-data-flux-sidebar-collapsed-desktop:bg-zinc-800/5 dark:in-data-flux-sidebar-collapsed-desktop:bg-white/10' => $mineView !== null])>
+                        <flux:sidebar.item icon="check-circle" :href="route(auth()->user()->mineTasksRoute())" wire:navigate :current="false">{{ __('My tasks') }}</flux:sidebar.item>
+                        @if ($mineView)
+                            <x-sidebar-views :views="\App\Enums\MineView::links($mineView)" :label="__('My tasks')" />
+                        @endif
+                    </div>
                     <livewire:notification-bell />
                     <flux:sidebar.item icon="calendar-date-range" :href="route('workload')" :current="request()->routeIs('workload')" wire:navigate>{{ __('Workload') }}</flux:sidebar.item>
                     @can('administer')

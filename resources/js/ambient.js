@@ -13,15 +13,15 @@ const FRAME_MS = 1000 / 12
 const palettes = {
     light: {
         patches: [
-            { x: 0.2, y: 0.22, radius: 0.67, color: '253,186,116', alpha: 0.26 },
-            { x: 0.78, y: 0.68, radius: 0.61, color: '252,211,77', alpha: 0.23 },
-            { x: 0.84, y: 0.15, radius: 0.44, color: '253,164,175', alpha: 0.16 },
+            { x: 0.2, y: 0.22, radius: 0.67, color: '253,186,116', alpha: 0.2 },
+            { x: 0.78, y: 0.68, radius: 0.61, color: '252,211,77', alpha: 0.18 },
+            { x: 0.84, y: 0.15, radius: 0.44, color: '253,164,175', alpha: 0.12 },
         ],
         waves: ['249,115,22', '217,119,6', '225,29,72'],
-        glow: 0.03,
-        line: 0.18,
+        glow: 0.025,
+        line: 0.14,
         point: '234,88,12',
-        pointAlpha: 0.24,
+        pointAlpha: 0.2,
         composite: 'source-over',
     },
     dark: {

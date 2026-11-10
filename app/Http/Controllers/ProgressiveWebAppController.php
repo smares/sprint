@@ -31,7 +31,7 @@ class ProgressiveWebAppController extends Controller
     /** The color of the browser's bar in light and dark appearance (the header's; app.js switches with the menu). */
     public const string THEME_COLOR = '#ffffff';
 
-    public const string THEME_COLOR_DARK = '#18181b';
+    public const string THEME_COLOR_DARK = '#1c1917';
 
     /** How long browsers may keep the manifest (seconds); it only changes with the app's name. */
     private const int MANIFEST_MAX_AGE = 86400;

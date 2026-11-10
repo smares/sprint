@@ -1384,7 +1384,7 @@ new class extends Component
 
     @if ($panel)
         {{-- Stays at the top of the flyout while its content scrolls: sticky counts from inside the flyout's 1.25rem of padding, so -top-5. Above the bar with the buttons (z-10), which sticks inside the form and moves up behind this header once the form has scrolled out of sight --}}
-        <div class="sticky -top-5 z-20 -mx-5 mb-2 flex items-center gap-2 bg-white/85 px-5 py-2 backdrop-blur-md dark:bg-zinc-800/85">
+        <div class="sticky -top-5 z-20 -mx-5 mb-2 flex items-center gap-2 glass-sticky px-5 py-2">
             <x-project-icon :project="$task->project" size="sm" />
             <flux:text size="sm" class="min-w-0 flex-1 truncate">
                 {{ $task->project->name }}
@@ -1416,7 +1416,7 @@ new class extends Component
 
     {{-- data-task-form: the flyout asks before it closes while this form holds changes that are not saved (see taskFlyout in app.js).
          data-dirty-properties: the properties that "Save" stores, the ones that count (not searches, not what saves itself). --}}
-    <form wire:submit="save" data-task-form data-dirty-properties="{{ json_encode(['title', 'description', 'statusId', 'assigneeId', 'startDate', 'dueDate', 'repeatUnit', 'repeatInterval', 'repeatMode', 'repeatUntil', 'fieldValues', 'tagIds', 'parentId', 'collaboratorIds', 'blockerIds', 'blockingIds']) }}" @class(['space-y-4', 'glass rounded-2xl p-6' => ! $panel])>
+    <form wire:submit="save" data-task-form data-dirty-properties="{{ json_encode(['title', 'description', 'statusId', 'assigneeId', 'startDate', 'dueDate', 'repeatUnit', 'repeatInterval', 'repeatMode', 'repeatUntil', 'fieldValues', 'tagIds', 'parentId', 'collaboratorIds', 'blockerIds', 'blockingIds']) }}" @class(['space-y-4', 'glass rounded-2xl p-6 max-sm:p-4 focus-within:relative focus-within:z-10' => ! $panel])>
         {{-- The title as a heading and the properties as a quiet list: both look like text until pointed at or focused --}}
         {{-- Long titles wrap instead of being cut off; Enter saves as in a single line, a pasted line break becomes a space --}}
         <flux:textarea wire:model="title" :aria-label="__('Title')" rows="1" resize="none" class="task-title-input field-sizing-content"
@@ -1590,7 +1590,7 @@ new class extends Component
         @if ($this->canEdit)
             {{-- On phones duplicate and delete show only their icon, so the row fits --}}
             {{-- In the flyout the bar stays at the bottom edge while the properties scroll: changes are only taken with "Save" --}}
-            <div @class(['flex gap-3', 'sticky -bottom-5 z-10 -mx-5 border-t border-zinc-200/70 bg-white/85 px-5 py-3 backdrop-blur-md dark:border-white/10 dark:bg-zinc-800/85' => $panel])>
+            <div @class(['flex gap-3', 'sticky -bottom-5 z-10 -mx-5 border-t border-zinc-200/70 glass-sticky px-5 py-3 dark:border-white/10' => $panel])>
                 <flux:button type="submit" variant="primary">{{ __('Save') }}</flux:button>
                 <div class="sm:hidden"><flux:button type="button" icon="document-duplicate" square wire:click="duplicate" :aria-label="__('Duplicate')" :tooltip="__('Duplicate')" /></div>
                 <flux:button type="button" icon="document-duplicate" class="max-sm:hidden" wire:click="duplicate">{{ __('Duplicate') }}</flux:button>
@@ -1606,7 +1606,7 @@ new class extends Component
     @if ($panel)
         <flux:separator class="my-6" />
     @else
-        <section class="glass mt-4 rounded-2xl p-6">
+        <section class="glass mt-4 rounded-2xl p-6 max-sm:p-4 focus-within:relative focus-within:z-10">
     @endif
 
     <flux:heading size="lg" class="mb-2">{{ __('Subtasks') }}</flux:heading>
@@ -1636,7 +1636,7 @@ new class extends Component
         <flux:separator class="my-6" />
     @else
         </section>
-        <section class="glass mt-4 rounded-2xl p-6">
+        <section class="glass mt-4 rounded-2xl p-6 max-sm:p-4 focus-within:relative focus-within:z-10">
     @endif
 
     <flux:heading size="lg" class="mb-2">{{ __('Attachments') }}</flux:heading>
@@ -1690,7 +1690,7 @@ new class extends Component
         <flux:separator class="my-6" />
     @else
         </section>
-        <section class="glass mt-4 rounded-2xl p-6">
+        <section class="glass mt-4 rounded-2xl p-6 max-sm:p-4 focus-within:relative focus-within:z-10">
     @endif
 
     <flux:heading size="lg" class="mb-4">{{ __('Comments') }}</flux:heading>
@@ -1708,7 +1708,7 @@ new class extends Component
                     <flux:avatar circle size="xs" icon="bolt" class="mt-2" />
                 @endif
 
-                <flux:card size="sm" class="min-w-0 flex-1 space-y-1 transition-shadow" data-comment-card>
+                <flux:card size="sm" class="glass-card! min-w-0 flex-1 space-y-1 transition-shadow" data-comment-card>
                     <div class="flex items-center gap-2">
                         <flux:text class="min-w-0 flex-1 text-sm"><strong>{{ $comment->authorName() ?? __('Someone') }}</strong> · <x-time :at="$comment->created_at" />@if ($comment->wasEdited()) · {{ __('edited') }} @endif</flux:text>
                         @if ($editingCommentId !== $comment->id && Gate::allows('update', $comment))
@@ -1751,7 +1751,7 @@ new class extends Component
         <flux:separator class="my-6" />
     @else
         </section>
-        <section class="glass mt-4 rounded-2xl p-6">
+        <section class="glass mt-4 rounded-2xl p-6 max-sm:p-4 focus-within:relative focus-within:z-10">
     @endif
 
     <flux:heading size="lg" class="mb-4">{{ __('Activity') }}</flux:heading>

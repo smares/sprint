@@ -85,77 +85,94 @@ ui-pillbox-trigger:not([disabled], :has(input:not([type='hidden']))) {
 
 /* The focus ring in the accent color instead of the browser's black one (Flux leaves focus to the browser). */
 :focus-visible {
-    outline-color: var(--color-accent);
+    outline-color: var(--color-accent-content);
+}
+
+/* Secondary text (zinc-500) and placeholders (zinc-400) must keep 4.5:1 on the glass above the animated background in the light
+   mode too, where the backdrop is lighter than white in places and darker than it in others: one step darker each (zinc-400 takes
+   the value zinc-500 had, which is 4.8:1 on white). */
+:root:not(.dark) {
+    --color-zinc-400: oklch(0.552 0.016 285.938);
+    --color-zinc-500: var(--color-zinc-600);
 }
 
 /* Frosted glass: the areas that hold content (tables, calendar, columns, the cards of a task, the flyout, the bars) are
    translucent and blur what lies behind them, so the animated background shines through softly and still every area is a
-   container of its own. Three tints keep the levels apart: the page (glass), what lies on it inside a glass area (glass-card)
-   and what must stay readable above scrolling content (sticky parts). A browser without backdrop-filter, and a person who
-   asked for less transparency, get the same areas opaque. */
+   container of its own. The levels: the page (glass), what lies on it inside a glass area (glass-card, without a blur of its
+   own), what opens over the page and must stay easy to read (glass-popover: denser, blurred more) and what sticks above scrolling
+   content (glass-sticky: nearly opaque and not blurred, so nothing shows sharp beneath it). All colors are a color and an
+   opacity, so that the places where there must be no transparency (a browser without backdrop-filter, a person who asked for
+   less transparency, the background switched off in the user menu) change a few opacities and nothing else. */
 :root {
-    --glass-bg: rgb(255 255 255 / 0.55);
-    --glass-card-bg: rgb(255 255 255 / 0.78);
+    --glass-rgb: 255 255 255;
+    --glass-card-rgb: 255 255 255;
+    --glass-popover-rgb: 255 255 255;
+    --glass-a: 0.58;
+    --glass-card-a: 0.8;
+    --glass-popover-a: 0.84;
+    --glass-sticky-a: 0.96;
     --glass-border: rgb(255 255 255 / 0.8);
     --glass-edge: rgb(24 24 27 / 0.08);
     --glass-shadow: 0 1px 0 rgb(255 255 255 / 0.6) inset, 0 8px 32px -8px rgb(63 31 8 / 0.12);
-    --glass-popover-bg: rgb(255 255 255 / 0.82);
     --glass-blur: blur(18px) saturate(1.6);
+    --glass-blur-popover: blur(24px) saturate(1.6);
+    --glass-bg: rgb(var(--glass-rgb) / var(--glass-a));
+    --glass-card-bg: rgb(var(--glass-card-rgb) / var(--glass-card-a));
+    --glass-popover-bg: rgb(var(--glass-popover-rgb) / var(--glass-popover-a));
+    --glass-sticky-bg: rgb(var(--glass-rgb) / var(--glass-sticky-a));
 }
 
 :root.dark {
-    --glass-bg: rgb(41 37 36 / 0.48);
-    --glass-card-bg: rgb(68 64 60 / 0.62);
+    --glass-rgb: 41 37 36;
+    --glass-card-rgb: 68 64 60;
+    --glass-popover-rgb: 52 47 45;
+    --glass-a: 0.48;
+    --glass-card-a: 0.7;
+    --glass-popover-a: 0.86;
     --glass-border: rgb(255 255 255 / 0.14);
     --glass-edge: rgb(255 255 255 / 0.06);
     --glass-shadow: 0 1px 0 rgb(255 255 255 / 0.07) inset, 0 8px 32px -8px rgb(0 0 0 / 0.5);
-    --glass-popover-bg: rgb(52 47 45 / 0.86);
 }
 
 /* Lighter blur on phones, where many glass areas on a small GPU would cost too much */
 @media (width < 40rem) {
     :root {
         --glass-blur: blur(10px) saturate(1.4);
+        --glass-blur-popover: blur(16px) saturate(1.4);
     }
 }
 
+/* No transparency where the browser cannot blur (the three rules below say the same, as they cannot share one condition) */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     :root {
-        --glass-bg: rgb(255 255 255);
-        --glass-card-bg: rgb(255 255 255);
-        --glass-popover-bg: rgb(255 255 255);
+        --glass-a: 1;
+        --glass-card-a: 1;
+        --glass-popover-a: 1;
+        --glass-sticky-a: 1;
         --glass-blur: none;
-    }
-
-    :root.dark {
-        --glass-bg: rgb(41 37 36);
-        --glass-card-bg: rgb(68 64 60);
-        --glass-popover-bg: rgb(52 47 45);
+        --glass-blur-popover: none;
     }
 }
 
 @media (prefers-reduced-transparency: reduce) {
     :root {
-        --glass-bg: rgb(255 255 255);
-        --glass-card-bg: rgb(255 255 255);
-        --glass-popover-bg: rgb(255 255 255);
+        --glass-a: 1;
+        --glass-card-a: 1;
+        --glass-popover-a: 1;
+        --glass-sticky-a: 1;
         --glass-blur: none;
-    }
-
-    :root.dark {
-        --glass-bg: rgb(41 37 36);
-        --glass-card-bg: rgb(68 64 60);
-        --glass-popover-bg: rgb(52 47 45);
+        --glass-blur-popover: none;
     }
 }
 
-/* Menus and lists that open over the page (the ones of Flux are handled by the rule at the end of this file) */
-@utility glass-popover {
-    background-color: var(--glass-popover-bg);
-    border: 1px solid var(--glass-border);
-    box-shadow: var(--glass-shadow);
-    -webkit-backdrop-filter: blur(24px) saturate(1.6);
-    backdrop-filter: blur(24px) saturate(1.6);
+/* Without the animated background (switched off in the user menu) there is nothing to see through the glass */
+:root:has(.ambient[data-mode='off']) {
+    --glass-a: 1;
+    --glass-card-a: 1;
+    --glass-popover-a: 1;
+    --glass-sticky-a: 1;
+    --glass-blur: none;
+    --glass-blur-popover: none;
 }
 
 @utility glass {
@@ -166,7 +183,33 @@ ui-pillbox-trigger:not([disabled], :has(input:not([type='hidden']))) {
     backdrop-filter: var(--glass-blur);
 }
 
-/* A white area on the tinted page (tables, calendar, timeline), so content stands out from the background. */
+/* A panel on glass (the comments of a task): lighter than its surroundings, no blur of its own */
+@utility glass-card {
+    background-color: var(--glass-card-bg);
+}
+
+/* A bar that stays at the edge of the window (the sidebar, the header on phones): the glass of a page, without its border and shadow */
+@utility glass-bar {
+    background-color: var(--glass-bg);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+}
+
+/* What sticks above content that scrolls under it (table heads, calendar and timeline heads, the bars of the flyout) */
+@utility glass-sticky {
+    background-color: var(--glass-sticky-bg);
+}
+
+/* Menus and lists that open over the page (the ones of Flux are handled by the rule at the end of this file) */
+@utility glass-popover {
+    background-color: var(--glass-popover-bg);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    -webkit-backdrop-filter: var(--glass-blur-popover);
+    backdrop-filter: var(--glass-blur-popover);
+}
+
+/* The areas of content on the tinted page (tables, calendar, timeline, the pages of administration): glass with rounded corners */
 @utility surface {
     @apply glass rounded-xl;
 }
@@ -342,11 +385,11 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
     display: none;
 }
 
-/* A table column that stays at the start while the table scrolls sideways (task lists, workload): it stays see-through like the glass
-   around it and covers what passes underneath with a frosted tint only once Flux marks the table as scrolled (data-scrolled-right) a light shadow
-   shows that more lies beneath. */
+/* A table column that stays at the start while the table scrolls sideways (task lists, workload): it stays as see-through as the glass
+   around it until the table is scrolled sideways (Flux marks that with data-scrolled-right); only then it covers what passes
+   underneath with the nearly opaque tint of the sticky parts, and a light shadow shows that more lies beneath. */
 @utility pinned-column {
-    @apply pinned-shadow sticky start-0 z-10 in-data-scrolled-right:bg-white/85 in-data-scrolled-right:backdrop-blur-md dark:in-data-scrolled-right:bg-zinc-800/85;
+    @apply pinned-shadow sticky start-0 z-10 in-data-scrolled-right:bg-(--glass-sticky-bg);
 }
 
 /* The shadow alone, for sticky start cells with a background of their own (timeline). */
@@ -938,7 +981,6 @@ tr[data-task-id],
     }
 }
 
-
 /* Board columns are glass like the other areas; the cards on them are lighter panels above (no blur of their own: there are
    many of them, and the column behind already is blurred). The color line at the top of a column stays. */
 [data-flux-kanban-column] > div {
@@ -948,21 +990,21 @@ tr[data-task-id],
     backdrop-filter: var(--glass-blur);
 }
 
-.board-card {
+[data-flux-kanban-column] .board-card {
     background-color: var(--glass-card-bg);
     --tw-ring-color: var(--glass-edge);
 }
 
-/* The flyout of a task: frosted over the list or board it opens above */
+/* The flyout of a task: frosted over the list or board it opens above, as dense as the other things that open over the page */
 [data-task-flyout] > dialog[data-flux-flyout] {
-    background-color: var(--glass-bg);
+    background-color: var(--glass-popover-bg);
     border-inline-start: 1px solid var(--glass-border);
-    -webkit-backdrop-filter: var(--glass-blur);
-    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur-popover);
+    backdrop-filter: var(--glass-blur-popover);
 }
 
-/* Menus, popovers, lists to choose from and the date picker: the same glass, but denser, because they lie over text and other
-   controls and must stay easy to read; the blur is stronger so that what lies behind them does not show as shapes. */
+/* Menus, popovers, lists to choose from, the date picker, dialogs: the same glass, but dense, because they lie over
+   text and other controls and must stay easy to read; the blur is stronger so that what lies behind them does not show as shapes. */
 ui-menu[data-flux-menu],
 [data-flux-popover],
 ui-options[data-flux-options],
@@ -971,6 +1013,6 @@ ui-options[data-flux-autocomplete-items],
 [data-flux-date-picker] dialog,
 [data-flux-modal] > dialog:not([data-flux-flyout]) {
     background-color: var(--glass-popover-bg);
-    -webkit-backdrop-filter: blur(24px) saturate(1.6);
-    backdrop-filter: blur(24px) saturate(1.6);
+    -webkit-backdrop-filter: var(--glass-blur-popover);
+    backdrop-filter: var(--glass-blur-popover);
 }

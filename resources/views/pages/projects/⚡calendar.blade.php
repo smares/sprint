@@ -223,7 +223,7 @@ new class extends Component
             {{-- The surface draws the outer border, so the last column and the last week leave out their own --}}
             <div class="grid min-w-[56rem] grid-cols-7 [&>*:nth-child(7n)]:border-e-0 [&>*:nth-last-child(-n+7)]:border-b-0" data-calendar-month>
                 @foreach ($this->weeks[0] as $weekday)
-                    <div class="sticky top-0 z-10 border-e border-b border-zinc-200 bg-white/50 backdrop-blur-md p-2 text-sm font-medium dark:border-zinc-700 dark:bg-zinc-900/50">
+                    <div class="sticky top-0 z-10 border-e border-b border-zinc-200 glass-sticky p-2 text-sm font-medium dark:border-zinc-700">
                         {{ $weekday['date']->isoFormat('dd') }}
                     </div>
                 @endforeach

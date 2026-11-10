@@ -32,7 +32,7 @@ class SortOnTouchTest extends TestCase
         }
 
         $this->assertSame([], $missing, 'Lists with wire:sort but without the touch delay start dragging on every tap');
-        $this->assertSame('{ delay: 250, delayOnTouchOnly: true, touchStartThreshold: 12 }', Sortable::CONFIG);
-        $this->assertSame('{ sort: false, delay: 250, delayOnTouchOnly: true, touchStartThreshold: 12 }', Sortable::CONFIG_MOVE_ONLY);
+        $this->assertSame('{ delay: 250, delayOnTouchOnly: true, touchStartThreshold: 12, fallbackOnBody: true }', Sortable::CONFIG);
+        $this->assertSame('{ sort: false, delay: 250, delayOnTouchOnly: true, touchStartThreshold: 12, fallbackOnBody: true }', Sortable::CONFIG_MOVE_ONLY);
     }
 }

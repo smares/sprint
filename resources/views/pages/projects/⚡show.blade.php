@@ -689,14 +689,14 @@ new class extends Component
         @endif
     @else
         {{-- Every column shows on every screen and the table scrolls sideways. The title stays in place (from sm with the done column
-             before it; on phones only the title, so it leaves room for the rest); sticky cells need a background to cover what passes underneath. --}}
+             before it; on phones only the title, so it leaves room for the rest); sticky cells cover what passes underneath once the table is scrolled sideways (glass-sticky tint). --}}
         @php
-            $pinnedDone = 'sm:sticky sm:start-0 sm:z-10 sm:in-data-scrolled-right:bg-white/85 sm:in-data-scrolled-right:backdrop-blur-md sm:dark:in-data-scrolled-right:bg-zinc-800/85';
+            $pinnedDone = 'sm:sticky sm:start-0 sm:z-10 sm:in-data-scrolled-right:bg-(--glass-sticky-bg)';
             $pinnedTitle = 'pinned-column sm:start-12';
         @endphp
         <div class="surface px-3 [--flux-bleed:0.75rem]" data-fills-height>
             <flux:table bleed container:class="scroll-shadows rounded-[inherit]">
-                <flux:table.columns sticky class="bg-white/55 backdrop-blur-md dark:bg-zinc-800/55">
+                <flux:table.columns sticky class="glass-sticky">
                     {{-- One column for the round check and, while selecting, the box: both in the cell of one size (x-task-check-cell); the
                          head shows the box that selects all visible tasks then --}}
                     <flux:table.column :class="'w-12 min-w-12 max-sm:w-16 max-sm:min-w-16 '.$pinnedDone">

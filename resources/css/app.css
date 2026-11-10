@@ -94,20 +94,22 @@ ui-pillbox-trigger:not([disabled], :has(input:not([type='hidden']))) {
    and what must stay readable above scrolling content (sticky parts). A browser without backdrop-filter, and a person who
    asked for less transparency, get the same areas opaque. */
 :root {
-    --glass-bg: rgb(255 255 255 / 0.38);
-    --glass-card-bg: rgb(255 255 255 / 0.62);
+    --glass-bg: rgb(255 255 255 / 0.55);
+    --glass-card-bg: rgb(255 255 255 / 0.78);
     --glass-border: rgb(255 255 255 / 0.8);
     --glass-edge: rgb(24 24 27 / 0.08);
     --glass-shadow: 0 1px 0 rgb(255 255 255 / 0.6) inset, 0 8px 32px -8px rgb(63 31 8 / 0.12);
-    --glass-blur: blur(14px) saturate(1.8);
+    --glass-popover-bg: rgb(255 255 255 / 0.82);
+    --glass-blur: blur(18px) saturate(1.6);
 }
 
 :root.dark {
-    --glass-bg: rgb(41 37 36 / 0.32);
-    --glass-card-bg: rgb(68 64 60 / 0.5);
+    --glass-bg: rgb(41 37 36 / 0.48);
+    --glass-card-bg: rgb(68 64 60 / 0.62);
     --glass-border: rgb(255 255 255 / 0.14);
     --glass-edge: rgb(255 255 255 / 0.06);
     --glass-shadow: 0 1px 0 rgb(255 255 255 / 0.07) inset, 0 8px 32px -8px rgb(0 0 0 / 0.5);
+    --glass-popover-bg: rgb(52 47 45 / 0.86);
 }
 
 /* Lighter blur on phones, where many glass areas on a small GPU would cost too much */
@@ -121,12 +123,14 @@ ui-pillbox-trigger:not([disabled], :has(input:not([type='hidden']))) {
     :root {
         --glass-bg: rgb(255 255 255);
         --glass-card-bg: rgb(255 255 255);
+        --glass-popover-bg: rgb(255 255 255);
         --glass-blur: none;
     }
 
     :root.dark {
         --glass-bg: rgb(41 37 36);
         --glass-card-bg: rgb(68 64 60);
+        --glass-popover-bg: rgb(52 47 45);
     }
 }
 
@@ -134,13 +138,24 @@ ui-pillbox-trigger:not([disabled], :has(input:not([type='hidden']))) {
     :root {
         --glass-bg: rgb(255 255 255);
         --glass-card-bg: rgb(255 255 255);
+        --glass-popover-bg: rgb(255 255 255);
         --glass-blur: none;
     }
 
     :root.dark {
         --glass-bg: rgb(41 37 36);
         --glass-card-bg: rgb(68 64 60);
+        --glass-popover-bg: rgb(52 47 45);
     }
+}
+
+/* Menus and lists that open over the page (the ones of Flux are handled by the rule at the end of this file) */
+@utility glass-popover {
+    background-color: var(--glass-popover-bg);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    -webkit-backdrop-filter: blur(24px) saturate(1.6);
+    backdrop-filter: blur(24px) saturate(1.6);
 }
 
 @utility glass {
@@ -944,4 +959,18 @@ tr[data-task-id],
     border-inline-start: 1px solid var(--glass-border);
     -webkit-backdrop-filter: var(--glass-blur);
     backdrop-filter: var(--glass-blur);
+}
+
+/* Menus, popovers, lists to choose from and the date picker: the same glass, but denser, because they lie over text and other
+   controls and must stay easy to read; the blur is stronger so that what lies behind them does not show as shapes. */
+ui-menu[data-flux-menu],
+[data-flux-popover],
+ui-options[data-flux-options],
+ui-options[data-flux-command-items],
+ui-options[data-flux-autocomplete-items],
+[data-flux-date-picker] dialog,
+[data-flux-modal] > dialog:not([data-flux-flyout]) {
+    background-color: var(--glass-popover-bg);
+    -webkit-backdrop-filter: blur(24px) saturate(1.6);
+    backdrop-filter: blur(24px) saturate(1.6);
 }

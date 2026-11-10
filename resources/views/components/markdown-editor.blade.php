@@ -178,7 +178,7 @@
                     <button type="button" class="touch-target flex items-center gap-1 text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200" x-on:click="imageMenu = ! imageMenu" aria-label="{{ __('Insert image') }}" title="{{ __('Insert image') }}">
                         <flux:icon.photo variant="micro" /><span x-show="uploading" x-cloak>{{ __('Uploading …') }}</span>
                     </button>
-                    <div x-show="imageMenu" x-cloak class="absolute end-0 z-20 mt-1 max-h-64 w-64 overflow-auto rounded-lg border border-zinc-200 bg-white p-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-800">
+                    <div x-show="imageMenu" x-cloak class="absolute end-0 z-20 mt-1 max-h-64 w-64 overflow-auto rounded-lg glass-popover p-1">
                         @foreach ($images as $image)
                             <button type="button" class="block w-full truncate rounded px-2 py-1 text-start hover:bg-zinc-100 dark:hover:bg-zinc-700" x-on:click="insertImage({{ $image['id'] }}, @js($image['name']))">{{ $image['name'] }}</button>
                         @endforeach
@@ -216,7 +216,7 @@
             <span class="sr-only" role="status" x-text="count > max ? @js(__('The text is too long.')) : ''"></span>
         @endif
 
-        <ul x-show="open && matches.length" x-cloak class="absolute z-20 mt-1 max-h-64 w-72 overflow-auto rounded-lg border border-zinc-200 bg-white p-1 text-sm shadow-lg dark:border-zinc-700 dark:bg-zinc-800" role="listbox">
+        <ul x-show="open && matches.length" x-cloak class="absolute z-20 mt-1 max-h-64 w-72 overflow-auto rounded-lg glass-popover p-1 text-sm" role="listbox">
             <template x-for="(item, index) in matches" x-bind:key="item.type + item.id">
                 <li>
                     <div x-show="index === 0 || matches[index - 1].type !== item.type" class="px-2 pt-1 text-xs font-semibold uppercase text-zinc-400" x-text="item.type === 'user' ? @js(__('People')) : @js(__('Tasks'))"></div>

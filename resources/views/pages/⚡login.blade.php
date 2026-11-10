@@ -191,7 +191,7 @@ new class extends Component
         <x-app-brand :href="route('login')" />
     </div>
 
-    <flux:card>
+    <flux:card class="glass! rounded-2xl">
     <flux:heading level="1" size="xl" class="mb-6">{{ __('Sign in') }}</flux:heading>
 
     @if (session('status'))

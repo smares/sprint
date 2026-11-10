@@ -207,8 +207,8 @@ new class extends Component
         <div class="scroll-shadows rounded-xl" data-fills-height>
             <div class="surface overflow-x-auto" data-scroll-edges>
                 <div class="min-w-max">
-                    <div class="sticky top-0 z-20 flex border-b border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
-                        <div class="pinned-shadow sticky start-0 z-10 w-32 shrink-0 sm:w-56 border-e border-zinc-200 bg-zinc-50 p-2 text-sm font-medium dark:border-zinc-700 dark:bg-zinc-900">{{ __('Task') }}</div>
+                    <div class="sticky top-0 z-20 flex border-b border-zinc-200 bg-white/50 backdrop-blur-md dark:border-zinc-700 dark:bg-zinc-900/50">
+                        <div class="pinned-shadow sticky start-0 z-10 w-32 shrink-0 sm:w-56 border-e border-zinc-200 bg-white/50 backdrop-blur-md p-2 text-sm font-medium dark:border-zinc-700 dark:bg-zinc-900/50">{{ __('Task') }}</div>
                         <div class="grid" style="grid-template-columns: repeat({{ $days->count() }}, {{ $this::DAY_WIDTH }})">
                             @foreach ($days as $day)
                                 <div wire:key="head-{{ $day->toDateString() }}" @class([

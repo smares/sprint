@@ -51,7 +51,7 @@
             {{-- The sidebar is the navigation on every screen: the main pages, the projects with the views of the current one
                  and the person's menu. On large screens it can be collapsed to icons (remembered for the person); on phones it
                  slides in from the header's menu button. --}}
-            <flux:sidebar sticky collapsible class="border-e border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900">
+            <flux:sidebar sticky collapsible class="border-e border-zinc-200/70 bg-white/60 backdrop-blur-xl backdrop-saturate-150 dark:border-white/10 dark:bg-zinc-900/55">
                 <flux:sidebar.header>
                     <flux:sidebar.brand :href="route('projects.index')" :name="config('app.name')" wire:navigate>
                         <x-slot name="logo" class="size-6!">
@@ -106,7 +106,7 @@
             {{-- On phones only what is needed at once: the menu (the sidebar, the same as on large screens), the name and the search.
                  A dot on the menu button tells that the inbox has something unread. It stays at the top while the page scrolls, so
                  the menu and the search are within reach wherever one is. --}}
-            <flux:header sticky class="border-b border-zinc-200 bg-white lg:hidden dark:border-zinc-700 dark:bg-zinc-900">
+            <flux:header sticky class="border-b border-zinc-200/70 bg-white/60 backdrop-blur-xl backdrop-saturate-150 lg:hidden dark:border-white/10 dark:bg-zinc-900/55">
                 {{-- aria-expanded follows the sidebar, which Flux opens and closes with attributes on itself --}}
                 <div class="relative" x-data="{ open: false }" x-init="const sidebar = document.querySelector('ui-sidebar'); const sync = () => open = sidebar.hasAttribute('data-flux-sidebar-on-mobile') && ! sidebar.hasAttribute('data-flux-sidebar-collapsed-mobile'); sync(); new MutationObserver(sync).observe(sidebar, { attributes: true })">
                     <flux:sidebar.toggle icon="bars-2" inset="left" aria-label="{{ __('Menu') }}" x-bind:aria-expanded="open" />

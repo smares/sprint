@@ -71,9 +71,72 @@ ui-pillbox-trigger:not([disabled], :has(input:not([type='hidden']))) {
     outline-color: var(--color-accent);
 }
 
+/* Frosted glass: the areas that hold content (tables, calendar, columns, the cards of a task, the flyout, the bars) are
+   translucent and blur what lies behind them, so the animated background shines through softly and still every area is a
+   container of its own. Three tints keep the levels apart: the page (glass), what lies on it inside a glass area (glass-card)
+   and what must stay readable above scrolling content (sticky parts). A browser without backdrop-filter, and a person who
+   asked for less transparency, get the same areas opaque. */
+:root {
+    --glass-bg: rgb(255 255 255 / 0.55);
+    --glass-card-bg: rgb(255 255 255 / 0.82);
+    --glass-border: rgb(255 255 255 / 0.7);
+    --glass-edge: rgb(24 24 27 / 0.08);
+    --glass-shadow: 0 1px 0 rgb(255 255 255 / 0.6) inset, 0 8px 32px -8px rgb(63 31 8 / 0.12);
+    --glass-blur: blur(20px) saturate(1.6);
+}
+
+:root.dark {
+    --glass-bg: rgb(39 39 42 / 0.5);
+    --glass-card-bg: rgb(63 63 70 / 0.6);
+    --glass-border: rgb(255 255 255 / 0.09);
+    --glass-edge: rgb(255 255 255 / 0.06);
+    --glass-shadow: 0 1px 0 rgb(255 255 255 / 0.07) inset, 0 8px 32px -8px rgb(0 0 0 / 0.5);
+}
+
+/* Lighter blur on phones, where many glass areas on a small GPU would cost too much */
+@media (width < 40rem) {
+    :root {
+        --glass-blur: blur(10px) saturate(1.4);
+    }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    :root {
+        --glass-bg: rgb(255 255 255);
+        --glass-card-bg: rgb(255 255 255);
+        --glass-blur: none;
+    }
+
+    :root.dark {
+        --glass-bg: rgb(39 39 42);
+        --glass-card-bg: rgb(63 63 70);
+    }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+    :root {
+        --glass-bg: rgb(255 255 255);
+        --glass-card-bg: rgb(255 255 255);
+        --glass-blur: none;
+    }
+
+    :root.dark {
+        --glass-bg: rgb(39 39 42);
+        --glass-card-bg: rgb(63 63 70);
+    }
+}
+
+@utility glass {
+    background-color: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+}
+
 /* A white area on the tinted page (tables, calendar, timeline), so content stands out from the background. */
 @utility surface {
-    @apply rounded-xl border border-zinc-200 bg-white shadow-xs dark:border-zinc-700 dark:bg-zinc-800;
+    @apply glass rounded-xl;
 }
 
 /* A form whose labelled fields stand in a row with its button: all are aligned at the top and the button is moved down by
@@ -247,11 +310,11 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
     display: none;
 }
 
-/* A table column that stays at the start while the table scrolls sideways (task lists, workload): it covers what passes
-   underneath with the page background, and once Flux marks the table as scrolled (data-scrolled-right) a light shadow
+/* A table column that stays at the start while the table scrolls sideways (task lists, workload): it stays see-through like the glass
+   around it and covers what passes underneath with a frosted tint only once Flux marks the table as scrolled (data-scrolled-right) a light shadow
    shows that more lies beneath. */
 @utility pinned-column {
-    @apply pinned-shadow sticky start-0 z-10 bg-white dark:bg-zinc-800;
+    @apply pinned-shadow sticky start-0 z-10 in-data-scrolled-right:bg-white/85 in-data-scrolled-right:backdrop-blur-md dark:in-data-scrolled-right:bg-zinc-800/85;
 }
 
 /* The shadow alone, for sticky start cells with a background of their own (timeline). */
@@ -841,4 +904,27 @@ tr[data-task-id],
     [data-flux-kanban] > [data-flux-kanban-column] {
         scroll-snap-align: start;
     }
+}
+
+
+/* Board columns are glass like the other areas; the cards on them are lighter panels above (no blur of their own: there are
+   many of them, and the column behind already is blurred). The color line at the top of a column stays. */
+[data-flux-kanban-column] > div {
+    background-color: var(--glass-bg);
+    box-shadow: var(--glass-shadow);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+}
+
+.board-card {
+    background-color: var(--glass-card-bg);
+    --tw-ring-color: var(--glass-edge);
+}
+
+/* The flyout of a task: frosted over the list or board it opens above */
+[data-task-flyout] > dialog[data-flux-flyout] {
+    background-color: var(--glass-bg);
+    border-inline-start: 1px solid var(--glass-border);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
 }

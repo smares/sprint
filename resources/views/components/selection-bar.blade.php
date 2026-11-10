@@ -9,7 +9,7 @@
      bottom edge of the window while the end of the page is further down. It takes room of its own there, so it covers nothing --}}
 <div {{ $attributes->class('pointer-events-none sticky bottom-4 z-30 mt-auto shrink-0 pt-3') }} data-selection-bar>
     <div class="flex justify-center px-4">
-        <div class="pointer-events-auto flex w-full max-w-xl flex-col gap-2 rounded-xl border border-zinc-200 bg-white p-2 shadow-lg sm:w-auto sm:max-w-full sm:flex-row sm:items-center dark:border-zinc-700 dark:bg-zinc-800">
+        <div class="pointer-events-auto flex w-full max-w-xl flex-col gap-2 glass rounded-xl p-2 sm:w-auto sm:max-w-full sm:flex-row sm:items-center">
             <div class="flex items-center gap-2">
                 <flux:text class="px-2 font-medium" role="status">{!! __(':count selected', ['count' => '<span x-text="$wire.selected.length">0</span>']) !!}</flux:text>
 

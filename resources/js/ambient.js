@@ -26,15 +26,15 @@ const palettes = {
     },
     dark: {
         patches: [
-            { x: 0.2, y: 0.22, radius: 0.67, color: '194,65,12', alpha: 0.14 },
-            { x: 0.78, y: 0.68, radius: 0.61, color: '180,83,9', alpha: 0.1 },
-            { x: 0.84, y: 0.15, radius: 0.44, color: '159,18,57', alpha: 0.08 },
+            { x: 0.2, y: 0.22, radius: 0.67, color: '194,65,12', alpha: 0.2 },
+            { x: 0.78, y: 0.68, radius: 0.61, color: '180,83,9', alpha: 0.15 },
+            { x: 0.84, y: 0.15, radius: 0.44, color: '159,18,57', alpha: 0.1 },
         ],
         waves: ['251,146,60', '251,191,36', '253,164,175'],
-        glow: 0.014,
-        line: 0.09,
+        glow: 0.02,
+        line: 0.12,
         point: '253,186,116',
-        pointAlpha: 0.2,
+        pointAlpha: 0.22,
         composite: 'screen',
     },
 }

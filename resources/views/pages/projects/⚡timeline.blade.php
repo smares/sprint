@@ -207,8 +207,8 @@ new class extends Component
         <div class="scroll-shadows rounded-xl" data-fills-height>
             <div class="surface overflow-x-auto" data-scroll-edges>
                 <div class="min-w-max">
-                    <div class="sticky top-0 z-20 flex border-b border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
-                        <div class="pinned-shadow sticky start-0 z-10 w-32 shrink-0 sm:w-56 border-e border-zinc-200 bg-zinc-50 p-2 text-sm font-medium dark:border-zinc-700 dark:bg-zinc-900">{{ __('Task') }}</div>
+                    <div class="sticky top-0 z-20 flex border-b border-zinc-200 glass-sticky dark:border-zinc-700">
+                        <div class="pinned-shadow sticky start-0 z-10 w-32 shrink-0 sm:w-56 border-e border-zinc-200 glass-sticky p-2 text-sm font-medium dark:border-zinc-700">{{ __('Task') }}</div>
                         <div class="grid" style="grid-template-columns: repeat({{ $days->count() }}, {{ $this::DAY_WIDTH }})">
                             @foreach ($days as $day)
                                 <div wire:key="head-{{ $day->toDateString() }}" @class([
@@ -230,7 +230,7 @@ new class extends Component
                     @foreach ($this->rows as $row)
                         @php($task = $row['task'])
                         <div wire:key="row-{{ $task->id }}" class="flex border-b border-zinc-100 last:border-b-0 dark:border-zinc-800">
-                            <div class="pinned-shadow sticky start-0 z-10 flex w-32 shrink-0 sm:w-56 items-center gap-1 border-e border-zinc-200 bg-white p-2 dark:border-zinc-700 dark:bg-zinc-800">
+                            <div class="pinned-shadow sticky start-0 z-10 flex w-32 shrink-0 sm:w-56 items-center gap-1 border-e border-zinc-200 p-2 in-data-scrolled-right:bg-(--glass-sticky-bg) dark:border-zinc-700">
                                 <x-task-check-cell :task="$task" :editable="$this->canEdit" :selectable="$this->canEdit" compact />
                                 <a href="{{ route('tasks.show', $task) }}" x-on:click="$openTask($event, {{ $task->id }})" @class(['truncate text-sm hover:underline', 'line-through text-zinc-400' => $task->isDone()])>{{ $task->title }}</a>
                                 @if ($task->isBlocked())

@@ -185,10 +185,13 @@ new class extends Component
     </x-project-header>
 
     <div class="mb-4 flex flex-wrap items-center gap-2">
-        <flux:button icon="chevron-left" wire:click="previousMonth" aria-label="{{ __('Previous month') }}" tooltip="{{ __('Previous month') }}" />
-        <flux:button icon="chevron-right" wire:click="nextMonth" aria-label="{{ __('Next month') }}" tooltip="{{ __('Next month') }}" />
-        <flux:button wire:click="today">{{ __('Today') }}</flux:button>
-        <flux:heading size="lg" class="ms-2">{{ $this->monthStart->isoFormat('MMMM YYYY') }}</flux:heading>
+        {{-- Back, forward and today navigate in time: one group --}}
+        <flux:button.group>
+            <flux:button icon="chevron-left" wire:click="previousMonth" aria-label="{{ __('Previous month') }}" tooltip="{{ __('Previous month') }}" />
+            <flux:button icon="chevron-right" wire:click="nextMonth" aria-label="{{ __('Next month') }}" tooltip="{{ __('Next month') }}" />
+            <flux:button wire:click="today">{{ __('Today') }}</flux:button>
+        </flux:button.group>
+        <flux:heading size="lg" class="mx-2">{{ $this->monthStart->isoFormat('MMMM YYYY') }}</flux:heading>
 
         <x-done-filter :options="$this->doneFilterOptions()" :current="$doneFilter" />
 

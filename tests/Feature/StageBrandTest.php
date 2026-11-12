@@ -109,7 +109,7 @@ class StageBrandTest extends TestCase
         $this->assertStringContainsString('background-color: rgb(var(--glass-head-rgb));', $css);
         $this->assertStringNotContainsString('--glass-head-a', $css);
         $this->assertStringContainsString('<flux:table.columns sticky class="glass-head">', $list);
-        $this->assertStringContainsString('padding-block-start: 2px;', $css);
+        $this->assertStringContainsString('padding-block-start: 0.5rem;', $css);
     }
 
     public function test_the_numbers_in_badges_are_round_for_one_digit(): void

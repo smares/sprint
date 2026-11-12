@@ -848,8 +848,9 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
         & > div:not([data-collapsed]) [data-flux-kanban-column-cards] {
             overflow-y: auto;
 
-            /* The ring of the first card lies outside the card, and the list cuts off what lies above it */
-            padding-block-start: 2px;
+            /* The first card keeps its edge (its ring lies outside the card, and the list cuts off what lies above it) and a gap to the
+               head of the column, as wide as the one at its sides */
+            padding-block-start: 0.5rem;
         }
     }
 

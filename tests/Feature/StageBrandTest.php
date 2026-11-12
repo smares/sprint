@@ -162,4 +162,13 @@ class StageBrandTest extends TestCase
         $this->assertStringContainsString('x-ref="newTeam"', $teams);
         $this->assertStringContainsString("{{ __('Create a new team') }}", $teams);
     }
+
+    public function test_project_cards_do_not_fade_in_again_when_the_page_is_drawn_again_and_the_palette_items_carry_no_group_prefix(): void
+    {
+        // The cards are drawn anew after a dialog of the page closed; the fade-in of the board cards would show as a flicker
+        $this->assertStringContainsString('board-card animate-none! glass!', file_get_contents(resource_path('views/components/project-card.blade.php')));
+
+        $palette = file_get_contents(resource_path('views/components/⚡command-palette.blade.php'));
+        $this->assertStringContainsString('<span class="sr-only">{{ __(\'Background\') }}: </span>{{ $mode->label() }}', $palette);
+    }
 }

@@ -165,9 +165,9 @@ new class extends Component
 
                 <div class="[&:not(:has([data-flux-command-item]:not([data-hidden])))]:hidden">
                     <div class="px-2 pb-1 pt-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">{{ __('Background') }}</div>
-                    {{-- Like the choice in the user menu: told to the layer (ambient.js) and kept with the person's settings (the menu follows) --}}
+                    {{-- Like the choice in the user menu (the group says what it is; the hidden word keeps them findable by "background" and reads out for screen readers): told to the layer (ambient.js) and kept with the person's settings (the menu follows) --}}
                     @foreach (\App\Enums\AmbientBackground::cases() as $mode)
-                        <flux:command.item :icon="$mode->icon()" x-on:click="$dispatch('ambient-background', { mode: '{{ $mode->value }}' }); saveInterface({ ambient: '{{ $mode->value }}' })">{{ __('Background') }}: {{ $mode->label() }}</flux:command.item>
+                        <flux:command.item :icon="$mode->icon()" x-on:click="$dispatch('ambient-background', { mode: '{{ $mode->value }}' }); saveInterface({ ambient: '{{ $mode->value }}' })"><span class="sr-only">{{ __('Background') }}: </span>{{ $mode->label() }}</flux:command.item>
                     @endforeach
                 </div>
 

@@ -704,7 +704,7 @@ new class extends Component
                             <span class="sr-only" @if ($this->canEdit) x-show="! $wire.selecting" @endif>{{ __('Done') }}</span>
                             @if ($this->canEdit)
                                 <span class="flex size-6 items-center justify-center" x-show="$wire.selecting" x-cloak>
-                                    <flux:checkbox aria-label="{{ __('Select all visible tasks') }}" wire:key="select-page" x-effect="const shown = {{ \Illuminate\Support\Js::from($this->tasks->pluck('id')->map(fn ($id) => (string) $id)->all()) }}; $el.checked = shown.length > 0 && shown.every((id) => $wire.selected.map(String).includes(id))" wire:click="togglePage" />
+                                    <flux:checkbox aria-label="{{ __('Select all visible tasks') }}" wire:key="select-page" x-effect="const shown = {{ \Illuminate\Support\Js::from($this->tasks->pluck('id')->map(fn ($id) => (string) $id)->all()) }}; const chosen = new Set($wire.selected.map(String)); $el.checked = shown.length > 0 && shown.every((id) => chosen.has(id))" wire:click="togglePage" />
                                 </span>
                             @endif
                         </span>
@@ -732,7 +732,7 @@ new class extends Component
                             @continue
                         @endif
                         @php($number++)
-                        <flux:table.row wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" :class="'cursor-pointer'.($task->isDone() ? ' opacity-60 hover:opacity-100 focus-within:opacity-100' : '')" :wire:sort:item="$draggable ? $task->id : null">
+                        <flux:table.row wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" x-bind:data-task-selected="$wire.selected.map(String).includes('{{ $task->id }}')" :class="'cursor-pointer'.($task->isDone() ? ' opacity-60 hover:opacity-100 focus-within:opacity-100' : '')" :wire:sort:item="$draggable ? $task->id : null">
                             <flux:table.cell :class="$pinnedDone">
                                 <x-task-check-cell :task="$task" :editable="$this->canEdit" :selectable="$this->canEdit" />
                             </flux:table.cell>

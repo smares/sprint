@@ -66,7 +66,7 @@ new class extends Component
         <x-app-brand :href="route('login')" />
     </div>
 
-    <flux:card class="glass! rounded-[22px]">
+    <flux:card class="glass! rounded-xl">
         <flux:heading level="1" size="xl" class="mb-6">{{ __('Set a new password') }}</flux:heading>
 
         <form wire:submit="save" class="space-y-6">

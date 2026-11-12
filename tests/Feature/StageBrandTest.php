@@ -50,7 +50,7 @@ class StageBrandTest extends TestCase
     {
         $css = $this->css();
 
-        $this->assertStringContainsString('tr[data-task-id]:has([data-select-box] ui-checkbox[data-checked]) > td {', $css);
+        $this->assertStringContainsString('tr[data-task-id][data-task-selected] > td {', $css);
         $this->assertStringContainsString('box-shadow: inset 0 0 0 2px var(--stage-selected-border);', $css);
         $this->assertStringContainsString('--stage-selected-bg: #e3ebff;', $css);
         $this->assertStringContainsString('--stage-selected-bg: #1c2c5e;', $css);
@@ -94,6 +94,8 @@ class StageBrandTest extends TestCase
         $this->assertStringContainsString('--glass-card-rgb: 24 28 48;', $css);
         $this->assertStringNotContainsString('--glass-card-rgb: 45 48 51;', $css);
         $this->assertStringContainsString('document.documentElement.dataset.keyboard', $js);
-        $this->assertStringContainsString('th[data-flux-column] {', $css);
+        $this->assertStringContainsString("th[data-flux-column],\n.column-head {", $css);
+        $this->assertStringContainsString('--color-highlight-content: #c70069;', $css);
+        $this->assertStringContainsString("@media (prefers-reduced-transparency: reduce) {\n    :root,\n    :root.dark {", $css);
     }
 }

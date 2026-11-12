@@ -207,14 +207,14 @@ new class extends Component
         <div class="scroll-shadows rounded-xl" data-fills-height>
             <div class="surface overflow-x-auto" data-scroll-edges>
                 <div class="min-w-max">
-                    <div class="sticky top-0 z-20 flex border-b border-zinc-200 glass-sticky dark:border-zinc-700">
-                        <div class="pinned-shadow sticky start-0 z-10 w-32 shrink-0 sm:w-56 border-e border-zinc-200 glass-sticky p-2 text-sm font-medium dark:border-zinc-700">{{ __('Task') }}</div>
+                    <div class="sticky top-0 z-20 flex column-head border-b border-zinc-200 glass-sticky dark:border-zinc-700">
+                        <div class="pinned-shadow sticky start-0 z-10 column-head w-32 shrink-0 sm:w-56 border-e border-zinc-200 glass-sticky p-2 text-sm font-medium dark:border-zinc-700">{{ __('Task') }}</div>
                         <div class="grid" style="grid-template-columns: repeat({{ $days->count() }}, {{ $this::DAY_WIDTH }})">
                             @foreach ($days as $day)
                                 <div wire:key="head-{{ $day->toDateString() }}" @class([
                                     'py-1 text-center text-xs leading-tight',
                                     'bg-zinc-100 dark:bg-zinc-800' => $day->isWeekend(),
-                                    'font-bold text-highlight' => $day->isToday(),
+                                    'font-bold text-highlight-content' => $day->isToday(),
                                 ])>
                                     @if ($day->day === 1 || $loop->first)
                                         <div class="whitespace-nowrap font-semibold">{{ $day->isoFormat('MMM') }}</div>

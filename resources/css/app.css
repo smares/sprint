@@ -111,6 +111,8 @@ ui-pillbox-trigger:not([disabled], :has(input:not([type='hidden']))) {
 
     /* Highlights (today, ...): accent pink, lighter in the dark mode */
     --color-highlight: #e5007a;
+    /* The pink as text needs the darker step on light grounds (4.5:1) */
+    --color-highlight-content: #c70069;
 }
 
 @layer theme {
@@ -129,6 +131,7 @@ ui-pillbox-trigger:not([disabled], :has(input:not([type='hidden']))) {
         --color-zinc-900: #151825;
         --color-zinc-950: #101220;
         --color-highlight: #ff4da6;
+        --color-highlight-content: #ff4da6;
     }
 }
 
@@ -173,12 +176,14 @@ ui-pillbox-trigger:not([disabled], :has(input:not([type='hidden']))) {
     border-radius: 999px;
 }
 
-[data-flux-button-group] > [data-flux-button]:first-child {
+[data-flux-button-group] > [data-flux-button]:first-child,
+[data-flux-button-group] > :first-child > [data-flux-button] {
     border-start-start-radius: 999px;
     border-end-start-radius: 999px;
 }
 
-[data-flux-button-group] > [data-flux-button]:last-child {
+[data-flux-button-group] > [data-flux-button]:last-child,
+[data-flux-button-group] > :last-child > [data-flux-button] {
     border-start-end-radius: 999px;
     border-end-end-radius: 999px;
 }
@@ -269,13 +274,15 @@ html[data-keyboard] [data-flux-command-input]:has(input:focus-visible) {
 }
 
 /* The row with the column headings sets itself off from the rows below it with a light tint (the same in every table, on top of
-   the opaque fill the heading of the task list gets while it sticks) */
-th[data-flux-column] {
-    background-color: color-mix(in srgb, var(--color-zinc-500) 10%, transparent);
+   the opaque fill the heading of the task list gets while it sticks: it is an image, so that it never replaces that fill) */
+th[data-flux-column],
+.column-head {
+    background-image: linear-gradient(color-mix(in srgb, var(--color-zinc-500) 10%, transparent), color-mix(in srgb, var(--color-zinc-500) 10%, transparent));
 }
 
-:root.dark th[data-flux-column] {
-    background-color: color-mix(in srgb, var(--color-zinc-400) 9%, transparent);
+:root.dark th[data-flux-column],
+:root.dark .column-head {
+    background-image: linear-gradient(color-mix(in srgb, var(--color-zinc-400) 9%, transparent), color-mix(in srgb, var(--color-zinc-400) 9%, transparent));
 }
 
 /* The panel of the command palette is the rounded box itself (the dialog around it has no fill), and the field in it takes
@@ -287,7 +294,7 @@ th[data-flux-column] {
 /* Today in the date picker is pink like in the calendar and the timeline: the number and the dot under it (not on the chosen day,
    which is filled with the action color and carries white text). The dot is made larger so that it can be seen. */
 ui-calendar td[data-today]:not([data-selected]) button {
-    color: var(--color-highlight);
+    color: var(--color-highlight-content);
     font-weight: 600;
 }
 
@@ -308,15 +315,15 @@ ui-calendar td[data-today]:not([data-selected]) button div.absolute > div {
     --stage-selected-border: #7c9bff;
 }
 
-tr[data-task-id]:has([data-select-box] ui-checkbox[data-checked]) > td {
+tr[data-task-id][data-task-selected] > td {
     background-color: var(--stage-selected-bg);
 }
 
-tr[data-task-id]:has([data-select-box] ui-checkbox[data-checked]) > td:first-child {
+tr[data-task-id][data-task-selected] > td:first-child {
     box-shadow: inset 3px 0 0 var(--stage-selected-border);
 }
 
-.board-card:has([data-select-box] ui-checkbox[data-checked]) {
+.board-card[data-task-selected] {
     background-color: var(--stage-selected-bg);
     box-shadow: inset 0 0 0 2px var(--stage-selected-border);
 }
@@ -369,7 +376,8 @@ tr[data-task-id]:has([data-select-box] ui-checkbox[data-checked]) > td:first-chi
 
 /* No transparency where the browser cannot blur (the three rules below say the same, as they cannot share one condition) */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-    :root {
+    :root,
+    :root.dark {
         --glass-a: 1;
         --glass-card-a: 1;
         --glass-popover-a: 1;
@@ -380,7 +388,8 @@ tr[data-task-id]:has([data-select-box] ui-checkbox[data-checked]) > td:first-chi
 }
 
 @media (prefers-reduced-transparency: reduce) {
-    :root {
+    :root,
+    :root.dark {
         --glass-a: 1;
         --glass-card-a: 1;
         --glass-popover-a: 1;
@@ -499,10 +508,6 @@ tr[data-task-id]:has([data-select-box] ui-checkbox[data-checked]) > td:first-chi
 .markdown li > ul,
 .markdown li > ol {
     margin-top: 0.25em;
-}
-
-.markdown a {
-    text-decoration: underline;
 }
 
 .markdown blockquote {

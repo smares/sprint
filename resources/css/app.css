@@ -98,8 +98,17 @@ ui-pillbox-trigger:not([disabled], :has(input:not([type='hidden']))) {
 
     /* Action blue as Flux's accent: primary buttons, the current navigation item, focus. Blue on white is 4.9:1, white on it 4.9:1. */
     --color-accent: var(--color-stage-blue);
-    --color-accent-content: var(--color-stage-blue);
+    /* Accent text on the glass and the tinted page needs the darker blue to keep 4.5:1 */
+    --color-accent-content: #1b50e0;
     --color-accent-foreground: var(--color-white);
+
+    /* Danger of the manual (white on it 4.6:1); Flux uses red 500 for the fill and the error text, 600 for hover */
+    --color-red-500: #e8171e;
+    --color-red-600: #c9111a;
+    --color-red-700: #a60d14;
+
+    /* Highlights (today, ...): accent pink, lighter in the dark mode */
+    --color-highlight: #e5007a;
 }
 
 @layer theme {
@@ -111,6 +120,7 @@ ui-pillbox-trigger:not([disabled], :has(input:not([type='hidden']))) {
         --color-accent-foreground: #1a1b1d;
         --color-zinc-400: #a9aebd;
         --color-zinc-500: #8e94a6;
+        --color-highlight: #ff4da6;
     }
 }
 
@@ -149,16 +159,116 @@ ui-pillbox-trigger:not([disabled], :has(input:not([type='hidden']))) {
     opacity: 1;
 }
 
-/* Buttons are pills, like the bars of the logo; the buttons of a group keep the corners that join them */
+/* Buttons are pills, like the bars of the logo; the buttons of a group keep the corners that join them, and the group as a whole is
+   a pill (its first and last button round the ends) */
 [data-flux-button]:not([data-flux-button-group] [data-flux-button]) {
     border-radius: 999px;
 }
 
-/* The border of a field is gray 400: 3:1 against the surface, so a field can be seen without its fill */
-input[data-flux-control]:not([type='checkbox'], [type='radio']),
-textarea[data-flux-control],
-select[data-flux-control] {
+[data-flux-button-group] > [data-flux-button]:first-child {
+    border-start-start-radius: 999px;
+    border-end-start-radius: 999px;
+}
+
+[data-flux-button-group] > [data-flux-button]:last-child {
+    border-start-end-radius: 999px;
+    border-end-end-radius: 999px;
+}
+
+/* Badges and the chips of dates, priorities and the like are small things (the filters can be clicked): pills too */
+[data-flux-badge],
+.color-chip {
+    border-radius: 999px;
+}
+
+/* Hover and pressed state of the manual for what is filled with the action color: one step darker (lighter in the dark mode, where
+   the fill is light and carries ink), and only where there is a real hover; pressed at once, without a transition. Flux would let
+   the fill fade by a tenth, which makes a blue button lighter and lets white text on it fall below 4.5:1. */
+:root {
+    --stage-action-hover: #1b50e0;
+    --stage-action-active: #153cb4;
+}
+
+:root.dark {
+    --stage-action-hover: #9bb3ff;
+    --stage-action-active: #b5c8ff;
+}
+
+@media (hover: hover) {
+    [data-flux-button][class*='bg-[var(--color-accent)]']:hover:not(:disabled) {
+        background-color: var(--stage-action-hover);
+    }
+}
+
+[data-flux-button][class*='bg-[var(--color-accent)]']:active:not(:disabled) {
+    background-color: var(--stage-action-active);
+    transition: none;
+}
+
+/* The border of a field is gray 400: 3:1 against the surface, so a field can be seen without its fill. A field with an error keeps
+   the red border of the manual, thicker, so it does not rest on the color alone. */
+input[data-flux-control]:not([type='checkbox'], [type='radio'], [data-invalid], [aria-invalid='true']),
+textarea[data-flux-control]:not([data-invalid], [aria-invalid='true']),
+select[data-flux-control]:not([data-invalid], [aria-invalid='true']) {
     border-color: var(--stage-border-field);
+}
+
+[data-flux-control][data-invalid],
+[data-flux-control][aria-invalid='true'] {
+    border-color: var(--color-red-500);
+    box-shadow: 0 0 0 1px var(--color-red-500);
+}
+
+:root.dark [data-flux-control][data-invalid],
+:root.dark [data-flux-control][aria-invalid='true'] {
+    border-color: #ff6b6b;
+    box-shadow: 0 0 0 1px #ff6b6b;
+}
+
+/* The box of a check box or radio button that is not ticked: the same border as a field */
+ui-checkbox:not([data-checked], [data-indeterminate]) > div:first-child,
+ui-radio:not([data-checked]) > div:first-child {
+    border-color: var(--stage-border-field);
+}
+
+/* Links are underlined (a quiet line in the color of the text) */
+[data-flux-link],
+.markdown a {
+    text-decoration-line: underline;
+    text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
+    text-underline-offset: 0.2em;
+}
+
+/* What the keys have chosen in a menu or a list shows the ring too (Flux moves the focus there by script, which the browser does
+   not count as the keyboard) */
+[data-flux-menu-item][data-active],
+ui-option[data-active] {
+    outline: 3px solid var(--stage-focus);
+    outline-offset: -3px;
+}
+
+/* A selected row or card (the selection of tasks): a fill, a border of 2px and the tick of the box, so it is not told by color alone */
+:root {
+    --stage-selected-bg: #e3ebff;
+    --stage-selected-border: #2563ff;
+}
+
+:root.dark {
+    --stage-selected-bg: #1c2c5e;
+    --stage-selected-border: #7c9bff;
+}
+
+tr[data-task-id]:has([data-select-box] ui-checkbox[data-checked]) > td {
+    background-color: var(--stage-selected-bg);
+}
+
+tr[data-task-id]:has([data-select-box] ui-checkbox[data-checked]) > td:first-child {
+    box-shadow: inset 3px 0 0 var(--stage-selected-border);
+}
+
+.board-card:has([data-select-box] ui-checkbox[data-checked]) {
+    background-color: var(--stage-selected-bg);
+    box-shadow: inset 0 0 0 2px var(--stage-selected-border);
 }
 
 /* Frosted glass: the areas that hold content (tables, calendar, columns, the cards of a task, the flyout, the bars) are
@@ -425,7 +535,7 @@ select[data-flux-control] {
 
 .dark .color-badge,
 .dark .color-chip {
-    background-color: color-mix(in srgb, var(--badge) 30%, #18181b);
+    background-color: color-mix(in srgb, var(--badge) 30%, var(--color-zinc-800));
     color: color-mix(in srgb, var(--badge) 45%, white);
 }
 

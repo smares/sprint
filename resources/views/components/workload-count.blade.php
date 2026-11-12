@@ -3,7 +3,7 @@
 {{-- A number on the workload page: it opens a menu with the first tasks behind it (each a link) and how many more there
      are, by click, tap or keyboard alike; nothing to open for none. --}}
 @if ($group['count'] === 0)
-    <span class="text-zinc-300 dark:text-zinc-600">–</span>
+    <span class="text-zinc-500">–</span>
 @else
     <flux:dropdown position="bottom" align="end">
         <flux:button size="sm" variant="ghost" @class(['tabular-nums font-medium', 'text-red-600! dark:text-red-400!' => $overdue])

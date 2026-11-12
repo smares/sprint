@@ -14,15 +14,15 @@ const palettes = {
     // The colors of the brand: action blue, violet and accent pink (the gradient of the manual), pale on the light page
     light: {
         patches: [
-            { x: 0.2, y: 0.22, radius: 0.67, color: '165,190,255', alpha: 0.22 },
-            { x: 0.78, y: 0.68, radius: 0.61, color: '205,185,250', alpha: 0.2 },
-            { x: 0.84, y: 0.15, radius: 0.44, color: '250,170,210', alpha: 0.14 },
+            { x: 0.14, y: 0.16, radius: 0.67, color: '250,170,210', alpha: 0.2 },
+            { x: 0.8, y: 0.55, radius: 0.61, color: '165,190,255', alpha: 0.26 },
+            { x: 0.5, y: 0.95, radius: 0.5, color: '205,185,250', alpha: 0.18 },
         ],
         waves: ['37,99,255', '123,63,228', '229,0,122'],
-        glow: 0.025,
-        line: 0.14,
+        glow: 0.02,
+        line: 0.07,
         point: '37,99,255',
-        pointAlpha: 0.2,
+        pointAlpha: 0.16,
         composite: 'source-over',
     },
     // Deep blue and violet on the ink of the dark mode, with a trace of magenta; the lines are the light variants of the colors

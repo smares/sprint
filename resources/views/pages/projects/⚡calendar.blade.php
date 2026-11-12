@@ -202,7 +202,7 @@ new class extends Component
     <div class="space-y-4 sm:hidden">
         @forelse ($agenda as $day)
             <div wire:key="agenda-{{ $day['date']->toDateString() }}">
-                <flux:heading size="sm" @class(['mb-1', 'text-stage-pink dark:text-[#ff4da6]' => $day['date']->isToday()])>{{ $day['date']->isoFormat('dd, L') }}</flux:heading>
+                <flux:heading size="sm" @class(['mb-1', 'text-highlight' => $day['date']->isToday()])>{{ $day['date']->isoFormat('dd, L') }}</flux:heading>
                 <div class="space-y-1">
                     @foreach ($day['tasks'] as $task)
                         <div wire:key="agenda-{{ $day['date']->toDateString() }}-{{ $task->id }}" class="flex items-center gap-1">
@@ -248,7 +248,7 @@ new class extends Component
                             <div class="flex items-start justify-between">
                                 <div @class([
                                     'text-sm',
-                                    'inline-flex size-6 items-center justify-center rounded-full bg-stage-pink font-semibold text-white dark:bg-[#ff4da6] dark:text-stage-ink' => $day['date']->isToday(),
+                                    'inline-flex size-6 items-center justify-center rounded-full bg-highlight font-semibold text-white dark:text-stage-ink' => $day['date']->isToday(),
                                 ])>{{ $day['date']->day }}</div>
 
                                 @if ($this->canEdit)

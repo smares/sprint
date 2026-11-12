@@ -106,4 +106,14 @@ class BrandingTest extends TestCase
         $this->assertStringContainsString('data-offline-notice', $html);
         $this->assertSame(2, substr_count(file_get_contents(resource_path('views/layouts/app.blade.php')), 'popover="manual"'));
     }
+
+    public function test_the_notices_only_take_the_height_of_their_content(): void
+    {
+        $layout = file_get_contents(resource_path('views/layouts/app.blade.php'));
+
+        // A popover is positioned by the browser from all four sides (inset: 0): without the side that is not used, the notice would
+        // stretch from its edge to the opposite one and its pill with it
+        $this->assertStringContainsString('top-3 bottom-auto m-0 h-auto w-auto items-start', $layout);
+        $this->assertStringContainsString('bottom-4 top-auto m-0 h-auto w-auto items-end', $layout);
+    }
 }

@@ -560,7 +560,32 @@ new class extends Component
 <div @if ($selecting) data-bar-docked @endif x-bind:data-bar-docked="$wire.selecting" data-wide>
     <x-project-header :project="$project" active="list" :presence="$this->presenceChannel()" />
 
+    <x-view-options>
+        <x-done-filter-field :options="$this->doneFilterOptions()" />
+
+        <flux:separator />
+
+        {{-- The filters and the saved views open their own dialogs: this one closes first --}}
+        <div class="flex flex-wrap justify-center gap-2">
+            <flux:button variant="ghost" icon="funnel" icon-trailing="chevron-right" class="rounded-lg!" x-on:click="$flux.modal('view-options').close(); $flux.modal('filters').show()">
+                {{ __('Filter') }}
+                @if ($this->activeFilters->isNotEmpty())
+                    <flux:badge size="sm" color="blue" inset="top bottom" class="count-badge">{{ $this->activeFilters->count() }}</flux:badge>
+                @endif
+            </flux:button>
+
+            <flux:button variant="ghost" icon="bookmark" icon-trailing="chevron-right" class="rounded-lg!" x-on:click="$flux.modal('view-options').close(); $flux.modal('saved-views').show()">
+                {{ __('Views') }}
+                @if ($this->savedViews->isNotEmpty())
+                    <flux:badge size="sm" inset="top bottom" class="count-badge">{{ $this->savedViews->count() }}</flux:badge>
+                @endif
+            </flux:button>
+        </div>
+    </x-view-options>
+
     <div class="mb-4 flex flex-wrap items-center gap-2">
+        {{-- On phones these three sit behind the small button beside the one that starts selecting (x-view-options) --}}
+        <div class="flex flex-wrap items-center gap-2 max-sm:hidden">
         <x-done-filter :options="$this->doneFilterOptions()" :current="$doneFilter" />
 
         <flux:modal.trigger name="filters">
@@ -575,6 +600,7 @@ new class extends Component
         <flux:modal.trigger name="saved-views">
             <flux:button icon="bookmark">{{ __('Views') }} @if ($this->savedViews->isNotEmpty()) <flux:badge size="sm" inset="top bottom" class="count-badge">{{ $this->savedViews->count() }}</flux:badge> @endif</flux:button>
         </flux:modal.trigger>
+        </div>
 
         @foreach ($this->activeFilters as $filter)
             {{-- A long label (the names of many collaborators) wraps inside the chip; on one line it would widen the page on a phone --}}
@@ -589,6 +615,8 @@ new class extends Component
         @endif
 
         <div class="ms-auto flex items-center gap-2">
+            <x-view-options-button :count="(int) ($doneFilter !== 'open') + $this->activeFilters->count()" />
+
             @if ($this->canEdit && $this->tasks->isNotEmpty())
                 <x-selection-toggle instant x-show="! $wire.selecting" />
             @endif

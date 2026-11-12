@@ -90,7 +90,8 @@ class ListDoneFilterTest extends TestCase
     {
         $html = $this->list()->html();
 
-        $this->assertSame(1, substr_count($html, 'wire:model.live="doneFilter"'), 'only the toolbar menu is bound to the done filter');
+        // The menu of the toolbar and the field in the dialog of the phones (x-view-options), none in the filter modal
+        $this->assertSame(2, substr_count($html, 'wire:model.live="doneFilter"'), 'the toolbar menu and the field of the phones are bound to the done filter');
         $this->assertSame(1, substr_count($html, 'wire:model.live="statusFilter"'));
     }
 

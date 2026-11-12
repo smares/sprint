@@ -206,4 +206,21 @@ class StageBrandTest extends TestCase
         $this->assertStringContainsString('data-sort-summary', $board);
         $this->assertStringContainsString('class="rounded-lg!"', $board);
     }
+
+    public function test_list_calendar_and_timeline_have_the_same_small_button_on_phones(): void
+    {
+        foreach (['show', 'calendar', 'timeline'] as $page) {
+            $view = file_get_contents(resource_path("views/pages/projects/⚡{$page}.blade.php"));
+
+            $this->assertStringContainsString('<x-view-options-button :count="', $view, $page);
+            $this->assertStringContainsString('<x-view-options>', $view, $page);
+            $this->assertStringContainsString('<x-done-filter-field :options="$this->doneFilterOptions()" />', $view, $page);
+        }
+
+        $list = file_get_contents(resource_path('views/pages/projects/⚡show.blade.php'));
+
+        // The filters and the saved views open their own dialogs: the one of the button closes first
+        $this->assertStringContainsString("\$flux.modal('view-options').close(); \$flux.modal('filters').show()", $list);
+        $this->assertStringContainsString('flex flex-wrap items-center gap-2 max-sm:hidden', $list);
+    }
 }

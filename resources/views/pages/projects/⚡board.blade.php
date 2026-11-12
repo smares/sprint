@@ -370,11 +370,7 @@ new class extends Component
             </div>
         @endif
 
-        <flux:select wire:model.live="doneFilter" :label="__('Tasks')">
-            @foreach ($this->doneFilterOptions() as $value => $label)
-                <flux:select.option value="{{ $value }}">{{ $label }}</flux:select.option>
-            @endforeach
-        </flux:select>
+        <x-done-filter-field :options="$this->doneFilterOptions()" />
 
         <flux:separator />
 

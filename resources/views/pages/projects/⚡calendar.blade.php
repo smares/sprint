@@ -178,11 +178,18 @@ new class extends Component
     @endphp
     <x-project-header :project="$project" active="calendar" :presence="$this->presenceChannel()">
         <x-slot name="selection">
-            @if ($offersSelecting)
-                <x-selection-toggle instant class="sm:hidden" x-show="! $wire.selecting" />
-            @endif
+            <div class="flex items-center gap-2 sm:hidden">
+                <x-view-options-button :count="(int) ($doneFilter !== 'all')" />
+                @if ($offersSelecting)
+                    <x-selection-toggle instant x-show="! $wire.selecting" />
+                @endif
+            </div>
         </x-slot>
     </x-project-header>
+
+    <x-view-options>
+        <x-done-filter-field :options="$this->doneFilterOptions()" />
+    </x-view-options>
 
     <div class="mb-4 flex flex-wrap items-center gap-2">
         {{-- Back, forward and today navigate in time: one group --}}
@@ -193,7 +200,7 @@ new class extends Component
         </flux:button.group>
         <flux:heading size="lg" class="mx-2">{{ $this->monthStart->isoFormat('MMMM YYYY') }}</flux:heading>
 
-        <x-done-filter :options="$this->doneFilterOptions()" :current="$doneFilter" />
+        <div class="max-sm:hidden"><x-done-filter :options="$this->doneFilterOptions()" :current="$doneFilter" /></div>
 
         @if ($offersSelecting)
             <x-selection-toggle instant class="ms-auto max-sm:hidden" x-show="! $wire.selecting" />

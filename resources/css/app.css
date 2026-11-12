@@ -261,6 +261,12 @@ ui-option[data-active] {
     outline: none;
 }
 
+/* The panel of the command palette is the rounded box itself (the dialog around it has no fill), and the field in it takes
+   the fill of the panel */
+[data-flux-command-input] input {
+    background-color: transparent;
+}
+
 /* Today in the date picker is pink like in the calendar and the timeline: the number and the dot under it (not on the chosen day,
    which is filled with the action color and carries white text). The dot is made larger so that it can be seen. */
 ui-calendar td[data-today]:not([data-selected]) button {
@@ -1213,7 +1219,7 @@ ui-options[data-flux-options],
 ui-options[data-flux-command-items],
 ui-options[data-flux-autocomplete-items],
 [data-flux-date-picker] dialog,
-[data-flux-modal] > dialog:not([data-flux-flyout]) {
+[data-flux-modal] > dialog:not([data-flux-flyout], .bg-transparent) {
     background-color: var(--glass-popover-bg);
     -webkit-backdrop-filter: var(--glass-blur-popover);
     backdrop-filter: var(--glass-blur-popover);

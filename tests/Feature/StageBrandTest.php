@@ -75,4 +75,13 @@ class StageBrandTest extends TestCase
         $this->assertStringContainsString("[data-flux-command-input]:has(input:focus-visible) {\n    outline: 3px solid var(--stage-focus);\n    outline-offset: -3px;", $css);
         $this->assertStringContainsString('ui-calendar td[data-today]:not([data-selected]) button div.absolute > div {', $css);
     }
+
+    public function test_the_panel_of_the_command_palette_is_a_rounded_box_and_the_dialog_around_it_has_no_fill_of_its_own(): void
+    {
+        $css = $this->css();
+        $palette = file_get_contents(resource_path('views/components/⚡command-palette.blade.php'));
+
+        $this->assertStringContainsString('<flux:command class="glass-popover! inline-flex max-h-[76vh] flex-col rounded-[14px]!', $palette);
+        $this->assertStringContainsString('[data-flux-modal] > dialog:not([data-flux-flyout], .bg-transparent) {', $css);
+    }
 }

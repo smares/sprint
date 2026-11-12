@@ -94,7 +94,7 @@ class StageBrandTest extends TestCase
         $this->assertStringContainsString('--glass-card-rgb: 24 28 48;', $css);
         $this->assertStringNotContainsString('--glass-card-rgb: 45 48 51;', $css);
         $this->assertStringContainsString('document.documentElement.dataset.keyboard', $js);
-        $this->assertStringContainsString("th[data-flux-column],\n.column-head {", $css);
+        $this->assertStringContainsString("th[data-flux-column],\n.column-head,", $css);
         $this->assertStringContainsString('--color-highlight-content: #c70069;', $css);
         $this->assertStringContainsString("@media (prefers-reduced-transparency: reduce) {\n    :root,\n    :root.dark {", $css);
     }

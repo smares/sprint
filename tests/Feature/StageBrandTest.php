@@ -203,7 +203,7 @@ class StageBrandTest extends TestCase
         $this->assertStringContainsString('icon="adjustments-horizontal" :square="$count === 0"', $button);
         $this->assertStringContainsString('class="w-full max-w-sm sm:hidden"', $dialog);
         // What the view is sorted by stays as a short line, and the saved views are a row that leads on (no pill)
-        $this->assertStringContainsString('data-sort-summary', $board);
+        $this->assertStringContainsString('<x-view-summary :parts="[$this->doneFilterOptions()[$doneFilter] ?? null, $this->sortSummary]" />', $board);
         $this->assertStringContainsString('class="rounded-lg!"', $board);
     }
 

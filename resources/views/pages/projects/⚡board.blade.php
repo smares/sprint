@@ -344,9 +344,7 @@ new class extends Component
         </x-slot>
     </x-project-header>
 
-    @if ($this->sortSummary)
-        <flux:text size="sm" class="-mt-3 mb-3 sm:hidden" data-sort-summary>{{ $this->sortSummary }}</flux:text>
-    @endif
+    <x-view-summary :parts="[$this->doneFilterOptions()[$doneFilter] ?? null, $this->sortSummary]" />
 
     <x-view-options>
         <flux:select wire:model.live="sortBy" :label="__('Sort')">

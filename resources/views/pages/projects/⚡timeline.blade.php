@@ -188,6 +188,8 @@ new class extends Component
         </x-slot>
     </x-project-header>
 
+    <x-view-summary :parts="[$this->doneFilterOptions()[$doneFilter] ?? null]" />
+
     <x-view-options>
         <x-done-filter-field :options="$this->doneFilterOptions()" />
     </x-view-options>

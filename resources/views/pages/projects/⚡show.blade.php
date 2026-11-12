@@ -818,7 +818,7 @@ new class extends Component
                 @if ($this->totalTasks > $this->tasks->count())
                     @php($all = min($this->totalTasks, $this::MAX_SELECTION))
                     {{-- Gone as soon as everything the filters match is selected (the browser counts, no request needed) --}}
-                    <flux:button size="sm" variant="ghost" wire:click="selectAllMatching" x-show="$wire.selected.length < {{ $all }}">{{ __('Select all :count', ['count' => $all]) }}</flux:button>
+                    <flux:button size="sm" variant="ghost" wire:click="selectAllMatching" x-show="$wire.selected.length < {{ $all }}" aria-label="{{ __('Select all :count', ['count' => $all]) }}"><span class="sm:hidden">{{ __('All :count', ['count' => $all]) }}</span><span class="max-sm:hidden">{{ __('Select all :count', ['count' => $all]) }}</span></flux:button>
                 @endif
             </x-slot>
         </x-selection-bar>

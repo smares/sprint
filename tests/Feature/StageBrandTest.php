@@ -171,4 +171,15 @@ class StageBrandTest extends TestCase
         $palette = file_get_contents(resource_path('views/components/⚡command-palette.blade.php'));
         $this->assertStringContainsString('<span class="sr-only">{{ __(\'Background\') }}: </span>{{ $mode->label() }}', $palette);
     }
+
+    public function test_navigation_in_time_and_finish_with_reopen_are_button_groups_and_the_period_has_even_room(): void
+    {
+        $calendar = file_get_contents(resource_path('views/pages/projects/⚡calendar.blade.php'));
+        $timeline = file_get_contents(resource_path('views/pages/projects/⚡timeline.blade.php'));
+        $bar = file_get_contents(resource_path('views/components/selection-bar.blade.php'));
+
+        $this->assertMatchesRegularExpression('/<flux:button\.group>\s*<flux:button icon="chevron-left" wire:click="previousMonth".*?wire:click="today".*?<\/flux:button\.group>\s*<flux:heading size="lg" class="mx-2">/s', $calendar);
+        $this->assertMatchesRegularExpression('/<flux:button\.group>\s*<flux:button icon="chevron-left" wire:click="earlier".*?wire:click="today".*?<\/flux:button\.group>\s*<flux:text class="mx-2 /s', $timeline);
+        $this->assertMatchesRegularExpression('/<flux:button\.group>\s*<flux:button size="sm" icon="check" wire:click="bulkComplete".*?wire:click="bulkReopen".*?<\/flux:button\.group>/s', $bar);
+    }
 }

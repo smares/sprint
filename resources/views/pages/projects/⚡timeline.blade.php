@@ -186,10 +186,13 @@ new class extends Component
     </x-project-header>
 
     <div class="mb-4 flex flex-wrap items-center gap-2">
-        <flux:button icon="chevron-left" wire:click="earlier" aria-label="{{ __('Earlier') }}" tooltip="{{ __('Earlier') }}" />
-        <flux:button icon="chevron-right" wire:click="later" aria-label="{{ __('Later') }}" tooltip="{{ __('Later') }}" />
-        <flux:button wire:click="today">{{ __('Today') }}</flux:button>
-        <flux:text class="ms-2 whitespace-nowrap">{{ $this->start->isoFormat('L') }} – {{ $this->end->isoFormat('L') }}</flux:text>
+        {{-- Back, forward and today navigate in time: one group --}}
+        <flux:button.group>
+            <flux:button icon="chevron-left" wire:click="earlier" aria-label="{{ __('Earlier') }}" tooltip="{{ __('Earlier') }}" />
+            <flux:button icon="chevron-right" wire:click="later" aria-label="{{ __('Later') }}" tooltip="{{ __('Later') }}" />
+            <flux:button wire:click="today">{{ __('Today') }}</flux:button>
+        </flux:button.group>
+        <flux:text class="mx-2 whitespace-nowrap">{{ $this->start->isoFormat('L') }} – {{ $this->end->isoFormat('L') }}</flux:text>
 
         <x-done-filter :options="$this->doneFilterOptions()" :current="$doneFilter" />
 

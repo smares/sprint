@@ -189,4 +189,18 @@ class StageBrandTest extends TestCase
 
         $this->assertMatchesRegularExpression('/<flux:button\.group>\s*<flux:dropdown align="start">.*?wire:click="resetSort".*?<\/flux:button\.group>/s', $board);
     }
+
+    public function test_the_board_on_phones_has_one_small_button_for_sort_filter_and_views(): void
+    {
+        $board = file_get_contents(resource_path('views/pages/projects/⚡board.blade.php'));
+        $button = file_get_contents(resource_path('views/components/view-options-button.blade.php'));
+        $dialog = file_get_contents(resource_path('views/components/view-options.blade.php'));
+
+        // The button stands beside the one that starts selecting, the toolbar of the larger screens is hidden on phones
+        $this->assertStringContainsString('<x-view-options-button :count="$this->displayCount" />', $board);
+        $this->assertStringContainsString('<x-view-options>', $board);
+        $this->assertStringContainsString('flex flex-wrap items-center gap-2 max-sm:hidden', $board);
+        $this->assertStringContainsString('icon="adjustments-horizontal" :square="$count === 0"', $button);
+        $this->assertStringContainsString('class="w-full max-w-sm sm:hidden"', $dialog);
+    }
 }

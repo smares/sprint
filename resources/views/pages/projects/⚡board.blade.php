@@ -271,25 +271,6 @@ new class extends Component
         return (int) $this->sortActive + (int) ($this->doneFilter !== 'all');
     }
 
-    /**
-     * The settings in force in words (a line below the button of the phones), nothing when the view is as it starts.
-     */
-    #[Computed]
-    public function displaySummary(): ?string
-    {
-        $parts = [];
-
-        if ($this->sortActive) {
-            $parts[] = $this->sortLabel.' '.($this->sortDirection === 'desc' ? '↓' : '↑');
-        }
-
-        if ($this->doneFilter !== 'all') {
-            $parts[] = $this->doneFilterOptions()[$this->doneFilter] ?? '';
-        }
-
-        return $parts === [] ? null : implode(' · ', $parts);
-    }
-
     #[Computed]
     public function statuses(): Collection
     {
@@ -345,40 +326,40 @@ new class extends Component
     @endphp
     <x-project-header :project="$project" active="board" :presence="$this->presenceChannel()">
         <x-slot name="selection">
-            @if ($offersSelecting)
-                <x-selection-toggle instant class="sm:hidden" x-show="! $wire.selecting" />
-            @endif
+            <div class="flex items-center gap-2 sm:hidden">
+                <x-view-options-button :count="$this->displayCount" />
+                @if ($offersSelecting)
+                    <x-selection-toggle instant x-show="! $wire.selecting" />
+                @endif
+            </div>
         </x-slot>
     </x-project-header>
 
-    <x-view-options class="mb-4" :count="$this->displayCount" :summary="$this->displaySummary">
-        <div class="space-y-2">
-            <flux:heading size="sm">{{ __('Sort') }}</flux:heading>
-            <flux:radio.group wire:model.live="sortBy">
-                <flux:radio value="" :label="__('Manual order')" />
-                <flux:radio value="due" :label="__('Due')" />
-                <flux:radio value="title" :label="__('Title')" />
-                @foreach ($this->customFields->where('show_in_list', true) as $field)
-                    <flux:radio wire:key="sheet-sort-field-{{ $field->id }}" value="field:{{ $field->id }}" :label="$field->name" />
-                @endforeach
-            </flux:radio.group>
+    <x-view-options>
+        <flux:select wire:model.live="sortBy" :label="__('Sort')">
+            <flux:select.option value="">{{ __('Manual order') }}</flux:select.option>
+            <flux:select.option value="due">{{ __('Due') }}</flux:select.option>
+            <flux:select.option value="title">{{ __('Title') }}</flux:select.option>
+            @foreach ($this->customFields->where('show_in_list', true) as $field)
+                <flux:select.option wire:key="sheet-sort-field-{{ $field->id }}" value="field:{{ $field->id }}">{{ $field->name }}</flux:select.option>
+            @endforeach
+        </flux:select>
 
-            @if ($this->sortActive)
-                <div class="flex gap-2">
-                    <flux:button size="sm" :icon="$sortDirection === 'desc' ? 'arrow-down' : 'arrow-up'" wire:click="reverseSort">{{ $sortDirection === 'desc' ? __('Descending') : __('Ascending') }}</flux:button>
-                    <flux:button size="sm" icon="x-mark" wire:click="resetSort">{{ __('Reset') }}</flux:button>
-                </div>
-            @endif
-        </div>
+        @if ($this->sortActive)
+            <div class="flex items-end gap-2">
+                <flux:select wire:model.live="sortDirection" :label="__('Order')" class="flex-1">
+                    <flux:select.option value="asc">{{ __('Ascending') }}</flux:select.option>
+                    <flux:select.option value="desc">{{ __('Descending') }}</flux:select.option>
+                </flux:select>
+                <flux:button icon="x-mark" wire:click="resetSort" :aria-label="__('Reset')" :tooltip="__('Reset')" />
+            </div>
+        @endif
 
-        <div class="space-y-2">
-            <flux:heading size="sm">{{ __('Tasks') }}</flux:heading>
-            <flux:radio.group wire:model.live="doneFilter">
-                @foreach ($this->doneFilterOptions() as $value => $label)
-                    <flux:radio :value="$value" :label="$label" />
-                @endforeach
-            </flux:radio.group>
-        </div>
+        <flux:select wire:model.live="doneFilter" :label="__('Tasks')">
+            @foreach ($this->doneFilterOptions() as $value => $label)
+                <flux:select.option value="{{ $value }}">{{ $label }}</flux:select.option>
+            @endforeach
+        </flux:select>
 
         <flux:button icon="bookmark" class="w-full justify-start" x-on:click="$flux.modal('view-options').close(); $flux.modal('saved-views').show()">
             {{ __('Views') }}

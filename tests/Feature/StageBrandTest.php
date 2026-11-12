@@ -200,7 +200,10 @@ class StageBrandTest extends TestCase
         $this->assertStringContainsString('<x-view-options-button :count="$this->displayCount" />', $board);
         $this->assertStringContainsString('<x-view-options>', $board);
         $this->assertStringContainsString('flex flex-wrap items-center gap-2 max-sm:hidden', $board);
-        $this->assertStringContainsString('icon="adjustments-horizontal" square class="relative max-sm:size-10!"', $button);
+        // Without a number only the icon in a square, with one the number as a badge in the button (no badge on its corner)
+        $this->assertStringContainsString('icon="adjustments-horizontal" square class="max-sm:size-10!"', $button);
+        $this->assertStringContainsString('<flux:badge size="sm" color="blue" inset="top bottom" class="count-badge">{{ $count }}</flux:badge>', $button);
+        $this->assertStringNotContainsString('absolute', $button);
         $this->assertStringContainsString('class="w-full max-w-sm"', $dialog);
         // What the view is sorted by stays as a short line, and the saved views are a row that leads on (no pill)
         $this->assertStringContainsString('<x-view-summary :parts="[$this->doneFilterOptions()[$this->shownDoneFilter], $this->sortSummary]" />', $board);

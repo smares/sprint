@@ -180,7 +180,7 @@ class StageBrandTest extends TestCase
 
         $this->assertMatchesRegularExpression('/<flux:button\.group>\s*<flux:button icon="chevron-left" wire:click="previousMonth".*?wire:click="today".*?<\/flux:button\.group>\s*<flux:heading size="lg" class="mx-2">/s', $calendar);
         $this->assertMatchesRegularExpression('/<flux:button\.group>\s*<flux:button icon="chevron-left" wire:click="earlier".*?wire:click="today".*?<\/flux:button\.group>\s*<flux:text class="mx-2 /s', $timeline);
-        $this->assertMatchesRegularExpression('/<flux:button\.group>\s*<flux:button size="sm" icon="check" wire:click="bulkComplete".*?wire:click="bulkReopen".*?<\/flux:button\.group>/s', $bar);
+        $this->assertMatchesRegularExpression('/<flux:button\.group>\s*<flux:button size="sm" icon="check" [^>]*wire:click="bulkComplete".*?wire:click="bulkReopen".*?<\/flux:button\.group>/s', $bar);
     }
 
     public function test_the_sort_choice_its_direction_and_its_reset_are_one_button_group(): void

@@ -159,7 +159,7 @@
                 x-on:offline.window="show()"
                 popover="manual"
                 role="status"
-                class="pointer-events-none fixed inset-x-0 bottom-4 top-auto m-0 h-auto w-auto justify-center overflow-visible border-0 bg-transparent p-0 px-4 text-inherit [&:popover-open]:flex"
+                class="pointer-events-none fixed inset-x-0 bottom-4 top-auto m-0 h-auto w-auto items-end justify-center overflow-visible border-0 bg-transparent p-0 px-4 text-inherit [&:popover-open]:flex"
                 data-offline-notice
             >
                 <div class="flex items-center gap-2 rounded-full bg-zinc-800 px-4 py-2 text-sm text-white shadow-lg dark:bg-zinc-100 dark:text-zinc-900">
@@ -177,7 +177,7 @@
                 x-on:sprint-outdated.window="show()"
                 popover="manual"
                 role="status"
-                class="pointer-events-none fixed inset-x-0 top-3 m-0 h-auto w-auto justify-center overflow-visible border-0 bg-transparent p-0 px-4 text-inherit [&:popover-open]:flex"
+                class="pointer-events-none fixed inset-x-0 top-3 bottom-auto m-0 h-auto w-auto items-start justify-center overflow-visible border-0 bg-transparent p-0 px-4 text-inherit [&:popover-open]:flex"
                 data-update-notice
             >
                 <div class="pointer-events-auto flex items-center gap-3 rounded-full bg-zinc-800 py-2 ps-4 pe-3 text-sm text-white shadow-lg dark:bg-zinc-100 dark:text-zinc-900">

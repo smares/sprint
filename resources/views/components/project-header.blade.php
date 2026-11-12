@@ -27,20 +27,20 @@
         {{-- The views (list, board, …) are switched in the sidebar under the project, below lg also in the row underneath --}}
         <x-presence :channel="$presence" :one="__(':name is here too')" :many="__(':count people are here too')" class="max-sm:hidden" />
 
-        @can('edit', $project)
-            {{-- On phones only the icon, so new task and the settings stay small next to the title --}}
-            <div class="sm:hidden"><flux:button variant="primary" icon="plus" square x-on:click="$flux.modal('create-task').show()" :aria-label="__('New task')" :tooltip="__('New task')" /></div>
-            <flux:button variant="primary" icon="plus" class="max-sm:hidden" x-on:click="$flux.modal('create-task').show()">{{ __('New task') }}</flux:button>
-        @endcan
+        {{-- Further actions of a view that have no room in its toolbar on phones (the CSV menu of the list) --}}
+        @isset($actions)
+            <div class="sm:hidden">{{ $actions }}</div>
+        @endisset
 
         @can('manage', $project)
             <x-project-menu :project="$project" />
         @endcan
 
-        {{-- Further actions of a view that have no room in its toolbar on phones (the CSV menu of the list) --}}
-        @isset($actions)
-            <div class="sm:hidden">{{ $actions }}</div>
-        @endisset
+        @can('edit', $project)
+            {{-- On phones only the icon, so new task and the settings stay small next to the title --}}
+            <div class="sm:hidden"><flux:button variant="primary" icon="plus" square x-on:click="$flux.modal('create-task').show()" :aria-label="__('New task')" :tooltip="__('New task')" /></div>
+            <flux:button variant="primary" icon="plus" class="max-sm:hidden" x-on:click="$flux.modal('create-task').show()">{{ __('New task') }}</flux:button>
+        @endcan
     </div>
 </div>
 

@@ -150,9 +150,18 @@
             <x-celebration />
         @endpersist
 
-        {{-- Without a connection nothing can be saved; pages that are not loaded yet show the offline page of the service worker --}}
+        {{-- Without a connection nothing can be saved; pages that are not loaded yet show the offline page of the service worker. A notice in the top layer (see layerNotice in app.js), so a flyout or a modal does not hide it --}}
         @persist('connection')
-            <div x-data="{ online: navigator.onLine }" x-on:online.window="online = true" x-on:offline.window="online = false" x-show="! online" style="display: none" role="status" class="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex justify-center px-4">
+            <div
+                x-data="layerNotice(! navigator.onLine)"
+                wire:ignore
+                x-on:online.window="hide()"
+                x-on:offline.window="show()"
+                popover="manual"
+                role="status"
+                class="pointer-events-none fixed inset-x-0 bottom-4 top-auto m-0 h-auto w-auto justify-center overflow-visible border-0 bg-transparent p-0 px-4 text-inherit [&:popover-open]:flex"
+                data-offline-notice
+            >
                 <div class="flex items-center gap-2 rounded-full bg-zinc-800 px-4 py-2 text-sm text-white shadow-lg dark:bg-zinc-100 dark:text-zinc-900">
                     <flux:icon.signal-slash variant="micro" />
                     {{ __('No connection. Changes cannot be saved right now.') }}
@@ -160,34 +169,12 @@
             </div>
         @endpersist
 
-        {{-- A page loaded before a deployment: its scripts may no longer fit the server. The person reloads when it suits them: something typed would be lost otherwise. At the top, so it never covers the selection bar or the offline notice. It is a popover, which lives in the top layer of the browser like the dialogs (a flyout, a modal) and would otherwise be hidden behind them; whenever a dialog opens it is raised above it again --}}
+        {{-- A page loaded before a deployment: its scripts may no longer fit the server. The person reloads when it suits them: something typed would be lost otherwise. At the top, so it never covers the selection bar or the offline notice; in the top layer (see layerNotice in app.js), so a flyout or a modal does not hide it --}}
         @persist('update-available')
             <div
-                x-data="{
-                    outdated: false,
-                    home: null,
-                    // Above a modal dialog (a flyout, a modal): in the top layer, and inside the dialog, as everything else outside a modal
-                    // dialog cannot be clicked while it is open
-                    raise() {
-                        if (! this.outdated || ! this.$el.showPopover) {
-                            return
-                        }
-
-                        this.home ??= this.$el.parentElement
-                        const modal = [...document.querySelectorAll('dialog')].filter((dialog) => dialog.matches(':modal')).at(-1)
-                        const place = modal ?? this.home
-
-                        if (this.$el.parentElement !== place) {
-                            place.appendChild(this.$el)
-                        }
-
-                        this.$el.hidePopover()
-                        this.$el.showPopover()
-                    },
-                }"
-                x-init="new MutationObserver((records) => { if (records.some((record) => record.target.tagName === 'DIALOG' && ! $el.contains(record.target))) { raise() } }).observe(document.body, { attributes: true, attributeFilter: ['open'], subtree: true })"
-                x-on:sprint-outdated.window="outdated = true; $nextTick(() => raise())"
+                x-data="layerNotice"
                 wire:ignore
+                x-on:sprint-outdated.window="show()"
                 popover="manual"
                 role="status"
                 class="pointer-events-none fixed inset-x-0 top-3 m-0 h-auto w-auto justify-center overflow-visible border-0 bg-transparent p-0 px-4 text-inherit [&:popover-open]:flex"

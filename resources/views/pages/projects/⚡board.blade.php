@@ -379,14 +379,11 @@ new class extends Component
         <flux:separator />
 
         {{-- A row that leads on to the saved views (not a pill: it is no setting of its own) --}}
-        <flux:button variant="ghost" icon-trailing="chevron-right" class="w-full justify-between! rounded-lg! px-2!" x-on:click="$flux.modal('view-options').close(); $flux.modal('saved-views').show()">
-            <span class="flex items-center gap-2">
-                <flux:icon.bookmark variant="mini" />
-                {{ __('Views') }}
-                @if ($this->savedViews->isNotEmpty())
-                    <flux:badge size="sm" inset="top bottom" class="count-badge">{{ $this->savedViews->count() }}</flux:badge>
-                @endif
-            </span>
+        <flux:button variant="ghost" icon="bookmark" icon-trailing="chevron-right" class="-ms-2 rounded-lg!" x-on:click="$flux.modal('view-options').close(); $flux.modal('saved-views').show()">
+            {{ __('Views') }}
+            @if ($this->savedViews->isNotEmpty())
+                <flux:badge size="sm" inset="top bottom" class="count-badge">{{ $this->savedViews->count() }}</flux:badge>
+            @endif
         </flux:button>
     </x-view-options>
 

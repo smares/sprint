@@ -98,4 +98,17 @@ class StageBrandTest extends TestCase
         $this->assertStringContainsString('--color-highlight-content: #c70069;', $css);
         $this->assertStringContainsString("@media (prefers-reduced-transparency: reduce) {\n    :root,\n    :root.dark {", $css);
     }
+
+    public function test_the_sticky_table_head_looks_like_the_head_of_the_other_tables_and_the_first_card_keeps_its_edge(): void
+    {
+        $css = $this->css();
+        $list = file_get_contents(resource_path('views/pages/projects/⚡show.blade.php'));
+
+        $this->assertStringContainsString('@utility glass-head {', $css);
+        $this->assertStringContainsString('--glass-head-a: 0.3;', $css);
+        // Where there must be no transparency the head is opaque, too
+        $this->assertGreaterThanOrEqual(3, substr_count($css, '--glass-head-a: 1;'));
+        $this->assertStringContainsString('<flux:table.columns sticky class="glass-head">', $list);
+        $this->assertStringContainsString('padding-block-start: 2px;', $css);
+    }
 }

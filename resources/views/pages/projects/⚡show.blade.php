@@ -696,7 +696,7 @@ new class extends Component
         @endphp
         <div class="surface px-3 [--flux-bleed:0.75rem]" data-fills-height>
             <flux:table bleed container:class="scroll-shadows rounded-[inherit]">
-                <flux:table.columns sticky class="glass-sticky">
+                <flux:table.columns sticky class="glass-head">
                     {{-- One column for the round check and, while selecting, the box: both in the cell of one size (x-task-check-cell); the
                          head shows the box that selects all visible tasks then --}}
                     <flux:table.column :class="'w-12 min-w-12 max-sm:w-16 max-sm:min-w-16 '.$pinnedDone">

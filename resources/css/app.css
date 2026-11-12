@@ -160,7 +160,14 @@ ui-pillbox-trigger:not([disabled], :has(input:not([type='hidden']))) {
     --stage-focus: #7c9bff;
 }
 
-:focus-visible {
+/* A ring needs the keyboard to have been the last input, or a field that takes text: after a dialog closes the browser gives the focus
+   back to its button as a keyboard focus (after Esc), and the next thing that is focused by script (the first entry of a menu) would
+   inherit it and show a ring, though the mouse opened the menu */
+html[data-keyboard] :focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[contenteditable]:focus-visible {
     outline: 3px solid var(--stage-focus);
     outline-offset: 3px;
 }
@@ -430,6 +437,28 @@ tr[data-task-id][data-task-selected] > td:first-child {
     --glass-sticky-a: 1;
     --glass-blur: none;
     --glass-blur-popover: none;
+}
+
+/* Behind a modal or a flyout the page is dimmed and softly blurred (Flux dims it by 10 % only, which hardly shows) */
+:root {
+    --modal-backdrop: rgb(26 27 29 / 0.38);
+}
+
+:root.dark {
+    --modal-backdrop: rgb(6 8 20 / 0.62);
+}
+
+[data-flux-modal] > dialog::backdrop {
+    background-color: var(--modal-backdrop);
+    -webkit-backdrop-filter: blur(3px);
+    backdrop-filter: blur(3px);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+    [data-flux-modal] > dialog::backdrop {
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
 }
 
 @utility glass {

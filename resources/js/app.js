@@ -302,6 +302,58 @@ const EMOJI = /^(?:[\u{1F1E6}-\u{1F1FF}]{2}|[0-9#*]\uFE0F?\u20E3|\u{1F3F4}[\u{E0
 // The field for any other reaction emoji (components/reactions.blade.php). Letters and other text vanish as they are typed or pasted, only
 // the last emoji stays. Enter sends it and never reaches the task's form around it; while an input method is still composing, Enter only
 // finishes that. enterkeyhint="send" makes phone keyboards show Send instead of Next, which would jump to the next field of the form.
+// A notice that must stay above everything (the new version, no connection; see the layout). A popover lives in the top layer of the
+// browser like the dialogs (a flyout, a modal), so it is not hidden behind them. Everything outside an open modal dialog cannot be
+// clicked, so while one is open the notice moves into it, and back when it closes (the dialogs tell it by their `open` attribute).
+const registerLayerNotice = () => {
+    window.Alpine.data('layerNotice', (initiallyOn = false) => ({
+        on: initiallyOn,
+        home: null,
+
+        init() {
+            this.home = this.$el.parentElement
+
+            new MutationObserver((records) => {
+                if (records.some((record) => record.target.tagName === 'DIALOG' && ! this.$el.contains(record.target))) {
+                    this.raise()
+                }
+            }).observe(document.body, { attributes: true, attributeFilter: ['open'], subtree: true })
+
+            this.raise()
+        },
+
+        show() {
+            this.on = true
+            this.$nextTick(() => this.raise())
+        },
+
+        hide() {
+            this.on = false
+            this.$el.hidePopover?.()
+
+            if (this.home && this.$el.parentElement !== this.home) {
+                this.home.appendChild(this.$el)
+            }
+        },
+
+        raise() {
+            if (! this.on || ! this.$el.showPopover) {
+                return
+            }
+
+            const modal = [...document.querySelectorAll('dialog')].filter((dialog) => dialog.matches(':modal')).at(-1)
+            const place = modal ?? this.home
+
+            if (this.$el.parentElement !== place) {
+                place.appendChild(this.$el)
+            }
+
+            this.$el.hidePopover()
+            this.$el.showPopover()
+        },
+    }))
+}
+
 const registerEmojiField = () => {
     window.Alpine.data('emojiField', (target, id) => ({
         emoji: '',
@@ -995,6 +1047,7 @@ const registerAll = () => {
     registerAssigneeMenu()
     registerCardMenu()
     registerEmojiField()
+    registerLayerNotice()
     registerPushToggle()
 }
 

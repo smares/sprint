@@ -146,4 +146,20 @@ class StageBrandTest extends TestCase
 
         $this->assertStringContainsString('class="sticky -top-5 z-20 -mx-5 -mt-5 mb-2 flex', $view);
     }
+
+    public function test_a_ring_needs_the_keyboard_modals_dim_the_page_and_the_palette_offers_the_backgrounds(): void
+    {
+        $css = $this->css();
+        $palette = file_get_contents(resource_path('views/components/⚡command-palette.blade.php'));
+        $teams = file_get_contents(resource_path('views/pages/admin/⚡teams.blade.php'));
+
+        // A ring after a dialog closed (the browser gives the focus back as a keyboard focus) must not show for the mouse
+        $this->assertStringContainsString("html[data-keyboard] :focus-visible,\ninput:focus-visible,", $css);
+        $this->assertStringNotContainsString("\n:focus-visible {", $css);
+        $this->assertStringContainsString("[data-flux-modal] > dialog::backdrop {\n    background-color: var(--modal-backdrop);", $css);
+        $this->assertStringContainsString("ambient-background', { mode: '", $palette);
+        $this->assertStringContainsString('AmbientBackground::cases()', $palette);
+        $this->assertStringContainsString('x-ref="newTeam"', $teams);
+        $this->assertStringContainsString("{{ __('Create a new team') }}", $teams);
+    }
 }

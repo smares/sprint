@@ -136,9 +136,15 @@ new class extends Component
 };
 ?>
 
-<div class="max-w-4xl">
-    <flux:heading level="1" size="xl" class="mb-1">{{ __('Teams') }}</flux:heading>
-    <flux:text class="mb-6">{!! __('A team is a group of people. In a project under <em>Members</em> you give a whole team access at once.') !!}</flux:text>
+<div class="max-w-4xl" x-data>
+    <div class="mb-6 flex items-start justify-between gap-3">
+        <div>
+            <flux:heading level="1" size="xl" class="mb-1">{{ __('Teams') }}</flux:heading>
+            <flux:text>{!! __('A team is a group of people. In a project under <em>Members</em> you give a whole team access at once.') !!}</flux:text>
+        </div>
+        {{-- The form is below all the teams: this jumps there (like the button on the page of the people) --}}
+        <flux:button size="sm" icon="plus" class="shrink-0" x-on:click="$refs.newTeam.scrollIntoView({ behavior: 'smooth', block: 'start' }); $refs.newTeam.querySelector('input')?.focus({ preventScroll: true })">{{ __('Create a new team') }}</flux:button>
+    </div>
 
     <div class="space-y-4">
         @forelse ($this->teams as $team)
@@ -176,7 +182,7 @@ new class extends Component
         @endforelse
     </div>
 
-    <form wire:submit="create" class="row-form surface mt-8 flex flex-wrap gap-2 p-4 sm:p-6">
+    <form wire:submit="create" x-ref="newTeam" class="row-form surface mt-8 flex scroll-mt-6 flex-wrap gap-2 p-4 sm:p-6">
         <flux:input wire:model="newName" :label="__('New team')" placeholder="{{ __('e.g. Engineering') }}" class="max-w-xs" />
         <flux:button type="submit" icon="plus">{{ __('Create team') }}</flux:button>
     </form>

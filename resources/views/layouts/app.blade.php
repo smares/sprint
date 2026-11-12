@@ -150,9 +150,18 @@
             <x-celebration />
         @endpersist
 
-        {{-- Without a connection nothing can be saved; pages that are not loaded yet show the offline page of the service worker --}}
+        {{-- Without a connection nothing can be saved; pages that are not loaded yet show the offline page of the service worker. A notice in the top layer (see layerNotice in app.js), so a flyout or a modal does not hide it --}}
         @persist('connection')
-            <div x-data="{ online: navigator.onLine }" x-on:online.window="online = true" x-on:offline.window="online = false" x-show="! online" style="display: none" role="status" class="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex justify-center px-4">
+            <div
+                x-data="layerNotice(! navigator.onLine)"
+                wire:ignore
+                x-on:online.window="hide()"
+                x-on:offline.window="show()"
+                popover="manual"
+                role="status"
+                class="pointer-events-none fixed inset-x-0 bottom-4 top-auto m-0 h-auto w-auto justify-center overflow-visible border-0 bg-transparent p-0 px-4 text-inherit [&:popover-open]:flex"
+                data-offline-notice
+            >
                 <div class="flex items-center gap-2 rounded-full bg-zinc-800 px-4 py-2 text-sm text-white shadow-lg dark:bg-zinc-100 dark:text-zinc-900">
                     <flux:icon.signal-slash variant="micro" />
                     {{ __('No connection. Changes cannot be saved right now.') }}
@@ -160,9 +169,17 @@
             </div>
         @endpersist
 
-        {{-- A page loaded before a deployment: its scripts may no longer fit the server. The person reloads when it suits them: something typed would be lost otherwise. At the top, so it never covers the selection bar or the offline notice --}}
+        {{-- A page loaded before a deployment: its scripts may no longer fit the server. The person reloads when it suits them: something typed would be lost otherwise. At the top, so it never covers the selection bar or the offline notice; in the top layer (see layerNotice in app.js), so a flyout or a modal does not hide it --}}
         @persist('update-available')
-            <div x-data="{ outdated: false }" x-on:sprint-outdated.window="outdated = true" x-show="outdated" x-cloak role="status" class="pointer-events-none fixed inset-x-0 top-3 z-50 flex justify-center px-4">
+            <div
+                x-data="layerNotice"
+                wire:ignore
+                x-on:sprint-outdated.window="show()"
+                popover="manual"
+                role="status"
+                class="pointer-events-none fixed inset-x-0 top-3 m-0 h-auto w-auto justify-center overflow-visible border-0 bg-transparent p-0 px-4 text-inherit [&:popover-open]:flex"
+                data-update-notice
+            >
                 <div class="pointer-events-auto flex items-center gap-3 rounded-full bg-zinc-800 py-2 ps-4 pe-3 text-sm text-white shadow-lg dark:bg-zinc-100 dark:text-zinc-900">
                     <flux:icon.arrow-path variant="micro" />
                     {{ __('A new version of :app is available.', ['app' => config('app.name')]) }}

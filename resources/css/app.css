@@ -89,6 +89,8 @@ ui-pillbox-trigger:not([disabled], :has(input:not([type='hidden']))) {
     --color-zinc-800: #242629;
     --color-zinc-900: #1a1b1d;
     --color-zinc-950: #141516;
+    /* Flux's breadcrumbs and a few other places use Tailwind's gray: the same secondary text */
+    --color-gray-500: #5b6070;
 
     /* Radii: small things that can be clicked are pills (like the bars of the logo), fields 10px, containers 14px */
     --radius-md: 6px;

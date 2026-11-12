@@ -10,7 +10,7 @@
         </flux:radio.group>
         <flux:text size="sm" class="mt-3 mb-1.5">{{ __('Background') }}</flux:text>
         {{-- Starts from what the layer was drawn with (the server's state); a change is told to the layer (ambient.js) and kept like the appearance --}}
-        <flux:radio.group aria-label="{{ __('Background') }}" x-data="{ mode: document.querySelector('.ambient')?.dataset.mode ?? 'animated' }" x-init="$watch('mode', (mode) => { $dispatch('ambient-background', { mode }); saveInterface({ ambient: mode }) })" variant="segmented" x-model="mode" size="sm">
+        <flux:radio.group aria-label="{{ __('Background') }}" x-data="{ mode: document.querySelector('.ambient')?.dataset.mode ?? 'animated' }" x-on:ambient-background.window="mode = $event.detail?.mode ?? mode" x-init="$watch('mode', (mode) => { $dispatch('ambient-background', { mode }); saveInterface({ ambient: mode }) })" variant="segmented" x-model="mode" size="sm">
             @foreach (\App\Enums\AmbientBackground::cases() as $mode)
                 <flux:radio :value="$mode->value" :icon="$mode->icon()" :aria-label="$mode->label()" :title="$mode->label()" />
             @endforeach

@@ -171,4 +171,11 @@ class StageBrandTest extends TestCase
         $palette = file_get_contents(resource_path('views/components/⚡command-palette.blade.php'));
         $this->assertStringContainsString('<span class="sr-only">{{ __(\'Background\') }}: </span>{{ $mode->label() }}', $palette);
     }
+
+    public function test_the_sort_choice_its_direction_and_its_reset_are_one_button_group(): void
+    {
+        $board = file_get_contents(resource_path('views/pages/projects/⚡board.blade.php'));
+
+        $this->assertMatchesRegularExpression('/<flux:button\.group>\s*<flux:dropdown align="start">.*?wire:click="resetSort".*?<\/flux:button\.group>/s', $board);
+    }
 }

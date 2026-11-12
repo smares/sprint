@@ -324,6 +324,8 @@ new class extends Component
     </x-project-header>
 
     <div class="mb-4 flex flex-wrap items-center gap-2">
+        {{-- The sort choice, its direction and the reset belong together: one group --}}
+        <flux:button.group>
         <flux:dropdown align="start">
             <flux:button icon="arrows-up-down">{{ $this->sortActive ? $this->sortLabel : __('Sort') }}</flux:button>
 
@@ -345,6 +347,7 @@ new class extends Component
             <flux:button :icon="$sortDirection === 'desc' ? 'arrow-down' : 'arrow-up'" wire:click="reverseSort" class="max-sm:size-10!" aria-label="{{ $sortDirection === 'desc' ? __('Descending') : __('Ascending') }}, {{ __('Reverse order') }}" tooltip="{{ $sortDirection === 'desc' ? __('Descending') : __('Ascending') }}: {{ __('Reverse order') }}" />
             <flux:button icon="x-mark" wire:click="resetSort" class="max-sm:size-10!" aria-label="{{ __('Reset') }}" tooltip="{{ __('Reset') }}" />
         @endif
+        </flux:button.group>
 
         <x-done-filter :options="$this->doneFilterOptions()" :current="$doneFilter" />
 

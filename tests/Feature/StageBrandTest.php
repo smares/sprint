@@ -72,6 +72,7 @@ class StageBrandTest extends TestCase
         $css = $this->css();
 
         $this->assertStringContainsString('ui-calendar td[data-today]:not([data-selected]) button {', $css);
-        $this->assertStringContainsString("[data-flux-command-input] input:focus-visible {\n    outline-offset: -3px;", $css);
+        $this->assertStringContainsString("[data-flux-command-input]:has(input:focus-visible) {\n    outline: 3px solid var(--stage-focus);\n    outline-offset: -3px;", $css);
+        $this->assertStringContainsString('ui-calendar td[data-today]:not([data-selected]) button div.absolute > div {', $css);
     }
 }

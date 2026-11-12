@@ -7,6 +7,7 @@ use App\Models\Task;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Livewire\Attributes\Computed;
+use ReflectionProperty;
 
 /**
  * What a project view does with finished tasks: it shows only the open ones, all of them (the finished ones dimmed) or only
@@ -66,7 +67,7 @@ trait FiltersDoneTasks
     #[Computed]
     public function shownDoneFilter(): string
     {
-        return $this->validDoneFilter($this->doneFilter, (string) (new \ReflectionProperty($this, 'doneFilter'))->getDefaultValue());
+        return $this->validDoneFilter($this->doneFilter, (string) (new ReflectionProperty($this, 'doneFilter'))->getDefaultValue());
     }
 
     /**

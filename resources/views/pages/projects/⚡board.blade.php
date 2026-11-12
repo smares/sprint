@@ -271,6 +271,15 @@ new class extends Component
         return (int) $this->sortActive + (int) ($this->doneFilter !== 'all');
     }
 
+    /**
+     * What the view is sorted by, in a few words (a line on the phones, whose button only shows how many settings are in force).
+     */
+    #[Computed]
+    public function sortSummary(): ?string
+    {
+        return $this->sortActive ? __('Sorted by :field', ['field' => $this->sortLabel]).' '.($this->sortDirection === 'desc' ? '↓' : '↑') : null;
+    }
+
     #[Computed]
     public function statuses(): Collection
     {
@@ -335,6 +344,10 @@ new class extends Component
         </x-slot>
     </x-project-header>
 
+    @if ($this->sortSummary)
+        <flux:text size="sm" class="-mt-3 mb-3 sm:hidden" data-sort-summary>{{ $this->sortSummary }}</flux:text>
+    @endif
+
     <x-view-options>
         <flux:select wire:model.live="sortBy" :label="__('Sort')">
             <flux:select.option value="">{{ __('Manual order') }}</flux:select.option>
@@ -347,10 +360,12 @@ new class extends Component
 
         @if ($this->sortActive)
             <div class="flex items-end gap-2">
-                <flux:select wire:model.live="sortDirection" :label="__('Order')" class="flex-1">
+                <div class="min-w-0 flex-1">
+                <flux:select wire:model.live="sortDirection" :label="__('Order')">
                     <flux:select.option value="asc">{{ __('Ascending') }}</flux:select.option>
                     <flux:select.option value="desc">{{ __('Descending') }}</flux:select.option>
                 </flux:select>
+                </div>
                 <flux:button icon="x-mark" wire:click="resetSort" :aria-label="__('Reset')" :tooltip="__('Reset')" />
             </div>
         @endif
@@ -361,11 +376,17 @@ new class extends Component
             @endforeach
         </flux:select>
 
-        <flux:button icon="bookmark" class="w-full justify-start" x-on:click="$flux.modal('view-options').close(); $flux.modal('saved-views').show()">
-            {{ __('Views') }}
-            @if ($this->savedViews->isNotEmpty())
-                <flux:badge size="sm" inset="top bottom" class="count-badge">{{ $this->savedViews->count() }}</flux:badge>
-            @endif
+        <flux:separator />
+
+        {{-- A row that leads on to the saved views (not a pill: it is no setting of its own) --}}
+        <flux:button variant="ghost" icon-trailing="chevron-right" class="w-full justify-between! rounded-lg! px-2!" x-on:click="$flux.modal('view-options').close(); $flux.modal('saved-views').show()">
+            <span class="flex items-center gap-2">
+                <flux:icon.bookmark variant="mini" />
+                {{ __('Views') }}
+                @if ($this->savedViews->isNotEmpty())
+                    <flux:badge size="sm" inset="top bottom" class="count-badge">{{ $this->savedViews->count() }}</flux:badge>
+                @endif
+            </span>
         </flux:button>
     </x-view-options>
 

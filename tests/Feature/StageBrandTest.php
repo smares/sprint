@@ -202,5 +202,8 @@ class StageBrandTest extends TestCase
         $this->assertStringContainsString('flex flex-wrap items-center gap-2 max-sm:hidden', $board);
         $this->assertStringContainsString('icon="adjustments-horizontal" :square="$count === 0"', $button);
         $this->assertStringContainsString('class="w-full max-w-sm sm:hidden"', $dialog);
+        // What the view is sorted by stays as a short line, and the saved views are a row that leads on (no pill)
+        $this->assertStringContainsString('data-sort-summary', $board);
+        $this->assertStringContainsString('class="w-full justify-between! rounded-lg! px-2!"', $board);
     }
 }

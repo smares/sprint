@@ -105,9 +105,9 @@ class StageBrandTest extends TestCase
         $list = file_get_contents(resource_path('views/pages/projects/⚡show.blade.php'));
 
         $this->assertStringContainsString('@utility glass-head {', $css);
-        $this->assertStringContainsString('--glass-head-a: 0.3;', $css);
-        // Where there must be no transparency the head is opaque, too
-        $this->assertGreaterThanOrEqual(3, substr_count($css, '--glass-head-a: 1;'));
+        // Opaque, so that rows passing beneath it do not show through the labels
+        $this->assertStringContainsString('background-color: rgb(var(--glass-head-rgb));', $css);
+        $this->assertStringNotContainsString('--glass-head-a', $css);
         $this->assertStringContainsString('<flux:table.columns sticky class="glass-head">', $list);
         $this->assertStringContainsString('padding-block-start: 2px;', $css);
     }

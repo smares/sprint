@@ -343,7 +343,7 @@ tr[data-task-id][data-task-selected] > td:first-child {
     --glass-card-a: 0.8;
     --glass-popover-a: 0.84;
     --glass-sticky-a: 0.96;
-    --glass-head-a: 0.3;
+    --glass-head-rgb: 250 247 252;
     --glass-border: rgb(255 255 255 / 0.8);
     --glass-edge: rgb(24 24 27 / 0.08);
     --glass-shadow: 0 1px 0 rgb(255 255 255 / 0.6) inset, 0 8px 32px -8px rgb(26 27 29 / 0.16);
@@ -353,11 +353,11 @@ tr[data-task-id][data-task-selected] > td:first-child {
     --glass-card-bg: rgb(var(--glass-card-rgb) / var(--glass-card-a));
     --glass-popover-bg: rgb(var(--glass-popover-rgb) / var(--glass-popover-a));
     --glass-sticky-bg: rgb(var(--glass-rgb) / var(--glass-sticky-a));
-    --glass-head-bg: rgb(var(--glass-rgb) / var(--glass-head-a));
 }
 
 :root.dark {
     --glass-rgb: 20 24 42;
+    --glass-head-rgb: 20 25 54;
     --glass-card-rgb: 24 28 48;
     --glass-popover-rgb: 26 30 52;
     --glass-a: 0.74;
@@ -384,7 +384,6 @@ tr[data-task-id][data-task-selected] > td:first-child {
         --glass-card-a: 1;
         --glass-popover-a: 1;
         --glass-sticky-a: 1;
-        --glass-head-a: 1;
         --glass-blur: none;
         --glass-blur-popover: none;
     }
@@ -397,7 +396,6 @@ tr[data-task-id][data-task-selected] > td:first-child {
         --glass-card-a: 1;
         --glass-popover-a: 1;
         --glass-sticky-a: 1;
-        --glass-head-a: 1;
         --glass-blur: none;
         --glass-blur-popover: none;
     }
@@ -409,7 +407,6 @@ tr[data-task-id][data-task-selected] > td:first-child {
     --glass-card-a: 1;
     --glass-popover-a: 1;
     --glass-sticky-a: 1;
-    --glass-head-a: 1;
     --glass-blur: none;
     --glass-blur-popover: none;
 }
@@ -439,11 +436,11 @@ tr[data-task-id][data-task-selected] > td:first-child {
     background-color: var(--glass-sticky-bg);
 }
 
-/* The heading row of a table that sticks to the top while the rows scroll under it: it looks like the heading of the tables that
-   do not stick (the glass of their area), so it is as thin as the area itself and blurs what passes beneath it */
+/* The heading row of a table that sticks to the top while the rows scroll under it. It has the color the heading of the other
+   tables gets from the glass of their area (see the tint of the heads), but is opaque: text of rows passing beneath it must not
+   show through the labels */
 @utility glass-head {
-    background-color: var(--glass-head-bg);
-    backdrop-filter: var(--glass-blur);
+    background-color: rgb(var(--glass-head-rgb));
 }
 
 /* Menus and lists that open over the page (the ones of Flux are handled by the rule at the end of this file) */

@@ -66,4 +66,12 @@ class StageBrandTest extends TestCase
         $this->assertStringContainsString('--color-accent-content: #1b50e0;', $css);
         $this->assertStringNotContainsString('orange', preg_replace('/\/\*.*?\*\//s', '', $css));
     }
+
+    public function test_today_is_pink_in_the_date_picker_and_the_ring_of_the_command_palette_lies_inside(): void
+    {
+        $css = $this->css();
+
+        $this->assertStringContainsString('ui-calendar td[data-today]:not([data-selected]) button {', $css);
+        $this->assertStringContainsString("[data-flux-command-input] input:focus-visible {\n    outline-offset: -3px;", $css);
+    }
 }

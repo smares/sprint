@@ -249,6 +249,23 @@ ui-option[data-active] {
     outline-offset: -3px;
 }
 
+/* The search field of the command palette sits in a panel that cuts off what lies outside it: its ring is drawn inside, so that it
+   shows whole */
+[data-flux-command-input] input:focus-visible {
+    outline-offset: -3px;
+}
+
+/* Today in the date picker is pink like in the calendar and the timeline: the number and the dot under it (not on the chosen day,
+   which is filled with the action color and carries white text) */
+ui-calendar td[data-today]:not([data-selected]) button {
+    color: var(--color-highlight);
+    font-weight: 600;
+}
+
+ui-calendar td[data-today]:not([data-selected]) button div.absolute {
+    background-color: var(--color-highlight);
+}
+
 /* A selected row or card (the selection of tasks): a fill, a border of 2px and the tick of the box, so it is not told by color alone */
 :root {
     --stage-selected-bg: #e3ebff;

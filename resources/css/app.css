@@ -122,6 +122,12 @@ ui-pillbox-trigger:not([disabled], :has(input:not([type='hidden']))) {
         --color-accent-foreground: #1a1b1d;
         --color-zinc-400: #a9aebd;
         --color-zinc-500: #8e94a6;
+        /* Surfaces of the dark mode lean to dark blue, like the blue and violet of the background */
+        --color-zinc-600: #3d4360;
+        --color-zinc-700: #2c3149;
+        --color-zinc-800: #1c2038;
+        --color-zinc-900: #151825;
+        --color-zinc-950: #101220;
         --color-highlight: #ff4da6;
     }
 }
@@ -242,16 +248,17 @@ ui-radio:not([data-checked]) > div:first-child {
 }
 
 /* What the keys have chosen in a menu or a list shows the ring too (Flux moves the focus there by script, which the browser does
-   not count as the keyboard) */
-[data-flux-menu-item][data-active],
-ui-option[data-active] {
+   not count as the keyboard). Flux also marks the entry under the mouse as active, so the ring needs the keyboard to be the
+   last thing used (app.js sets data-keyboard on the page for that) */
+html[data-keyboard] [data-flux-menu-item][data-active],
+html[data-keyboard] ui-option[data-active] {
     outline: 3px solid var(--stage-focus);
     outline-offset: -3px;
 }
 
 /* The search field of the command palette is at the corner of a panel that cuts off what lies outside it, and rounds its corners.
    The ring is therefore drawn around the whole row, inside it and with the corners of the panel, and not around the field */
-[data-flux-command-input]:has(input:focus-visible) {
+html[data-keyboard] [data-flux-command-input]:has(input:focus-visible) {
     outline: 3px solid var(--stage-focus);
     outline-offset: -3px;
     border-radius: 14px;
@@ -259,6 +266,16 @@ ui-option[data-active] {
 
 [data-flux-command-input] input:focus-visible {
     outline: none;
+}
+
+/* The row with the column headings sets itself off from the rows below it with a light tint (the same in every table, on top of
+   the opaque fill the heading of the task list gets while it sticks) */
+th[data-flux-column] {
+    background-color: color-mix(in srgb, var(--color-zinc-500) 10%, transparent);
+}
+
+:root.dark th[data-flux-column] {
+    background-color: color-mix(in srgb, var(--color-zinc-400) 9%, transparent);
 }
 
 /* The panel of the command palette is the rounded box itself (the dialog around it has no fill), and the field in it takes
@@ -331,12 +348,12 @@ tr[data-task-id]:has([data-select-box] ui-checkbox[data-checked]) > td:first-chi
 }
 
 :root.dark {
-    --glass-rgb: 36 38 41;
-    --glass-card-rgb: 45 48 51;
-    --glass-popover-rgb: 45 48 51;
-    --glass-a: 0.52;
-    --glass-card-a: 0.74;
-    --glass-popover-a: 0.88;
+    --glass-rgb: 20 24 42;
+    --glass-card-rgb: 24 28 48;
+    --glass-popover-rgb: 26 30 52;
+    --glass-a: 0.62;
+    --glass-card-a: 0.84;
+    --glass-popover-a: 0.92;
     --glass-border: rgb(255 255 255 / 0.14);
     --glass-edge: rgb(255 255 255 / 0.06);
     --glass-shadow: 0 1px 0 rgb(255 255 255 / 0.07) inset, 0 8px 32px -8px rgb(0 0 0 / 0.5);

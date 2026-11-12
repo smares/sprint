@@ -1268,3 +1268,15 @@ new MutationObserver((records) => {
         }
     })
 }).observe(document.documentElement, { subtree: true, attributes: true, attributeFilter: ['data-bar-docked'] })
+
+// Focus rings of menus follow the keyboard only: set while the last input was a key, cleared by the mouse or touch
+document.addEventListener('keydown', (event) => {
+    if (!event.ctrlKey && !event.metaKey && !event.altKey) {
+        document.documentElement.dataset.keyboard = '1';
+    }
+}, true);
+['pointermove', 'pointerdown'].forEach((type) => {
+    document.addEventListener(type, () => {
+        delete document.documentElement.dataset.keyboard;
+    }, true);
+});

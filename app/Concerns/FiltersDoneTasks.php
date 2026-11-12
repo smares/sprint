@@ -6,6 +6,8 @@ use App\Models\Project;
 use App\Models\Task;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Livewire\Attributes\Computed;
+use ReflectionProperty;
 
 /**
  * What a project view does with finished tasks: it shows only the open ones, all of them (the finished ones dimmed) or only
@@ -56,6 +58,16 @@ trait FiltersDoneTasks
             'done' => $query->done(),
             default => null,
         };
+    }
+
+    /**
+     * What the view really shows: the value of `$doneFilter`, or the view's default when an edited address says something else (which
+     * shows everything, see applyDoneFilter). The button of the phones and the line under the views go by this.
+     */
+    #[Computed]
+    public function shownDoneFilter(): string
+    {
+        return $this->validDoneFilter($this->doneFilter, (string) (new ReflectionProperty($this, 'doneFilter'))->getDefaultValue());
     }
 
     /**

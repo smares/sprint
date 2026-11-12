@@ -262,6 +262,24 @@ new class extends Component
         };
     }
 
+    /**
+     * How many of the settings of the view are not what it starts with (shown on the button of the phones).
+     */
+    #[Computed]
+    public function displayCount(): int
+    {
+        return (int) $this->sortActive + (int) ($this->shownDoneFilter !== 'all');
+    }
+
+    /**
+     * What the view is sorted by, in a few words (a line on the phones, whose button only shows how many settings are in force).
+     */
+    #[Computed]
+    public function sortSummary(): ?string
+    {
+        return $this->sortActive ? __('Sorted by :field', ['field' => $this->sortLabel]).' '.($this->sortDirection === 'desc' ? '↓' : '↑') : null;
+    }
+
     #[Computed]
     public function statuses(): Collection
     {
@@ -317,13 +335,55 @@ new class extends Component
     @endphp
     <x-project-header :project="$project" active="board" :presence="$this->presenceChannel()">
         <x-slot name="selection">
-            @if ($offersSelecting)
-                <x-selection-toggle instant class="sm:hidden" x-show="! $wire.selecting" />
-            @endif
+            <div class="flex items-center gap-2 sm:hidden">
+                <x-view-options-button :count="$this->displayCount" />
+                @if ($offersSelecting)
+                    <x-selection-toggle instant x-show="! $wire.selecting" />
+                @endif
+            </div>
         </x-slot>
     </x-project-header>
 
-    <div class="mb-4 flex flex-wrap items-center gap-2">
+    <x-view-summary :parts="[$this->doneFilterOptions()[$this->shownDoneFilter], $this->sortSummary]" />
+
+    <x-view-options>
+        <flux:select wire:model.live="sortBy" :label="__('Sort')">
+            <flux:select.option value="">{{ __('Manual order') }}</flux:select.option>
+            <flux:select.option value="due">{{ __('Due') }}</flux:select.option>
+            <flux:select.option value="title">{{ __('Title') }}</flux:select.option>
+            @foreach ($this->customFields->where('show_in_list', true) as $field)
+                <flux:select.option wire:key="dialog-sort-field-{{ $field->id }}" value="field:{{ $field->id }}">{{ $field->name }}</flux:select.option>
+            @endforeach
+        </flux:select>
+
+        @if ($this->sortActive)
+            <div class="flex items-end gap-2">
+                <div class="min-w-0 flex-1">
+                <flux:select wire:model.live="sortDirection" :label="__('Order')">
+                    <flux:select.option value="asc">{{ __('Ascending') }}</flux:select.option>
+                    <flux:select.option value="desc">{{ __('Descending') }}</flux:select.option>
+                </flux:select>
+                </div>
+                <flux:button icon="x-mark" wire:click="resetSort" :aria-label="__('Reset')" :tooltip="__('Reset')" />
+            </div>
+        @endif
+
+        <x-done-filter-field :options="$this->doneFilterOptions()" />
+
+        <flux:separator />
+
+        {{-- A row that leads on to the saved views (not a pill: it is no setting of its own) --}}
+        <div class="flex justify-center">
+            <flux:button variant="ghost" icon="bookmark" icon-trailing="chevron-right" class="rounded-lg!" x-on:click="$flux.modal('view-options').close(); $flux.modal('saved-views').show()">
+                {{ __('Views') }}
+                @if ($this->savedViews->isNotEmpty())
+                    <flux:badge size="sm" inset="top bottom" class="count-badge">{{ $this->savedViews->count() }}</flux:badge>
+                @endif
+            </flux:button>
+        </div>
+    </x-view-options>
+
+    <div class="mb-4 flex flex-wrap items-center gap-2 max-sm:hidden">
         {{-- The sort choice, its direction and the reset belong together: one group --}}
         <flux:button.group>
         <flux:dropdown align="start">

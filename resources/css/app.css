@@ -307,6 +307,12 @@ th[data-flux-column],
     border-block-end-color: rgb(255 255 255 / 0.2);
 }
 
+/* The first card keeps its edge (its ring lies outside the card, and a list that scrolls cuts off what lies above it) and a gap to the
+   head of the column, as wide as the one at its sides. On every screen size: on phones the page scrolls and the list does not */
+[data-flux-kanban-column] > div:not([data-collapsed]) [data-flux-kanban-column-cards] {
+    padding-block-start: 0.5rem;
+}
+
 /* A board column is bordered all around (the line of the status color stays on top), like the areas of the lists */
 [data-flux-kanban-column] > div {
     border-inline: 1px solid var(--glass-border);
@@ -887,10 +893,6 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
         /* Not in a collapsed column: its cards wait out of sight below the list and would give it a scrollbar */
         & > div:not([data-collapsed]) [data-flux-kanban-column-cards] {
             overflow-y: auto;
-
-            /* The first card keeps its edge (its ring lies outside the card, and the list cuts off what lies above it) and a gap to the
-               head of the column, as wide as the one at its sides */
-            padding-block-start: 0.5rem;
         }
     }
 

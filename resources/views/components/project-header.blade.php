@@ -1,7 +1,8 @@
 @props(['project', 'active', 'presence' => null])
 
-{{-- Breadcrumbs, title and the same toolbar for list, board, calendar, timeline and statistics. The slot `selection` is the button that
-     starts selecting tasks: on phones it stands right-aligned in the row of the views (the toolbar of the page has no room for it then). --}}
+{{-- Breadcrumbs, title and the same toolbar for list, board, calendar, timeline and statistics. The slot `selection` holds what the
+     toolbar of the page has no room for on phones (the button for the display options, the one that starts selecting tasks): it stands
+     right-aligned in the row of the views. The slot `actions` is for further actions of the view, beside the settings of the project. --}}
 <x-project-breadcrumbs :project="$project" />
 
 @if ($project->archived_at)
@@ -9,10 +10,10 @@
 @endif
 
 <div class="mb-6 flex items-start justify-between gap-4">
-    <div class="flex items-start gap-3">
+    <div class="flex min-w-0 items-start gap-3">
         <x-project-icon :project="$project" size="lg" />
         <div class="min-w-0">
-            <flux:heading level="1" size="xl">{{ $project->name }}</flux:heading>
+            <flux:heading level="1" size="xl" class="break-words">{{ $project->name }}</flux:heading>
             @if ($project->description)
                 {{-- On phones two lines, a tap on the text shows all of it --}}
                 <div x-data="{ open: false }">
@@ -35,6 +36,11 @@
         @can('manage', $project)
             <x-project-menu :project="$project" />
         @endcan
+
+        {{-- Further actions of a view that have no room in its toolbar on phones (the CSV menu of the list) --}}
+        @isset($actions)
+            <div class="sm:hidden">{{ $actions }}</div>
+        @endisset
     </div>
 </div>
 

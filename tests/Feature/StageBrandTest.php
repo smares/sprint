@@ -189,4 +189,54 @@ class StageBrandTest extends TestCase
 
         $this->assertMatchesRegularExpression('/<flux:button\.group>\s*<flux:dropdown align="start">.*?wire:click="resetSort".*?<\/flux:button\.group>/s', $board);
     }
+
+    public function test_the_board_on_phones_has_one_small_button_for_sort_filter_and_views(): void
+    {
+        $board = file_get_contents(resource_path('views/pages/projects/⚡board.blade.php'));
+        $button = file_get_contents(resource_path('views/components/view-options-button.blade.php'));
+        $dialog = file_get_contents(resource_path('views/components/view-options.blade.php'));
+
+        // The button stands beside the one that starts selecting, the toolbar of the larger screens is hidden on phones
+        $this->assertStringContainsString('<x-view-options-button :count="$this->displayCount" />', $board);
+        $this->assertStringContainsString('<x-view-options>', $board);
+        $this->assertStringContainsString('flex flex-wrap items-center gap-2 max-sm:hidden', $board);
+        // Without a number only the icon in a square, with one the number as a badge in the button (no badge on its corner)
+        $this->assertStringContainsString('icon="adjustments-horizontal" square class="max-sm:size-10!"', $button);
+        $this->assertStringContainsString('<flux:badge size="sm" color="blue" inset="top bottom" class="count-badge">{{ $count }}</flux:badge>', $button);
+        $this->assertStringNotContainsString('absolute', $button);
+        $this->assertStringContainsString('class="w-full max-w-sm"', $dialog);
+        // What the view is sorted by stays as a short line, and the saved views are a row that leads on (no pill)
+        $this->assertStringContainsString('<x-view-summary :parts="[$this->doneFilterOptions()[$this->shownDoneFilter], $this->sortSummary]" />', $board);
+        $this->assertStringContainsString('class="rounded-lg!"', $board);
+    }
+
+    public function test_list_calendar_and_timeline_have_the_same_small_button_on_phones(): void
+    {
+        foreach (['show', 'calendar', 'timeline'] as $page) {
+            $view = file_get_contents(resource_path("views/pages/projects/⚡{$page}.blade.php"));
+
+            $this->assertStringContainsString('<x-view-options-button :count="', $view, $page);
+            $this->assertStringContainsString('<x-view-options>', $view, $page);
+            $this->assertStringContainsString('<x-done-filter-field :options="$this->doneFilterOptions()" />', $view, $page);
+        }
+
+        $list = file_get_contents(resource_path('views/pages/projects/⚡show.blade.php'));
+
+        // The filters and the saved views open their own dialogs: the one of the button closes first
+        $this->assertStringContainsString("\$flux.modal('view-options').close(); \$flux.modal('filters').show()", $list);
+        $this->assertStringContainsString('flex flex-wrap items-center gap-2 max-sm:hidden', $list);
+    }
+
+    public function test_the_gap_above_the_first_card_is_not_bound_to_the_screen_size(): void
+    {
+        $css = $this->css();
+        $rule = "[data-flux-kanban-column] > div:not([data-collapsed]) [data-flux-kanban-column-cards] {\n    padding-block-start: 0.5rem;";
+
+        $this->assertStringContainsString($rule, $css);
+
+        // It sits outside of the media query of the layout that fills the height (on phones the page scrolls, not the list)
+        $position = strpos($css, $rule);
+        $this->assertNotFalse($position);
+        $this->assertStringNotContainsString('@media (width >= 40rem) and (height >= 40rem) {', substr($css, max(0, $position - 40), 40));
+    }
 }

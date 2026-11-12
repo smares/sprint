@@ -558,9 +558,49 @@ new class extends Component
 
 {{-- While selecting the bar of actions is the last element of the page, which becomes that much shorter (see data-bar-docked in app.css) --}}
 <div @if ($selecting) data-bar-docked @endif x-bind:data-bar-docked="$wire.selecting" data-wide>
-    <x-project-header :project="$project" active="list" :presence="$this->presenceChannel()" />
+    <x-project-header :project="$project" active="list" :presence="$this->presenceChannel()">
+        <x-slot name="selection">
+            <div class="flex items-center gap-2 sm:hidden">
+                <x-view-options-button :count="(int) ($this->shownDoneFilter !== 'open') + $this->activeFilters->count()" />
+                @if ($this->canEdit && $this->tasks->isNotEmpty())
+                    <x-selection-toggle instant x-show="! $wire.selecting" />
+                @endif
+            </div>
+        </x-slot>
 
-    <div class="mb-4 flex flex-wrap items-center gap-2">
+        <x-slot name="actions">
+            <x-list-actions-menu :project="$project" :can-edit="$this->canEdit" />
+        </x-slot>
+    </x-project-header>
+
+    <x-view-summary :parts="[$this->doneFilterOptions()[$this->shownDoneFilter]]" />
+
+    <x-view-options>
+        <x-done-filter-field :options="$this->doneFilterOptions()" />
+
+        <flux:separator />
+
+        {{-- The filters and the saved views open their own dialogs: this one closes first --}}
+        <div class="flex flex-wrap justify-center gap-2">
+            <flux:button variant="ghost" icon="funnel" icon-trailing="chevron-right" class="rounded-lg!" x-on:click="$flux.modal('view-options').close(); $flux.modal('filters').show()">
+                {{ __('Filter') }}
+                @if ($this->activeFilters->isNotEmpty())
+                    <flux:badge size="sm" color="blue" inset="top bottom" class="count-badge">{{ $this->activeFilters->count() }}</flux:badge>
+                @endif
+            </flux:button>
+
+            <flux:button variant="ghost" icon="bookmark" icon-trailing="chevron-right" class="rounded-lg!" x-on:click="$flux.modal('view-options').close(); $flux.modal('saved-views').show()">
+                {{ __('Views') }}
+                @if ($this->savedViews->isNotEmpty())
+                    <flux:badge size="sm" inset="top bottom" class="count-badge">{{ $this->savedViews->count() }}</flux:badge>
+                @endif
+            </flux:button>
+        </div>
+    </x-view-options>
+
+    <div @class(['mb-4 flex flex-wrap items-center gap-2', 'max-sm:hidden' => $this->activeFilters->isEmpty()])>
+        {{-- On phones these three sit behind the small button beside the one that starts selecting (x-view-options) --}}
+        <div class="flex flex-wrap items-center gap-2 max-sm:hidden">
         <x-done-filter :options="$this->doneFilterOptions()" :current="$doneFilter" />
 
         <flux:modal.trigger name="filters">
@@ -575,6 +615,7 @@ new class extends Component
         <flux:modal.trigger name="saved-views">
             <flux:button icon="bookmark">{{ __('Views') }} @if ($this->savedViews->isNotEmpty()) <flux:badge size="sm" inset="top bottom" class="count-badge">{{ $this->savedViews->count() }}</flux:badge> @endif</flux:button>
         </flux:modal.trigger>
+        </div>
 
         @foreach ($this->activeFilters as $filter)
             {{-- A long label (the names of many collaborators) wraps inside the chip; on one line it would widen the page on a phone --}}
@@ -588,23 +629,12 @@ new class extends Component
             <flux:button size="sm" variant="ghost" wire:click="resetFilters">{{ __('Reset') }}</flux:button>
         @endif
 
-        <div class="ms-auto flex items-center gap-2">
+        <div class="ms-auto flex items-center gap-2 max-sm:hidden">
             @if ($this->canEdit && $this->tasks->isNotEmpty())
                 <x-selection-toggle instant x-show="! $wire.selecting" />
             @endif
 
-            <flux:dropdown align="end">
-                <flux:button icon="ellipsis-horizontal" aria-label="{{ __('More actions') }}" tooltip="{{ __('More actions') }}" />
-
-                <flux:menu>
-                    <flux:menu.item icon="arrow-down-tray" href="{{ route('projects.export', $project) }}">{{ __('Export as CSV') }}</flux:menu.item>
-                    <flux:menu.item icon="arrow-down-tray" href="{{ route('projects.export', [$project, 'delimiter' => 'semicolon']) }}">{{ __('Export as CSV for Excel') }}</flux:menu.item>
-                    @if ($this->canEdit)
-                        <flux:menu.separator />
-                        <flux:menu.item icon="arrow-up-tray" x-on:click="$flux.modal('project-import').show()">{{ __('Import CSV …') }}</flux:menu.item>
-                    @endif
-                </flux:menu>
-            </flux:dropdown>
+            <x-list-actions-menu :project="$project" :can-edit="$this->canEdit" />
         </div>
     </div>
 

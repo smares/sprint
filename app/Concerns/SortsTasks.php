@@ -103,6 +103,14 @@ trait SortsTasks
         $this->sorted();
     }
 
+    /**
+     * The direction was picked in a field (the dialog of the phones), not turned by the button: the same as turning it.
+     */
+    public function updatedSortDirection(): void
+    {
+        $this->sorted();
+    }
+
     public function reverseSort(): void
     {
         if (! $this->isSorted()) {

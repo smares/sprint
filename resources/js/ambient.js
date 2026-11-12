@@ -11,29 +11,31 @@
 const FRAME_MS = 1000 / 12
 
 const palettes = {
+    // The colors of the brand: action blue, violet and accent pink (the gradient of the manual), pale on the light page
     light: {
         patches: [
-            { x: 0.2, y: 0.22, radius: 0.67, color: '253,186,116', alpha: 0.2 },
-            { x: 0.78, y: 0.68, radius: 0.61, color: '252,211,77', alpha: 0.18 },
-            { x: 0.84, y: 0.15, radius: 0.44, color: '253,164,175', alpha: 0.12 },
+            { x: 0.2, y: 0.22, radius: 0.67, color: '165,190,255', alpha: 0.22 },
+            { x: 0.78, y: 0.68, radius: 0.61, color: '205,185,250', alpha: 0.2 },
+            { x: 0.84, y: 0.15, radius: 0.44, color: '250,170,210', alpha: 0.14 },
         ],
-        waves: ['249,115,22', '217,119,6', '225,29,72'],
+        waves: ['37,99,255', '123,63,228', '229,0,122'],
         glow: 0.025,
         line: 0.14,
-        point: '234,88,12',
+        point: '37,99,255',
         pointAlpha: 0.2,
         composite: 'source-over',
     },
+    // Deep blue and violet on the ink of the dark mode, with a trace of magenta; the lines are the light variants of the colors
     dark: {
         patches: [
-            { x: 0.2, y: 0.22, radius: 0.67, color: '194,65,12', alpha: 0.2 },
-            { x: 0.78, y: 0.68, radius: 0.61, color: '180,83,9', alpha: 0.15 },
-            { x: 0.84, y: 0.15, radius: 0.44, color: '159,18,57', alpha: 0.1 },
+            { x: 0.2, y: 0.22, radius: 0.67, color: '37,70,190', alpha: 0.22 },
+            { x: 0.78, y: 0.68, radius: 0.61, color: '88,52,170', alpha: 0.18 },
+            { x: 0.84, y: 0.15, radius: 0.44, color: '170,20,100', alpha: 0.1 },
         ],
-        waves: ['251,146,60', '251,191,36', '253,164,175'],
+        waves: ['124,155,255', '176,140,245', '255,110,180'],
         glow: 0.02,
         line: 0.12,
-        point: '253,186,116',
+        point: '181,200,255',
         pointAlpha: 0.22,
         composite: 'screen',
     },

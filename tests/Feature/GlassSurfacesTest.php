@@ -48,13 +48,35 @@ class GlassSurfacesTest extends TestCase
         }
     }
 
-    public function test_every_gray_of_the_dark_mode_is_a_warm_one_and_secondary_text_is_darker_in_the_light_mode(): void
+    public function test_the_grays_and_the_accent_are_those_of_the_stage_brand_manual(): void
+    {
+        $css = $this->css();
+        $grays = [50 => '#f6f7fb', 100 => '#eceef4', 200 => '#dde0ea', 300 => '#c3c8d6', 400 => '#8e94a6', 500 => '#5b6070', 600 => '#454957', 700 => '#32353f', 800 => '#242629', 900 => '#1a1b1d'];
+
+        foreach ($grays as $step => $hex) {
+            $this->assertStringContainsString("--color-zinc-{$step}: {$hex};", $css);
+        }
+
+        // Action blue for everything that can be clicked, accent pink for highlights; the dark mode has the lighter roles
+        $this->assertStringContainsString('--color-accent: var(--color-stage-blue);', $css);
+        $this->assertStringContainsString('--color-stage-pink: #e5007a;', $css);
+        $this->assertStringContainsString('--color-accent: #7c9bff;', $css);
+        $this->assertStringContainsString('--color-accent-foreground: #1a1b1d;', $css);
+
+        // Text in gray 400 does not reach the contrast of the manual: in the light mode gray 400 is as dark as gray 500
+        $this->assertStringContainsString('--color-zinc-400: var(--color-zinc-500);', $css);
+    }
+
+    public function test_the_typeface_is_delivered_from_here_and_nothing_comes_from_a_font_service(): void
     {
         $css = $this->css();
 
-        $this->assertSame(11, preg_match_all('/--color-zinc-(\d+): var\(--color-stone-\1\);/', $css));
-        $this->assertStringContainsString(':root:not(.dark) {', $css);
-        $this->assertStringContainsString('--color-zinc-500: var(--color-zinc-600);', $css);
+        $this->assertStringContainsString("font-family: 'Public Sans Variable';", $css);
+        $this->assertStringContainsString("--font-sans: 'Public Sans Variable'", $css);
+        $this->assertFileExists(resource_path('fonts/public-sans/public-sans-latin-wght-normal.woff2'));
+        $this->assertFileExists(resource_path('fonts/public-sans/OFL.txt'));
+        $this->assertStringNotContainsString('fonts.googleapis.com', $css);
+        $this->assertStringNotContainsString('fonts.googleapis.com', file_get_contents(resource_path('views/layouts/app.blade.php')));
     }
 
     public function test_bars_and_heads_that_stick_use_the_sticky_level_and_the_sidebar_the_bar_level(): void

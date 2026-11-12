@@ -182,4 +182,11 @@ class StageBrandTest extends TestCase
         $this->assertMatchesRegularExpression('/<flux:button\.group>\s*<flux:button icon="chevron-left" wire:click="earlier".*?wire:click="today".*?<\/flux:button\.group>\s*<flux:text class="mx-2 /s', $timeline);
         $this->assertMatchesRegularExpression('/<flux:button\.group>\s*<flux:button size="sm" icon="check" wire:click="bulkComplete".*?wire:click="bulkReopen".*?<\/flux:button\.group>/s', $bar);
     }
+
+    public function test_the_sort_choice_its_direction_and_its_reset_are_one_button_group(): void
+    {
+        $board = file_get_contents(resource_path('views/pages/projects/⚡board.blade.php'));
+
+        $this->assertMatchesRegularExpression('/<flux:button\.group>\s*<flux:dropdown align="start">.*?wire:click="resetSort".*?<\/flux:button\.group>/s', $board);
+    }
 }

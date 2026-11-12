@@ -111,4 +111,15 @@ class StageBrandTest extends TestCase
         $this->assertStringContainsString('<flux:table.columns sticky class="glass-head">', $list);
         $this->assertStringContainsString('padding-block-start: 2px;', $css);
     }
+
+    public function test_the_numbers_in_badges_are_round_for_one_digit(): void
+    {
+        $css = $this->css();
+
+        $this->assertStringContainsString("@utility count-badge {\n    justify-content: center;\n    min-width: 1.5rem;", $css);
+
+        foreach (['pages/projects/⚡show', 'pages/projects/⚡board'] as $view) {
+            $this->assertStringContainsString('class="count-badge"', file_get_contents(resource_path("views/{$view}.blade.php")), $view);
+        }
+    }
 }

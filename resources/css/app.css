@@ -443,6 +443,14 @@ tr[data-task-id][data-task-selected] > td:first-child {
     background-color: rgb(var(--glass-head-rgb));
 }
 
+/* The number in a badge (filters, saved views): round for one digit, a little wider for more. The width follows the content, so a
+   pill with the padding of a badge would be an oval */
+@utility count-badge {
+    justify-content: center;
+    min-width: 1.5rem;
+    padding-inline: 0.25rem !important;
+}
+
 /* Menus and lists that open over the page (the ones of Flux are handled by the rule at the end of this file) */
 @utility glass-popover {
     background-color: var(--glass-popover-bg);

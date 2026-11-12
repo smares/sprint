@@ -349,7 +349,7 @@ new class extends Component
         <x-done-filter :options="$this->doneFilterOptions()" :current="$doneFilter" />
 
         <flux:modal.trigger name="saved-views">
-            <flux:button icon="bookmark">{{ __('Views') }} @if ($this->savedViews->isNotEmpty()) <flux:badge size="sm" inset="top bottom">{{ $this->savedViews->count() }}</flux:badge> @endif</flux:button>
+            <flux:button icon="bookmark">{{ __('Views') }} @if ($this->savedViews->isNotEmpty()) <flux:badge size="sm" inset="top bottom" class="count-badge">{{ $this->savedViews->count() }}</flux:badge> @endif</flux:button>
         </flux:modal.trigger>
 
         @if ($offersSelecting)

@@ -351,12 +351,12 @@ tr[data-task-id]:has([data-select-box] ui-checkbox[data-checked]) > td:first-chi
     --glass-rgb: 20 24 42;
     --glass-card-rgb: 24 28 48;
     --glass-popover-rgb: 26 30 52;
-    --glass-a: 0.62;
-    --glass-card-a: 0.84;
-    --glass-popover-a: 0.92;
-    --glass-border: rgb(255 255 255 / 0.14);
-    --glass-edge: rgb(255 255 255 / 0.06);
-    --glass-shadow: 0 1px 0 rgb(255 255 255 / 0.07) inset, 0 8px 32px -8px rgb(0 0 0 / 0.5);
+    --glass-a: 0.74;
+    --glass-card-a: 0.93;
+    --glass-popover-a: 0.96;
+    --glass-border: rgb(255 255 255 / 0.2);
+    --glass-edge: rgb(255 255 255 / 0.1);
+    --glass-shadow: 0 1px 0 rgb(255 255 255 / 0.07) inset, 0 10px 36px -8px rgb(0 0 0 / 0.65);
 }
 
 /* Lighter blur on phones, where many glass areas on a small GPU would cost too much */

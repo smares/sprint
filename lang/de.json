@@ -302,6 +302,7 @@
     "Discard your unsaved changes to this task?": "Ungespeicherte Änderungen an dieser Aufgabe verwerfen?",
     "Disconnect": "Trennen",
     "Disconnect the Google account? You can connect it again here in the profile.": "Google-Konto trennen? Du kannst es hier im Profil wieder verbinden.",
+    "Display": "Anzeige",
     "Do not disturb": "Bitte nicht stören",
     "Do not disturb saved.": "„Bitte nicht stören“ gespeichert.",
     "Do you want to stop receiving emails about “:task” (:project), :name?": "Möchtest du keine E-Mails mehr zu „:task“ (:project) bekommen, :name?",

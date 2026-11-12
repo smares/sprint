@@ -262,6 +262,34 @@ new class extends Component
         };
     }
 
+    /**
+     * How many of the settings of the view are not what it starts with (shown on the button of the phones).
+     */
+    #[Computed]
+    public function displayCount(): int
+    {
+        return (int) $this->sortActive + (int) ($this->doneFilter !== 'all');
+    }
+
+    /**
+     * The settings in force in words (a line below the button of the phones), nothing when the view is as it starts.
+     */
+    #[Computed]
+    public function displaySummary(): ?string
+    {
+        $parts = [];
+
+        if ($this->sortActive) {
+            $parts[] = $this->sortLabel.' '.($this->sortDirection === 'desc' ? '↓' : '↑');
+        }
+
+        if ($this->doneFilter !== 'all') {
+            $parts[] = $this->doneFilterOptions()[$this->doneFilter] ?? '';
+        }
+
+        return $parts === [] ? null : implode(' · ', $parts);
+    }
+
     #[Computed]
     public function statuses(): Collection
     {
@@ -323,7 +351,44 @@ new class extends Component
         </x-slot>
     </x-project-header>
 
-    <div class="mb-4 flex flex-wrap items-center gap-2">
+    <x-view-options class="mb-4" :count="$this->displayCount" :summary="$this->displaySummary">
+        <div class="space-y-2">
+            <flux:heading size="sm">{{ __('Sort') }}</flux:heading>
+            <flux:radio.group wire:model.live="sortBy">
+                <flux:radio value="" :label="__('Manual order')" />
+                <flux:radio value="due" :label="__('Due')" />
+                <flux:radio value="title" :label="__('Title')" />
+                @foreach ($this->customFields->where('show_in_list', true) as $field)
+                    <flux:radio wire:key="sheet-sort-field-{{ $field->id }}" value="field:{{ $field->id }}" :label="$field->name" />
+                @endforeach
+            </flux:radio.group>
+
+            @if ($this->sortActive)
+                <div class="flex gap-2">
+                    <flux:button size="sm" :icon="$sortDirection === 'desc' ? 'arrow-down' : 'arrow-up'" wire:click="reverseSort">{{ $sortDirection === 'desc' ? __('Descending') : __('Ascending') }}</flux:button>
+                    <flux:button size="sm" icon="x-mark" wire:click="resetSort">{{ __('Reset') }}</flux:button>
+                </div>
+            @endif
+        </div>
+
+        <div class="space-y-2">
+            <flux:heading size="sm">{{ __('Tasks') }}</flux:heading>
+            <flux:radio.group wire:model.live="doneFilter">
+                @foreach ($this->doneFilterOptions() as $value => $label)
+                    <flux:radio :value="$value" :label="$label" />
+                @endforeach
+            </flux:radio.group>
+        </div>
+
+        <flux:button icon="bookmark" class="w-full justify-start" x-on:click="$flux.modal('view-options').close(); $flux.modal('saved-views').show()">
+            {{ __('Views') }}
+            @if ($this->savedViews->isNotEmpty())
+                <flux:badge size="sm" inset="top bottom" class="count-badge">{{ $this->savedViews->count() }}</flux:badge>
+            @endif
+        </flux:button>
+    </x-view-options>
+
+    <div class="mb-4 flex flex-wrap items-center gap-2 max-sm:hidden">
         {{-- The sort choice, its direction and the reset belong together: one group --}}
         <flux:button.group>
         <flux:dropdown align="start">

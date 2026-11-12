@@ -129,5 +129,8 @@ class StageBrandTest extends TestCase
 
         $this->assertStringContainsString(".column-head,\n[data-flux-kanban-column-header] {", $css);
         $this->assertStringContainsString("[data-flux-kanban-column-header] {\n    background-color: rgb(var(--glass-head-rgb));", $css);
+        // The head has a line below it like a table head, and the column a border all around (the status line stays on top)
+        $this->assertStringContainsString('border-block-end: 1px solid color-mix(in srgb, var(--color-zinc-800) 10%, transparent);', $css);
+        $this->assertStringContainsString("[data-flux-kanban-column] > div {\n    border-inline: 1px solid", $css);
     }
 }

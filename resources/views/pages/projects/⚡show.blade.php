@@ -565,8 +565,11 @@ new class extends Component
                 @if ($this->canEdit && $this->tasks->isNotEmpty())
                     <x-selection-toggle instant x-show="! $wire.selecting" />
                 @endif
-                <x-list-actions-menu :project="$project" :can-edit="$this->canEdit" />
             </div>
+        </x-slot>
+
+        <x-slot name="actions">
+            <x-list-actions-menu :project="$project" :can-edit="$this->canEdit" />
         </x-slot>
     </x-project-header>
 

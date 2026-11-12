@@ -35,6 +35,11 @@
         @can('manage', $project)
             <x-project-menu :project="$project" />
         @endcan
+
+        {{-- Further actions of a view that have no room in its toolbar on phones (the CSV menu of the list) --}}
+        @isset($actions)
+            <div class="sm:hidden">{{ $actions }}</div>
+        @endisset
     </div>
 </div>
 

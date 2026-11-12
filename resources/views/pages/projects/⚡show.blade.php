@@ -561,7 +561,7 @@ new class extends Component
     <x-project-header :project="$project" active="list" :presence="$this->presenceChannel()">
         <x-slot name="selection">
             <div class="flex items-center gap-2 sm:hidden">
-                <x-view-options-button :count="(int) ($doneFilter !== 'open') + $this->activeFilters->count()" />
+                <x-view-options-button :count="(int) ($this->shownDoneFilter !== 'open') + $this->activeFilters->count()" />
                 @if ($this->canEdit && $this->tasks->isNotEmpty())
                     <x-selection-toggle instant x-show="! $wire.selecting" />
                 @endif
@@ -573,7 +573,7 @@ new class extends Component
         </x-slot>
     </x-project-header>
 
-    <x-view-summary :parts="[$this->doneFilterOptions()[$doneFilter] ?? null]" />
+    <x-view-summary :parts="[$this->doneFilterOptions()[$this->shownDoneFilter]]" />
 
     <x-view-options>
         <x-done-filter-field :options="$this->doneFilterOptions()" />

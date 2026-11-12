@@ -200,10 +200,10 @@ class StageBrandTest extends TestCase
         $this->assertStringContainsString('<x-view-options-button :count="$this->displayCount" />', $board);
         $this->assertStringContainsString('<x-view-options>', $board);
         $this->assertStringContainsString('flex flex-wrap items-center gap-2 max-sm:hidden', $board);
-        $this->assertStringContainsString('icon="adjustments-horizontal" :square="$count === 0"', $button);
-        $this->assertStringContainsString('class="w-full max-w-sm sm:hidden"', $dialog);
+        $this->assertStringContainsString('icon="adjustments-horizontal" square class="relative max-sm:size-10!"', $button);
+        $this->assertStringContainsString('class="w-full max-w-sm"', $dialog);
         // What the view is sorted by stays as a short line, and the saved views are a row that leads on (no pill)
-        $this->assertStringContainsString('<x-view-summary :parts="[$this->doneFilterOptions()[$doneFilter] ?? null, $this->sortSummary]" />', $board);
+        $this->assertStringContainsString('<x-view-summary :parts="[$this->doneFilterOptions()[$this->shownDoneFilter], $this->sortSummary]" />', $board);
         $this->assertStringContainsString('class="rounded-lg!"', $board);
     }
 

@@ -1,6 +1,6 @@
 @props(['project', 'canEdit' => false])
 
-{{-- The menu of the list with the CSV export and import (below the views on phones, in the toolbar on larger screens) --}}
+{{-- The menu of the list with the CSV export and import (beside the settings in the title row on phones, in the toolbar on larger screens) --}}
 <flux:dropdown align="end">
     <flux:button icon="ellipsis-horizontal" aria-label="{{ __('More actions') }}" tooltip="{{ __('More actions') }}" />
 

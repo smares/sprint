@@ -974,6 +974,7 @@
     "your token": "dein Token",
     "{0} :count people|{1} :count person|[2,*] :count people": "{0} :count Personen|{1} :count Person|[2,*] :count Personen",
     "{0} :count projects|{1} :count project|[2,*] :count projects": "{0} :count Projekte|{1} :count Projekt|[2,*] :count Projekte",
+    "{1} :count setting|[2,*] :count settings": "{1} :count Einstellung|[2,*] :count Einstellungen",
     "{1} :count task has no date and therefore does not appear in the calendar.|[2,*] :count tasks have no date and therefore do not appear in the calendar.": "{1} :count Aufgabe hat kein Datum und erscheint deshalb nicht im Kalender.|[2,*] :count Aufgaben haben kein Datum und erscheinen deshalb nicht im Kalender.",
     "{1} :count task has no date.|[2,*] :count tasks have no date.": "{1} :count Aufgabe hat kein Datum.|[2,*] :count Aufgaben haben kein Datum.",
     "{1} :count task is outside these weeks.|[2,*] :count tasks are outside these weeks.": "{1} :count Aufgabe liegt außerhalb dieser Wochen.|[2,*] :count Aufgaben liegen außerhalb dieser Wochen.",

@@ -268,7 +268,7 @@ new class extends Component
     #[Computed]
     public function displayCount(): int
     {
-        return (int) $this->sortActive + (int) ($this->doneFilter !== 'all');
+        return (int) $this->sortActive + (int) ($this->shownDoneFilter !== 'all');
     }
 
     /**
@@ -344,7 +344,7 @@ new class extends Component
         </x-slot>
     </x-project-header>
 
-    <x-view-summary :parts="[$this->doneFilterOptions()[$doneFilter] ?? null, $this->sortSummary]" />
+    <x-view-summary :parts="[$this->doneFilterOptions()[$this->shownDoneFilter], $this->sortSummary]" />
 
     <x-view-options>
         <flux:select wire:model.live="sortBy" :label="__('Sort')">
@@ -352,7 +352,7 @@ new class extends Component
             <flux:select.option value="due">{{ __('Due') }}</flux:select.option>
             <flux:select.option value="title">{{ __('Title') }}</flux:select.option>
             @foreach ($this->customFields->where('show_in_list', true) as $field)
-                <flux:select.option wire:key="sheet-sort-field-{{ $field->id }}" value="field:{{ $field->id }}">{{ $field->name }}</flux:select.option>
+                <flux:select.option wire:key="dialog-sort-field-{{ $field->id }}" value="field:{{ $field->id }}">{{ $field->name }}</flux:select.option>
             @endforeach
         </flux:select>
 

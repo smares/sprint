@@ -202,7 +202,10 @@ class TaskCheckCellTest extends TestCase
         $this->assertMatchesRegularExpression('/<div[^>]*x-show="! \$wire\.selecting"[^>]*data-selection-toggle>/', $html);
         $this->assertStringContainsString('$wire.selecting = true; $wire.selected = []; $nextTick(', $html);
         $this->assertStringContainsString('Auswählen', $html);
-        $this->assertLessThan(strpos($html, 'aria-label="Weitere Aktionen"'), strpos($html, 'x-show="! $wire.selecting"'));
+        // In the toolbar (the last of each: on phones both stand higher, in the title row and the row of the views) the button to select
+        // comes before the menu
+        preg_match_all('/<div[^>]*data-selection-toggle>/', $html, $toggles, PREG_OFFSET_CAPTURE);
+        $this->assertLessThan(strrpos($html, 'aria-label="Weitere Aktionen"'), end($toggles[0])[1]);
         $this->assertStringNotContainsString('ends-when-empty', $html);
     }
 

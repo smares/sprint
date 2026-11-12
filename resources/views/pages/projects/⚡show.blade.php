@@ -567,13 +567,13 @@ new class extends Component
             <flux:button icon="funnel">
                 {{ __('Filter') }}
                 @if ($this->activeFilters->isNotEmpty())
-                    <flux:badge size="sm" color="blue" inset="top bottom">{{ $this->activeFilters->count() }}</flux:badge>
+                    <flux:badge size="sm" color="blue" inset="top bottom" class="count-badge">{{ $this->activeFilters->count() }}</flux:badge>
                 @endif
             </flux:button>
         </flux:modal.trigger>
 
         <flux:modal.trigger name="saved-views">
-            <flux:button icon="bookmark">{{ __('Views') }} @if ($this->savedViews->isNotEmpty()) <flux:badge size="sm" inset="top bottom">{{ $this->savedViews->count() }}</flux:badge> @endif</flux:button>
+            <flux:button icon="bookmark">{{ __('Views') }} @if ($this->savedViews->isNotEmpty()) <flux:badge size="sm" inset="top bottom" class="count-badge">{{ $this->savedViews->count() }}</flux:badge> @endif</flux:button>
         </flux:modal.trigger>
 
         @foreach ($this->activeFilters as $filter)
@@ -696,7 +696,7 @@ new class extends Component
         @endphp
         <div class="surface px-3 [--flux-bleed:0.75rem]" data-fills-height>
             <flux:table bleed container:class="scroll-shadows rounded-[inherit]">
-                <flux:table.columns sticky class="glass-sticky">
+                <flux:table.columns sticky class="glass-head">
                     {{-- One column for the round check and, while selecting, the box: both in the cell of one size (x-task-check-cell); the
                          head shows the box that selects all visible tasks then --}}
                     <flux:table.column :class="'w-12 min-w-12 max-sm:w-16 max-sm:min-w-16 '.$pinnedDone">

@@ -122,4 +122,12 @@ class StageBrandTest extends TestCase
             $this->assertStringContainsString('class="count-badge"', file_get_contents(resource_path("views/{$view}.blade.php")), $view);
         }
     }
+
+    public function test_the_head_of_a_board_column_has_the_fill_and_tint_of_a_table_head(): void
+    {
+        $css = $this->css();
+
+        $this->assertStringContainsString(".column-head,\n[data-flux-kanban-column-header] {", $css);
+        $this->assertStringContainsString("[data-flux-kanban-column-header] {\n    background-color: rgb(var(--glass-head-rgb));", $css);
+    }
 }

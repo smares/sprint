@@ -276,13 +276,23 @@ html[data-keyboard] [data-flux-command-input]:has(input:focus-visible) {
 /* The row with the column headings sets itself off from the rows below it with a light tint (the same in every table, on top of
    the opaque fill the heading of the task list gets while it sticks: it is an image, so that it never replaces that fill) */
 th[data-flux-column],
-.column-head {
+.column-head,
+[data-flux-kanban-column-header] {
     background-image: linear-gradient(color-mix(in srgb, var(--color-zinc-500) 10%, transparent), color-mix(in srgb, var(--color-zinc-500) 10%, transparent));
 }
 
 :root.dark th[data-flux-column],
-:root.dark .column-head {
+:root.dark .column-head,
+:root.dark [data-flux-kanban-column-header] {
     background-image: linear-gradient(color-mix(in srgb, var(--color-zinc-400) 9%, transparent), color-mix(in srgb, var(--color-zinc-400) 9%, transparent));
+}
+
+/* The head of a board column is the heading row of that list: the same fill and tint as the head of a table, inside the line of the
+   status color and the rounded corners of the column */
+[data-flux-kanban-column-header] {
+    background-color: rgb(var(--glass-head-rgb));
+    border-start-start-radius: calc(var(--radius-xl) - 3px);
+    border-start-end-radius: calc(var(--radius-xl) - 3px);
 }
 
 /* The panel of the command palette is the rounded box itself (the dialog around it has no fill), and the field in it takes

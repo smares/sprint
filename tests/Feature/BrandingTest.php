@@ -94,4 +94,15 @@ class BrandingTest extends TestCase
         $this->assertStringNotContainsString('<strong>fett</strong>', $sent);
         $this->assertStringContainsString('[Jetzt bestätigen](https://evil.example/x) **fett**', $sent);
     }
+
+    public function test_the_notice_of_a_new_version_is_a_popover_that_rises_above_dialogs(): void
+    {
+        $html = $this->get(route('login'))->assertOk()->getContent();
+
+        // In the top layer of the browser like the dialogs, so a flyout or a modal cannot hide it; it moves into the open modal dialog
+        // (all else outside it cannot be clicked) and back
+        $this->assertStringContainsString('popover="manual"', $html);
+        $this->assertStringContainsString('data-update-notice', $html);
+        $this->assertStringContainsString("dialog.matches(':modal')", $html);
+    }
 }

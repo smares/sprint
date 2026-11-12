@@ -160,9 +160,39 @@
             </div>
         @endpersist
 
-        {{-- A page loaded before a deployment: its scripts may no longer fit the server. The person reloads when it suits them: something typed would be lost otherwise. At the top, so it never covers the selection bar or the offline notice --}}
+        {{-- A page loaded before a deployment: its scripts may no longer fit the server. The person reloads when it suits them: something typed would be lost otherwise. At the top, so it never covers the selection bar or the offline notice. It is a popover, which lives in the top layer of the browser like the dialogs (a flyout, a modal) and would otherwise be hidden behind them; whenever a dialog opens it is raised above it again --}}
         @persist('update-available')
-            <div x-data="{ outdated: false }" x-on:sprint-outdated.window="outdated = true" x-show="outdated" x-cloak role="status" class="pointer-events-none fixed inset-x-0 top-3 z-50 flex justify-center px-4">
+            <div
+                x-data="{
+                    outdated: false,
+                    home: null,
+                    // Above a modal dialog (a flyout, a modal): in the top layer, and inside the dialog, as everything else outside a modal
+                    // dialog cannot be clicked while it is open
+                    raise() {
+                        if (! this.outdated || ! this.$el.showPopover) {
+                            return
+                        }
+
+                        this.home ??= this.$el.parentElement
+                        const modal = [...document.querySelectorAll('dialog')].filter((dialog) => dialog.matches(':modal')).at(-1)
+                        const place = modal ?? this.home
+
+                        if (this.$el.parentElement !== place) {
+                            place.appendChild(this.$el)
+                        }
+
+                        this.$el.hidePopover()
+                        this.$el.showPopover()
+                    },
+                }"
+                x-init="new MutationObserver((records) => { if (records.some((record) => record.target.tagName === 'DIALOG' && ! $el.contains(record.target))) { raise() } }).observe(document.body, { attributes: true, attributeFilter: ['open'], subtree: true })"
+                x-on:sprint-outdated.window="outdated = true; $nextTick(() => raise())"
+                wire:ignore
+                popover="manual"
+                role="status"
+                class="pointer-events-none fixed inset-x-0 top-3 m-0 h-auto w-auto justify-center overflow-visible border-0 bg-transparent p-0 px-4 text-inherit [&:popover-open]:flex"
+                data-update-notice
+            >
                 <div class="pointer-events-auto flex items-center gap-3 rounded-full bg-zinc-800 py-2 ps-4 pe-3 text-sm text-white shadow-lg dark:bg-zinc-100 dark:text-zinc-900">
                     <flux:icon.arrow-path variant="micro" />
                     {{ __('A new version of :app is available.', ['app' => config('app.name')]) }}

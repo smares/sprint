@@ -223,4 +223,17 @@ class StageBrandTest extends TestCase
         $this->assertStringContainsString("\$flux.modal('view-options').close(); \$flux.modal('filters').show()", $list);
         $this->assertStringContainsString('flex flex-wrap items-center gap-2 max-sm:hidden', $list);
     }
+
+    public function test_the_gap_above_the_first_card_is_not_bound_to_the_screen_size(): void
+    {
+        $css = $this->css();
+        $rule = "[data-flux-kanban-column] > div:not([data-collapsed]) [data-flux-kanban-column-cards] {\n    padding-block-start: 0.5rem;";
+
+        $this->assertStringContainsString($rule, $css);
+
+        // It sits outside of the media query of the layout that fills the height (on phones the page scrolls, not the list)
+        $position = strpos($css, $rule);
+        $this->assertNotFalse($position);
+        $this->assertStringNotContainsString('@media (width >= 40rem) and (height >= 40rem) {', substr($css, max(0, $position - 40), 40));
+    }
 }

@@ -139,4 +139,11 @@ class StageBrandTest extends TestCase
         $this->assertStringContainsString("[data-flux-kanban-column-header] {\n        padding-block-end: 1.25rem;", $this->css());
         $this->assertStringContainsString('class="w-full justify-start rounded-lg!"', file_get_contents(resource_path('views/components/quick-add.blade.php')));
     }
+
+    public function test_the_head_of_the_flyout_covers_the_padding_above_it(): void
+    {
+        $view = file_get_contents(resource_path('views/pages/tasks/⚡show.blade.php'));
+
+        $this->assertStringContainsString('class="sticky -top-5 z-20 -mx-5 -mt-5 mb-2 flex', $view);
+    }
 }

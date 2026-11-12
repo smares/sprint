@@ -4,7 +4,7 @@
 
 {{-- Switching views without opening the sidebar, where it is only behind the menu button (below lg): icons on phones, with
      names from sm on. On large screens the sidebar lists the views itself. Two groups, because the button group rounds only
-     its first and last child; the current view is marked in orange like in the sidebar. The slot stands at the right end. --}}
+     its first and last child; the current view is marked in the action blue like in the sidebar. The slot stands at the right end. --}}
 @php
     // All buttons stay outlined, so the group keeps its width
     $current = 'bg-accent/10! text-accent-content! **:data-flux-icon:text-accent-content!';

@@ -214,7 +214,7 @@ new class extends Component
                                 <div wire:key="head-{{ $day->toDateString() }}" @class([
                                     'py-1 text-center text-xs leading-tight',
                                     'bg-zinc-100 dark:bg-zinc-800' => $day->isWeekend(),
-                                    'font-bold text-accent-content' => $day->isToday(),
+                                    'font-bold text-highlight' => $day->isToday(),
                                 ])>
                                     @if ($day->day === 1 || $loop->first)
                                         <div class="whitespace-nowrap font-semibold">{{ $day->isoFormat('MMM') }}</div>
@@ -239,7 +239,7 @@ new class extends Component
                             </div>
                             <div class="relative grid items-center" data-days="{{ $days->count() }}" style="grid-template-columns: repeat({{ $days->count() }}, {{ $this::DAY_WIDTH }})">
                                 @if ($todayColumn)
-                                    <div class="pointer-events-none absolute inset-y-0 w-px bg-accent" style="inset-inline-start: {{ ($todayColumn - 1) * 2 + 1 }}rem"></div>
+                                    <div class="pointer-events-none absolute inset-y-0 w-px bg-highlight" style="inset-inline-start: {{ ($todayColumn - 1) * 2 + 1 }}rem"></div>
                                 @endif
                                 @php($clippedStart = $task->spanStart()->startOfDay() < $this->start)
                                 @php($clippedEnd = $task->spanEnd()->startOfDay() > $this->end->copy()->startOfDay())

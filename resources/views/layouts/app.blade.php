@@ -7,6 +7,7 @@
         <link rel="icon" href="/favicon.ico" sizes="48x48">
         <link rel="icon" href="/favicon.svg" type="image/svg+xml">
         <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+        <link rel="preload" href="{{ Vite::asset('resources/fonts/public-sans/public-sans-latin-wght-normal.woff2') }}" as="font" type="font/woff2" crossorigin>
         <link rel="manifest" href="{{ route('pwa.manifest', absolute: false) }}">
         <meta name="apple-mobile-web-app-title" content="{{ config('app.name') }}">
         {{-- The browser's bar (and the installed app's) in the color of the header; app.js follows the appearance chosen in the menu --}}

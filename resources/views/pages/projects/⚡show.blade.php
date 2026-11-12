@@ -567,7 +567,7 @@ new class extends Component
             <flux:button icon="funnel">
                 {{ __('Filter') }}
                 @if ($this->activeFilters->isNotEmpty())
-                    <flux:badge size="sm" color="orange" inset="top bottom">{{ $this->activeFilters->count() }}</flux:badge>
+                    <flux:badge size="sm" color="blue" inset="top bottom">{{ $this->activeFilters->count() }}</flux:badge>
                 @endif
             </flux:button>
         </flux:modal.trigger>
@@ -578,7 +578,7 @@ new class extends Component
 
         @foreach ($this->activeFilters as $filter)
             {{-- A long label (the names of many collaborators) wraps inside the chip; on one line it would widen the page on a phone --}}
-            <flux:badge wire:key="active-{{ $filter['key'] }}" size="sm" color="orange" as="button" type="button" wire:click="clearFilter('{{ $filter['key'] }}')" title="{{ __('Remove filter') }}" class="max-w-full text-start">
+            <flux:badge wire:key="active-{{ $filter['key'] }}" size="sm" color="blue" as="button" type="button" wire:click="clearFilter('{{ $filter['key'] }}')" title="{{ __('Remove filter') }}" class="max-w-full text-start">
                 <span class="min-w-0 whitespace-normal [overflow-wrap:anywhere]">{{ $filter['label'] }}</span>
                 <flux:icon.x-mark variant="micro" class="ms-1 shrink-0" />
             </flux:badge>

@@ -13,7 +13,7 @@
      the projects page around it (favorites, toggleFavorite in its x-data). --}}
 <div {{ $attributes->class('relative h-full') }}>
     <flux:card
-        class="board-card glass! flex h-full cursor-pointer flex-col overflow-hidden p-0! hover:brightness-105 dark:hover:brightness-110"
+        class="board-card glass! rounded-[22px]! flex h-full cursor-pointer flex-col overflow-hidden p-0! hover:brightness-105 dark:hover:brightness-110"
         x-on:click="if ($event.target.closest('a, button')) return; ($event.metaKey || $event.ctrlKey) ? window.open($el.querySelector('a').href, '_blank') : $el.querySelector('a').click()"
     >
         <div class="h-1.5 shrink-0" style="background: {{ $project->displayColor() }}" aria-hidden="true"></div>

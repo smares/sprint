@@ -36,7 +36,7 @@
                             <flux:badge size="sm">{{ __('Shared') }}</flux:badge>
                         @endif
                         @if ($saved->id === $defaults['project'])
-                            <flux:badge size="sm" color="orange">{{ __('Set for everyone') }}</flux:badge>
+                            <flux:badge size="sm" color="blue">{{ __('Set for everyone') }}</flux:badge>
                         @endif
                         @if ($saved->id === $defaults['opens'])
                             <flux:badge size="sm" color="amber" icon="check">{{ __('Applied for you') }}</flux:badge>

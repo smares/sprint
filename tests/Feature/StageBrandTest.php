@@ -94,7 +94,7 @@ class StageBrandTest extends TestCase
         $this->assertStringContainsString('--glass-card-rgb: 24 28 48;', $css);
         $this->assertStringNotContainsString('--glass-card-rgb: 45 48 51;', $css);
         $this->assertStringContainsString('document.documentElement.dataset.keyboard', $js);
-        $this->assertStringContainsString("th[data-flux-column],\n.column-head {", $css);
+        $this->assertStringContainsString("th[data-flux-column],\n.column-head,", $css);
         $this->assertStringContainsString('--color-highlight-content: #c70069;', $css);
         $this->assertStringContainsString("@media (prefers-reduced-transparency: reduce) {\n    :root,\n    :root.dark {", $css);
     }
@@ -109,7 +109,7 @@ class StageBrandTest extends TestCase
         $this->assertStringContainsString('background-color: rgb(var(--glass-head-rgb));', $css);
         $this->assertStringNotContainsString('--glass-head-a', $css);
         $this->assertStringContainsString('<flux:table.columns sticky class="glass-head">', $list);
-        $this->assertStringContainsString('padding-block-start: 2px;', $css);
+        $this->assertStringContainsString('padding-block-start: 0.5rem;', $css);
     }
 
     public function test_the_numbers_in_badges_are_round_for_one_digit(): void
@@ -121,5 +121,29 @@ class StageBrandTest extends TestCase
         foreach (['pages/projects/⚡show', 'pages/projects/⚡board'] as $view) {
             $this->assertStringContainsString('class="count-badge"', file_get_contents(resource_path("views/{$view}.blade.php")), $view);
         }
+    }
+
+    public function test_the_head_of_a_board_column_has_the_fill_and_tint_of_a_table_head(): void
+    {
+        $css = $this->css();
+
+        $this->assertStringContainsString(".column-head,\n[data-flux-kanban-column-header] {", $css);
+        $this->assertStringContainsString("[data-flux-kanban-column-header] {\n    background-color: rgb(var(--glass-head-rgb));", $css);
+        // The head has a line below it like a table head, and the column a border all around (the status line stays on top)
+        $this->assertStringContainsString('border-block-end: 1px solid color-mix(in srgb, var(--color-zinc-800) 10%, transparent);', $css);
+        $this->assertStringContainsString("[data-flux-kanban-column] > div {\n    border-inline: 1px solid var(--glass-border);", $css);
+    }
+
+    public function test_the_collapsed_column_strip_is_balanced_and_the_quick_add_button_is_no_pill(): void
+    {
+        $this->assertStringContainsString("[data-flux-kanban-column-header] {\n        padding-block-end: 1.25rem;", $this->css());
+        $this->assertStringContainsString('class="w-full justify-start rounded-lg!"', file_get_contents(resource_path('views/components/quick-add.blade.php')));
+    }
+
+    public function test_the_head_of_the_flyout_covers_the_padding_above_it(): void
+    {
+        $view = file_get_contents(resource_path('views/pages/tasks/⚡show.blade.php'));
+
+        $this->assertStringContainsString('class="sticky -top-5 z-20 -mx-5 -mt-5 mb-2 flex', $view);
     }
 }

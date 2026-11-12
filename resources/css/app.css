@@ -276,13 +276,34 @@ html[data-keyboard] [data-flux-command-input]:has(input:focus-visible) {
 /* The row with the column headings sets itself off from the rows below it with a light tint (the same in every table, on top of
    the opaque fill the heading of the task list gets while it sticks: it is an image, so that it never replaces that fill) */
 th[data-flux-column],
-.column-head {
+.column-head,
+[data-flux-kanban-column-header] {
     background-image: linear-gradient(color-mix(in srgb, var(--color-zinc-500) 10%, transparent), color-mix(in srgb, var(--color-zinc-500) 10%, transparent));
 }
 
 :root.dark th[data-flux-column],
-:root.dark .column-head {
+:root.dark .column-head,
+:root.dark [data-flux-kanban-column-header] {
     background-image: linear-gradient(color-mix(in srgb, var(--color-zinc-400) 9%, transparent), color-mix(in srgb, var(--color-zinc-400) 9%, transparent));
+}
+
+/* The head of a board column is the heading row of that list: the same fill and tint as the head of a table, inside the line of the
+   status color and the rounded corners of the column */
+[data-flux-kanban-column-header] {
+    background-color: rgb(var(--glass-head-rgb));
+    border-start-start-radius: calc(var(--radius-lg) - 3px);
+    border-start-end-radius: calc(var(--radius-lg) - 3px);
+    border-block-end: 1px solid color-mix(in srgb, var(--color-zinc-800) 10%, transparent);
+}
+
+:root.dark [data-flux-kanban-column-header] {
+    border-block-end-color: rgb(255 255 255 / 0.2);
+}
+
+/* A board column is bordered all around (the line of the status color stays on top), like the areas of the lists */
+[data-flux-kanban-column] > div {
+    border-inline: 1px solid var(--glass-border);
+    border-block-end: 1px solid var(--glass-border);
 }
 
 /* The panel of the command palette is the rounded box itself (the dialog around it has no fill), and the field in it takes
@@ -838,8 +859,9 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
         & > div:not([data-collapsed]) [data-flux-kanban-column-cards] {
             overflow-y: auto;
 
-            /* The ring of the first card lies outside the card, and the list cuts off what lies above it */
-            padding-block-start: 2px;
+            /* The first card keeps its edge (its ring lies outside the card, and the list cuts off what lies above it) and a gap to the
+               head of the column, as wide as the one at its sides */
+            padding-block-start: 0.5rem;
         }
     }
 
@@ -925,6 +947,11 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
         flex-direction: column-reverse;
         align-items: center;
         gap: 0.75rem;
+    }
+
+    /* The strip of a collapsed column: the text has room below it as it has above it, so it stands in the middle of the head */
+    & [data-flux-kanban-column-header] {
+        padding-block-end: 1.25rem;
     }
 
     /* The buttons of an open column sit in a row that is at least 2rem high, centered in it; here they stand in a column, so the

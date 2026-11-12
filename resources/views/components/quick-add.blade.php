@@ -28,7 +28,7 @@
     }"
     {{ $attributes }}
 >
-    <flux:button x-show="! adding" size="sm" variant="subtle" icon="plus" class="w-full justify-start" x-on:click="open()">{{ __('Add task') }}</flux:button>
+    <flux:button x-show="! adding" size="sm" variant="subtle" icon="plus" class="w-full justify-start rounded-lg!" x-on:click="open()">{{ __('Add task') }}</flux:button>
 
     <div x-show="adding" x-ref="field" x-cloak>
         <flux:input

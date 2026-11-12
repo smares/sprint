@@ -232,7 +232,7 @@ new class extends Component
     </ul>
 
     <flux:heading level="2" size="lg" class="mb-3 mt-10">{{ __('Add a new person') }}</flux:heading>
-    <form wire:submit="create" x-ref="newPerson" class="space-y-4 scroll-mt-6">
+    <form wire:submit="create" x-ref="newPerson" class="surface space-y-4 scroll-mt-6 p-4 sm:p-6">
         <div class="grid gap-4 sm:grid-cols-2">
             <flux:input wire:model="name" :label="__('Name')" />
             <flux:input wire:model="email" type="email" :label="__('Email')" />

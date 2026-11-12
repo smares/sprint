@@ -202,7 +202,7 @@ new class extends Component
     <div class="space-y-4 sm:hidden">
         @forelse ($agenda as $day)
             <div wire:key="agenda-{{ $day['date']->toDateString() }}">
-                <flux:heading size="sm" @class(['mb-1', 'text-highlight' => $day['date']->isToday()])>{{ $day['date']->isoFormat('dd, L') }}</flux:heading>
+                <flux:heading size="sm" @class(['mb-1', 'text-highlight-content' => $day['date']->isToday()])>{{ $day['date']->isoFormat('dd, L') }}</flux:heading>
                 <div class="space-y-1">
                     @foreach ($day['tasks'] as $task)
                         <div wire:key="agenda-{{ $day['date']->toDateString() }}-{{ $task->id }}" class="flex items-center gap-1">
@@ -223,7 +223,7 @@ new class extends Component
             {{-- The surface draws the outer border, so the last column and the last week leave out their own --}}
             <div class="grid min-w-[56rem] grid-cols-7 [&>*:nth-child(7n)]:border-e-0 [&>*:nth-last-child(-n+7)]:border-b-0" data-calendar-month>
                 @foreach ($this->weeks[0] as $weekday)
-                    <div class="sticky top-0 z-10 border-e border-b border-zinc-200 glass-sticky p-2 text-sm font-medium dark:border-zinc-700">
+                    <div class="sticky top-0 z-10 column-head border-e border-b border-zinc-200 glass-sticky p-2 text-sm font-medium dark:border-zinc-700">
                         {{ $weekday['date']->isoFormat('dd') }}
                     </div>
                 @endforeach
@@ -247,8 +247,8 @@ new class extends Component
                         ])>
                             <div class="flex items-start justify-between">
                                 <div @class([
-                                    'text-sm',
-                                    'inline-flex size-6 items-center justify-center rounded-full bg-highlight font-semibold text-white dark:text-stage-ink' => $day['date']->isToday(),
+                                    'inline-flex h-6 min-w-6 items-center justify-center rounded-full text-sm',
+                                    'bg-highlight font-semibold text-white dark:text-stage-ink' => $day['date']->isToday(),
                                 ])>{{ $day['date']->day }}</div>
 
                                 @if ($this->canEdit)

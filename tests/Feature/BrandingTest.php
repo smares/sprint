@@ -31,10 +31,13 @@ class BrandingTest extends TestCase
 
     public function test_pages_show_the_mark_and_link_the_icons(): void
     {
+        config(['sprint.version' => '9.9.9']);
+
         foreach ([route('login'), route('password.request')] as $page) {
             $this->get($page)->assertOk()
-                ->assertSee('<link rel="icon" href="/favicon.svg" type="image/svg+xml">', false)
-                ->assertSee('<link rel="apple-touch-icon" href="/apple-touch-icon.png">', false)
+                ->assertSee('<link rel="icon" href="/favicon.ico?v=9.9.9" sizes="48x48">', false)
+                ->assertSee('<link rel="icon" href="/favicon.svg?v=9.9.9" type="image/svg+xml">', false)
+                ->assertSee('<link rel="apple-touch-icon" href="/apple-touch-icon.png?v=9.9.9">', false)
                 ->assertSee('M32 18l14 14-14 14', false);
         }
 

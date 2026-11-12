@@ -332,7 +332,7 @@ new class extends Component
                         wire:sort:config="{{ \App\Sortable::unlessSelecting($personal ? \App\Sortable::CONFIG : \App\Sortable::CONFIG_MOVE_ONLY) }}"
                     >
                         @foreach ($tasks as $task)
-                            <flux:kanban.card wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" class="board-card cursor-pointer" :wire:sort:item="$task->id">
+                            <flux:kanban.card wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" x-bind:data-task-selected="$wire.selected.map(String).includes('{{ $task->id }}')" class="board-card cursor-pointer" :wire:sort:item="$task->id">
                                 <div class="flex items-start gap-2">
                                     @php($mayEdit = in_array($task->project_id, $this->editableProjectIds, true))
                                     <x-task-check-cell :task="$task" :editable="$mayEdit" :selectable="$mayEdit" compact />

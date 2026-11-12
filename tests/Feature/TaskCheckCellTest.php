@@ -331,6 +331,21 @@ class TaskCheckCellTest extends TestCase
         $this->assertStringNotContainsString('fixed inset-x-0 bottom-4', $html, $view);
     }
 
+    #[DataProvider('viewsThatMakeRoomForTheBar')]
+    public function test_the_count_and_the_marks_change_without_replacing_nodes(string $view): void
+    {
+        $this->task(['title' => 'Eine']);
+
+        $html = $this->squashed($this->page($view)->html());
+
+        // A replaced text node (x-text) makes the browser check every :has() rule of the page (about 50 ms per tick on a board);
+        // the number is written into its text node, the select boxes follow the selection only where they differ, and the row or card
+        // (rows and cards carry their mark as an attribute of their own, see StageBrandTest)
+        $this->assertStringContainsString('<span x-effect="$el.firstChild.data = $wire.selected.length">0</span>', $html, $view);
+        $this->assertStringNotContainsString('x-text="$wire.selected.length"', $html, $view);
+        $this->assertStringContainsString('if ($el.checked !== on) { $el.checked = on }', $html, $view);
+    }
+
     public function test_no_directive_is_left_uncompiled_in_the_attributes_of_the_boxes_and_the_bar(): void
     {
         $this->task(['title' => 'Eine']);

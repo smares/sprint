@@ -10,7 +10,7 @@
     <flux:checkbox
         class="touch-target"
         wire:key="select-{{ $task->id }}-on"
-        x-effect="$el.checked = $wire.selected.map(String).includes('{{ $task->id }}')"
+        x-effect="const on = $wire.selected.map(String).includes('{{ $task->id }}'); if ($el.checked !== on) { $el.checked = on }"
         x-on:change="
             const id = '{{ $task->id }}'
             const selected = $wire.selected.map(String)

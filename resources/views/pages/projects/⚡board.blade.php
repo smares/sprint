@@ -389,7 +389,7 @@ new class extends Component
                         wire:sort:config="{{ \App\Sortable::unlessSelecting($this->sortActive ? \App\Sortable::CONFIG_MOVE_ONLY : \App\Sortable::CONFIG) }}"
                     >
                         @foreach ($this->columns[$status->id] as $task)
-                            <flux:kanban.card wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" :class="'board-card cursor-pointer'.($task->isDone() ? ' opacity-60 hover:opacity-100 focus-within:opacity-100' : '')" :wire:sort:item="$this->canEdit ? $task->id : null">
+                            <flux:kanban.card wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" x-bind:data-task-selected="$wire.selected.map(String).includes('{{ $task->id }}')" :class="'board-card cursor-pointer'.($task->isDone() ? ' opacity-60 hover:opacity-100 focus-within:opacity-100' : '')" :wire:sort:item="$this->canEdit ? $task->id : null">
                                 <div class="flex items-start gap-2">
                                     <x-task-check-cell :task="$task" :editable="$this->canEdit" :selectable="$this->canEdit" compact />
                                     <div class="min-w-0 flex-1 leading-6">

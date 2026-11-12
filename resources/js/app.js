@@ -1268,3 +1268,17 @@ new MutationObserver((records) => {
         }
     })
 }).observe(document.documentElement, { subtree: true, attributes: true, attributeFilter: ['data-bar-docked'] })
+
+// Focus rings follow the keyboard only: set while the last input was a key (also a shortcut such as Ctrl+K, which opens the palette
+// with the ring), cleared by the mouse or touch. A modifier on its own is no input yet.
+const modifierKeys = ['Control', 'Meta', 'Alt', 'Shift']
+document.addEventListener('keydown', (event) => {
+    if (! modifierKeys.includes(event.key)) {
+        document.documentElement.dataset.keyboard = '1'
+    }
+}, true)
+for (const type of ['pointermove', 'pointerdown']) {
+    document.addEventListener(type, () => {
+        delete document.documentElement.dataset.keyboard
+    }, true)
+}

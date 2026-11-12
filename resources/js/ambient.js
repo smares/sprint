@@ -10,6 +10,10 @@
 // The movement is slow: a dozen pictures a second look the same as more, and every picture costs the main thread
 const FRAME_MS = 1000 / 12
 
+/** After this long without input the animation stands still until the next one (see tick) */
+const IDLE_MS = 30000
+const ACTIVITY_EVENTS = ['pointermove', 'pointerdown', 'keydown', 'wheel', 'touchstart', 'scroll']
+
 const palettes = {
     // The colors of the brand: action blue, violet and accent pink (the gradient of the manual), pale on the light page
     light: {
@@ -130,6 +134,9 @@ export const startAmbientBackground = () => {
     const forcedColors = window.matchMedia('(forced-colors: active)')
     let frame = 0
     let timer = 0
+    let lastActive = Date.now()
+    let idle = false
+    let resizing = 0
 
     const palette = () => (document.documentElement.classList.contains('dark') ? palettes.dark : palettes.light)
     const render = () => draw(canvas, context, palette(), Date.now() / 1000)
@@ -140,6 +147,14 @@ export const startAmbientBackground = () => {
     // its own would wake the page 60 times a second to do nothing)
     const tick = () => {
         timer = 0
+
+        // Nobody has touched the page for a while: the picture stays as it is (the blur behind every glass area would be redone
+        // for each picture) until the next input
+        if (Date.now() - lastActive > IDLE_MS) {
+            idle = true
+
+            return
+        }
 
         if (! canRun()) {
             return
@@ -170,6 +185,15 @@ export const startAmbientBackground = () => {
         }
     }
 
+    const activity = () => {
+        lastActive = Date.now()
+
+        if (idle) {
+            idle = false
+            restart()
+        }
+    }
+
     const resize = () => {
         const scale = Math.min(0.4, 640 / window.innerWidth, 360 / window.innerHeight)
 
@@ -184,12 +208,21 @@ export const startAmbientBackground = () => {
         restart()
     }
 
+    // A window is resized in many small steps: the canvas is set once per frame
+    const scheduleResize = () => {
+        cancelAnimationFrame(resizing)
+        resizing = requestAnimationFrame(resize)
+    }
+
     const appearance = new MutationObserver(restart)
 
     appearance.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
     window.addEventListener('ambient-background', switched)
-    window.addEventListener('resize', resize)
+    window.addEventListener('resize', scheduleResize)
     document.addEventListener('visibilitychange', restart)
+    for (const type of ACTIVITY_EVENTS) {
+        window.addEventListener(type, activity, { capture: true, passive: true })
+    }
     reducedMotion.addEventListener('change', restart)
     forcedColors.addEventListener('change', restart)
 
@@ -197,8 +230,12 @@ export const startAmbientBackground = () => {
         cancel()
         appearance.disconnect()
         window.removeEventListener('ambient-background', switched)
-        window.removeEventListener('resize', resize)
+        window.removeEventListener('resize', scheduleResize)
+        cancelAnimationFrame(resizing)
         document.removeEventListener('visibilitychange', restart)
+        for (const type of ACTIVITY_EVENTS) {
+            window.removeEventListener(type, activity, { capture: true })
+        }
         reducedMotion.removeEventListener('change', restart)
         forcedColors.removeEventListener('change', restart)
         delete canvas.dataset.running

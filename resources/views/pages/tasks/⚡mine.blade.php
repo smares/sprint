@@ -107,7 +107,7 @@ new class extends Component
                 </flux:table.columns>
                 <flux:table.rows>
                     @foreach ($this->tasks as $task)
-                        <flux:table.row wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" class="cursor-pointer">
+                        <flux:table.row wire:key="task-{{ $task->id }}" data-task-id="{{ $task->id }}" data-opens-task="{{ $task->id }}" x-bind:data-task-selected="$wire.selected.map(String).includes('{{ $task->id }}')" class="cursor-pointer">
                             <flux:table.cell class="pinned-column min-w-56 whitespace-normal max-sm:min-w-[45vw]">
                                 <div class="flex items-center gap-3">
                                     @php($mayEdit = in_array($task->project_id, $this->editableProjectIds, true))

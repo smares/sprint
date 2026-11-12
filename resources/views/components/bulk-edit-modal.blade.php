@@ -5,7 +5,7 @@
 <flux:modal name="bulk-edit" class="w-full max-w-md">
     <form wire:submit="applyBulkChanges" class="space-y-5">
         <div>
-            <flux:heading size="lg">{!! __('Change selected (:count)', ['count' => '<span x-text="$wire.selected.length">0</span>']) !!}</flux:heading>
+            <flux:heading size="lg">{!! __('Change selected (:count)', ['count' => '<span x-effect="$el.firstChild.data = $wire.selected.length">0</span>']) !!}</flux:heading>
             <flux:text class="mt-1">{{ __('Only what you fill in is changed; everything else stays as it is.') }}</flux:text>
         </div>
 

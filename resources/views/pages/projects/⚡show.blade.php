@@ -630,11 +630,12 @@ new class extends Component
         @endif
 
         <div class="ms-auto flex items-center gap-2 max-sm:hidden">
+            {{-- The menu stands left of the toggle, so that the toggle keeps its place at the right edge as in the other views --}}
+            <x-list-actions-menu :project="$project" :can-edit="$this->canEdit" />
+
             @if ($this->canEdit && $this->tasks->isNotEmpty())
                 <x-selection-toggle instant x-show="! $wire.selecting" />
             @endif
-
-            <x-list-actions-menu :project="$project" :can-edit="$this->canEdit" />
         </div>
     </div>
 

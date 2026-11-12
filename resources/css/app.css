@@ -302,13 +302,8 @@ th[data-flux-column],
 
 /* A board column is bordered all around (the line of the status color stays on top), like the areas of the lists */
 [data-flux-kanban-column] > div {
-    border-inline: 1px solid color-mix(in srgb, var(--color-zinc-800) 10%, transparent);
-    border-block-end: 1px solid color-mix(in srgb, var(--color-zinc-800) 10%, transparent);
-}
-
-:root.dark [data-flux-kanban-column] > div {
-    border-inline-color: rgb(255 255 255 / 0.2);
-    border-block-end-color: rgb(255 255 255 / 0.2);
+    border-inline: 1px solid var(--glass-border);
+    border-block-end: 1px solid var(--glass-border);
 }
 
 /* The panel of the command palette is the rounded box itself (the dialog around it has no fill), and the field in it takes

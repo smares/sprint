@@ -343,6 +343,7 @@ tr[data-task-id][data-task-selected] > td:first-child {
     --glass-card-a: 0.8;
     --glass-popover-a: 0.84;
     --glass-sticky-a: 0.96;
+    --glass-head-rgb: 250 247 252;
     --glass-border: rgb(255 255 255 / 0.8);
     --glass-edge: rgb(24 24 27 / 0.08);
     --glass-shadow: 0 1px 0 rgb(255 255 255 / 0.6) inset, 0 8px 32px -8px rgb(26 27 29 / 0.16);
@@ -356,6 +357,7 @@ tr[data-task-id][data-task-selected] > td:first-child {
 
 :root.dark {
     --glass-rgb: 20 24 42;
+    --glass-head-rgb: 20 25 54;
     --glass-card-rgb: 24 28 48;
     --glass-popover-rgb: 26 30 52;
     --glass-a: 0.74;
@@ -432,6 +434,21 @@ tr[data-task-id][data-task-selected] > td:first-child {
 /* What sticks above content that scrolls under it (table heads, calendar and timeline heads, the bars of the flyout) */
 @utility glass-sticky {
     background-color: var(--glass-sticky-bg);
+}
+
+/* The heading row of a table that sticks to the top while the rows scroll under it. It has the color the heading of the other
+   tables gets from the glass of their area (see the tint of the heads), but is opaque: text of rows passing beneath it must not
+   show through the labels */
+@utility glass-head {
+    background-color: rgb(var(--glass-head-rgb));
+}
+
+/* The number in a badge (filters, saved views): round for one digit, a little wider for more. The width follows the content, so a
+   pill with the padding of a badge would be an oval */
+@utility count-badge {
+    justify-content: center;
+    min-width: 1.5rem;
+    padding-inline: 0.25rem !important;
 }
 
 /* Menus and lists that open over the page (the ones of Flux are handled by the rule at the end of this file) */
@@ -820,6 +837,9 @@ ui-options:has(ui-option:not([data-hidden])) ui-empty {
         /* Not in a collapsed column: its cards wait out of sight below the list and would give it a scrollbar */
         & > div:not([data-collapsed]) [data-flux-kanban-column-cards] {
             overflow-y: auto;
+
+            /* The ring of the first card lies outside the card, and the list cuts off what lies above it */
+            padding-block-start: 2px;
         }
     }
 

@@ -98,4 +98,28 @@ class StageBrandTest extends TestCase
         $this->assertStringContainsString('--color-highlight-content: #c70069;', $css);
         $this->assertStringContainsString("@media (prefers-reduced-transparency: reduce) {\n    :root,\n    :root.dark {", $css);
     }
+
+    public function test_the_sticky_table_head_looks_like_the_head_of_the_other_tables_and_the_first_card_keeps_its_edge(): void
+    {
+        $css = $this->css();
+        $list = file_get_contents(resource_path('views/pages/projects/⚡show.blade.php'));
+
+        $this->assertStringContainsString('@utility glass-head {', $css);
+        // Opaque, so that rows passing beneath it do not show through the labels
+        $this->assertStringContainsString('background-color: rgb(var(--glass-head-rgb));', $css);
+        $this->assertStringNotContainsString('--glass-head-a', $css);
+        $this->assertStringContainsString('<flux:table.columns sticky class="glass-head">', $list);
+        $this->assertStringContainsString('padding-block-start: 2px;', $css);
+    }
+
+    public function test_the_numbers_in_badges_are_round_for_one_digit(): void
+    {
+        $css = $this->css();
+
+        $this->assertStringContainsString("@utility count-badge {\n    justify-content: center;\n    min-width: 1.5rem;", $css);
+
+        foreach (['pages/projects/⚡show', 'pages/projects/⚡board'] as $view) {
+            $this->assertStringContainsString('class="count-badge"', file_get_contents(resource_path("views/{$view}.blade.php")), $view);
+        }
+    }
 }

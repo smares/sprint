@@ -11,7 +11,7 @@
     <div class="flex justify-center px-4">
         <div class="pointer-events-auto flex w-full max-w-xl flex-col gap-2 glass rounded-xl p-2 lg:w-auto lg:max-w-full lg:flex-row lg:items-center">
             <div class="flex items-center gap-2">
-                <flux:text class="whitespace-nowrap px-2 font-medium" role="status">{!! __(':count selected', ['count' => '<span x-text="$wire.selected.length">0</span>']) !!}</flux:text>
+                <flux:text class="whitespace-nowrap px-2 font-medium" role="status">{!! __(':count selected', ['count' => '<span x-effect="$el.firstChild.data = $wire.selected.length">0</span>']) !!}</flux:text>
 
                 @error('selected')
                     <flux:text class="text-red-600 dark:text-red-400" role="alert">{{ $message }}</flux:text>

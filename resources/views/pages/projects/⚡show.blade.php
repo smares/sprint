@@ -704,7 +704,7 @@ new class extends Component
                             <span class="sr-only" @if ($this->canEdit) x-show="! $wire.selecting" @endif>{{ __('Done') }}</span>
                             @if ($this->canEdit)
                                 <span class="flex size-6 items-center justify-center" x-show="$wire.selecting" x-cloak>
-                                    <flux:checkbox aria-label="{{ __('Select all visible tasks') }}" wire:key="select-page" x-effect="const shown = {{ \Illuminate\Support\Js::from($this->tasks->pluck('id')->map(fn ($id) => (string) $id)->all()) }}; const chosen = new Set($wire.selected.map(String)); $el.checked = shown.length > 0 && shown.every((id) => chosen.has(id))" wire:click="togglePage" />
+                                    <flux:checkbox aria-label="{{ __('Select all visible tasks') }}" wire:key="select-page" x-effect="const shown = {{ \Illuminate\Support\Js::from($this->tasks->pluck('id')->map(fn ($id) => (string) $id)->all()) }}; const chosen = new Set($wire.selected.map(String)); const on = shown.length > 0 && shown.every((id) => chosen.has(id)); if ($el.checked !== on) { $el.checked = on }" wire:click="togglePage" />
                                 </span>
                             @endif
                         </span>

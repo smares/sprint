@@ -1383,8 +1383,8 @@ new class extends Component
     @endif
 
     @if ($panel)
-        {{-- Stays at the top of the flyout while its content scrolls: sticky counts from inside the flyout's 1.25rem of padding, so -top-5. Above the bar with the buttons (z-10), which sticks inside the form and moves up behind this header once the form has scrolled out of sight --}}
-        <div class="sticky -top-5 z-20 -mx-5 mb-2 flex items-center gap-2 glass-sticky px-5 py-2">
+        {{-- Stays at the top of the flyout while its content scrolls: sticky counts from inside the flyout's 1.25rem of padding, so -top-5, and -mt-5 moves it up over that padding so no strip of the flyout shows above it. Above the bar with the buttons (z-10), which sticks inside the form and moves up behind this header once the form has scrolled out of sight --}}
+        <div class="sticky -top-5 z-20 -mx-5 -mt-5 mb-2 flex items-center gap-2 glass-sticky px-5 py-2" data-flyout-head>
             <x-project-icon :project="$task->project" size="sm" />
             <flux:text size="sm" class="min-w-0 flex-1 truncate">
                 {{ $task->project->name }}

@@ -133,4 +133,10 @@ class StageBrandTest extends TestCase
         $this->assertStringContainsString('border-block-end: 1px solid color-mix(in srgb, var(--color-zinc-800) 10%, transparent);', $css);
         $this->assertStringContainsString("[data-flux-kanban-column] > div {\n    border-inline: 1px solid var(--glass-border);", $css);
     }
+
+    public function test_the_collapsed_column_strip_is_balanced_and_the_quick_add_button_is_no_pill(): void
+    {
+        $this->assertStringContainsString("[data-flux-kanban-column-header] {\n        padding-block-end: 1.25rem;", $this->css());
+        $this->assertStringContainsString('class="w-full justify-start rounded-lg!"', file_get_contents(resource_path('views/components/quick-add.blade.php')));
+    }
 }

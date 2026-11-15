@@ -978,8 +978,13 @@ class AsanaImportTest extends TestCase
         // As an older import wrote them: without the sub-lists
         DB::table('tasks')->whereIn('id', [$first->id, $second->id])->update(['description' => DB::raw("replace(description, '\n  - Horizon', '')")]);
         DB::table('comments')->whereIn('id', [$mine->id, $edited->id])->update(['body' => DB::raw("replace(body, '\n  - Horizon', '')")]);
+
+        // A description that people have worked on since (a paragraph added, a history entry) is repaired all the same: only its list matters
+        DB::table('tasks')->where('id', $second->id)->update(['description' => DB::raw("description || char(10) || char(10) || 'Ergänzt in Sprint'")]);
         DB::table('task_activities')->insert(['task_id' => $second->id, 'type' => ActivityType::DescriptionChanged, 'created_at' => now()]);
-        DB::table('comments')->where('id', $edited->id)->update(['updated_at' => now()->addDay()]);
+
+        // A list that was changed here is not found as it was imported and stays as it is
+        DB::table('comments')->where('id', $edited->id)->update(['body' => DB::raw("replace(body, '- 500', '- 500 (geändert)')"), 'updated_at' => now()->addDay()]);
         $activities = DB::table('task_activities')->where('task_id', $first->id)->count();
         $changed = DB::table('tasks')->where('id', $first->id)->value('updated_at');
         $dropped = (string) $first->fresh()->description;
@@ -990,14 +995,15 @@ class AsanaImportTest extends TestCase
         $this->assertSame($dropped, (string) $first->fresh()->description);
 
         $this->artisan('asana:repair-lists', ['--token' => 'secret-token', '--no-interaction' => true])
-            ->expectsOutputToContain('was changed here since the import')
-            ->expectsOutputToContain('was edited here since the import')
+            ->expectsOutputToContain('could not be found as the import wrote them')
             ->assertSuccessful();
 
         $this->assertSame($whole, (string) $first->fresh()->description);
         $this->assertSame(1, substr_count($mine->fresh()->body, 'Horizon'));
-        $this->assertStringNotContainsString('Horizon', (string) $second->fresh()->description);
+        $this->assertSame(1, substr_count((string) $second->fresh()->description, 'Horizon'));
+        $this->assertStringContainsString('Ergänzt in Sprint', (string) $second->fresh()->description);
         $this->assertStringNotContainsString('Horizon', $edited->fresh()->body);
+        $this->assertStringContainsString('- 500 (geändert)', $edited->fresh()->body);
 
         // Written quietly: no history entry, the time of the last change stays
         $this->assertSame($activities, DB::table('task_activities')->where('task_id', $first->id)->count());

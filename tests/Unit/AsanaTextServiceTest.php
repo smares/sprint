@@ -51,6 +51,26 @@ class AsanaTextServiceTest extends TestCase
         $this->assertSame("- x\n- a", $this->markdown('<body><ul><ul><li>x</li></ul><li>a</li></ul></body>'));
     }
 
+    public function test_only_the_lists_with_a_sub_list_that_asana_writes_in_the_list_are_given_for_the_repair(): void
+    {
+        $service = new AsanaTextService;
+        $mention = fn (string $gid): string => '@'.$gid;
+
+        $this->assertSame(
+            [['old' => "1. eins\n2. zwei", 'new' => "1. eins\n   - x\n2. zwei"]],
+            $service->subListRepairs('<body>Text<ul><li>a</li></ul>Mitte<ol><li>eins</li><ul><li>x</li></ul><li>zwei</li></ol>Ende</body>', $mention),
+        );
+        $this->assertSame(
+            [['old' => '- a', 'new' => "- a\n  - b\n    - c"], ['old' => '- d', 'new' => "- d\n  - e"]],
+            $service->subListRepairs('<body><ul><li>a</li><ul><li>b</li><ul><li>c</li></ul></ul></ul><ul><li>d</li><ul><li>e</li></ul></ul></body>', $mention),
+        );
+
+        // A list that has its sub-list in the item (valid) was never lost, and there is nothing to repair without rich text
+        $this->assertSame([], $service->subListRepairs('<body><ul><li>a<ul><li>b</li></ul></li></ul></body>', $mention));
+        $this->assertSame([], $service->subListRepairs(null, $mention));
+        $this->assertSame([], $service->subListRepairs('<body>kein <b>XML</body>', $mention));
+    }
+
     public function test_line_breaks_inside_a_paragraph_stay_and_empty_lines_stay_paragraphs(): void
     {
         $this->assertSame("erste  \nzweite\n\ndritte", $this->markdown("<body>erste\nzweite\n\n\ndritte</body>"));

@@ -14,13 +14,13 @@ use DOMText;
  */
 class AsanaTextService
 {
-    /** Whether a list that stands in a list belongs to the item before it; off only in withoutSubLists(). */
+    /** Whether a list that stands in a list belongs to the item before it; off only in the converter of withoutSubLists(). */
     private bool $subLists = true;
 
     /**
-     * A converter that works as the import did before sub-lists were kept, to find what older imports wrote (see AsanaImportService::repairTask()).
+     * A converter that works as the import did before sub-lists were kept, to find what older imports wrote.
      */
-    public function withoutSubLists(): static
+    private function withoutSubLists(): static
     {
         $legacy = clone $this;
         $legacy->subLists = false;
@@ -45,19 +45,102 @@ class AsanaTextService
             return trim($this->literal($plain));
         }
 
+        $root = $this->parse($html);
+
+        if (! $root instanceof DOMElement) {
+            return trim($this->literal($plain));
+        }
+
+        $markdown = $this->render($root, $mention);
+
+        return trim((string) preg_replace("/\n{3,}/", "\n\n", $markdown));
+    }
+
+    /**
+     * The lists of a text in which Asana writes a sub-list as a list of its own right inside the list, each as imports made it
+     * before sub-lists were kept (`old`) and as it is made now (`new`). Only these lists are of interest to repair a text that
+     * was imported earlier: the rest of the text is not touched, so it does not matter what was done to it since.
+     *
+     * @param  Closure(string): string  $mention
+     * @return list<array{old: string, new: string}>
+     */
+    public function subListRepairs(?string $html, Closure $mention): array
+    {
+        $root = $this->parse(trim((string) $html));
+
+        if (! $root instanceof DOMElement) {
+            return [];
+        }
+
+        $legacy = $this->withoutSubLists();
+        $repairs = [];
+
+        foreach ($this->listsWithSubLists($root) as $list) {
+            $old = trim($legacy->list($list, $mention));
+            $new = trim($this->list($list, $mention));
+
+            if ($old !== $new) {
+                $repairs[] = ['old' => $old, 'new' => $new];
+            }
+        }
+
+        return $repairs;
+    }
+
+    /**
+     * The lists that are not part of another list and hold a sub-list written as a list in a list, at any depth.
+     *
+     * @return list<DOMElement>
+     */
+    private function listsWithSubLists(DOMNode $node): array
+    {
+        $found = [];
+
+        foreach ($node->childNodes as $child) {
+            if (! $child instanceof DOMElement) {
+                continue;
+            }
+
+            if (in_array(strtolower($child->nodeName), ['ul', 'ol'], true)) {
+                if ($this->hasSubList($child)) {
+                    $found[] = $child;
+                }
+
+                continue;
+            }
+
+            $found = [...$found, ...$this->listsWithSubLists($child)];
+        }
+
+        return $found;
+    }
+
+    private function hasSubList(DOMElement $list): bool
+    {
+        foreach (['ul', 'ol'] as $name) {
+            foreach ($list->getElementsByTagName($name) as $inner) {
+                if (in_array(strtolower($inner->parentNode?->nodeName ?? ''), ['ul', 'ol'], true)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private function parse(string $html): ?DOMElement
+    {
+        if ($html === '') {
+            return null;
+        }
+
         $document = new DOMDocument;
         $previous = libxml_use_internal_errors(true);
         $loaded = $document->loadXML('<?xml version="1.0" encoding="UTF-8"?>'.(str_starts_with($html, '<body') ? $html : "<body>{$html}</body>"), LIBXML_NONET);
         libxml_clear_errors();
         libxml_use_internal_errors($previous);
 
-        if (! $loaded || ! $document->documentElement instanceof DOMElement) {
-            return trim($this->literal($plain));
-        }
-
-        $markdown = $this->render($document->documentElement, $mention);
-
-        return trim((string) preg_replace("/\n{3,}/", "\n\n", $markdown));
+        return $loaded && $document->documentElement instanceof DOMElement ? $document->documentElement : null;
     }
 
     /**

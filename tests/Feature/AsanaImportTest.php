@@ -1094,9 +1094,44 @@ class AsanaImportTest extends TestCase
 
     public function test_the_repair_stops_when_asana_does_not_accept_the_token(): void
     {
+        $this->routes['projects/100/tasks'][0]['html_notes'] = '<body><ul><li>a</li><ul><li>x</li></ul></ul></body>';
         $this->import(['projects' => ['100']])->assertSuccessful();
 
         $this->routes['tasks/1001'] = ['__error' => ['message' => 'Not Authorized', 'status' => 401]];
         $this->artisan('asana:repair-lists', ['--token' => 'secret-token', '--no-interaction' => true])->assertFailed();
+    }
+
+    public function test_the_repair_stops_when_asana_cannot_be_reached_instead_of_waiting_for_every_task(): void
+    {
+        Sleep::fake();
+        $this->routes['projects/100/tasks'][0]['html_notes'] = '<body><ul><li>a</li><ul><li>x</li></ul></ul></body>';
+        $this->import(['projects' => ['100']])->assertSuccessful();
+
+        $this->routes['tasks/1001'] = ['__error' => ['message' => 'Server error', 'status' => 503]];
+        $this->artisan('asana:repair-lists', ['--token' => 'secret-token', '--no-interaction' => true])
+            ->expectsOutputToContain('Stopped. Run the command again to go on')
+            ->assertFailed();
+    }
+
+    public function test_the_repair_asks_asana_only_for_texts_that_have_a_list(): void
+    {
+        $this->import(['projects' => ['100']])->assertSuccessful();
+        $taskRequests = fn (): int => Http::recorded(fn (Request $request) => str_contains($request->url(), '/api/1.0/tasks/1003'))->count();
+        $before = $taskRequests();
+
+        $this->artisan('asana:repair-lists', ['--token' => 'secret-token', '--no-interaction' => true])->assertSuccessful();
+
+        $this->assertGreaterThan(0, $before);
+        $this->assertSame($before, $taskRequests());
+    }
+
+    public function test_the_repair_says_so_when_the_projects_have_no_imported_tasks(): void
+    {
+        $this->import(['projects' => ['100']])->assertSuccessful();
+
+        $this->artisan('asana:repair-lists', ['projects' => ['9999'], '--token' => 'secret-token', '--no-interaction' => true])
+            ->expectsOutputToContain('0 imported tasks to look at.')
+            ->expectsOutputToContain('No imported tasks in these projects')
+            ->assertSuccessful();
     }
 }

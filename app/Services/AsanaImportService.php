@@ -241,6 +241,16 @@ class AsanaImportService
                     $this->remember($person);
                 }
             }
+
+            foreach (array_keys($this->map['project'] ?? []) as $projectGid) {
+                try {
+                    foreach ($this->asana->get("projects/{$projectGid}", ['opt_fields' => 'members.gid,members.name,members.email'])['members'] ?? [] as $member) {
+                        $this->remember($member);
+                    }
+                } catch (AsanaException $exception) {
+                    throw_if($this->endsTheRun($exception), $exception);
+                }
+            }
         }
 
         return $tasks;
@@ -249,16 +259,18 @@ class AsanaImportService
     /**
      * Puts back the sub-lists that imports made before they were kept (Asana writes a sub-list as a list in the list, which was dropped).
      *
-     * The description and the comments of the task are read from Asana again, and in the text here only the lists that have such
-     * sub-lists are looked at: each is searched as the old conversion made it and replaced by the list as the current one makes it.
-     * The rest of the text stays whatever was done to it since, links to files and the assignee after it included. A list that
-     * is not found as it was imported (it was changed here, stands in a quote or has mentions that read differently now) is not
-     * touched but reported, and so is a text that changes while this runs. Written quietly, as the import does: no history
-     * entry, no notice, the times stay.
+     * Only texts that have a list at all are read from Asana again. In them only the lists that have such sub-lists are looked at:
+     * each is searched as the old conversion made it and replaced by the list as the current one makes it. The rest of the text
+     * stays whatever was done to it since, links to files and the assignee after it included. A list that is not found as it was
+     * imported (it was changed here, stands in a quote or has mentions that read differently now) is not touched but reported,
+     * and so is a text that changes while this runs. Written quietly, as the import does: no history entry, no notice, the times
+     * stay. A list that has nothing but sub-items cannot be told in a text without any list, so such a text is not looked at.
+     *
+     * Needs the tasks and people of repairableTasks().
      *
      * @return array{descriptions: int, comments: int, skipped: list<string>, check: list<string>}
      *
-     * @throws AsanaException When Asana does not accept the token or keeps asking to wait, as it would be the same for every task.
+     * @throws AsanaException When Asana does not accept the token, keeps asking to wait or cannot be reached, as it would be the same for every task.
      */
     public function repairTask(string $gid, int $id, bool $dryRun = false): array
     {
@@ -268,39 +280,41 @@ class AsanaImportService
         $repaired = ['descriptions' => 0, 'comments' => 0];
         $title = (string) Task::query()->whereKey($id)->value('title');
         $where = "“{$title}” (task {$id})";
+        $description = (string) DB::table('tasks')->where('id', $id)->value('description');
+        $wantsDescription = $this->hasListLine($description);
 
         $comments = Comment::query()
             ->join('asana_imports', fn (JoinClause $join) => $join->on('asana_imports.model_id', '=', 'comments.id')->where('asana_imports.kind', 'comment'))
             ->where('comments.task_id', $id)
             ->get(['comments.*', 'asana_imports.gid as asana_gid'])
+            ->filter(fn (Comment $comment) => $this->hasListLine($comment->body))
             ->keyBy('asana_gid');
 
+        if (! $wantsDescription && $comments->isEmpty()) {
+            return $repaired + ['skipped' => [], 'check' => []];
+        }
+
         try {
-            $raw = $this->asana->get("tasks/{$gid}", ['opt_fields' => 'html_notes']);
+            $raw = $wantsDescription ? $this->asana->get("tasks/{$gid}", ['opt_fields' => 'html_notes,assignee.gid,assignee.name,assignee.email,created_by.gid,created_by.name']) : [];
             $stories = $comments->isEmpty() ? [] : $this->commentStories($gid);
         } catch (AsanaException $exception) {
-            throw_if(in_array($exception->status, [401, 429], true), $exception);
+            throw_if($this->endsTheRun($exception), $exception);
 
             return $repaired + ['skipped' => ["{$where}: not read from Asana ({$exception->getMessage()})."], 'check' => []];
         }
 
-        $description = (string) DB::table('tasks')->where('id', $id)->value('description');
-        $result = $this->repairedText($description, $raw['html_notes'] ?? null, $mention);
-
-        foreach ($result['lost'] as $list) {
-            $skipped[] = "{$where}: the import dropped a list of the description that only has sub-items, add it by hand: ".mb_substr(str_replace("\n", ' ', $list), 0, 80);
+        // The people the import knew when it wrote the texts, so that mentions read as they did then
+        foreach ([$raw['assignee'] ?? null, $raw['created_by'] ?? null, ...array_column($stories, 'created_by')] as $person) {
+            if (is_array($person)) {
+                $this->remember($person);
+            }
         }
 
-        if ($result['unplaced'] > 0) {
-            $skipped[] = "{$where}: {$result['unplaced']} list(s) of the description could not be found as the import wrote them ({$this->whyNotFound($result['mentions'], $description)}), left as they are.";
-        }
+        if ($wantsDescription) {
+            $result = $this->repairText($where, 'the description', $description, $raw['html_notes'] ?? null, $mention, Task::MAX_DESCRIPTION_LENGTH, $dryRun ? null : fn (string $text): bool => DB::table('tasks')->where('id', $id)->where('description', $description)->update(['description' => $text]) > 0);
+            $skipped = [...$skipped, ...$result['skipped']];
 
-        if ($result['text'] !== $description) {
-            if (mb_strlen($result['text']) > Task::MAX_DESCRIPTION_LENGTH) {
-                $skipped[] = "{$where}: the description with its sub-lists would be too long, left as it is.";
-            } elseif (! $dryRun && DB::table('tasks')->where('id', $id)->where('description', $description)->update(['description' => $result['text']]) === 0) {
-                $skipped[] = "{$where}: the description changed while this ran, left as it is.";
-            } else {
+            if ($result['repaired']) {
                 $repaired['descriptions']++;
 
                 if (DB::table('task_activities')->where('task_id', $id)->where('type', ActivityType::DescriptionChanged)->exists()) {
@@ -316,27 +330,14 @@ class AsanaImportService
                 continue;
             }
 
-            $result = $this->repairedText($comment->body, $story['html_text'] ?? null, $mention);
+            $result = $this->repairText($where, "the comment {$comment->id}", $comment->body, $story['html_text'] ?? null, $mention, Comment::MAX_BODY_LENGTH, $dryRun ? null : fn (string $text): bool => DB::table('comments')->where('id', $comment->id)->where('body', $comment->body)->update(['body' => $text]) > 0);
+            $skipped = [...$skipped, ...$result['skipped']];
 
-            foreach ($result['lost'] as $list) {
-                $skipped[] = "{$where}: the import dropped a list of the comment {$comment->id} that only has sub-items, add it by hand: ".mb_substr(str_replace("\n", ' ', $list), 0, 80);
-            }
+            if ($result['repaired']) {
+                $repaired['comments']++;
 
-            if ($result['unplaced'] > 0) {
-                $skipped[] = "{$where}: {$result['unplaced']} list(s) of the comment {$comment->id} could not be found as the import wrote them ({$this->whyNotFound($result['mentions'], $comment->body)}), left as they are.";
-            }
-
-            if ($result['text'] !== $comment->body) {
-                if (mb_strlen($result['text']) > Comment::MAX_BODY_LENGTH) {
-                    $skipped[] = "{$where}: the comment {$comment->id} with its sub-lists would be too long, left as it is.";
-                } elseif (! $dryRun && DB::table('comments')->where('id', $comment->id)->where('body', $comment->body)->update(['body' => $result['text']]) === 0) {
-                    $skipped[] = "{$where}: the comment {$comment->id} changed while this ran, left as it is.";
-                } else {
-                    $repaired['comments']++;
-
-                    if ($comment->wasEdited()) {
-                        $check[] = "{$where}: the sub-lists of the comment {$comment->id} were put back, but the comment was edited here before.";
-                    }
+                if ($comment->wasEdited()) {
+                    $check[] = "{$where}: the sub-lists of the comment {$comment->id} were put back, but the comment was edited here before.";
                 }
             }
         }
@@ -346,6 +347,58 @@ class AsanaImportService
         }
 
         return $repaired + ['skipped' => $skipped, 'check' => $check];
+    }
+
+    /**
+     * Repairs one text and writes it.
+     *
+     * @param  Closure(string): string  $mention
+     * @param  (Closure(string): bool)|null  $write  Writes the new text and tells whether the stored one was still the one that was read; null for a dry run.
+     * @return array{repaired: bool, skipped: list<string>}
+     */
+    private function repairText(string $where, string $what, string $stored, ?string $html, Closure $mention, int $limit, ?Closure $write): array
+    {
+        $result = $this->repairedText($stored, $html, $mention);
+        $skipped = [];
+
+        foreach ($result['lost'] as $list) {
+            $skipped[] = "{$where}: the import dropped a list of {$what} that only has sub-items, add it by hand: ".mb_substr(str_replace("\n", ' ', $list), 0, 80);
+        }
+
+        if ($result['unplaced'] > 0) {
+            $skipped[] = "{$where}: {$result['unplaced']} list(s) of {$what} could not be found as the import wrote them ({$this->whyNotFound($result['mentions'], $stored)}), left as they are.";
+        }
+
+        if ($result['text'] === $stored) {
+            return ['repaired' => false, 'skipped' => $skipped];
+        }
+
+        if (mb_strlen($result['text']) > $limit) {
+            return ['repaired' => false, 'skipped' => [...$skipped, "{$where}: {$what} with its sub-lists would be too long, left as it is."]];
+        }
+
+        if ($write instanceof Closure && ! $write($result['text'])) {
+            return ['repaired' => false, 'skipped' => [...$skipped, "{$where}: {$what} changed while this ran, left as it is."]];
+        }
+
+        return ['repaired' => true, 'skipped' => $skipped];
+    }
+
+    /**
+     * Whether a text has a line of a list, which is where a list that was imported without sub-lists can be looked for.
+     */
+    private function hasListLine(string $text): bool
+    {
+        return preg_match('/^ *(?:- |\d+\. )/m', $text) === 1;
+    }
+
+    /**
+     * Whether Asana's answer would be the same for every task (a token it does not accept, waiting that does not end, an
+     * outage, no connection), so that going on would only wait for each of them.
+     */
+    private function endsTheRun(AsanaException $exception): bool
+    {
+        return in_array($exception->status, [401, 429], true) || $exception->status === 0 || $exception->status >= 500;
     }
 
     /**
@@ -416,8 +469,9 @@ class AsanaImportService
 
         while (($position = strpos($text, $block, $offset)) !== false) {
             $end = $position + strlen($block);
-            $startsBlock = trim(substr($text, 0, $position)) === '' || preg_match('/\n[ \t]*\n[ \t]*\z/', substr($text, 0, $position)) === 1;
-            $endsBlock = preg_match('/\G\s*\z/', $text, $none, 0, $end) === 1 || preg_match('/\G[ \t]*\n[ \t]*\n/', $text, $none, 0, $end) === 1;
+            $before = substr($text, max(0, $position - 200), min($position, 200));
+            $startsBlock = ($position <= 200 && trim($before) === '') || preg_match('/\n[ \t]*\n[ \t]*\z/', $before) === 1;
+            $endsBlock = preg_match('/\G\s*\z/', $text, offset: $end) === 1 || preg_match('/\G[ \t]*\n[ \t]*\n/', $text, offset: $end) === 1;
 
             if ($startsBlock && $endsBlock) {
                 return $position;
@@ -450,7 +504,7 @@ class AsanaImportService
     {
         $stories = [];
 
-        foreach ($this->asana->paginate("tasks/{$taskGid}/stories", ['opt_fields' => 'resource_subtype,text,html_text']) as $story) {
+        foreach ($this->asana->paginate("tasks/{$taskGid}/stories", ['opt_fields' => 'resource_subtype,html_text,created_by.gid,created_by.name']) as $story) {
             if (($story['resource_subtype'] ?? '') === 'comment_added') {
                 $stories[] = $story;
             }

@@ -425,27 +425,28 @@ class AsanaImportService
         foreach ($this->text->listForms($html, $mention) as $form) {
             $old = $this->text->linkTasks($form['old'], $resolve);
             $new = $this->text->linkTasks($form['new'], $resolve);
-            $wholeAt = $this->findBlock($stored, $new, $offset);
+            $whole = $this->findList($stored, $new, $offset);
 
             if ($old === $new) {
-                $offset = $wholeAt === null ? $offset : $wholeAt + strlen($new);
+                $offset = $whole === null ? $offset : $whole['at'] + strlen($whole['form']);
 
                 continue;
             }
 
             if ($old === '') {
-                $lost = $wholeAt === null ? [...$lost, $new] : $lost;
+                $lost = $whole === null ? [...$lost, $new] : $lost;
 
                 continue;
             }
 
-            $droppedAt = $this->findBlock($stored, $old, $offset);
+            $dropped = $this->findList($stored, $old, $offset);
 
-            if ($wholeAt !== null && ($droppedAt === null || $wholeAt < $droppedAt)) {
-                $offset = $wholeAt + strlen($new);
-            } elseif ($droppedAt !== null) {
-                $stored = substr_replace($stored, $new, $droppedAt, strlen($old));
-                $offset = $droppedAt + strlen($new);
+            if ($whole !== null && ($dropped === null || $whole['at'] < $dropped['at'])) {
+                $offset = $whole['at'] + strlen($whole['form']);
+            } elseif ($dropped !== null) {
+                $replacement = $dropped['trimmed'] ? rtrim($new) : $new;
+                $stored = substr_replace($stored, $replacement, $dropped['at'], strlen($dropped['form']));
+                $offset = $dropped['at'] + strlen($replacement);
             } else {
                 $unplaced++;
                 $mentions = $mentions || $form['mentions'] || $old !== $form['old'];
@@ -453,6 +454,28 @@ class AsanaImportService
         }
 
         return ['text' => $stored, 'unplaced' => $unplaced, 'mentions' => $mentions, 'lost' => $lost];
+    }
+
+    /**
+     * Where a list stands in the text (from the offset on) and in which form: as it is, or without the blanks at its end when it
+     * ends the text, as the import trimmed the end of every text (a list that ends in an empty item has lost the space after its marker).
+     *
+     * @return array{at: int, form: string, trimmed: bool}|null
+     */
+    private function findList(string $text, string $form, int $offset): ?array
+    {
+        $position = $this->findBlock($text, $form, $offset);
+
+        if ($position !== null) {
+            return ['at' => $position, 'form' => $form, 'trimmed' => false];
+        }
+
+        $trimmed = rtrim($form);
+        $position = $trimmed === $form ? null : $this->findBlock($text, $trimmed, $offset);
+
+        return $position !== null && trim(substr($text, $position + strlen($trimmed))) === ''
+            ? ['at' => $position, 'form' => $trimmed, 'trimmed' => true]
+            : null;
     }
 
     /**

@@ -14,8 +14,19 @@ use DOMText;
  */
 class AsanaTextService
 {
-    /** Whether a list that stands in a list belongs to the item before it; off only to rebuild what older imports wrote. */
+    /** Whether a list that stands in a list belongs to the item before it; off only in withoutSubLists(). */
     private bool $subLists = true;
+
+    /**
+     * A converter that works as the import did before sub-lists were kept, to find what older imports wrote (see AsanaImportService::repairTask()).
+     */
+    public function withoutSubLists(): static
+    {
+        $legacy = clone $this;
+        $legacy->subLists = false;
+
+        return $legacy;
+    }
 
     /** Task addresses: /0/<project>/<task>, /0/<project>/<task>/f and /1/<workspace>/project/<project>/task/<task>. */
     private const string TASK_URL = 'https://app\.asana\.com/(?:0/\w+/(\d+)(?:/f)?|1/\d+/(?:[a-z_]+/\d+/)*task/(\d+)(?:/[a-z]+)?)';
@@ -25,12 +36,10 @@ class AsanaTextService
      * not well-formed XML.
      *
      * @param  Closure(string): string  $mention  Text for a mention of the Asana user with this id.
-     * @param  bool  $subLists  False gives the text as imports made it before sub-lists were kept (see AsanaImportService::repairSubLists()).
      */
-    public function toMarkdown(?string $html, string $plain, Closure $mention, bool $subLists = true): string
+    public function toMarkdown(?string $html, string $plain, Closure $mention): string
     {
         $html = trim((string) $html);
-        $this->subLists = $subLists;
 
         if ($html === '') {
             return trim($this->literal($plain));
@@ -193,6 +202,8 @@ class AsanaTextService
     }
 
     /**
+     * A list; one that Asana writes as a list of its own right inside the list (after the item it belongs to) is that item's sub-list.
+     *
      * @param  Closure(string): string  $mention
      */
     private function list(DOMElement $list, Closure $mention): string
@@ -209,13 +220,16 @@ class AsanaTextService
 
             $name = strtolower($item->nodeName);
 
-            // Asana writes a sub-list as a list of its own right in the list, after the item it belongs to
             if ($name === 'ul' || $name === 'ol') {
                 if (! $this->subLists) {
                     continue;
                 }
 
                 $nested = trim($this->list($item, $mention));
+
+                if ($nested === '') {
+                    continue;
+                }
 
                 if ($lines === []) {
                     $lines[] = $nested;

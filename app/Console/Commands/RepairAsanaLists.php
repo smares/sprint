@@ -16,6 +16,9 @@ use Illuminate\Console\Command;
 #[Description('Puts back the sub-lists in imported descriptions and comments that older imports dropped')]
 class RepairAsanaLists extends Command
 {
+    /** How many of the texts left as they are are printed. */
+    private const int NOTES_SHOWN = 40;
+
     public function handle(): int
     {
         // The configuration may be cached (as in the Docker image), then it does not know a token passed to a running container
@@ -50,13 +53,9 @@ class RepairAsanaLists extends Command
                 $result = $service->repairTask($task['gid'], $task['id'], $dryRun);
                 $totals['descriptions'] += $result['descriptions'];
                 $totals['comments'] += $result['comments'];
-                $skipped = [...$skipped, ...$result['skipped']];
+                array_push($skipped, ...$result['skipped']);
             });
             $this->newLine(2);
-
-            if (! $dryRun) {
-                $service->finishRepair();
-            }
         } catch (AsanaException $exception) {
             $this->newLine();
             $this->components->error($exception->getMessage());
@@ -68,8 +67,12 @@ class RepairAsanaLists extends Command
         $this->components->twoColumnDetail('Descriptions', (string) $totals['descriptions']);
         $this->components->twoColumnDetail('Comments', (string) $totals['comments']);
 
-        foreach ($skipped as $note) {
+        foreach (array_slice($skipped, 0, self::NOTES_SHOWN) as $note) {
             $this->components->warn($note);
+        }
+
+        if (count($skipped) > self::NOTES_SHOWN) {
+            $this->components->warn((count($skipped) - self::NOTES_SHOWN).' more texts left as they are.');
         }
 
         return self::SUCCESS;

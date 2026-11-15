@@ -79,6 +79,12 @@ class AsanaImportService
 
     private readonly AsanaTextService $text;
 
+    /** The conversion of texts as imports made it before sub-lists were kept. */
+    private readonly AsanaTextService $legacyText;
+
+    /** @var ?Closure(string): ?array{id: int, title: string} */
+    private ?Closure $linkResolver = null;
+
     /** @var array<string, array<string, int>> What has been taken over: kind => Asana id => id here. */
     private array $map = [];
 
@@ -150,6 +156,7 @@ class AsanaImportService
     public function __construct(private readonly AsanaClient $asana)
     {
         $this->text = new AsanaTextService;
+        $this->legacyText = $this->text->withoutSubLists();
         $this->tags = collect();
     }
 
@@ -213,20 +220,30 @@ class AsanaImportService
     }
 
     /**
-     * The tasks of earlier imports whose texts repairTask() looks at, to be gone through one by one (and then finishRepair()).
+     * The tasks of earlier imports whose texts repairTask() looks at, to be gone through one by one.
+     *
+     * The people of the workspaces are read as the import read them, so that a mention reads as it did then.
      *
      * @param  list<int>  $projectIds  Projects here to repair; none for all with imported tasks.
      * @return list<array{gid: string, id: int}>
      */
     public function repairableTasks(array $projectIds = []): array
     {
-        $this->linkTexts = [];
         $this->loadMap();
+        $this->linkResolver = $this->taskLinkResolver();
         $tasks = [];
 
         foreach ($this->map['task'] ?? [] as $gid => $id) {
             if ($projectIds === [] || in_array($this->projectOfTask[$id] ?? 0, $projectIds, true)) {
                 $tasks[] = ['gid' => (string) $gid, 'id' => $id];
+            }
+        }
+
+        if ($tasks !== []) {
+            foreach ($this->asana->paginate('workspaces', ['opt_fields' => 'name']) as $workspace) {
+                foreach ($this->asana->paginate('users', ['workspace' => $workspace['gid'], 'opt_fields' => self::PERSON_FIELDS]) as $person) {
+                    $this->remember($person);
+                }
             }
         }
 
@@ -237,79 +254,89 @@ class AsanaImportService
      * Puts back the sub-lists that imports made before they were kept (Asana writes a sub-list as a list in the list, which was dropped).
      *
      * The description and the comments of the task are read from Asana again, and in the text here the part as the old conversion
-     * made it is replaced by the part as the current one makes it. What was written around it (links to files, the assignee) stays,
-     * and a text that was changed here since (it no longer holds the old part, or it has a history entry or an edit mark) is not
-     * touched but reported. Written quietly, as the import does: no history entry, no notice, the times stay.
+     * made it (at the start of a description, after the name of a comment's author) is replaced by the part as the current one
+     * makes it. What was written around it (links to files, the assignee) stays. A text that was changed here since (it has a
+     * history entry or an edit mark, or no longer holds the old part) is not touched but reported, and so is one that changes
+     * while this runs. Written quietly, as the import does: no history entry, no notice, the times stay.
      *
      * @return array{descriptions: int, comments: int, skipped: list<string>}
+     *
+     * @throws AsanaException When Asana does not accept the token or keeps asking to wait, as it would be the same for every task.
      */
     public function repairTask(string $gid, int $id, bool $dryRun = false): array
     {
-        $mention = function (string $gid): string {
-            $this->ensurePerson($gid);
-
-            return $this->mentionText($gid);
-        };
+        $mention = fn (string $person): string => $this->mentionText($person);
         $skipped = [];
         $repaired = ['descriptions' => 0, 'comments' => 0];
         $title = (string) Task::query()->whereKey($id)->value('title');
+        $where = "“{$title}” (task {$id})";
+
+        $comments = Comment::query()
+            ->join('asana_imports', fn (JoinClause $join) => $join->on('asana_imports.model_id', '=', 'comments.id')->where('asana_imports.kind', 'comment'))
+            ->where('comments.task_id', $id)
+            ->get(['comments.*', 'asana_imports.gid as asana_gid'])
+            ->keyBy('asana_gid');
 
         try {
             $raw = $this->asana->get("tasks/{$gid}", ['opt_fields' => 'html_notes,notes']);
-            $stories = $this->commentStories($gid);
+            $stories = $comments->isEmpty() ? [] : $this->commentStories($gid);
         } catch (AsanaException $exception) {
-            return $repaired + ['skipped' => ["“{$title}” (task {$id}): not read from Asana ({$exception->getMessage()})."]];
+            if (in_array($exception->status, [401, 429], true)) {
+                throw $exception;
+            }
+
+            return $repaired + ['skipped' => ["{$where}: not read from Asana ({$exception->getMessage()})."]];
         }
 
         $description = (string) DB::table('tasks')->where('id', $id)->value('description');
-        $fixed = $this->repairedText($description, $raw['html_notes'] ?? null, (string) ($raw['notes'] ?? ''), $mention);
 
-        if ($fixed === null) {
-            $skipped[] = "“{$title}” (task {$id}): the description is not what the import wrote, left as it is.";
-        } elseif ($fixed !== $description) {
-            if (mb_strlen($fixed) > Task::MAX_DESCRIPTION_LENGTH) {
-                $skipped[] = "“{$title}” (task {$id}): the description with its sub-lists would be too long, left as it is.";
-            } elseif (DB::table('task_activities')->where('task_id', $id)->where('type', ActivityType::DescriptionChanged)->exists()) {
-                $skipped[] = "“{$title}” (task {$id}): the description was changed here since the import, left as it is.";
-            } else {
-                $repaired['descriptions']++;
+        if (DB::table('task_activities')->where('task_id', $id)->where('type', ActivityType::DescriptionChanged)->exists()) {
+            $skipped[] = "{$where}: the description was changed here since the import, left as it is.";
+        } else {
+            $fixed = $this->repairedText($description, $raw['html_notes'] ?? null, (string) ($raw['notes'] ?? ''), $mention, false);
 
-                if (! $dryRun) {
-                    DB::table('tasks')->where('id', $id)->update(['description' => $fixed]);
-                    $this->linkTexts[] = ['tasks', $id];
+            if ($fixed === null) {
+                $skipped[] = "{$where}: the description ".$this->whyNotRepaired($description, Task::MAX_DESCRIPTION_LENGTH).', left as it is.';
+            } elseif ($fixed !== $description) {
+                if (mb_strlen($fixed) > Task::MAX_DESCRIPTION_LENGTH) {
+                    $skipped[] = "{$where}: the description with its sub-lists would be too long, left as it is.";
+                } elseif (! $dryRun && DB::table('tasks')->where('id', $id)->where('description', $description)->update(['description' => $fixed]) === 0) {
+                    $skipped[] = "{$where}: the description changed while this ran, left as it is.";
+                } else {
+                    $repaired['descriptions']++;
                 }
             }
         }
 
         foreach ($stories as $story) {
-            $commentId = $this->map['comment'][(string) $story['gid']] ?? null;
-            $comment = $commentId === null ? null : Comment::query()->find($commentId);
+            $comment = $comments->get((string) $story['gid']);
 
-            if (! $comment instanceof Comment || $comment->task_id !== $id) {
+            if (! $comment instanceof Comment) {
                 continue;
             }
 
-            $fixed = $this->repairedText($comment->body, $story['html_text'] ?? null, (string) ($story['text'] ?? ''), $mention);
+            if ($comment->wasEdited()) {
+                $skipped[] = "{$where}: the comment {$comment->id} was edited here since the import, left as it is.";
+
+                continue;
+            }
+
+            $fixed = $this->repairedText($comment->body, $story['html_text'] ?? null, (string) ($story['text'] ?? ''), $mention, true);
 
             if ($fixed === null) {
-                $skipped[] = "“{$title}” (task {$id}): the comment {$comment->id} is not what the import wrote, left as it is.";
+                $skipped[] = "{$where}: the comment {$comment->id} ".$this->whyNotRepaired($comment->body, Comment::MAX_BODY_LENGTH).', left as it is.';
             } elseif ($fixed !== $comment->body) {
-                if ($comment->wasEdited()) {
-                    $skipped[] = "“{$title}” (task {$id}): the comment {$comment->id} was edited here since the import, left as it is.";
-                } elseif (mb_strlen($fixed) > Comment::MAX_BODY_LENGTH) {
-                    $skipped[] = "“{$title}” (task {$id}): the comment {$comment->id} with its sub-lists would be too long, left as it is.";
+                if (mb_strlen($fixed) > Comment::MAX_BODY_LENGTH) {
+                    $skipped[] = "{$where}: the comment {$comment->id} with its sub-lists would be too long, left as it is.";
+                } elseif (! $dryRun && DB::table('comments')->where('id', $comment->id)->where('body', $comment->body)->update(['body' => $fixed]) === 0) {
+                    $skipped[] = "{$where}: the comment {$comment->id} changed while this ran, left as it is.";
                 } else {
                     $repaired['comments']++;
-
-                    if (! $dryRun) {
-                        DB::table('comments')->where('id', $comment->id)->update(['body' => $fixed]);
-                        $this->linkTexts[] = ['comments', $comment->id];
-                    }
                 }
             }
         }
 
-        if (($repaired['descriptions'] > 0 || $repaired['comments'] > 0) && ! $dryRun) {
+        if (! $dryRun && ($repaired['descriptions'] > 0 || $repaired['comments'] > 0)) {
             app(TaskSearchService::class)->index($id);
         }
 
@@ -317,32 +344,50 @@ class AsanaImportService
     }
 
     /**
-     * Links to Asana tasks in what repairTask() wrote become mentions of the imported tasks, as after an import.
-     */
-    public function finishRepair(): void
-    {
-        $this->rewriteLinks();
-        $this->linkTexts = [];
-    }
-
-    /**
-     * The text with the part of the old conversion replaced by the part of the current one: the same text when nothing differs,
-     * null when the text no longer holds the old part (it was written differently or changed since).
+     * The text with the part of the old conversion replaced by the part of the current one: the same text when there is nothing
+     * to do (nothing differs, or the sub-lists are there already), null when the old part is not where the import put it.
+     *
+     * Links to imported tasks are turned into mentions in both parts, as the import did with the text.
      *
      * @param  Closure(string): string  $mention
      */
-    private function repairedText(string $stored, ?string $html, string $plain, Closure $mention): ?string
+    private function repairedText(string $stored, ?string $html, string $plain, Closure $mention, bool $isComment): ?string
     {
-        $old = $this->text->toMarkdown($html, $plain, $mention, false);
-        $new = $this->text->toMarkdown($html, $plain, $mention);
+        $resolve = $this->linkResolver ?? $this->taskLinkResolver();
+        $old = $this->text->linkTasks($this->legacyText->toMarkdown($html, $plain, $mention), $resolve);
+        $new = $this->text->linkTasks($this->text->toMarkdown($html, $plain, $mention), $resolve);
 
-        if ($old === $new) {
+        // The old part is the start of the new one when the sub-list ends the text, so a text that was repaired matches as well
+        if ($old === $new || str_contains($stored, $new)) {
             return $stored;
         }
 
-        $position = strpos($stored, $old);
+        $position = $old === '' ? false : strpos($stored, $old);
 
-        return $position === false ? null : substr_replace($stored, $new, $position, strlen($old));
+        if ($position === false) {
+            return null;
+        }
+
+        // A description starts with the text; a comment of a person without an account has the name of the author before it
+        $before = substr($stored, 0, $position);
+
+        if ($before !== '' && ! ($isComment && preg_match('/\A\*\*[^\n]*\*\*\n\n\z/u', $before) === 1)) {
+            return null;
+        }
+
+        return substr_replace($stored, $new, $position, strlen($old));
+    }
+
+    /**
+     * Why the old part was not found, for the report.
+     */
+    private function whyNotRepaired(string $stored, int $limit): string
+    {
+        return match (true) {
+            str_contains($stored, '](task:') || str_contains($stored, '](user:') => 'has mentions that read differently now (a task or person that was renamed?)',
+            mb_strlen($stored) >= $limit => 'was shortened to the limit at the import',
+            default => 'is not what the import wrote',
+        };
     }
 
     /**
@@ -361,22 +406,6 @@ class AsanaImportService
         }
 
         return $stories;
-    }
-
-    /**
-     * Name and address of a person who is mentioned in a text, which only the person's own record has.
-     */
-    private function ensurePerson(string $gid): void
-    {
-        if (isset($this->people[$gid])) {
-            return;
-        }
-
-        try {
-            $this->remember($this->asana->get("users/{$gid}", ['opt_fields' => self::PERSON_FIELDS]) + ['gid' => $gid]);
-        } catch (AsanaException) {
-            $this->people[$gid] = ['name' => null, 'email' => null];
-        }
     }
 
     /**
@@ -1597,19 +1626,7 @@ class AsanaImportService
     {
         $this->collectLinkTexts();
 
-        // A task is linked from many texts, so its title is looked up once
-        $titles = [];
-        $resolve = function (string $gid) use (&$titles): ?array {
-            $id = $this->map['task'][$gid] ?? null;
-
-            if ($id === null) {
-                return null;
-            }
-
-            $titles[$id] ??= Task::query()->whereKey($id)->value('title');
-
-            return $titles[$id] === null ? null : ['id' => $id, 'title' => (string) $titles[$id]];
-        };
+        $resolve = $this->taskLinkResolver();
 
         foreach (array_unique($this->linkTexts, SORT_REGULAR) as [$table, $id]) {
             $column = $table === 'tasks' ? 'description' : 'body';
@@ -1624,6 +1641,28 @@ class AsanaImportService
                 }
             }
         }
+    }
+
+    /**
+     * The imported task for an Asana task id, if any, with its title; a task is linked from many texts, so its title is looked up once.
+     *
+     * @return Closure(string): ?array{id: int, title: string}
+     */
+    private function taskLinkResolver(): Closure
+    {
+        $titles = [];
+
+        return function (string $gid) use (&$titles): ?array {
+            $id = $this->map['task'][$gid] ?? null;
+
+            if ($id === null) {
+                return null;
+            }
+
+            $titles[$id] ??= Task::query()->whereKey($id)->value('title');
+
+            return $titles[$id] === null ? null : ['id' => $id, 'title' => (string) $titles[$id]];
+        };
     }
 
     /**

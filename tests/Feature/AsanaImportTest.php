@@ -944,19 +944,17 @@ class AsanaImportTest extends TestCase
     public function test_the_repair_puts_back_the_sub_lists_that_older_imports_dropped_and_leaves_changed_texts_alone(): void
     {
         $html = '<body>Fehler:<ul><li>500</li><ul><li>Horizon</li></ul></ul></body>';
-        $whole = "Fehler:\n\n- 500\n  - Horizon";
-        $dropped = "Fehler:\n\n- 500";
+        $withLink = '<body>Siehe <a href="https://app.asana.com/0/100/1003">Umsetzung</a>:<ul><li>500</li><ul><li>Horizon</li></ul></ul></body>';
 
         foreach ($this->routes['projects/100/tasks'] as &$raw) {
             if (in_array($raw['gid'], ['1001', '1003'], true)) {
-                $raw['html_notes'] = $html;
+                $raw['html_notes'] = $raw['gid'] === '1001' ? $withLink : $html;
             }
         }
         unset($raw);
 
-        foreach (['1001', '1003'] as $gid) {
-            $this->routes["tasks/{$gid}"] = ['gid' => $gid, 'html_notes' => $html, 'notes' => ''];
-        }
+        $this->routes['tasks/1001'] = ['gid' => '1001', 'html_notes' => $withLink, 'notes' => ''];
+        $this->routes['tasks/1003'] = ['gid' => '1003', 'html_notes' => $html, 'notes' => ''];
 
         foreach ($this->routes['tasks/1001/stories'] as &$story) {
             if (in_array($story['gid'], ['9002', '9003'], true)) {
@@ -969,9 +967,13 @@ class AsanaImportTest extends TestCase
 
         $first = Task::where('title', 'Konzept')->firstOrFail();
         $second = Task::where('title', 'Umsetzung')->firstOrFail();
-        $mine = Comment::where('body', 'like', "{$whole}%")->orderBy('id')->firstOrFail();
+        $mine = Comment::where('body', 'like', 'Fehler:%')->orderBy('id')->firstOrFail();
         $edited = Comment::where('body', 'like', '%Cara%')->firstOrFail();
-        $this->assertStringStartsWith($whole, (string) $first->description);
+        $whole = (string) $first->description;
+
+        // The link to an imported task became a mention, and the import with the sub-lists is complete
+        $this->assertStringContainsString("](task:{$second->id})", $whole);
+        $this->assertSame(1, substr_count($whole, 'Horizon'));
 
         // As an older import wrote them: without the sub-lists
         DB::table('tasks')->whereIn('id', [$first->id, $second->id])->update(['description' => DB::raw("replace(description, '\n  - Horizon', '')")]);
@@ -980,19 +982,20 @@ class AsanaImportTest extends TestCase
         DB::table('comments')->where('id', $edited->id)->update(['updated_at' => now()->addDay()]);
         $activities = DB::table('task_activities')->where('task_id', $first->id)->count();
         $changed = DB::table('tasks')->where('id', $first->id)->value('updated_at');
+        $dropped = (string) $first->fresh()->description;
+        $this->assertStringNotContainsString('Horizon', $dropped);
 
         $this->serveAsana();
         $this->artisan('asana:repair-lists', ['--token' => 'secret-token', '--no-interaction' => true, '--dry-run' => true])->expectsOutputToContain('nothing was changed')->assertSuccessful();
-        $this->assertStringStartsWith($dropped, (string) $first->fresh()->description);
-        $this->assertStringNotContainsString('Horizon', (string) $first->fresh()->description);
+        $this->assertSame($dropped, (string) $first->fresh()->description);
 
         $this->artisan('asana:repair-lists', ['--token' => 'secret-token', '--no-interaction' => true])
             ->expectsOutputToContain('was changed here since the import')
             ->expectsOutputToContain('was edited here since the import')
             ->assertSuccessful();
 
-        $this->assertStringStartsWith($whole, (string) $first->fresh()->description);
-        $this->assertStringContainsString($whole, $mine->fresh()->body);
+        $this->assertSame($whole, (string) $first->fresh()->description);
+        $this->assertSame(1, substr_count($mine->fresh()->body, 'Horizon'));
         $this->assertStringNotContainsString('Horizon', (string) $second->fresh()->description);
         $this->assertStringNotContainsString('Horizon', $edited->fresh()->body);
 
@@ -1000,7 +1003,18 @@ class AsanaImportTest extends TestCase
         $this->assertSame($activities, DB::table('task_activities')->where('task_id', $first->id)->count());
         $this->assertEquals($changed, DB::table('tasks')->where('id', $first->id)->value('updated_at'));
 
-        // A second run has nothing left to do
-        $this->artisan('asana:repair-lists', ['--token' => 'secret-token', '--no-interaction' => true])->expectsOutputToContain('Descriptions')->assertSuccessful();
+        // A second run changes nothing, and neither does one for texts that an import made with the sub-lists
+        $texts = [$first->fresh()->description, $mine->fresh()->body];
+        $this->artisan('asana:repair-lists', ['--token' => 'secret-token', '--no-interaction' => true])->assertSuccessful();
+        $this->assertSame($texts, [$first->fresh()->description, $mine->fresh()->body]);
+        $this->assertSame(1, substr_count((string) $first->fresh()->description, 'Horizon'));
+    }
+
+    public function test_the_repair_stops_when_asana_does_not_accept_the_token(): void
+    {
+        $this->import(['projects' => ['100']])->assertSuccessful();
+
+        $this->routes['tasks/1001'] = ['__error' => ['message' => 'Not Authorized', 'status' => 401]];
+        $this->artisan('asana:repair-lists', ['--token' => 'secret-token', '--no-interaction' => true])->assertFailed();
     }
 }

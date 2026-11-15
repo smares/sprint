@@ -8,7 +8,6 @@ use App\Services\AsanaImportService;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
-use Symfony\Component\Console\Helper\ProgressBar;
 
 #[Signature('asana:repair-lists
     {projects?* : Ids of the projects here to repair; without any, all projects with imported tasks}
@@ -17,10 +16,6 @@ use Symfony\Component\Console\Helper\ProgressBar;
 #[Description('Puts back the sub-lists in imported descriptions and comments that older imports dropped')]
 class RepairAsanaLists extends Command
 {
-    private ?ProgressBar $bar = null;
-
-    private int $reportedLine = 0;
-
     public function handle(): int
     {
         // The configuration may be cached (as in the Docker image), then it does not know a token passed to a running container
@@ -42,85 +37,41 @@ class RepairAsanaLists extends Command
 
         $dryRun = (bool) $this->option('dry-run');
         $client = new AsanaClient((string) $token);
-        $client->whenPausing(fn (int $seconds) => $this->pausing($seconds));
+        $client->whenPausing(fn (int $seconds) => $this->line("… waiting {$seconds} s for Asana (rate limit or a temporary error)"));
         $service = new AsanaImportService($client);
+        $totals = ['descriptions' => 0, 'comments' => 0];
+        $skipped = [];
 
         try {
-            $report = $service->repairSubLists(array_map('intval', $projects), $dryRun, $this->message(...), $this->progress(...));
+            $tasks = $service->repairableTasks(array_map('intval', $projects));
+            $this->components->info(count($tasks).' imported tasks to look at.');
+
+            $this->withProgressBar($tasks, function (array $task) use ($service, $dryRun, &$totals, &$skipped): void {
+                $result = $service->repairTask($task['gid'], $task['id'], $dryRun);
+                $totals['descriptions'] += $result['descriptions'];
+                $totals['comments'] += $result['comments'];
+                $skipped = [...$skipped, ...$result['skipped']];
+            });
+            $this->newLine(2);
+
+            if (! $dryRun) {
+                $service->finishRepair();
+            }
         } catch (AsanaException $exception) {
-            $this->finishProgress();
+            $this->newLine();
             $this->components->error($exception->getMessage());
 
             return self::FAILURE;
-        } finally {
-            $this->finishProgress();
         }
 
-        $this->newLine();
         $this->components->info($dryRun ? 'Dry run: nothing was changed. This would be repaired:' : 'Repaired:');
-        $this->components->twoColumnDetail('Descriptions', (string) $report['tasks']);
-        $this->components->twoColumnDetail('Comments', (string) $report['comments']);
+        $this->components->twoColumnDetail('Descriptions', (string) $totals['descriptions']);
+        $this->components->twoColumnDetail('Comments', (string) $totals['comments']);
 
-        foreach ($report['skipped'] as $note) {
+        foreach ($skipped as $note) {
             $this->components->warn($note);
         }
 
         return self::SUCCESS;
-    }
-
-    /**
-     * A line about a text that is repaired, printed without breaking a bar that is running.
-     */
-    private function message(string $message): void
-    {
-        $this->bar?->clear();
-        $this->components->info($message);
-        $this->bar?->display();
-    }
-
-    /**
-     * With a terminal a bar shows how many tasks are looked at; without one (logs, pipes) a line says it every few tasks.
-     */
-    private function progress(string $phase, int $done, ?int $total): void
-    {
-        if ($this->output->isDecorated()) {
-            if (! $this->bar instanceof ProgressBar) {
-                $this->bar = $this->output->createProgressBar($total ?? 0);
-                $this->bar->setFormat(' %current%/%max% [%bar%] %percent:3s%%  %elapsed:6s% (about %estimated:-6s% in all)  %message%');
-                $this->bar->setMessage('');
-                $this->bar->start();
-            }
-
-            $this->bar->setMessage('');
-            $this->bar->setProgress($done);
-        } elseif ($done - $this->reportedLine >= 25) {
-            $this->reportedLine = $done;
-            $this->line("{$done} of {$total} tasks looked at …");
-        }
-    }
-
-    /**
-     * Asana asked to wait (or could not be reached): say it, or the command looks as if it hangs.
-     */
-    private function pausing(int $seconds): void
-    {
-        $note = "waiting {$seconds} s for Asana (rate limit or a temporary error)";
-
-        if ($this->bar instanceof ProgressBar) {
-            $this->bar->setMessage($note);
-            $this->bar->display();
-        } else {
-            $this->line("… {$note}");
-        }
-    }
-
-    private function finishProgress(): void
-    {
-        if ($this->bar instanceof ProgressBar) {
-            $this->bar->finish();
-            $this->newLine();
-        }
-
-        $this->bar = null;
     }
 }

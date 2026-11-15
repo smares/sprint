@@ -35,6 +35,22 @@ class AsanaTextServiceTest extends TestCase
         );
     }
 
+    public function test_a_sub_list_that_asana_writes_as_a_list_in_the_list_stays_with_its_item(): void
+    {
+        $html = '<body>Folgende Fehler gibt es:<ul><li>500</li><ul><li><a href="https://example.com/a">https://example.com/a</a></li></ul><li>Timeout</li><ul><li>eins</li><li>zwei</li><ul><li>tiefer</li></ul></ul></ul></body>';
+
+        $this->assertSame(
+            "Folgende Fehler gibt es:\n\n- 500\n  - [https://example.com/a](https://example.com/a)\n- Timeout\n  - eins\n  - zwei\n    - tiefer",
+            $this->markdown($html),
+        );
+    }
+
+    public function test_a_sub_list_under_a_numbered_item_is_indented_by_its_number_and_a_leading_one_stands_alone(): void
+    {
+        $this->assertSame("1. a\n   - x\n2. b", $this->markdown('<body><ol><li>a</li><ul><li>x</li></ul><li>b</li></ol></body>'));
+        $this->assertSame("- x\n- a", $this->markdown('<body><ul><ul><li>x</li></ul><li>a</li></ul></body>'));
+    }
+
     public function test_line_breaks_inside_a_paragraph_stay_and_empty_lines_stay_paragraphs(): void
     {
         $this->assertSame("erste  \nzweite\n\ndritte", $this->markdown("<body>erste\nzweite\n\n\ndritte</body>"));

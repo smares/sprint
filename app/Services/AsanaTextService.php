@@ -195,15 +195,36 @@ class AsanaTextService
         $ordered = strtolower($list->nodeName) === 'ol';
         $lines = [];
         $number = 0;
+        $indent = 0;
 
         foreach ($list->childNodes as $item) {
-            if (! $item instanceof DOMElement || strtolower($item->nodeName) !== 'li') {
+            if (! $item instanceof DOMElement) {
+                continue;
+            }
+
+            $name = strtolower($item->nodeName);
+
+            // Asana writes a sub-list as a list of its own right in the list, after the item it belongs to
+            if ($name === 'ul' || $name === 'ol') {
+                $nested = trim($this->list($item, $mention));
+
+                if ($lines === []) {
+                    $lines[] = $nested;
+                } else {
+                    $lines[array_key_last($lines)] .= "\n".str_repeat(' ', $indent).str_replace("\n", "\n".str_repeat(' ', $indent), $nested);
+                }
+
+                continue;
+            }
+
+            if ($name !== 'li') {
                 continue;
             }
 
             $marker = $ordered ? (++$number).'. ' : '- ';
+            $indent = strlen($marker);
             $content = (string) preg_replace("/\n{2,}/", "\n", trim($this->children($item, $mention)));
-            $lines[] = $marker.str_replace("\n", "\n".str_repeat(' ', strlen($marker)), $content);
+            $lines[] = $marker.str_replace("\n", "\n".str_repeat(' ', $indent), $content);
         }
 
         return "\n\n".implode("\n", $lines)."\n\n";

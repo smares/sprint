@@ -44,16 +44,18 @@ class RepairAsanaLists extends Command
         $service = new AsanaImportService($client);
         $totals = ['descriptions' => 0, 'comments' => 0];
         $skipped = [];
+        $check = [];
 
         try {
             $tasks = $service->repairableTasks(array_map(intval(...), $projects));
             $this->components->info(count($tasks).' imported tasks to look at.');
 
-            $this->withProgressBar($tasks, function (array $task) use ($service, $dryRun, &$totals, &$skipped): void {
+            $this->withProgressBar($tasks, function (array $task) use ($service, $dryRun, &$totals, &$skipped, &$check): void {
                 $result = $service->repairTask($task['gid'], $task['id'], $dryRun);
                 $totals['descriptions'] += $result['descriptions'];
                 $totals['comments'] += $result['comments'];
                 array_push($skipped, ...$result['skipped']);
+                array_push($check, ...$result['check']);
             });
             $this->newLine(2);
         } catch (AsanaException $exception) {
@@ -66,6 +68,18 @@ class RepairAsanaLists extends Command
         $this->components->info($dryRun ? 'Dry run: nothing was changed. This would be repaired:' : 'Repaired:');
         $this->components->twoColumnDetail('Descriptions', (string) $totals['descriptions']);
         $this->components->twoColumnDetail('Comments', (string) $totals['comments']);
+
+        if ($check !== []) {
+            $this->components->info('Repaired, but changed here before, please look at them:');
+
+            foreach (array_slice($check, 0, self::NOTES_SHOWN) as $note) {
+                $this->components->warn($note);
+            }
+
+            if (count($check) > self::NOTES_SHOWN) {
+                $this->components->warn((count($check) - self::NOTES_SHOWN).' more.');
+            }
+        }
 
         foreach (array_slice($skipped, 0, self::NOTES_SHOWN) as $note) {
             $this->components->warn($note);

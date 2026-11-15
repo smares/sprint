@@ -256,7 +256,7 @@ class AsanaImportService
      * touched but reported, and so is a text that changes while this runs. Written quietly, as the import does: no history
      * entry, no notice, the times stay.
      *
-     * @return array{descriptions: int, comments: int, skipped: list<string>}
+     * @return array{descriptions: int, comments: int, skipped: list<string>, check: list<string>}
      *
      * @throws AsanaException When Asana does not accept the token or keeps asking to wait, as it would be the same for every task.
      */
@@ -264,6 +264,7 @@ class AsanaImportService
     {
         $mention = fn (string $person): string => $this->mentionText($person);
         $skipped = [];
+        $check = [];
         $repaired = ['descriptions' => 0, 'comments' => 0];
         $title = (string) Task::query()->whereKey($id)->value('title');
         $where = "“{$title}” (task {$id})";
@@ -280,14 +281,14 @@ class AsanaImportService
         } catch (AsanaException $exception) {
             throw_if(in_array($exception->status, [401, 429], true), $exception);
 
-            return $repaired + ['skipped' => ["{$where}: not read from Asana ({$exception->getMessage()})."]];
+            return $repaired + ['skipped' => ["{$where}: not read from Asana ({$exception->getMessage()})."], 'check' => []];
         }
 
         $description = (string) DB::table('tasks')->where('id', $id)->value('description');
         $result = $this->repairedText($description, $raw['html_notes'] ?? null, $mention);
 
         if ($result['unplaced'] > 0) {
-            $skipped[] = "{$where}: {$result['unplaced']} list(s) of the description could not be found as the import wrote them ({$this->whyNotFound($description)}), left as they are.";
+            $skipped[] = "{$where}: {$result['unplaced']} list(s) of the description could not be found as the import wrote them ({$this->whyNotFound($result['mentions'], $description)}), left as they are.";
         }
 
         if ($result['text'] !== $description) {
@@ -297,6 +298,10 @@ class AsanaImportService
                 $skipped[] = "{$where}: the description changed while this ran, left as it is.";
             } else {
                 $repaired['descriptions']++;
+
+                if (DB::table('task_activities')->where('task_id', $id)->where('type', ActivityType::DescriptionChanged)->exists()) {
+                    $check[] = "{$where}: the sub-lists of the description were put back, but the description was changed here before.";
+                }
             }
         }
 
@@ -310,7 +315,7 @@ class AsanaImportService
             $result = $this->repairedText($comment->body, $story['html_text'] ?? null, $mention);
 
             if ($result['unplaced'] > 0) {
-                $skipped[] = "{$where}: {$result['unplaced']} list(s) of the comment {$comment->id} could not be found as the import wrote them ({$this->whyNotFound($comment->body)}), left as they are.";
+                $skipped[] = "{$where}: {$result['unplaced']} list(s) of the comment {$comment->id} could not be found as the import wrote them ({$this->whyNotFound($result['mentions'], $comment->body)}), left as they are.";
             }
 
             if ($result['text'] !== $comment->body) {
@@ -320,6 +325,10 @@ class AsanaImportService
                     $skipped[] = "{$where}: the comment {$comment->id} changed while this ran, left as it is.";
                 } else {
                     $repaired['comments']++;
+
+                    if ($comment->wasEdited()) {
+                        $check[] = "{$where}: the sub-lists of the comment {$comment->id} were put back, but the comment was edited here before.";
+                    }
                 }
             }
         }
@@ -328,56 +337,63 @@ class AsanaImportService
             app(TaskSearchService::class)->index($id);
         }
 
-        return $repaired + ['skipped' => $skipped];
+        return $repaired + ['skipped' => $skipped, 'check' => $check];
     }
 
     /**
-     * The text with every list that has sub-lists replaced by its whole form, and how many of these lists were not found.
+     * The text with every list that has sub-lists replaced by its whole form, how many of these lists were not found, and whether
+     * one of them has mentions (which read differently when a person was renamed or got an account since).
      *
-     * A list counts as found when it stands as the import wrote it (whole lines) or has its sub-lists already; the lists are
-     * looked for one after the other, so two equal lists are each taken once. Links to imported tasks are turned into
-     * mentions in both forms, as the import did with the text.
+     * A list counts as found when it stands as a block of its own (between blank lines) in the form the import wrote it, or has its
+     * sub-lists already. Of the two forms the one that comes first is taken, and the lists are looked for one after the other, so
+     * that equal lists are each taken once. Links to imported tasks are turned into mentions in both forms, as the import did.
      *
      * @param  Closure(string): string  $mention
-     * @return array{text: string, unplaced: int}
+     * @return array{text: string, unplaced: int, mentions: bool}
      */
     private function repairedText(string $stored, ?string $html, Closure $mention): array
     {
         $resolve = $this->linkResolver ?? $this->taskLinkResolver();
         $offset = 0;
         $unplaced = 0;
+        $mentions = false;
 
         foreach ($this->text->subListRepairs($html, $mention) as $repair) {
             $old = $this->text->linkTasks($repair['old'], $resolve);
             $new = $this->text->linkTasks($repair['new'], $resolve);
+            $wholeAt = $this->findBlock($stored, $new, $offset);
+            $droppedAt = $this->findBlock($stored, $old, $offset);
 
-            // The old form is the start of the new one when the sub-list ends the list, so a list that is whole matches as well
-            if (($position = $this->findLines($stored, $new, $offset)) !== null) {
-                $offset = $position + strlen($new);
-            } elseif (($position = $this->findLines($stored, $old, $offset)) !== null) {
-                $stored = substr_replace($stored, $new, $position, strlen($old));
-                $offset = $position + strlen($new);
+            // The old form is the start of the new one when the sub-list ends the list, so a list that is whole is told by its position
+            if ($wholeAt !== null && ($droppedAt === null || $wholeAt <= $droppedAt)) {
+                $offset = $wholeAt + strlen($new);
+            } elseif ($droppedAt !== null) {
+                $stored = substr_replace($stored, $new, $droppedAt, strlen($old));
+                $offset = $droppedAt + strlen($new);
             } else {
                 $unplaced++;
+                $mentions = $mentions || str_contains($old, '](task:') || str_contains($old, '](user:') || str_contains($new, '](user:');
             }
         }
 
-        return ['text' => $stored, 'unplaced' => $unplaced];
+        return ['text' => $stored, 'unplaced' => $unplaced, 'mentions' => $mentions];
     }
 
     /**
-     * Where the lines stand in the text (from the offset on), as whole lines; null when they do not.
+     * Where the block stands in the text (from the offset on): at the start or after a blank line, and up to the end or a blank
+     * line. Every list of a text stands so, as the conversion writes the lists with a blank line before and after them. Null when
+     * the block is not there, for example when it is only the first lines of a longer list.
      */
-    private function findLines(string $text, string $lines, int $offset): ?int
+    private function findBlock(string $text, string $block, int $offset): ?int
     {
-        if ($lines === '') {
+        if ($block === '') {
             return null;
         }
 
-        while (($position = strpos($text, $lines, $offset)) !== false) {
-            $end = $position + strlen($lines);
+        while (($position = strpos($text, $block, $offset)) !== false) {
+            $end = $position + strlen($block);
 
-            if (($position === 0 || $text[$position - 1] === "\n") && ($end === strlen($text) || $text[$end] === "\n")) {
+            if (($position === 0 || substr($text, $position - 2, 2) === "\n\n") && ($end === strlen($text) || substr($text, $end, 2) === "\n\n")) {
                 return $position;
             }
 
@@ -390,11 +406,13 @@ class AsanaImportService
     /**
      * What the report says about why a list was not found.
      */
-    private function whyNotFound(string $stored): string
+    private function whyNotFound(bool $mentions, string $stored): string
     {
-        return str_contains($stored, '](task:') || str_contains($stored, '](user:')
-            ? 'it was changed here, or has mentions that read differently now, for example a renamed task or person'
-            : 'it was changed here, stands in a quote or was shortened at the import';
+        return match (true) {
+            $mentions => 'it has mentions that read differently now, for example of a renamed task or person',
+            str_contains($stored, "\r\n") => 'the text has Windows line endings',
+            default => 'it was changed here, stands in a quote or was shortened at the import',
+        };
     }
 
     /**

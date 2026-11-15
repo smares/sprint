@@ -17,17 +17,6 @@ class AsanaTextService
     /** Whether a list that stands in a list belongs to the item before it; off only in the converter of withoutSubLists(). */
     private bool $subLists = true;
 
-    /**
-     * A converter that works as the import did before sub-lists were kept, to find what older imports wrote.
-     */
-    private function withoutSubLists(): static
-    {
-        $legacy = clone $this;
-        $legacy->subLists = false;
-
-        return $legacy;
-    }
-
     /** Task addresses: /0/<project>/<task>, /0/<project>/<task>/f and /1/<workspace>/project/<project>/task/<task>. */
     private const string TASK_URL = 'https://app\.asana\.com/(?:0/\w+/(\d+)(?:/f)?|1/\d+/(?:[a-z_]+/\d+/)*task/(\d+)(?:/[a-z]+)?)';
 
@@ -79,7 +68,8 @@ class AsanaTextService
             $old = trim($legacy->list($list, $mention));
             $new = trim($this->list($list, $mention));
 
-            if ($old !== $new) {
+            // A list that is only a sub-list was written as nothing at all, so there is no place to find for it
+            if ($old !== '' && $old !== $new) {
                 $repairs[] = ['old' => $old, 'new' => $new];
             }
         }
@@ -101,11 +91,18 @@ class AsanaTextService
                 continue;
             }
 
-            if (in_array(strtolower($child->nodeName), ['ul', 'ol'], true)) {
+            $name = strtolower($child->nodeName);
+
+            if (in_array($name, ['ul', 'ol'], true)) {
                 if ($this->hasSubList($child)) {
                     $found[] = $child;
                 }
 
+                continue;
+            }
+
+            // What stands in code is text, not a list
+            if (in_array($name, ['pre', 'code'], true)) {
                 continue;
             }
 
@@ -115,6 +112,9 @@ class AsanaTextService
         return $found;
     }
 
+    /**
+     * Whether a list of the list (at any depth) stands as a child of a list and not of an item.
+     */
     private function hasSubList(DOMElement $list): bool
     {
         foreach (['ul', 'ol'] as $name) {
@@ -128,6 +128,9 @@ class AsanaTextService
         return false;
     }
 
+    /**
+     * The root element of Asana's rich text; null when there is none or it is not well-formed XML.
+     */
     private function parse(string $html): ?DOMElement
     {
         if ($html === '') {
@@ -334,5 +337,16 @@ class AsanaTextService
         }
 
         return "\n\n".implode("\n", $lines)."\n\n";
+    }
+
+    /**
+     * A converter that works as the import did before sub-lists were kept, to find what older imports wrote.
+     */
+    private function withoutSubLists(): static
+    {
+        $legacy = clone $this;
+        $legacy->subLists = false;
+
+        return $legacy;
     }
 }

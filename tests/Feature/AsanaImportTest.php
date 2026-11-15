@@ -12,6 +12,7 @@ use App\Models\Task;
 use App\Models\User;
 use App\Services\AsanaClient;
 use App\Services\AsanaException;
+use App\Services\AsanaImportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Carbon;
@@ -21,6 +22,7 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Sleep;
 use Illuminate\Testing\PendingCommand;
+use PHPUnit\Framework\Attributes\DataProvider;
 use ReflectionMethod;
 use Tests\TestCase;
 
@@ -975,6 +977,12 @@ class AsanaImportTest extends TestCase
         $this->assertStringContainsString("](task:{$second->id})", $whole);
         $this->assertSame(1, substr_count($whole, 'Horizon'));
 
+        // Texts that an import made with the sub-lists are left as they are
+        $this->serveAsana();
+        $before = [Task::pluck('description', 'id')->all(), Comment::pluck('body', 'id')->all()];
+        $this->artisan('asana:repair-lists', ['--token' => 'secret-token', '--no-interaction' => true])->assertSuccessful();
+        $this->assertSame($before, [Task::pluck('description', 'id')->all(), Comment::pluck('body', 'id')->all()]);
+
         // As an older import wrote them: without the sub-lists
         DB::table('tasks')->whereIn('id', [$first->id, $second->id])->update(['description' => DB::raw("replace(description, '\n  - Horizon', '')")]);
         DB::table('comments')->whereIn('id', [$mine->id, $edited->id])->update(['body' => DB::raw("replace(body, '\n  - Horizon', '')")]);
@@ -996,6 +1004,7 @@ class AsanaImportTest extends TestCase
 
         $this->artisan('asana:repair-lists', ['--token' => 'secret-token', '--no-interaction' => true])
             ->expectsOutputToContain('could not be found as the import wrote them')
+            ->expectsOutputToContain('Repaired, but changed here before')
             ->assertSuccessful();
 
         $this->assertSame($whole, (string) $first->fresh()->description);
@@ -1010,10 +1019,49 @@ class AsanaImportTest extends TestCase
         $this->assertEquals($changed, DB::table('tasks')->where('id', $first->id)->value('updated_at'));
 
         // A second run changes nothing, and neither does one for texts that an import made with the sub-lists
-        $texts = [$first->fresh()->description, $mine->fresh()->body];
+        $texts = [Task::pluck('description', 'id')->all(), Comment::pluck('body', 'id')->all()];
         $this->artisan('asana:repair-lists', ['--token' => 'secret-token', '--no-interaction' => true])->assertSuccessful();
-        $this->assertSame($texts, [$first->fresh()->description, $mine->fresh()->body]);
+        $this->assertSame($texts, [Task::pluck('description', 'id')->all(), Comment::pluck('body', 'id')->all()]);
         $this->assertSame(1, substr_count((string) $first->fresh()->description, 'Horizon'));
+    }
+
+    /**
+     * @return array<string, array{string, string, string, int}>
+     */
+    public static function repairCases(): array
+    {
+        $last = '<body><ul><li>a</li><li>b</li><ul><li>x</li></ul></ul></body>';
+        $two = '<body><ul><li>a</li><ul><li>x</li></ul></ul>Mitte<ul><li>a</li><ul><li>x</li></ul></ul></body>';
+
+        return [
+            'dropped sub-list under the last item' => [$last, "- a\n- b", "- a\n- b\n  - x", 0],
+            'sub-list that is there already' => [$last, "- a\n- b\n  - x", "- a\n- b\n  - x", 0],
+            'the dropped sub-list typed again in other words' => [$last, "- a\n- b\n  - eigenes x", "- a\n- b\n  - eigenes x", 1],
+            'an item of the whole list was edited' => [$last, "- a\n- b\n  - x (erledigt)", "- a\n- b\n  - x (erledigt)", 1],
+            'the list as the start of a longer list' => [$last, "- z\n- a\n- b\n\n- a\n- b", "- z\n- a\n- b\n\n- a\n- b\n  - x", 0],
+            'the list followed by a line without a blank line' => [$last, "- a\n- b\nNachtrag", "- a\n- b\nNachtrag", 1],
+            'text around the list' => [$last, "Davor\n\n- a\n- b\n\nDanach (ergänzt)\n\n---\n\n**Anhänge**", "Davor\n\n- a\n- b\n  - x\n\nDanach (ergänzt)\n\n---\n\n**Anhänge**", 0],
+            'two equal lists, the second one whole' => [$two, "- a\n\nmitte\n\n- a\n  - x", "- a\n  - x\n\nmitte\n\n- a\n  - x", 0],
+            'two equal lists, both dropped' => [$two, "- a\n\nmitte\n\n- a", "- a\n  - x\n\nmitte\n\n- a\n  - x", 0],
+            'the author of a comment before the list' => [$last, "**Von Cara in Asana**\n\n- a\n- b", "**Von Cara in Asana**\n\n- a\n- b\n  - x", 0],
+            'umlauts and emoji around the list' => ['<body><ul><li>Ä 😀</li><ul><li>ö</li></ul></ul></body>', "Grüße 😀\n\n- Ä 😀\n\nEnde", "Grüße 😀\n\n- Ä 😀\n  - ö\n\nEnde", 0],
+            'a list in a quote is not found' => [$last, "> - a\n> - b", "> - a\n> - b", 1],
+            'a list that is only a sub-list has nothing to find' => ['<body><ul><ul><li>x</li></ul></ul></body>', '- y', '- y', 0],
+        ];
+    }
+
+    #[DataProvider('repairCases')]
+    public function test_the_repair_finds_a_list_only_as_a_block_of_its_own(string $html, string $stored, string $expected, int $unplaced): void
+    {
+        $method = new ReflectionMethod(AsanaImportService::class, 'repairedText');
+        $result = $method->invoke(new AsanaImportService(new AsanaClient('token')), $stored, $html, fn (string $gid): string => '@'.$gid);
+
+        $this->assertSame($expected, $result['text']);
+        $this->assertSame($unplaced, $result['unplaced']);
+
+        // Whatever was done, a second time changes nothing
+        $again = $method->invoke(new AsanaImportService(new AsanaClient('token')), $result['text'], $html, fn (string $gid): string => '@'.$gid);
+        $this->assertSame($expected, $again['text']);
     }
 
     public function test_the_repair_stops_when_asana_does_not_accept_the_token(): void

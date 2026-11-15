@@ -14,9 +14,6 @@ use DOMText;
  */
 class AsanaTextService
 {
-    /** Whether a list that stands in a list belongs to the item before it; off only in the converter of withoutSubLists(). */
-    private bool $subLists = true;
-
     /** Task addresses: /0/<project>/<task>, /0/<project>/<task>/f and /1/<workspace>/project/<project>/task/<task>. */
     private const string TASK_URL = 'https://app\.asana\.com/(?:0/\w+/(\d+)(?:/f)?|1/\d+/(?:[a-z_]+/\d+/)*task/(\d+)(?:/[a-z]+)?)';
 
@@ -43,65 +40,6 @@ class AsanaTextService
         $markdown = $this->render($root, $mention);
 
         return trim((string) preg_replace("/\n{3,}/", "\n\n", $markdown));
-    }
-
-    /**
-     * The lists that stand in a text (not in a quote or in code), in the order of the text: each as imports made it before sub-lists
-     * were kept (`old`) and as it is made now (`new`), and whether the old form has mentions (which read differently when a task or
-     * person was renamed since). The two forms are equal for a list without sub-lists. A text that was imported earlier is repaired by
-     * the lists alone, so it does not matter what was done to the rest of it since.
-     *
-     * @param  Closure(string): string  $mention
-     * @return list<array{old: string, new: string, mentions: bool}>
-     */
-    public function listForms(?string $html, Closure $mention): array
-    {
-        $root = $this->parse(trim((string) $html));
-
-        if (! $root instanceof DOMElement) {
-            return [];
-        }
-
-        $legacy = $this->withoutSubLists();
-        $forms = [];
-
-        foreach ($this->topLevelLists($root) as $list) {
-            $mentioned = false;
-            $old = trim($legacy->list($list, function (string $gid) use ($mention, &$mentioned): string {
-                $mentioned = true;
-
-                return $mention($gid);
-            }), "\n");
-            $forms[] = ['old' => $old, 'new' => trim($this->list($list, $mention), "\n"), 'mentions' => $mentioned];
-        }
-
-        return $forms;
-    }
-
-    /**
-     * The lists that are not part of another list, at any depth of the other elements; text in code and quotes is left out.
-     *
-     * @return list<DOMElement>
-     */
-    private function topLevelLists(DOMNode $node): array
-    {
-        $found = [];
-
-        foreach ($node->childNodes as $child) {
-            if (! $child instanceof DOMElement) {
-                continue;
-            }
-
-            $name = strtolower($child->nodeName);
-
-            if (in_array($name, ['ul', 'ol'], true)) {
-                $found[] = $child;
-            } elseif (! in_array($name, ['pre', 'code', 'blockquote'], true)) {
-                $found = [...$found, ...$this->topLevelLists($child)];
-            }
-        }
-
-        return $found;
     }
 
     /**
@@ -283,10 +221,6 @@ class AsanaTextService
             $name = strtolower($item->nodeName);
 
             if ($name === 'ul' || $name === 'ol') {
-                if (! $this->subLists) {
-                    continue;
-                }
-
                 $nested = trim($this->list($item, $mention));
 
                 if ($nested === '') {
@@ -313,16 +247,5 @@ class AsanaTextService
         }
 
         return "\n\n".implode("\n", $lines)."\n\n";
-    }
-
-    /**
-     * A converter that works as the import did before sub-lists were kept, to find what older imports wrote.
-     */
-    private function withoutSubLists(): static
-    {
-        $legacy = clone $this;
-        $legacy->subLists = false;
-
-        return $legacy;
     }
 }

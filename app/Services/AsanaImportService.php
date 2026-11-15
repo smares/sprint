@@ -287,6 +287,10 @@ class AsanaImportService
         $description = (string) DB::table('tasks')->where('id', $id)->value('description');
         $result = $this->repairedText($description, $raw['html_notes'] ?? null, $mention);
 
+        foreach ($result['lost'] as $list) {
+            $skipped[] = "{$where}: the import dropped a list of the description that only has sub-items, add it by hand: ".mb_substr(str_replace("\n", ' ', $list), 0, 80);
+        }
+
         if ($result['unplaced'] > 0) {
             $skipped[] = "{$where}: {$result['unplaced']} list(s) of the description could not be found as the import wrote them ({$this->whyNotFound($result['mentions'], $description)}), left as they are.";
         }
@@ -313,6 +317,10 @@ class AsanaImportService
             }
 
             $result = $this->repairedText($comment->body, $story['html_text'] ?? null, $mention);
+
+            foreach ($result['lost'] as $list) {
+                $skipped[] = "{$where}: the import dropped a list of the comment {$comment->id} that only has sub-items, add it by hand: ".mb_substr(str_replace("\n", ' ', $list), 0, 80);
+            }
 
             if ($result['unplaced'] > 0) {
                 $skipped[] = "{$where}: {$result['unplaced']} list(s) of the comment {$comment->id} could not be found as the import wrote them ({$this->whyNotFound($result['mentions'], $comment->body)}), left as they are.";
@@ -341,15 +349,17 @@ class AsanaImportService
     }
 
     /**
-     * The text with every list that has sub-lists replaced by its whole form, how many of these lists were not found, and whether
-     * one of them has mentions (which read differently when a person was renamed or got an account since).
+     * The text with every list that has sub-lists replaced by its whole form, how many of these lists were not found, whether the
+     * old form of one of them has mentions (which read differently when a person was renamed or got an account since), and the lists
+     * that the import dropped altogether because they only have sub-items.
      *
-     * A list counts as found when it stands as a block of its own (between blank lines) in the form the import wrote it, or has its
-     * sub-lists already. Of the two forms the one that comes first is taken, and the lists are looked for one after the other, so
-     * that equal lists are each taken once. Links to imported tasks are turned into mentions in both forms, as the import did.
+     * All lists of the text are gone through in their order, so that a list without sub-lists takes its own place and cannot be
+     * taken for another one that reads the same. A list counts as found when it stands as a block of its own (between blank lines)
+     * in the form the import wrote it, or has its sub-lists already; of these two forms the one that comes first is taken. Links to
+     * imported tasks are turned into mentions in both forms, as the import did.
      *
      * @param  Closure(string): string  $mention
-     * @return array{text: string, unplaced: int, mentions: bool}
+     * @return array{text: string, unplaced: int, mentions: bool, lost: list<string>}
      */
     private function repairedText(string $stored, ?string $html, Closure $mention): array
     {
@@ -357,32 +367,46 @@ class AsanaImportService
         $offset = 0;
         $unplaced = 0;
         $mentions = false;
+        $lost = [];
 
-        foreach ($this->text->subListRepairs($html, $mention) as $repair) {
-            $old = $this->text->linkTasks($repair['old'], $resolve);
-            $new = $this->text->linkTasks($repair['new'], $resolve);
+        foreach ($this->text->listForms($html, $mention) as $form) {
+            $old = $this->text->linkTasks($form['old'], $resolve);
+            $new = $this->text->linkTasks($form['new'], $resolve);
             $wholeAt = $this->findBlock($stored, $new, $offset);
+
+            if ($old === $new) {
+                $offset = $wholeAt === null ? $offset : $wholeAt + strlen($new);
+
+                continue;
+            }
+
+            if ($old === '') {
+                $lost = $wholeAt === null ? [...$lost, $new] : $lost;
+
+                continue;
+            }
+
             $droppedAt = $this->findBlock($stored, $old, $offset);
 
-            // The old form is the start of the new one when the sub-list ends the list, so a list that is whole is told by its position
-            if ($wholeAt !== null && ($droppedAt === null || $wholeAt <= $droppedAt)) {
+            if ($wholeAt !== null && ($droppedAt === null || $wholeAt < $droppedAt)) {
                 $offset = $wholeAt + strlen($new);
             } elseif ($droppedAt !== null) {
                 $stored = substr_replace($stored, $new, $droppedAt, strlen($old));
                 $offset = $droppedAt + strlen($new);
             } else {
                 $unplaced++;
-                $mentions = $mentions || str_contains($old, '](task:') || str_contains($old, '](user:') || str_contains($new, '](user:');
+                $mentions = $mentions || $form['mentions'] || $old !== $form['old'];
             }
         }
 
-        return ['text' => $stored, 'unplaced' => $unplaced, 'mentions' => $mentions];
+        return ['text' => $stored, 'unplaced' => $unplaced, 'mentions' => $mentions, 'lost' => $lost];
     }
 
     /**
      * Where the block stands in the text (from the offset on): at the start or after a blank line, and up to the end or a blank
-     * line. Every list of a text stands so, as the conversion writes the lists with a blank line before and after them. Null when
-     * the block is not there, for example when it is only the first lines of a longer list.
+     * line (a line of blanks counts as blank, and so does the end of a text that ends in blank space). Every list of a text stands so,
+     * as the conversion writes the lists with a blank line before and after them. Null when the block is not there, for example
+     * when it is only the first lines of a longer list.
      */
     private function findBlock(string $text, string $block, int $offset): ?int
     {
@@ -392,8 +416,10 @@ class AsanaImportService
 
         while (($position = strpos($text, $block, $offset)) !== false) {
             $end = $position + strlen($block);
+            $startsBlock = trim(substr($text, 0, $position)) === '' || preg_match('/\n[ \t]*\n[ \t]*\z/', substr($text, 0, $position)) === 1;
+            $endsBlock = preg_match('/\G\s*\z/', $text, $none, 0, $end) === 1 || preg_match('/\G[ \t]*\n[ \t]*\n/', $text, $none, 0, $end) === 1;
 
-            if (($position === 0 || substr($text, $position - 2, 2) === "\n\n") && ($end === strlen($text) || substr($text, $end, 2) === "\n\n")) {
+            if ($startsBlock && $endsBlock) {
                 return $position;
             }
 

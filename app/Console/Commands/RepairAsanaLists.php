@@ -70,7 +70,7 @@ class RepairAsanaLists extends Command
         $this->components->twoColumnDetail('Comments', (string) $totals['comments']);
 
         if ($check !== []) {
-            $this->components->info('Repaired, but changed here before, please look at them:');
+            $this->components->info(($dryRun ? 'Would be repaired' : 'Repaired').', but changed here before, please look at them:');
 
             foreach (array_slice($check, 0, self::NOTES_SHOWN) as $note) {
                 $this->components->warn($note);

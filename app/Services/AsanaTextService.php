@@ -46,14 +46,15 @@ class AsanaTextService
     }
 
     /**
-     * The lists of a text in which Asana writes a sub-list as a list of its own right inside the list, each as imports made it
-     * before sub-lists were kept (`old`) and as it is made now (`new`). Only these lists are of interest to repair a text that
-     * was imported earlier: the rest of the text is not touched, so it does not matter what was done to it since.
+     * The lists that stand in a text (not in a quote or in code), in the order of the text: each as imports made it before sub-lists
+     * were kept (`old`) and as it is made now (`new`), and whether the old form has mentions (which read differently when a task or
+     * person was renamed since). The two forms are equal for a list without sub-lists. A text that was imported earlier is repaired by
+     * the lists alone, so it does not matter what was done to the rest of it since.
      *
      * @param  Closure(string): string  $mention
-     * @return list<array{old: string, new: string}>
+     * @return list<array{old: string, new: string, mentions: bool}>
      */
-    public function subListRepairs(?string $html, Closure $mention): array
+    public function listForms(?string $html, Closure $mention): array
     {
         $root = $this->parse(trim((string) $html));
 
@@ -62,27 +63,27 @@ class AsanaTextService
         }
 
         $legacy = $this->withoutSubLists();
-        $repairs = [];
+        $forms = [];
 
-        foreach ($this->listsWithSubLists($root) as $list) {
-            $old = trim($legacy->list($list, $mention));
-            $new = trim($this->list($list, $mention));
+        foreach ($this->topLevelLists($root) as $list) {
+            $mentioned = false;
+            $old = trim($legacy->list($list, function (string $gid) use ($mention, &$mentioned): string {
+                $mentioned = true;
 
-            // A list that is only a sub-list was written as nothing at all, so there is no place to find for it
-            if ($old !== '' && $old !== $new) {
-                $repairs[] = ['old' => $old, 'new' => $new];
-            }
+                return $mention($gid);
+            }), "\n");
+            $forms[] = ['old' => $old, 'new' => trim($this->list($list, $mention), "\n"), 'mentions' => $mentioned];
         }
 
-        return $repairs;
+        return $forms;
     }
 
     /**
-     * The lists that are not part of another list and hold a sub-list written as a list in a list, at any depth.
+     * The lists that are not part of another list, at any depth of the other elements; text in code and quotes is left out.
      *
      * @return list<DOMElement>
      */
-    private function listsWithSubLists(DOMNode $node): array
+    private function topLevelLists(DOMNode $node): array
     {
         $found = [];
 
@@ -94,38 +95,13 @@ class AsanaTextService
             $name = strtolower($child->nodeName);
 
             if (in_array($name, ['ul', 'ol'], true)) {
-                if ($this->hasSubList($child)) {
-                    $found[] = $child;
-                }
-
-                continue;
+                $found[] = $child;
+            } elseif (! in_array($name, ['pre', 'code', 'blockquote'], true)) {
+                $found = [...$found, ...$this->topLevelLists($child)];
             }
-
-            // What stands in code is text, not a list
-            if (in_array($name, ['pre', 'code'], true)) {
-                continue;
-            }
-
-            $found = [...$found, ...$this->listsWithSubLists($child)];
         }
 
         return $found;
-    }
-
-    /**
-     * Whether a list of the list (at any depth) stands as a child of a list and not of an item.
-     */
-    private function hasSubList(DOMElement $list): bool
-    {
-        foreach (['ul', 'ol'] as $name) {
-            foreach ($list->getElementsByTagName($name) as $inner) {
-                if (in_array(strtolower($inner->parentNode?->nodeName ?? ''), ['ul', 'ol'], true)) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
     }
 
     /**

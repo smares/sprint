@@ -986,6 +986,7 @@ class AsanaImportTest extends TestCase
         // As an older import wrote them: without the sub-lists
         DB::table('tasks')->whereIn('id', [$first->id, $second->id])->update(['description' => DB::raw("replace(description, '\n  - Horizon', '')")]);
         DB::table('comments')->whereIn('id', [$mine->id, $edited->id])->update(['body' => DB::raw("replace(body, '\n  - Horizon', '')")]);
+        DB::table('comments')->where('id', $mine->id)->update(['updated_at' => now()->addDay()]);
 
         // A description that people have worked on since (a paragraph added, a history entry) is repaired all the same: only its list matters
         DB::table('tasks')->where('id', $second->id)->update(['description' => DB::raw("description || char(10) || char(10) || 'Ergänzt in Sprint'")]);
@@ -1005,6 +1006,9 @@ class AsanaImportTest extends TestCase
         $this->artisan('asana:repair-lists', ['--token' => 'secret-token', '--no-interaction' => true])
             ->expectsOutputToContain('could not be found as the import wrote them')
             ->expectsOutputToContain('Repaired, but changed here before')
+            ->expectsOutputToContain("“Umsetzung” (task {$second->id}): the sub-lists of the description were put back, but the description was changed here before.")
+            ->expectsOutputToContain("the sub-lists of the comment {$mine->id} were put back, but the comment was edited here before.")
+            ->doesntExpectOutputToContain("“Konzept” (task {$first->id}): the sub-lists")
             ->assertSuccessful();
 
         $this->assertSame($whole, (string) $first->fresh()->description);
@@ -1026,42 +1030,66 @@ class AsanaImportTest extends TestCase
     }
 
     /**
-     * @return array<string, array{string, string, string, int}>
+     * @return array<string, array{string, string, string, int, int}>
      */
     public static function repairCases(): array
     {
         $last = '<body><ul><li>a</li><li>b</li><ul><li>x</li></ul></ul></body>';
         $two = '<body><ul><li>a</li><ul><li>x</li></ul></ul>Mitte<ul><li>a</li><ul><li>x</li></ul></ul></body>';
+        $plainBefore = '<body><ul><li>a</li><li>b</li></ul>Mitte<ul><li>a</li><li>b</li><ul><li>x</li></ul></ul></body>';
 
         return [
-            'dropped sub-list under the last item' => [$last, "- a\n- b", "- a\n- b\n  - x", 0],
-            'sub-list that is there already' => [$last, "- a\n- b\n  - x", "- a\n- b\n  - x", 0],
-            'the dropped sub-list typed again in other words' => [$last, "- a\n- b\n  - eigenes x", "- a\n- b\n  - eigenes x", 1],
-            'an item of the whole list was edited' => [$last, "- a\n- b\n  - x (erledigt)", "- a\n- b\n  - x (erledigt)", 1],
-            'the list as the start of a longer list' => [$last, "- z\n- a\n- b\n\n- a\n- b", "- z\n- a\n- b\n\n- a\n- b\n  - x", 0],
-            'the list followed by a line without a blank line' => [$last, "- a\n- b\nNachtrag", "- a\n- b\nNachtrag", 1],
-            'text around the list' => [$last, "Davor\n\n- a\n- b\n\nDanach (ergänzt)\n\n---\n\n**Anhänge**", "Davor\n\n- a\n- b\n  - x\n\nDanach (ergänzt)\n\n---\n\n**Anhänge**", 0],
-            'two equal lists, the second one whole' => [$two, "- a\n\nmitte\n\n- a\n  - x", "- a\n  - x\n\nmitte\n\n- a\n  - x", 0],
-            'two equal lists, both dropped' => [$two, "- a\n\nmitte\n\n- a", "- a\n  - x\n\nmitte\n\n- a\n  - x", 0],
-            'the author of a comment before the list' => [$last, "**Von Cara in Asana**\n\n- a\n- b", "**Von Cara in Asana**\n\n- a\n- b\n  - x", 0],
-            'umlauts and emoji around the list' => ['<body><ul><li>Ä 😀</li><ul><li>ö</li></ul></ul></body>', "Grüße 😀\n\n- Ä 😀\n\nEnde", "Grüße 😀\n\n- Ä 😀\n  - ö\n\nEnde", 0],
-            'a list in a quote is not found' => [$last, "> - a\n> - b", "> - a\n> - b", 1],
-            'a list that is only a sub-list has nothing to find' => ['<body><ul><ul><li>x</li></ul></ul></body>', '- y', '- y', 0],
+            'dropped sub-list under the last item' => [$last, "- a\n- b", "- a\n- b\n  - x", 0, 0],
+            'sub-list that is there already' => [$last, "- a\n- b\n  - x", "- a\n- b\n  - x", 0, 0],
+            'the dropped sub-list typed again in other words' => [$last, "- a\n- b\n  - eigenes x", "- a\n- b\n  - eigenes x", 1, 0],
+            'an item of the whole list was edited' => [$last, "- a\n- b\n  - x (erledigt)", "- a\n- b\n  - x (erledigt)", 1, 0],
+            'the list as the end of a longer list' => [$last, "- z\n- a\n- b\n\n- a\n- b", "- z\n- a\n- b\n\n- a\n- b\n  - x", 0, 0],
+            'the list as the start of a longer list' => [$last, "- a\n- b\n- c", "- a\n- b\n- c", 1, 0],
+            'the list followed by a line without a blank line' => [$last, "- a\n- b\nNachtrag", "- a\n- b\nNachtrag", 1, 0],
+            'text around the list' => [$last, "Davor\n\n- a\n- b\n\nDanach (ergänzt)\n\n---\n\n**Anhänge**", "Davor\n\n- a\n- b\n  - x\n\nDanach (ergänzt)\n\n---\n\n**Anhänge**", 0, 0],
+            'two equal lists, the second one whole' => [$two, "- a\n\nmitte\n\n- a\n  - x", "- a\n  - x\n\nmitte\n\n- a\n  - x", 0, 0],
+            'two equal lists, both dropped' => [$two, "- a\n\nmitte\n\n- a", "- a\n  - x\n\nmitte\n\n- a\n  - x", 0, 0],
+            'a list without sub-lists that reads like the old form of a later one, made whole' => [$plainBefore, "- a\n- b\n\nMitte\n\n- a\n- b\n  - x", "- a\n- b\n\nMitte\n\n- a\n- b\n  - x", 0, 0],
+            'a list without sub-lists that reads like the old form of a later one, dropped' => [$plainBefore, "- a\n- b\n\nMitte\n\n- a\n- b", "- a\n- b\n\nMitte\n\n- a\n- b\n  - x", 0, 0],
+            'the author of a comment before the list' => [$last, "**Von Cara in Asana**\n\n- a\n- b", "**Von Cara in Asana**\n\n- a\n- b\n  - x", 0, 0],
+            'umlauts and emoji around the list' => ['<body><ul><li>Ä 😀</li><ul><li>ö</li></ul></ul></body>', "Grüße 😀\n\n- Ä 😀\n\nEnde", "Grüße 😀\n\n- Ä 😀\n  - ö\n\nEnde", 0, 0],
+            'a newline at the end of the text' => [$last, "- a\n- b\n", "- a\n- b\n  - x\n", 0, 0],
+            'lines of blanks between the blocks' => [$last, "Davor\n \n- a\n- b\n\t\nDanach", "Davor\n \n- a\n- b\n  - x\n\t\nDanach", 0, 0],
+            'an empty last item in the middle of a text' => ['<body><ul><li>a</li><li></li><ul><li>x</li></ul></ul>danach</body>', "- a\n- \n\ndanach", "- a\n- \n  - x\n\ndanach", 0, 0],
+            'a list in a quote is left alone' => ['<body><blockquote><ul><li>a</li><ul><li>x</li></ul></ul></blockquote></body>', "> - a\n> - b", "> - a\n> - b", 0, 0],
+            'a list that is only a sub-list was dropped altogether' => ['<body><ul><ul><li>x</li></ul></ul></body>', '- y', '- y', 0, 1],
+            'a list that is only a sub-list, added by hand' => ['<body><ul><ul><li>x</li></ul></ul></body>', '- x', '- x', 0, 0],
         ];
     }
 
     #[DataProvider('repairCases')]
-    public function test_the_repair_finds_a_list_only_as_a_block_of_its_own(string $html, string $stored, string $expected, int $unplaced): void
+    public function test_the_repair_finds_a_list_only_as_a_block_of_its_own(string $html, string $stored, string $expected, int $unplaced, int $lost): void
     {
         $method = new ReflectionMethod(AsanaImportService::class, 'repairedText');
-        $result = $method->invoke(new AsanaImportService(new AsanaClient('token')), $stored, $html, fn (string $gid): string => '@'.$gid);
+        $mention = fn (string $gid): string => '@'.$gid;
+        $result = $method->invoke(new AsanaImportService(new AsanaClient('token')), $stored, $html, $mention);
 
         $this->assertSame($expected, $result['text']);
         $this->assertSame($unplaced, $result['unplaced']);
+        $this->assertCount($lost, $result['lost']);
 
         // Whatever was done, a second time changes nothing
-        $again = $method->invoke(new AsanaImportService(new AsanaClient('token')), $result['text'], $html, fn (string $gid): string => '@'.$gid);
+        $again = $method->invoke(new AsanaImportService(new AsanaClient('token')), $result['text'], $html, $mention);
         $this->assertSame($expected, $again['text']);
+        $this->assertSame($unplaced, $again['unplaced']);
+    }
+
+    public function test_the_repair_blames_mentions_only_when_the_old_form_of_a_list_has_some(): void
+    {
+        $method = new ReflectionMethod(AsanaImportService::class, 'repairedText');
+        $mention = fn (string $gid): string => '@Neu'.$gid;
+        $repair = fn (string $stored, string $html): array => $method->invoke(new AsanaImportService(new AsanaClient('token')), $stored, $html, $mention);
+
+        // The mention is only in the sub-list, so the list was not found because the list itself was changed
+        $this->assertFalse($repair('- a (geändert)', '<body><ul><li>a</li><ul><li><A data-asana-gid="5" data-asana-type="user"/></li></ul></ul></body>')['mentions']);
+
+        // The mention is in the list as it was imported: a person who is called differently now is the likely reason
+        $this->assertTrue($repair('- Hallo @Alt5', '<body><ul><li>Hallo <A data-asana-gid="5" data-asana-type="user"/></li><ul><li>x</li></ul></ul></body>')['mentions']);
     }
 
     public function test_the_repair_stops_when_asana_does_not_accept_the_token(): void

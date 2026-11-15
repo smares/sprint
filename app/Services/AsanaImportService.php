@@ -281,9 +281,7 @@ class AsanaImportService
             $raw = $this->asana->get("tasks/{$gid}", ['opt_fields' => 'html_notes,notes']);
             $stories = $comments->isEmpty() ? [] : $this->commentStories($gid);
         } catch (AsanaException $exception) {
-            if (in_array($exception->status, [401, 429], true)) {
-                throw $exception;
-            }
+            throw_if(in_array($exception->status, [401, 429], true), $exception);
 
             return $repaired + ['skipped' => ["{$where}: not read from Asana ({$exception->getMessage()})."]];
         }
@@ -371,7 +369,7 @@ class AsanaImportService
         // A description starts with the text; a comment of a person without an account has the name of the author before it
         $before = substr($stored, 0, $position);
 
-        if ($before !== '' && ! ($isComment && preg_match('/\A\*\*[^\n]*\*\*\n\n\z/u', $before) === 1)) {
+        if ($before !== '' && (! $isComment || preg_match('/\A\*\*[^\n]*\*\*\n\n\z/u', $before) !== 1)) {
             return null;
         }
 

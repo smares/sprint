@@ -46,7 +46,7 @@ class RepairAsanaLists extends Command
         $skipped = [];
 
         try {
-            $tasks = $service->repairableTasks(array_map('intval', $projects));
+            $tasks = $service->repairableTasks(array_map(intval(...), $projects));
             $this->components->info(count($tasks).' imported tasks to look at.');
 
             $this->withProgressBar($tasks, function (array $task) use ($service, $dryRun, &$totals, &$skipped): void {

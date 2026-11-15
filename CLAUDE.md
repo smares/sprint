@@ -154,3 +154,8 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 - Run `vendor/bin/phpunit` to call the test runner directly. It accepts the same file path and `--filter=testName` arguments.
 
 </laravel-boost-guidelines>
+
+## Production server commands
+
+- On the production server Sprint runs in the container `sprint` (Traefik, Dokploy, no compose directory needed). Run commands as `docker exec -it sprint php artisan …`, never as `docker compose exec`.
+- Tinker does not work there, because its configuration directory is not writable. For queries use `docker exec -w /app sprint php -r '…'` with the bootstrap of Laravel, for example `require "vendor/autoload.php"; $app = require "bootstrap/app.php"; $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();` followed by the query with `Illuminate\Support\Facades\DB`.

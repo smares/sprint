@@ -940,4 +940,67 @@ class AsanaImportTest extends TestCase
         Http::assertSent(fn (Request $request) => str_contains($request->url(), 'tasks/1001/stories'));
         $this->assertSame(2, Comment::count());
     }
+
+    public function test_the_repair_puts_back_the_sub_lists_that_older_imports_dropped_and_leaves_changed_texts_alone(): void
+    {
+        $html = '<body>Fehler:<ul><li>500</li><ul><li>Horizon</li></ul></ul></body>';
+        $whole = "Fehler:\n\n- 500\n  - Horizon";
+        $dropped = "Fehler:\n\n- 500";
+
+        foreach ($this->routes['projects/100/tasks'] as &$raw) {
+            if (in_array($raw['gid'], ['1001', '1003'], true)) {
+                $raw['html_notes'] = $html;
+            }
+        }
+        unset($raw);
+
+        foreach (['1001', '1003'] as $gid) {
+            $this->routes["tasks/{$gid}"] = ['gid' => $gid, 'html_notes' => $html, 'notes' => ''];
+        }
+
+        foreach ($this->routes['tasks/1001/stories'] as &$story) {
+            if (in_array($story['gid'], ['9002', '9003'], true)) {
+                $story['html_text'] = $html;
+            }
+        }
+        unset($story);
+
+        $this->import(['projects' => ['100']])->assertSuccessful();
+
+        $first = Task::where('title', 'Konzept')->firstOrFail();
+        $second = Task::where('title', 'Umsetzung')->firstOrFail();
+        $mine = Comment::where('body', 'like', "{$whole}%")->orderBy('id')->firstOrFail();
+        $edited = Comment::where('body', 'like', '%Cara%')->firstOrFail();
+        $this->assertStringStartsWith($whole, (string) $first->description);
+
+        // As an older import wrote them: without the sub-lists
+        DB::table('tasks')->whereIn('id', [$first->id, $second->id])->update(['description' => DB::raw("replace(description, '\n  - Horizon', '')")]);
+        DB::table('comments')->whereIn('id', [$mine->id, $edited->id])->update(['body' => DB::raw("replace(body, '\n  - Horizon', '')")]);
+        DB::table('task_activities')->insert(['task_id' => $second->id, 'type' => ActivityType::DescriptionChanged, 'created_at' => now()]);
+        DB::table('comments')->where('id', $edited->id)->update(['updated_at' => now()->addDay()]);
+        $activities = DB::table('task_activities')->where('task_id', $first->id)->count();
+        $changed = DB::table('tasks')->where('id', $first->id)->value('updated_at');
+
+        $this->serveAsana();
+        $this->artisan('asana:repair-lists', ['--token' => 'secret-token', '--no-interaction' => true, '--dry-run' => true])->expectsOutputToContain('nothing was changed')->assertSuccessful();
+        $this->assertStringStartsWith($dropped, (string) $first->fresh()->description);
+        $this->assertStringNotContainsString('Horizon', (string) $first->fresh()->description);
+
+        $this->artisan('asana:repair-lists', ['--token' => 'secret-token', '--no-interaction' => true])
+            ->expectsOutputToContain('was changed here since the import')
+            ->expectsOutputToContain('was edited here since the import')
+            ->assertSuccessful();
+
+        $this->assertStringStartsWith($whole, (string) $first->fresh()->description);
+        $this->assertStringContainsString($whole, $mine->fresh()->body);
+        $this->assertStringNotContainsString('Horizon', (string) $second->fresh()->description);
+        $this->assertStringNotContainsString('Horizon', $edited->fresh()->body);
+
+        // Written quietly: no history entry, the time of the last change stays
+        $this->assertSame($activities, DB::table('task_activities')->where('task_id', $first->id)->count());
+        $this->assertEquals($changed, DB::table('tasks')->where('id', $first->id)->value('updated_at'));
+
+        // A second run has nothing left to do
+        $this->artisan('asana:repair-lists', ['--token' => 'secret-token', '--no-interaction' => true])->expectsOutputToContain('Descriptions')->assertSuccessful();
+    }
 }

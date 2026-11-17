@@ -1420,7 +1420,7 @@ new class extends Component
         {{-- The title as a heading and the properties as a quiet list: both look like text until pointed at or focused --}}
         {{-- Long titles wrap instead of being cut off; Enter saves as in a single line, a pasted line break becomes a space --}}
         <flux:textarea wire:model="title" :aria-label="__('Title')" rows="1" resize="none" class="task-title-input field-sizing-content"
-            x-on:keydown.enter.prevent="$el.form.requestSubmit()" />
+            x-on:keydown.enter.prevent="if (! $composing($event)) { $el.form.requestSubmit() }" />
         {{-- A task with a description opens on the rendered text; "Edit" opens the field --}}
         <x-markdown-editor wire:model="description" :label="__('Description')" grow :max="Task::MAX_DESCRIPTION_LENGTH" :preview="$this->descriptionPreview !== null" :preview-html="$this->descriptionPreview" :placeholder="__('Describe the task … (Markdown, @ for mentions)')" :rows="3" mentions-on-demand :images="$this->canEdit ? $this->imageAttachments : null" />
 

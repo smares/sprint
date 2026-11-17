@@ -84,7 +84,7 @@ class GlassSurfacesTest extends TestCase
         $user = User::factory()->create();
         $project = Project::factory()->create();
         $project->setRole($user, ProjectRole::Editor);
-        Task::factory()->for($project)->create(['start_date' => '2026-11-10', 'due_date' => '2026-11-12']);
+        Task::factory()->for($project)->create(['start_date' => today()->toDateString(), 'due_date' => today()->addDays(2)->toDateString()]);
         $this->actingAs($user);
 
         foreach (['pages::projects.show', 'pages::projects.calendar', 'pages::projects.timeline'] as $view) {

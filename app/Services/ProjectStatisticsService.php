@@ -120,7 +120,7 @@ class ProjectStatisticsService
      */
     private function cycleOf(Collection $tasks): array
     {
-        $days = $tasks->map(fn (array $task): float => max(0.0, $task['created_at']->diffInDays($task['completed_at'])))->sort()->values();
+        $days = $tasks->map(fn (array $task) => max(0.0, $task['created_at']->diffInDays($task['completed_at'])))->sort()->values()->all();
         $dated = $tasks->filter(fn (array $task) => $task['due_date'] !== null);
         $onTime = $dated->filter(fn (array $task) => $task['completed_at']->toDateString() <= $task['due_date']->toDateString())->count();
 
@@ -136,15 +136,15 @@ class ProjectStatisticsService
     /**
      * The value at the given percentile of sorted numbers (nearest rank), rounded to one decimal; null without numbers.
      *
-     * @param  Collection<int, float>  $sorted
+     * @param  array<int, float>  $sorted
      */
-    private function percentile(Collection $sorted, int $percent): ?float
+    private function percentile(array $sorted, int $percent): ?float
     {
-        if ($sorted->isEmpty()) {
+        if ($sorted === []) {
             return null;
         }
 
-        return round((float) $sorted[(int) ceil($percent / 100 * $sorted->count()) - 1], 1);
+        return round((float) $sorted[(int) ceil($percent / 100 * count($sorted)) - 1], 1);
     }
 
     /**

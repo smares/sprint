@@ -120,7 +120,7 @@ class ProjectStatisticsService
      */
     private function cycleOf(Collection $tasks): array
     {
-        $days = $tasks->map(fn (array $task) => max(0.0, $task['created_at']->diffInDays($task['completed_at'])))->sort()->values();
+        $days = $tasks->map(fn (array $task): float => max(0.0, $task['created_at']->diffInDays($task['completed_at'])))->sort()->values();
         $dated = $tasks->filter(fn (array $task) => $task['due_date'] !== null);
         $onTime = $dated->filter(fn (array $task) => $task['completed_at']->toDateString() <= $task['due_date']->toDateString())->count();
 

@@ -11,6 +11,10 @@ window.passkeys = () => import('@laravel/passkeys').then((module) => module.Pass
 // The service worker (route pwa.service-worker); it sits at the root so its scope covers the whole app
 const SERVICE_WORKER_URL = '/sw.js'
 
+// Whether a key press belongs to the composition of text with an input method (an accent, a character picked from candidates): Enter
+// then confirms the composition and must not submit. Safari reports the confirming Enter after the composition has ended, but with the key code 229.
+const isComposing = (event) => event.isComposing || event.keyCode === 229
+
 const registerMentionable = () => {
     // People come with the page, or (options.users is null) are fetched from the component when the editor is focused
     // or the first @ is typed; tasks are looked up on the server while typing (options.searchTasks).
@@ -379,7 +383,7 @@ const registerEmojiField = () => {
         },
 
         send(event) {
-            if (event.isComposing) {
+            if (isComposing(event)) {
                 return
             }
 
@@ -912,6 +916,11 @@ const registerTaskFlyout = () => {
     }))
 }
 
+// $composing($event): for the handlers of Enter that submit or finish something: true while the key belongs to a composition.
+const registerComposing = () => {
+    window.Alpine.magic('composing', () => isComposing)
+}
+
 // $copyText(text, done, failed): puts the text on the clipboard and says so with a toast. Without the clipboard (a page over plain
 // http that is not localhost, or a browser that refuses) the other toast says it did not work.
 const registerCopyText = () => {
@@ -1038,6 +1047,7 @@ const registerAll = () => {
     window.Alpine.store('taskFlyout', { id: '' })
     registerOpenTask()
     registerCopyText()
+    registerComposing()
     registerTaskFlyout()
     registerMentionable()
     registerLazyPicker()

@@ -38,7 +38,7 @@
             maxlength="255"
             :placeholder="__('Task title, then Enter')"
             :aria-label="__('New task')"
-            x-on:keydown.enter.prevent="add()"
+            x-on:keydown.enter.prevent="if (! $composing($event)) { add() }"
             x-on:keydown.escape.prevent.stop="close()"
             x-on:blur="if (title.trim() === '') { close() }"
         />

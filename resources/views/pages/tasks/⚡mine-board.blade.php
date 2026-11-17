@@ -290,7 +290,7 @@ new class extends Component
                                 <flux:input
                                     size="sm" x-ref="name" type="text" value="{{ $name }}" maxlength="{{ \App\Models\PersonalColumn::MAX_NAME_LENGTH }}"
                                     aria-label="{{ __('Column name') }}"
-                                    x-on:keydown.enter.prevent="finish(true, {{ \Illuminate\Support\Js::from($name) }}, {{ $key }}); $refs.options.focus()"
+                                    x-on:keydown.enter.prevent="if (! $composing($event)) { finish(true, {{ \Illuminate\Support\Js::from($name) }}, {{ $key }}); $refs.options.focus() }"
                                     x-on:keydown.escape.prevent.stop="finish(false, {{ \Illuminate\Support\Js::from($name) }}, {{ $key }}); $refs.options.focus()"
                                     x-on:blur="finish(true, {{ \Illuminate\Support\Js::from($name) }}, {{ $key }})"
                                 />

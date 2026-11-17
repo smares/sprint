@@ -5,8 +5,11 @@ namespace Tests\Feature;
 use App\Enums\ProjectRole;
 use App\Models\Project;
 use App\Models\User;
+use FilesystemIterator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 use Tests\TestCase;
 
 /**
@@ -46,7 +49,7 @@ class ComposingEnterTest extends TestCase
     {
         $unguarded = [];
 
-        foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(resource_path('views'), \FilesystemIterator::SKIP_DOTS)) as $file) {
+        foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(resource_path('views'), FilesystemIterator::SKIP_DOTS)) as $file) {
             if (! str_ends_with($file->getFilename(), '.blade.php')) {
                 continue;
             }

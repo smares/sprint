@@ -1372,15 +1372,19 @@ new class extends Component
 ?>
 
 <div @class(['max-w-4xl' => ! $panel])>
-    <x-presence :channel="$this->presenceChannel()" :one="__(':name is looking at this task too')" :many="__(':count people are looking at this task too')" class="mb-3" />
+    {{-- Who else is looking and the warning. In the flyout the header below moves up over the flyout's padding (-mt-5), so while one of
+         them shows (Alpine hides who is looking with display: none) this takes the same 1.25rem more room, and nothing is covered --}}
+    <div @class(["[&:has(>:not([style*='display:_none'],[x-cloak]))]:pb-5" => $panel])>
+        <x-presence :channel="$this->presenceChannel()" :one="__(':name is looking at this task too')" :many="__(':count people are looking at this task too')" class="mb-3" />
 
-    @if ($changedElsewhere)
-        <flux:callout class="mb-4" variant="warning" icon="arrow-path" :heading="__('Changed by someone else')" :text="__('This task was saved by another person. Reload to see their changes; what you typed is kept until then.')">
-            <x-slot name="actions">
-                <flux:button size="sm" wire:click="reloadFromServer">{{ __('Reload') }}</flux:button>
-            </x-slot>
-        </flux:callout>
-    @endif
+        @if ($changedElsewhere)
+            <flux:callout class="mb-4" variant="warning" icon="arrow-path" :heading="__('Changed by someone else')" :text="__('This task was saved by another person. Reload to see their changes; what you typed is kept until then.')">
+                <x-slot name="actions">
+                    <flux:button size="sm" wire:click="reloadFromServer">{{ __('Reload') }}</flux:button>
+                </x-slot>
+            </flux:callout>
+        @endif
+    </div>
 
     @if ($panel)
         {{-- Stays at the top of the flyout while its content scrolls: sticky counts from inside the flyout's 1.25rem of padding, so -top-5, and -mt-5 moves it up over that padding so no strip of the flyout shows above it. Above the bar with the buttons (z-10), which sticks inside the form and moves up behind this header once the form has scrolled out of sight --}}

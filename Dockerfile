@@ -14,7 +14,7 @@
 # The Composer binary comes from its own pinned stage, so the vendor stage (which holds the Flux Pro credentials) runs nothing unpinned
 FROM mirror.gcr.io/library/composer:2@sha256:0c8e663f14c94d07b3c45b175c51f5a14718508f21fe4dd7e54f09488dd0ed71 AS composer
 
-FROM docker.io/dunglas/frankenphp:1-php8.4-bookworm@sha256:bd101be4e0f384dba7da85bfc8d13911998b4fee4ed42ec7959dc0e67619c161 AS base
+FROM docker.io/dunglas/frankenphp:1-php8.4-bookworm@sha256:8184a7dccca3c56cb2200c3e7446175c7df4048b40da02153aed45935e06a7e2 AS base
 
 RUN install-php-extensions gmp intl opcache pcntl pdo_mysql pdo_pgsql zip \
     && cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"

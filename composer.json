@@ -15,7 +15,7 @@
         "laravel/fortify": "^1.41",
         "laravel/framework": "^13.17",
         "laravel/mcp": "^1.0",
-        "laravel/passkeys": "^0.2.1",
+        "laravel/passkeys": "^0.3",
         "laravel/reverb": "^1.12",
         "laravel/sanctum": "^4.3",
         "laravel/socialite": "^5.31",

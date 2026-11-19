@@ -3,6 +3,9 @@
 namespace App\Concerns;
 
 use App\Enums\ActivityType;
+use App\Enums\CustomFieldType;
+use App\Models\CustomField;
+use App\Models\CustomFieldOption;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
@@ -42,6 +45,24 @@ trait EditsTasksInBulk
     public array $bulkRemoveTags = [];
 
     /**
+     * The values for the custom fields, by field id: empty leaves a field as it is; for selection fields an option id,
+     * or `none` to remove the value.
+     *
+     * @var array<int|string, string|null>
+     */
+    public array $bulkFields = [];
+
+    /**
+     * Fields (text, number, date) whose value is removed, by field id; that wins over a value entered for them.
+     *
+     * @var array<int|string, bool>
+     */
+    public array $bulkClearFields = [];
+
+    /** Whether the fields the list does not show are unfolded in the dialog; they unfold on their own when one of them has an error. */
+    public bool $bulkMoreFields = false;
+
+    /**
      * Top-level tasks matching the filters, without order and limit.
      *
      * @return Builder<Task>|HasMany<Task, Project>
@@ -65,7 +86,10 @@ trait EditsTasksInBulk
      * What the dialog offers: the statuses, the people who can be assigned and the tags of the project, as id => name. Kept for
      * a minute and until the selection ends, not asked for with every render while tasks are selected.
      *
-     * @return array{statuses: array<int, string>, users: array<int, string>, tags: array<int, string>}
+     * The custom fields come in their order, with whether the list shows them (the dialog shows those first, the others
+     * folded away) and, for selection fields, their options.
+     *
+     * @return array{statuses: array<int, string>, users: array<int, string>, tags: array<int, string>, fields: list<array{id: int, name: string, type: string, in_list: bool, options: array<int, string>}>}
      */
     #[Computed(persist: true, seconds: 60)]
     public function bulkChoices(): array
@@ -74,6 +98,13 @@ trait EditsTasksInBulk
             'statuses' => $this->project->statuses()->pluck('name', 'id')->all(),
             'users' => $this->project->assignableUsers()->mapWithKeys(fn (User $user) => [$user->id => $user->labelledName()])->all(),
             'tags' => $this->project->tags()->orderBy('name')->pluck('name', 'id')->all(),
+            'fields' => $this->project->customFields()->with('options')->get()->map(fn (CustomField $field) => [
+                'id' => $field->id,
+                'name' => $field->name,
+                'type' => $field->type->value,
+                'in_list' => $field->show_in_list,
+                'options' => $field->options->mapWithKeys(fn (CustomFieldOption $option) => [$option->id => $option->name])->all(),
+            ])->values()->all(),
         ];
     }
 
@@ -85,15 +116,18 @@ trait EditsTasksInBulk
     {
         Gate::authorize('edit', $this->project);
 
-        $this->reset('bulkStatus', 'bulkAssignee', 'bulkDueDate', 'bulkClearDueDate', 'bulkAddTags', 'bulkRemoveTags');
+        $this->reset('bulkStatus', 'bulkAssignee', 'bulkDueDate', 'bulkClearDueDate', 'bulkAddTags', 'bulkRemoveTags', 'bulkFields', 'bulkClearFields', 'bulkMoreFields');
         $this->resetErrorBag();
         unset($this->bulkChoices);
+
+        // Every field starts empty ("Leave unchanged"), so a selection field shows that choice and not a blank button
+        $this->bulkFields = collect($this->bulkChoices['fields'])->mapWithKeys(fn (array $field) => [$field['id'] => ''])->all();
     }
 
     protected function selectionEnded(): void
     {
         unset($this->bulkChoices);
-        $this->reset('bulkStatus', 'bulkAssignee', 'bulkDueDate', 'bulkClearDueDate', 'bulkAddTags', 'bulkRemoveTags');
+        $this->reset('bulkStatus', 'bulkAssignee', 'bulkDueDate', 'bulkClearDueDate', 'bulkAddTags', 'bulkRemoveTags', 'bulkFields', 'bulkClearFields', 'bulkMoreFields');
         unset($this->selectedIds);
     }
 
@@ -137,7 +171,11 @@ trait EditsTasksInBulk
     {
         Gate::authorize('edit', $this->project);
 
-        $validated = $this->validate([
+        $fields = $this->project->customFields()->with('options')->get();
+
+        $validated = $this->withValidator(fn ($validator) => $validator->after(function ($validator) use ($fields) {
+            $this->bulkMoreFields = $this->bulkMoreFields || $fields->contains(fn (CustomField $field) => ! $field->show_in_list && $validator->errors()->has("bulkFields.{$field->id}"));
+        }))->validate([
             'bulkStatus' => ['nullable', Rule::in($this->project->statuses()->pluck('id')->map(fn ($id) => (string) $id)->all())],
             'bulkAssignee' => ['nullable', Rule::in(['none', ...$this->project->eligibleUsers()->pluck('id')->map(fn ($id) => (string) $id)->all()])],
             'bulkDueDate' => ['nullable', 'date'],
@@ -146,18 +184,31 @@ trait EditsTasksInBulk
             'bulkAddTags.*' => ['integer', Rule::exists('tags', 'id')->where('project_id', $this->project->getKey())],
             'bulkRemoveTags' => ['array'],
             'bulkRemoveTags.*' => ['integer', Rule::exists('tags', 'id')->where('project_id', $this->project->getKey())],
-        ], attributes: ['bulkStatus' => __('Status'), 'bulkAssignee' => __('Assignee'), 'bulkDueDate' => __('Due date'), 'bulkAddTags.*' => __('Add tags'), 'bulkRemoveTags.*' => __('Remove tags')]);
+            'bulkFields' => ['array'],
+            'bulkClearFields' => ['array'],
+            ...$fields->mapWithKeys(fn (CustomField $field) => ["bulkFields.{$field->id}" => match ($field->type) {
+                CustomFieldType::Select => ['nullable', Rule::in(['none', ...$field->options->pluck('id')->map(fn ($id) => (string) $id)->all()])],
+                CustomFieldType::Text => ['nullable', 'string', 'max:500'],
+                CustomFieldType::Number => ['nullable', 'numeric'],
+                CustomFieldType::Date => ['nullable', 'date_format:Y-m-d'],
+            }])->all(),
+            ...$fields->mapWithKeys(fn (CustomField $field) => ["bulkClearFields.{$field->id}" => ['boolean']])->all(),
+        ], attributes: [
+            'bulkStatus' => __('Status'), 'bulkAssignee' => __('Assignee'), 'bulkDueDate' => __('Due date'), 'bulkAddTags.*' => __('Add tags'), 'bulkRemoveTags.*' => __('Remove tags'),
+            ...$fields->mapWithKeys(fn (CustomField $field) => ["bulkFields.{$field->id}" => $field->name])->all(),
+        ]);
 
         $due = $validated['bulkClearDueDate'] ? false : ($validated['bulkDueDate'] ?: null);
+        $fieldChanges = $this->bulkFieldChanges($fields, $validated['bulkFields'] ?? [], $validated['bulkClearFields'] ?? []);
 
-        if (($validated['bulkStatus'] ?? '') === '' && ($validated['bulkAssignee'] ?? '') === '' && $due === null && $validated['bulkAddTags'] === [] && $validated['bulkRemoveTags'] === []) {
+        if (($validated['bulkStatus'] ?? '') === '' && ($validated['bulkAssignee'] ?? '') === '' && $due === null && $validated['bulkAddTags'] === [] && $validated['bulkRemoveTags'] === [] && $fieldChanges === []) {
             throw ValidationException::withMessages(['bulkStatus' => __('Select at least one change.')]);
         }
 
         $tasks = $this->selectedTasks();
         $tagNames = $this->project->tags()->pluck('name', 'id');
 
-        Task::bundlingStatusNotifications(fn () => DB::transaction(function () use ($tasks, $validated, $due, $tagNames) {
+        Task::bundlingStatusNotifications(fn () => DB::transaction(function () use ($tasks, $validated, $due, $tagNames, $fieldChanges) {
             foreach ($tasks as $task) {
                 $changes = [];
 
@@ -184,10 +235,44 @@ trait EditsTasksInBulk
                 }
 
                 $this->syncBulkTags($task, $validated['bulkAddTags'], $validated['bulkRemoveTags'], $tagNames);
+
+                foreach ($fieldChanges as $change) {
+                    $task->setFieldValue($change['field'], $change['attributes']);
+                }
             }
         }));
 
         $this->finishBulk(trans_choice('{1} One task changed.|[0,*] :count tasks changed.', $tasks->count()));
+    }
+
+    /**
+     * What the dialog sets on the custom fields: for each field that was filled in or is to be emptied, the field and what
+     * to store (null removes the value). Fields of other projects and fields left empty are not among them.
+     *
+     * @param  Collection<int, CustomField>|EloquentCollection<int, CustomField>  $fields
+     * @param  array<int|string, string|null>  $values
+     * @param  array<int|string, bool>  $clear
+     * @return list<array{field: CustomField, attributes: array{option_id: ?int, value: ?string}|null}>
+     */
+    private function bulkFieldChanges(Collection|EloquentCollection $fields, array $values, array $clear): array
+    {
+        $changes = [];
+
+        foreach ($fields as $field) {
+            $value = trim((string) ($values[$field->id] ?? ''));
+
+            if ($field->type === CustomFieldType::Select) {
+                if ($value !== '') {
+                    $changes[] = ['field' => $field, 'attributes' => $value === 'none' ? null : ['option_id' => (int) $value, 'value' => null]];
+                }
+            } elseif ((bool) ($clear[$field->id] ?? false)) {
+                $changes[] = ['field' => $field, 'attributes' => null];
+            } elseif ($value !== '') {
+                $changes[] = ['field' => $field, 'attributes' => ['option_id' => null, 'value' => $value]];
+            }
+        }
+
+        return $changes;
     }
 
     /**

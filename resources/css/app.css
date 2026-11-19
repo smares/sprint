@@ -225,22 +225,33 @@ select:focus-visible,
     transition: none;
 }
 
-/* The border of a field is gray 400: 3:1 against the surface, so a field can be seen without its fill. A field with an error keeps
+/* The border of a field is gray 400: 3:1 against the surface, so a field can be seen without its fill; the buttons of the pickers
+   (selection, date, time, tags) are fields too and look the same. A field with an error keeps
    the red border of the manual, thicker, so it does not rest on the color alone. */
 input[data-flux-control]:not([type='checkbox'], [type='radio'], [data-invalid], [aria-invalid='true']),
 textarea[data-flux-control]:not([data-invalid], [aria-invalid='true']),
-select[data-flux-control]:not([data-invalid], [aria-invalid='true']) {
+select[data-flux-control]:not([data-invalid], [aria-invalid='true']),
+[data-flux-select-button]:not([data-invalid]),
+[data-flux-date-picker-button]:not([data-invalid]),
+[data-flux-time-picker-button]:not([data-invalid]),
+[data-flux-pillbox-trigger]:not([data-invalid], :has([data-invalid])) {
     border-color: var(--stage-border-field);
 }
 
 [data-flux-control][data-invalid],
-[data-flux-control][aria-invalid='true'] {
+[data-flux-control][aria-invalid='true'],
+[data-flux-select-button][data-invalid],
+[data-flux-date-picker-button][data-invalid],
+[data-flux-time-picker-button][data-invalid] {
     border-color: var(--color-red-500);
     box-shadow: 0 0 0 1px var(--color-red-500);
 }
 
 :root.dark [data-flux-control][data-invalid],
-:root.dark [data-flux-control][aria-invalid='true'] {
+:root.dark [data-flux-control][aria-invalid='true'],
+:root.dark [data-flux-select-button][data-invalid],
+:root.dark [data-flux-date-picker-button][data-invalid],
+:root.dark [data-flux-time-picker-button][data-invalid] {
     border-color: #ff6b6b;
     box-shadow: 0 0 0 1px #ff6b6b;
 }

@@ -323,6 +323,6 @@ new class extends Component
     @endif
 
     @if ($selecting && $this->canEdit)
-        <x-bulk-edit-modal :choices="$this->bulkChoices" />
+        <x-bulk-edit-modal :choices="$this->bulkChoices" :more-fields="$bulkMoreFields" />
     @endif
 </div>

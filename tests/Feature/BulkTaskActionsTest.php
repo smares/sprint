@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Enums\CustomFieldType;
 use App\Enums\ProjectRole;
 use App\Enums\RepeatMode;
 use App\Enums\RepeatUnit;
+use App\Models\CustomField;
 use App\Models\Project;
 use App\Models\Tag;
 use App\Models\Task;
@@ -355,6 +357,119 @@ class BulkTaskActionsTest extends TestCase
         $this->assertContains('hat die Tags Idee hinzugefügt', $a->activities()->get()->map->sentence()->all());
         $this->assertContains('hat die Tags Bug entfernt', $b->activities()->get()->map->sentence()->all());
         $this->assertNotContains('hat die Tags Bug entfernt', $a->activities()->get()->map->sentence()->all());
+    }
+
+    public function test_custom_fields_are_set_and_removed_with_history(): void
+    {
+        $priority = $this->project->customFields()->where('type', CustomFieldType::Select)->firstOrFail();
+        $high = $priority->options()->skip(2)->firstOrFail();
+        $low = $priority->options()->firstOrFail();
+        $points = CustomField::factory()->for($this->project)->create(['name' => 'Punkte', 'type' => CustomFieldType::Number]);
+        $note = CustomField::factory()->for($this->project)->create(['name' => 'Notiz', 'type' => CustomFieldType::Text]);
+        $deadline = CustomField::factory()->for($this->project)->create(['name' => 'Abgabe', 'type' => CustomFieldType::Date]);
+        $a = $this->task('Eins');
+        $b = $this->task('Zwei');
+        $b->setFieldValue($priority, ['option_id' => $low->id, 'value' => null]);
+        $b->setFieldValue($note, ['option_id' => null, 'value' => 'Alt']);
+
+        $this->list([$a, $b])
+            ->set("bulkFields.{$priority->id}", (string) $high->id)
+            ->set("bulkFields.{$points->id}", '5')
+            ->set("bulkFields.{$deadline->id}", '2026-12-24')
+            ->set("bulkClearFields.{$note->id}", true)
+            ->call('applyBulkChanges')->assertHasNoErrors()->assertSet('selecting', false);
+
+        foreach ([$a, $b] as $task) {
+            $values = $task->fieldValues()->get()->keyBy('custom_field_id');
+            $this->assertSame($high->id, $values[$priority->id]->option_id);
+            $this->assertSame('5', $values[$points->id]->value);
+            $this->assertSame('2026-12-24', $values[$deadline->id]->value);
+            $this->assertArrayNotHasKey($note->id, $values->all());
+        }
+
+        $this->assertContains('hat Notiz von „Alt“ auf „–“ geändert', $b->activities()->get()->map->sentence()->all());
+    }
+
+    public function test_a_selection_field_can_be_emptied_and_untouched_fields_stay(): void
+    {
+        $priority = $this->project->customFields()->where('type', CustomFieldType::Select)->firstOrFail();
+        $low = $priority->options()->firstOrFail();
+        $note = CustomField::factory()->for($this->project)->create(['type' => CustomFieldType::Text]);
+        $task = $this->task('Eins');
+        $task->setFieldValue($priority, ['option_id' => $low->id, 'value' => null]);
+        $task->setFieldValue($note, ['option_id' => null, 'value' => 'Bleibt']);
+
+        $this->list([$task])->set("bulkFields.{$priority->id}", 'none')->call('applyBulkChanges')->assertHasNoErrors();
+
+        $this->assertSame(['Bleibt'], $task->fieldValues()->pluck('value')->all());
+    }
+
+    public function test_values_that_do_not_fit_a_field_are_refused(): void
+    {
+        $task = $this->task('Eins');
+        $priority = $this->project->customFields()->where('type', CustomFieldType::Select)->firstOrFail();
+        $foreignOption = Project::factory()->create()->customFields()->firstOrFail()->options()->firstOrFail();
+        $points = CustomField::factory()->for($this->project)->create(['type' => CustomFieldType::Number]);
+        $deadline = CustomField::factory()->for($this->project)->create(['type' => CustomFieldType::Date]);
+
+        $page = $this->list([$task]);
+
+        $page->set("bulkFields.{$priority->id}", (string) $foreignOption->id)->call('applyBulkChanges')->assertHasErrors("bulkFields.{$priority->id}");
+        $page->set("bulkFields.{$priority->id}", '')->set("bulkFields.{$points->id}", 'viel')->call('applyBulkChanges')->assertHasErrors("bulkFields.{$points->id}");
+        $page->set("bulkFields.{$points->id}", '')->set("bulkFields.{$deadline->id}", 'morgen')->call('applyBulkChanges')->assertHasErrors("bulkFields.{$deadline->id}");
+
+        $this->assertSame(0, $task->fieldValues()->count());
+    }
+
+    public function test_removing_wins_over_a_value_and_fields_of_other_projects_are_ignored(): void
+    {
+        $note = CustomField::factory()->for($this->project)->create(['type' => CustomFieldType::Text]);
+        $foreign = CustomField::factory()->for(Project::factory()->create())->create(['type' => CustomFieldType::Text]);
+        $task = $this->task('Eins');
+        $task->setFieldValue($note, ['option_id' => null, 'value' => 'Alt']);
+
+        $this->list([$task])
+            ->set("bulkFields.{$note->id}", 'Neu')->set("bulkClearFields.{$note->id}", true)
+            ->set("bulkFields.{$foreign->id}", 'Fremd')
+            ->call('applyBulkChanges')->assertHasNoErrors();
+
+        $this->assertSame(0, $task->fieldValues()->count());
+    }
+
+    public function test_the_dialog_opens_with_every_field_unchanged_and_folded(): void
+    {
+        $priority = $this->project->customFields()->firstOrFail();
+        $hidden = CustomField::factory()->for($this->project)->create(['show_in_list' => false]);
+
+        $this->list([$this->task('Eins')])
+            ->set('bulkMoreFields', true)->set("bulkFields.{$hidden->id}", 'Alt')
+            ->call('openBulkEdit')
+            ->assertSet('bulkFields', [$priority->id => '', $hidden->id => ''])
+            ->assertSet('bulkMoreFields', false);
+    }
+
+    public function test_an_error_in_a_folded_field_unfolds_them(): void
+    {
+        $shown = CustomField::factory()->for($this->project)->create(['type' => CustomFieldType::Number]);
+        $hidden = CustomField::factory()->for($this->project)->create(['type' => CustomFieldType::Number, 'show_in_list' => false]);
+        $page = $this->list([$this->task('Eins')])->call('openBulkEdit');
+
+        $page->set("bulkFields.{$shown->id}", 'viel')->call('applyBulkChanges')->assertHasErrors("bulkFields.{$shown->id}")->assertSet('bulkMoreFields', false);
+        $page->set("bulkFields.{$shown->id}", '')->set("bulkFields.{$hidden->id}", 'viel')->call('applyBulkChanges')->assertHasErrors("bulkFields.{$hidden->id}")->assertSet('bulkMoreFields', true);
+    }
+
+    public function test_the_dialog_shows_the_fields_of_the_list_and_folds_the_others_away(): void
+    {
+        CustomField::factory()->for($this->project)->create(['name' => 'Sichtbar', 'show_in_list' => true]);
+        CustomField::factory()->for($this->project)->create(['name' => 'Versteckt', 'show_in_list' => false]);
+        $task = $this->task('Eins');
+
+        $html = $this->list([$task])->call('openBulkEdit')->html();
+        $dialog = substr($html, strpos($html, 'data-flux-modal'));
+
+        $this->assertStringContainsString('Weitere Felder (1)', $dialog);
+        $this->assertLessThan(strpos($dialog, 'Weitere Felder (1)'), strpos($dialog, 'Sichtbar'));
+        $this->assertGreaterThan(strpos($dialog, 'Weitere Felder (1)'), strpos($dialog, 'Versteckt'));
     }
 
     public function test_foreign_ids_in_the_form_are_refused(): void

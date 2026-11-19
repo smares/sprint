@@ -17,7 +17,11 @@ class StageBrandTest extends TestCase
 
         // The border of the fields excludes the invalid ones, which have their own rule (red, with a second line, lighter in the dark mode)
         $this->assertStringContainsString("input[data-flux-control]:not([type='checkbox'], [type='radio'], [data-invalid], [aria-invalid='true'])", $css);
-        $this->assertStringContainsString("[data-flux-control][aria-invalid='true'] {\n    border-color: var(--color-red-500);", $css);
+        $this->assertStringContainsString("[data-flux-time-picker-button][data-invalid] {\n    border-color: var(--color-red-500);", $css);
+        // The buttons of the pickers are fields too: the same border, and the same red one with an error
+        $this->assertStringContainsString('[data-flux-select-button]:not([data-invalid]),', $css);
+        $this->assertStringContainsString('[data-flux-pillbox-trigger]:not([data-invalid], :has([data-invalid])) {', $css);
+        $this->assertStringContainsString(':root.dark [data-flux-select-button][data-invalid],', $css);
         $this->assertStringContainsString('border-color: #ff6b6b;', $css);
         $this->assertStringContainsString('--color-red-500: #e8171e;', $css);
     }

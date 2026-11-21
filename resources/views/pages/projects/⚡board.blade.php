@@ -153,10 +153,13 @@ new class extends Component
     }
 
     /**
-     * The new task ends its column; a column that was shown completely makes room for it.
+     * The new task ends its column, also in a chosen order (until the board is loaded again); a column that was shown completely
+     * makes room for it.
      */
     protected function quickAdded(Task $task): void
     {
+        $this->keepAtEnd($task);
+
         $total = $this->columnTotals[$task->status_id] ?? 0;
 
         if ($total > $this->columnLimit($task->status_id) && $total - 1 <= $this->columnLimit($task->status_id)) {
@@ -201,6 +204,7 @@ new class extends Component
     protected function sorted(): void
     {
         $this->columnLimits = [];
+        $this->forgetKeptAtEnd();
 
         unset($this->columns, $this->columnTotals);
     }
@@ -307,9 +311,13 @@ new class extends Component
         DB::transaction(function () use ($task, $status, $position) {
             $task->update(['status_id' => $status->id]);
 
-            // A sort order puts the card where it belongs on the screen, so the place it was dropped at means nothing; in the
-            // manual order, which shows again when the sort is reset, it goes first in its column
-            $position = $this->isSorted() ? 0 : $position;
+            // A sort order puts the card where it belongs on the screen, so the place it was dropped at means nothing (a card
+            // just added goes there too, it was placed on purpose); in the manual order, which shows again when the sort is
+            // reset, it goes first in its column
+            if ($this->isSorted()) {
+                $position = 0;
+                $this->releaseKeptAtEnd((int) $task->getKey());
+            }
 
             $this->project->placeRootTask($task, $this->columnQuery($status->id)
                 ->whereKeyNot($task->getKey())

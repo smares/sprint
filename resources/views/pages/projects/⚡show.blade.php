@@ -85,6 +85,8 @@ new class extends Component
     {
         if ($this->tagFilter !== '' && ! $this->project->tags()->whereKey($this->tagFilter)->exists()) {
             $this->tagFilter = '';
+            $this->limit = self::PAGE_SIZE;
+            $this->forgetKeptAtEnd();
         }
 
         unset($this->statuses, $this->tagOptions);
@@ -272,11 +274,13 @@ new class extends Component
     }
 
     /**
-     * The new task ends the list; a list that was shown completely makes room for it, and a task
-     * the filters hide (the date filter, say) is announced rather than lost.
+     * The new task ends the list, also in a chosen order (until the list is loaded again); a list that was shown completely
+     * makes room for it, and a task the filters hide (the date filter, say) is announced rather than lost.
      */
     protected function quickAdded(Task $task): void
     {
+        $this->keepAtEnd($task);
+
         if (! $this->showAdded($task)) {
             Flux::toast(variant: 'success', text: __('Task created, but the current filters hide it.'));
         }
@@ -310,6 +314,7 @@ new class extends Component
     {
         if (in_array(explode('.', $name)[0], ['statusFilter', 'doneFilter', 'assigneeFilter', 'collaboratorFilter', 'tagFilter', 'dateFilter', 'fieldFilters', 'sortBy', 'sortDirection'], true)) {
             $this->limit = self::PAGE_SIZE;
+            $this->forgetKeptAtEnd();
         }
 
         if (in_array(explode('.', $name)[0], ['statusFilter', 'doneFilter', 'assigneeFilter', 'collaboratorFilter', 'tagFilter', 'dateFilter', 'fieldFilters'], true)) {
@@ -436,6 +441,10 @@ new class extends Component
             str_starts_with($key, 'field:') => $this->fieldFilters[(int) substr($key, 6)] = '',
             default => null,
         };
+
+        // Set here, not by the browser, so updated() does not run: what is shown changed all the same
+        $this->limit = self::PAGE_SIZE;
+        $this->forgetKeptAtEnd();
     }
 
     protected function savedViewKind(): string
@@ -523,11 +532,13 @@ new class extends Component
         $this->dateFilter = '';
         $this->fieldFilters = [];
         $this->limit = self::PAGE_SIZE;
+        $this->forgetKeptAtEnd();
     }
 
     protected function sorted(): void
     {
         $this->limit = self::PAGE_SIZE;
+        $this->forgetKeptAtEnd();
 
         unset($this->tasks);
     }

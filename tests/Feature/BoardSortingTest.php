@@ -76,6 +76,52 @@ class BoardSortingTest extends TestCase
         $this->assertSame(['Älteste', 'Neueste', 'Mittlere'], $list->instance()->tasks->pluck('title')->all());
     }
 
+    public function test_tasks_added_on_the_board_stay_at_the_end_of_their_column_until_the_order_changes(): void
+    {
+        $this->task('Früh', ['due_date' => '2026-10-20']);
+        $this->task('Ohne Datum', ['created_at' => '2026-10-01 10:00:00']);
+
+        $board = Livewire::test('pages::projects.board', ['project' => $this->project])->set('sortBy', 'due');
+        $board->call('quickAdd', 'Neu 1', $this->statusId)->call('quickAdd', 'Neu 2', $this->statusId);
+
+        // Without them being kept, both would come before "Ohne Datum" (no date, newer), the second first
+        $this->assertSame(['Früh', 'Ohne Datum', 'Neu 1', 'Neu 2'], $this->column($board));
+
+        // Reversing the order puts them where the order says
+        $board->call('reverseSort')->assertSet('keptAtEnd', []);
+        $this->assertSame(['Früh', 'Neu 2', 'Neu 1', 'Ohne Datum'], $this->column($board));
+
+        // A new page knows nothing of them
+        $this->assertSame([], Livewire::test('pages::projects.board', ['project' => $this->project])->get('keptAtEnd'));
+    }
+
+    public function test_tasks_added_in_the_list_stay_at_its_end_until_the_filters_change(): void
+    {
+        $this->task('Ohne Datum', ['created_at' => '2026-10-01 10:00:00']);
+
+        $list = Livewire::test('pages::projects.show', ['project' => $this->project])->call('sort', 'due');
+        $list->call('quickAdd', 'Neu');
+        $this->assertSame(['Ohne Datum', 'Neu'], $list->instance()->tasks->pluck('title')->all());
+
+        $list->set('doneFilter', 'all')->assertSet('keptAtEnd', []);
+        $this->assertSame(['Neu', 'Ohne Datum'], $list->instance()->tasks->pluck('title')->all());
+    }
+
+    public function test_removing_a_filter_chip_or_dragging_a_card_puts_added_tasks_in_their_place(): void
+    {
+        $this->task('Ohne Datum', ['created_at' => '2026-10-01 10:00:00']);
+        $other = $this->project->statuses()->whereKeyNot($this->statusId)->firstOrFail();
+
+        $list = Livewire::test('pages::projects.show', ['project' => $this->project])->call('sort', 'due')->set('dateFilter', 'none');
+        $list->call('quickAdd', 'Neu')->assertCount('keptAtEnd', 1);
+        $list->call('clearFilter', 'dates')->assertSet('keptAtEnd', []);
+
+        $board = Livewire::test('pages::projects.board', ['project' => $this->project])->set('sortBy', 'due');
+        $board->call('quickAdd', 'Gezogen', $this->statusId);
+        $dragged = Task::query()->where('title', 'Gezogen')->firstOrFail();
+        $board->call('moveTask', $dragged->id, 0, (string) $other->id)->assertSet('keptAtEnd', []);
+    }
+
     public function test_the_manual_order_is_the_default(): void
     {
         $this->task('Zebra', ['position' => 0]);

@@ -4,9 +4,11 @@ namespace App\Concerns;
 
 use App\Enums\CustomFieldType;
 use App\Models\CustomFieldValue;
+use App\Models\Task;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 
 /**
@@ -23,6 +25,19 @@ trait SortsTasks
 
     #[Url(as: 'dir')]
     public string $sortDirection = 'asc';
+
+    /**
+     * The tasks added on this page while it is open: they stay at the end, just above where they were added, in the order
+     * they came, and do not jump to their place in the chosen order. Until the page is loaded again or the order or the
+     * filters change (the manual order puts them there anyway).
+     *
+     * @var list<int>
+     */
+    #[Locked]
+    public array $keptAtEnd = [];
+
+    /** At most this many tasks are kept at the end; the oldest of them go to their place first. */
+    private const int MAX_KEPT_AT_END = 50;
 
     /**
      * What the view reads again after the order changed (and starts again at its first page).
@@ -46,6 +61,30 @@ trait SortsTasks
     }
 
     /**
+     * Keep a task that was just added at the end, where it was added (see $keptAtEnd).
+     */
+    protected function keepAtEnd(Task $task): void
+    {
+        $this->keptAtEnd = array_slice([...$this->keptAtEnd, (int) $task->getKey()], -self::MAX_KEPT_AT_END);
+    }
+
+    /**
+     * A task that was placed on purpose (dragged into another column) goes to its place in the order.
+     */
+    protected function releaseKeptAtEnd(int $taskId): void
+    {
+        $this->keptAtEnd = array_values(array_diff($this->keptAtEnd, [$taskId]));
+    }
+
+    /**
+     * The tasks that were added go to their place in the order.
+     */
+    protected function forgetKeptAtEnd(): void
+    {
+        $this->keptAtEnd = [];
+    }
+
+    /**
      * The sort direction from the address, limited to the two valid values.
      */
     protected function direction(): string
@@ -64,6 +103,7 @@ trait SortsTasks
 
         $this->sortBy = $this->isSortable($sort) ? $sort : '';
         $this->sortDirection = ($settings['direction'] ?? 'asc') === 'desc' ? 'desc' : 'asc';
+        $this->forgetKeptAtEnd();
     }
 
     /**
@@ -148,7 +188,8 @@ trait SortsTasks
 
     /**
      * The order as SQL for the table `tasks`: terms with their bindings, empty for the manual order. Tasks without a
-     * value come last in both directions, tasks that are equal come newest first.
+     * value come last in both directions, tasks that are equal come newest first. Tasks added on this page come after all
+     * of them, in the order they were added (see $keptAtEnd).
      *
      * @return list<array{0: string, 1: list<mixed>}>
      */
@@ -167,8 +208,17 @@ trait SortsTasks
             default => $this->fieldSortTerms($direction),
         };
 
+        if ($terms === []) {
+            return [];
+        }
+
+        // Tasks added here stay at the end in the order they came (every other task counts as 0 and is ordered by the terms after)
+        $kept = $this->keptAtEnd === []
+            ? []
+            : [['case when tasks.id in ('.implode(', ', array_fill(0, count($this->keptAtEnd), '?')).') then tasks.id else 0 end', $this->keptAtEnd]];
+
         // Tasks that are equal in the criterion (many with the same priority) come newest first, whichever direction is sorted
-        return $terms === [] ? [] : [...$terms, ['tasks.created_at desc', []], ['tasks.id desc', []]];
+        return [...$kept, ...$terms, ['tasks.created_at desc', []], ['tasks.id desc', []]];
     }
 
     /**

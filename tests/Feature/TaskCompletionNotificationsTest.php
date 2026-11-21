@@ -118,7 +118,7 @@ class TaskCompletionNotificationsTest extends TestCase
         $this->assertSame(['task_id' => 7, 'kind' => 'completed_many', 'by' => 'Otto', 'count' => 2], $this->reader->notifications()->findOrFail('a')->data);
         $this->assertSame('reopened_many', $this->reader->notifications()->findOrFail('b')->data['kind']);
 
-        $sentences = fn () => $this->reader->notifications()->orderBy('id')->get()->map(fn ($notification) => InboxTextService::sentence($notification))->all();
+        $sentences = fn () => $this->reader->notifications()->reorder('id')->get()->map(fn ($notification) => InboxTextService::sentence($notification))->all();
 
         LocaleService::apply('de');
         $this->assertSame(['Otto hat 2 Aufgaben erledigt', 'Otto hat 2 Aufgaben wieder geöffnet'], $sentences());

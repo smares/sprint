@@ -1,6 +1,7 @@
 <?php
 
 use Rector\Config\RectorConfig;
+use Rector\DeadCode\Rector\ClassMethod\RemoveEmptyClassMethodRector;
 use Rector\TypeDeclaration\Rector\ArrowFunction\AddArrowFunctionReturnTypeRector;
 use Rector\TypeDeclaration\Rector\Closure\AddClosureVoidReturnTypeWhereNoReturnRector;
 use Rector\TypeDeclaration\Rector\StmtsAwareInterface\SafeDeclareStrictTypesRector;
@@ -22,7 +23,9 @@ return RectorConfig::configure()
     // Rules that would change conventions the codebase follows consistently:
     // no strict_types declarations, untyped closures, app() instead of resolve(),
     // Carbon instead of the Date facade, scopeName() methods instead of #[Scope].
+    // A migration that cannot be undone keeps its empty down() with the reason.
     ->withSkip([
+        RemoveEmptyClassMethodRector::class => [__DIR__.'/database/migrations'],
         SafeDeclareStrictTypesRector::class,
         AddClosureVoidReturnTypeWhereNoReturnRector::class,
         AddArrowFunctionReturnTypeRector::class,
@@ -36,7 +39,6 @@ return RectorConfig::configure()
         deadCode: true,
         codeQuality: true,
         typeDeclarations: true,
-        earlyReturn: true,
     )
     ->withComposerBased(laravel: true)
     ->withSets([
